@@ -1,0 +1,167 @@
+/* Modules explicatifs : compléments au CSS global (.module canvas, .ctrls, .chip, .seg, .readout…). */
+
+/* Conteneur du canvas. La requête de conteneur applique le ratio « étroit » sous 420 px de large
+   dès le rendu serveur ; ensuite le script pose le ratio en ligne (il fait foi, y compris là où
+   les requêtes de conteneur manquent). */
+.stage {
+  position: relative;
+  container-type: inline-size;
+}
+
+/* display et width répètent `.module canvas` : sans largeur imposée, le canvas prendrait la taille
+   de son bitmap (déjà multipliée par devicePixelRatio) et grandirait à chaque redimensionnement. */
+.canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / var(--ratio);
+}
+
+@container (width < 420px) {
+  .canvas {
+    aspect-ratio: 1 / var(--ratio-narrow);
+  }
+}
+
+/* Repli si le canvas ne peut pas être dessiné. */
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 1rem;
+  border-radius: 3px;
+  background: rgba(3, 6, 15, 0.85);
+  color: var(--brume);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/* Ligne de lecture : environ trois lignes réservées, pour que son remplissage ne fasse pas
+   grandir la page (pendant un saut d'escale, par exemple). */
+.reserve {
+  min-height: 4.8em;
+}
+
+/* Saisie numérique en texte libre : mêmes réglages que les champs nombre de la maquette. */
+.field {
+  width: 5.5rem;
+  min-height: 40px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: 4px;
+  background: var(--nuit);
+  font-variant-numeric: tabular-nums;
+}
+
+.field[aria-invalid="true"] {
+  border-color: var(--soleil);
+}
+
+.hint {
+  font-size: 0.8125rem;
+  color: var(--brume);
+}
+
+/* Message d'erreur de saisie (toujours présent dans le DOM pour être annoncé). */
+.error {
+  margin: 0.45rem 0 0;
+  font-size: 0.875rem;
+  color: var(--soleil);
+}
+
+.error:empty {
+  margin: 0;
+}
+
+/* Balance : valeur d'une ligne (mêmes réglages que `.scales output` de la maquette). */
+.value {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Balance : astre de l'escale, repéré aussi sans la couleur. */
+.here {
+  font-weight: 700;
+}
+
+/* Note sous la balance : ligne de lecture en brume, plus petite. */
+:global(.readout).note {
+  color: var(--brume);
+  font-size: 0.8125rem;
+}
+
+/* Tailles : choix de la planète détaillée, boutons radio natifs présentés en segments. */
+.picker {
+  min-width: 0;
+  margin: 0.7rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  margin: 0 0 0.2rem;
+  padding: 0;
+  font-size: 0.875rem;
+  color: var(--brume);
+}
+
+.pickerHint {
+  margin: 0 0 0.4rem;
+  font-size: 0.8125rem;
+  color: var(--brume);
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 4px;
+  background: rgba(236, 229, 211, 0.05);
+}
+
+.option {
+  position: relative;
+  display: flex;
+}
+
+/* Le bouton radio, invisible, couvre toute l'étiquette : il reçoit le clic, le toucher et le focus. */
+.option input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.option span {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0.2rem 0.6rem;
+  border-radius: 3px;
+  font-size: 0.8125rem;
+  color: var(--brume);
+  white-space: nowrap;
+}
+
+.option input:checked + span {
+  background: var(--ivoire);
+  color: var(--nuit);
+  font-weight: 700;
+}
+
+.option input:focus-visible + span {
+  outline: 2px solid var(--soleil);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .option input:checked + span {
+    outline: 2px solid CanvasText;
+  }
+}
