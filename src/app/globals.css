@@ -1,0 +1,1261 @@
+/* Planétaire : scène 3D fixe en fond (l'instrument), plaques de lecture à gauche,
+   règle des distances à droite, machine à remonter le temps en bas. Un seul monde, sombre.
+   Port de docs/maquette/planetaire.html (sans les notes de maquette). */
+
+:root {
+  color-scheme: dark;
+  --nuit: #060b18;
+  --plaque: #0b1430;
+  --ivoire: #ece5d3;
+  --brume: #959eb5;
+  --laiton: #c2a36b;
+  --soleil: #ffb547;
+  --encre: #1a1204;
+  /* Plaques presque opaques : pas de flou d'arrière-plan à recalculer à chaque image. */
+  --plaque-a: rgba(11, 20, 48, 0.92);
+  --filet: rgba(194, 163, 107, 0.26);
+  --filet-fort: rgba(194, 163, 107, 0.6);
+  --voile: rgba(6, 11, 24, 0.72);
+  /* --font-bodoni, --font-bodoni-italic et --font-atkinson sont posées sur <html> par next/font. */
+  --f-display: var(--font-bodoni, "Bodoni Moda"), "Bodoni 72", Didot, "Didot LT STD", Georgia, serif;
+  --f-display-italic: var(--font-bodoni-italic, "Bodoni Moda"), "Bodoni 72", Didot, "Didot LT STD", Georgia, serif;
+  --f-text: var(--font-atkinson, "Atkinson Hyperlegible Next"), "Atkinson Hyperlegible", system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --gl: max(16px, env(safe-area-inset-left, 0px));
+  --gr: max(16px, env(safe-area-inset-right, 0px));
+  --rail-w: 9.5rem;
+  --c: var(--soleil);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--nuit);
+  scroll-behavior: smooth;
+  /* Un élément qui reçoit le focus n'est jamais caché sous la barre haute ou le dock. */
+  scroll-padding-block: 5rem calc(6rem + env(safe-area-inset-bottom, 0px));
+}
+
+body {
+  margin: 0;
+  background: var(--nuit);
+  color: var(--ivoire);
+  font: 400 1rem/1.6 var(--f-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--soleil);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Le contenu et les sections reçoivent le focus après un saut : cibles de lecture, pas des commandes. */
+main:focus,
+main > section:focus {
+  outline: none;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Liens d'évitement ---------- */
+.skip {
+  position: fixed;
+  z-index: 20;
+  top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+  left: var(--gl);
+  padding: 0.65rem 1rem;
+  border-radius: 4px;
+  background: var(--soleil);
+  color: var(--encre);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip:focus {
+  transform: none;
+}
+
+/* ---------- Scène ---------- */
+#sky {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+  background: var(--nuit);
+}
+
+#labels {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Masquées par défaut ; le moteur les rend visibles là où elles tiennent. */
+.lbl {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.5rem 0.35rem 0.2rem;
+  margin: 0;
+  border: 0;
+  background: none;
+  color: var(--ivoire);
+  font-size: 0.8125rem;
+  letter-spacing: 0.01em;
+  pointer-events: auto;
+  visibility: hidden;
+  will-change: transform, opacity;
+  white-space: nowrap;
+  text-shadow: 0 1px 6px var(--nuit);
+}
+
+.lbl i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--lc, var(--laiton));
+  flex: none;
+  transition:
+    transform 0.4s,
+    border-width 0.4s;
+}
+
+.lbl span {
+  opacity: 0.85;
+}
+
+.lbl:hover span {
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.real .lbl i {
+  transform: scale(1.6);
+  border-width: 1.5px;
+}
+
+/* Repli sans scène 3D : le canvas (qui garderait sa dernière image) disparaît, un Soleil CSS le remplace. */
+.sky-fallback {
+  display: none;
+}
+
+.no3d .sky-fallback {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(
+      circle at 66% 45%,
+      #ffb13b 0 2.2rem,
+      rgba(255, 150, 60, 0.25) 2.3rem,
+      rgba(6, 11, 24, 0) 9rem
+    ),
+    var(--nuit);
+}
+
+.no3d #sky,
+.no3d #labels {
+  display: none;
+}
+
+/* ---------- Barre haute ---------- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--nuit);
+}
+
+.bar {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  left: 0;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem var(--gr) 0.9rem var(--gl);
+  background: linear-gradient(var(--voile), rgba(6, 11, 24, 0));
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 40px;
+  color: var(--ivoire);
+  text-decoration: none;
+  font-family: var(--f-display);
+  font-size: 1.375rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.brand svg {
+  width: 28px;
+  height: 28px;
+}
+
+.where {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  font-size: 0.875rem;
+  color: var(--brume);
+}
+
+.where b {
+  color: var(--ivoire);
+  font-weight: 600;
+}
+
+.where i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+/* ---------- Règle des distances ---------- */
+.rail {
+  position: fixed;
+  z-index: 4;
+  right: calc(var(--gr) + 0.25rem);
+  top: 50%;
+  transform: translateY(-50%);
+  height: min(66vh, 560px);
+  width: var(--rail-w);
+}
+
+.rail .axis {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--filet-fort);
+}
+
+.rail .tick {
+  position: absolute;
+  right: 0;
+  height: 1px;
+  background: var(--laiton);
+  opacity: 0.55;
+}
+
+.rail .tick.maj {
+  opacity: 0.9;
+}
+
+.rail a {
+  position: absolute;
+  right: -6px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0 0.2rem 0.4rem;
+  color: var(--brume);
+  font-size: 0.8125rem;
+  line-height: 1.1;
+  text-decoration: none;
+  white-space: nowrap;
+  text-shadow:
+    0 0 3px var(--nuit),
+    0 1px 8px var(--nuit),
+    0 0 14px var(--nuit);
+}
+
+.rail a i {
+  order: 2;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--nuit);
+  border: 1.5px solid var(--pc);
+}
+
+.rail a small {
+  display: block;
+  font-size: 0.6875rem;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+
+.rail a span {
+  text-align: right;
+}
+
+.rail a:hover,
+.rail a[aria-current="step"] {
+  color: var(--ivoire);
+}
+
+.rail a[aria-current="step"] i {
+  background: var(--pc);
+  box-shadow: 0 0 0 4px rgba(236, 229, 211, 0.08);
+}
+
+/* Repère écarté de sa vraie position : équerre fine depuis la graduation jusqu'à la pastille. */
+.rail .leader {
+  position: absolute;
+  right: -9px;
+  width: 9px;
+  border: 0 solid var(--pc);
+  border-right-width: 1px;
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.rail .leader.down {
+  border-top-width: 1px;
+}
+
+.rail .leader.up {
+  border-bottom-width: 1px;
+}
+
+/* Le curseur glisse dans une boîte pleine hauteur, déplacée par transform (pas de mise en page). */
+.rail .cursor-track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -1px;
+  width: 18px;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.rail .cursor {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 2px;
+  background: var(--soleil);
+  transform: translateY(-50%);
+}
+
+.rail .cursor::after {
+  content: "";
+  position: absolute;
+  right: 16px;
+  top: -4px;
+  border: 5px solid transparent;
+  border-right-color: var(--soleil);
+}
+
+/* ---------- Contenu ---------- */
+main {
+  position: relative;
+  z-index: 2;
+  padding-left: var(--gl);
+  padding-right: calc(var(--gr) + var(--rail-w) + 1rem);
+  pointer-events: none;
+}
+
+main > section > * {
+  pointer-events: auto;
+}
+
+.stop {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-block: 22vh 16vh;
+}
+
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-block: 7rem 8rem;
+  max-width: 40rem;
+  margin-left: clamp(0rem, 4vw, 4rem);
+}
+
+.hero h1 {
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: clamp(2.9rem, 6.6vw, 6.2rem);
+  line-height: 0.96;
+  letter-spacing: -0.012em;
+  margin: 0 0 1.4rem;
+  text-wrap: balance;
+  font-optical-sizing: auto;
+}
+
+.hero p {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  max-width: 33rem;
+  color: var(--ivoire);
+  text-shadow: 0 1px 12px var(--nuit);
+}
+
+.hero .stamp {
+  font-size: 0.9375rem;
+  color: var(--brume);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pastille du départ : le halo pulse deux fois puis s'arrête (transform et opacity seulement). */
+.hero .stamp i {
+  position: relative;
+  flex: none;
+  width: 7px;
+  height: 7px;
+}
+
+.hero .stamp i::before,
+.hero .stamp i::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+}
+
+.hero .stamp i::before {
+  inset: -4px;
+  background: rgba(255, 181, 71, 0.18);
+  animation: beat 2.4s ease-in-out 2;
+}
+
+.hero .stamp i::after {
+  inset: 0;
+  background: var(--soleil);
+}
+
+@keyframes beat {
+  50% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.4rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 46px;
+  padding: 0.7rem 1.15rem;
+  border-radius: 4px;
+  border: 1px solid var(--soleil);
+  background: var(--soleil);
+  color: var(--encre);
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.btn:hover {
+  background: #ffc772;
+}
+
+.btn.ghost {
+  background: var(--voile);
+  color: var(--ivoire);
+  border-color: rgba(236, 229, 211, 0.4);
+}
+
+.btn.ghost:hover {
+  border-color: var(--ivoire);
+}
+
+.btn .check {
+  flex: none;
+}
+
+/* Bascule active : remplie et cochée, l'état ne repose pas que sur la couleur. */
+.btn.ghost[aria-pressed="true"] {
+  background: var(--soleil);
+  border-color: var(--soleil);
+  color: var(--encre);
+}
+
+.btn:not(.ghost)[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px var(--encre);
+}
+
+/* ---------- Plaques ---------- */
+.plate {
+  position: relative;
+  width: min(31rem, 100%);
+  margin-left: clamp(0rem, 4vw, 4rem);
+  padding: 1.6rem 1.6rem 1.4rem;
+  background: var(--plaque-a);
+  border: 1px solid var(--filet);
+  border-radius: 4px;
+}
+
+.plate::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: -1px;
+  height: 2px;
+  background: var(--c);
+  opacity: 0.9;
+}
+
+.rank {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  color: var(--brume);
+}
+
+.rank i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 0.5rem;
+  border-radius: 50%;
+  background: var(--c);
+  vertical-align: 0.02em;
+}
+
+.rank sup {
+  font-size: 0.68em;
+  line-height: 0;
+}
+
+.plate h2 {
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: clamp(3rem, 6vw, 4.75rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.35rem;
+  font-optical-sizing: auto;
+}
+
+.hook {
+  font-family: var(--f-display-italic);
+  font-style: italic;
+  font-size: 1.375rem;
+  line-height: 1.3;
+  margin: 0 0 1rem;
+  color: var(--ivoire);
+  text-wrap: balance;
+}
+
+.lede {
+  margin: 0 0 1.25rem;
+  color: #d9d3c4;
+  max-width: 62ch;
+}
+
+/* Fiche */
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 1.25rem;
+  margin: 0 0 0.25rem;
+}
+
+.facts div {
+  padding: 0.55rem 0 0.6rem;
+  border-top: 1px solid var(--filet);
+}
+
+.facts dt {
+  font-size: 0.8125rem;
+  color: var(--brume);
+}
+
+.facts dd {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.facts dd small {
+  display: block;
+  font-weight: 400;
+  font-size: 0.8125rem;
+  color: var(--brume);
+}
+
+.facts .live {
+  grid-column: 1 / -1;
+}
+
+.facts .live dt::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--soleil);
+  vertical-align: 0.12em;
+}
+
+/* ---------- Modules explicatifs (classes partagées avec src/components/modules) ---------- */
+.module {
+  margin: 1.1rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--filet-fort);
+}
+
+.module h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.module > p {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--brume);
+}
+
+.module canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  background: rgba(3, 6, 15, 0.55);
+}
+
+.ctrls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.chip {
+  min-height: 40px;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: 4px;
+  background: transparent;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip:hover {
+  border-color: var(--ivoire);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--c);
+  border-color: var(--c);
+  color: var(--encre);
+  font-weight: 700;
+}
+
+/* Indisponible : estompé et en pointillés, pas seulement plus pâle. */
+.chip:disabled {
+  opacity: 0.5;
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+.chip:disabled:hover {
+  border-color: var(--filet-fort);
+}
+
+.ctrls label {
+  font-size: 0.875rem;
+  color: var(--brume);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ctrls input[type="range"] {
+  flex: 1;
+  min-width: 9rem;
+  accent-color: var(--c);
+}
+
+.ctrls input[type="number"] {
+  width: 5.5rem;
+  min-height: 40px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: 4px;
+  background: var(--nuit);
+  font-variant-numeric: tabular-nums;
+}
+
+.readout {
+  margin: 0.65rem 0 0;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ivoire);
+}
+
+.readout b {
+  font-weight: 700;
+}
+
+.grow {
+  flex: 1;
+}
+
+/* Balance (Mars) */
+.scales {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.scales li {
+  display: grid;
+  grid-template-columns: 5.6rem 1fr 4.6rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.875rem;
+}
+
+.scales .bar-t {
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(236, 229, 211, 0.08);
+  overflow: hidden;
+}
+
+.scales .bar-t span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--bc);
+  transition: width 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.scales output {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La ligne de l'astre visité : couleur et graisse. */
+.scales li.here {
+  color: var(--c);
+  font-weight: 700;
+}
+
+/* ---------- Interlude ---------- */
+.interlude {
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  padding-block: 20vh;
+}
+
+.interlude blockquote {
+  margin: 0 0 0 clamp(0rem, 4vw, 4rem);
+  max-width: 34rem;
+  font-family: var(--f-display-italic);
+  font-style: italic;
+  font-size: clamp(1.6rem, 3vw, 2.3rem);
+  line-height: 1.25;
+  text-wrap: balance;
+  text-shadow: 0 2px 18px var(--nuit);
+}
+
+.interlude blockquote p {
+  margin: 0 0 0.8rem;
+}
+
+.interlude cite {
+  display: block;
+  font-family: var(--f-text);
+  font-style: normal;
+  font-size: 0.9375rem;
+  color: var(--brume);
+}
+
+/* ---------- Au-delà : échelle en heures-lumière ---------- */
+.lightscale-title {
+  font-size: 1rem;
+  margin: 1.2rem 0 0;
+}
+
+/* Cinq hauteurs de repère distinctes : aucune étiquette n'en recouvre une autre. */
+.lightscale {
+  position: relative;
+  height: 6.1rem;
+  margin: 1rem 0 0.4rem;
+  border-bottom: 1px solid var(--filet-fort);
+}
+
+.lightscale span {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-1px);
+  border-left: 1px solid var(--lc, var(--laiton));
+  padding: 0 0 0.35rem 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.lightscale span.r {
+  transform: translateX(-100%);
+  border-left: 0;
+  border-right: 1px solid var(--lc);
+  padding: 0 0.4rem 0.35rem 0;
+  text-align: right;
+}
+
+.lightscale span b {
+  font-size: 0.8125rem;
+}
+
+.axis-l {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--brume);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Pied de page ---------- */
+footer {
+  position: relative;
+  z-index: 2;
+  padding: 4rem calc(var(--gr) + var(--rail-w) + 1rem) 9rem var(--gl);
+  color: var(--brume);
+  font-size: 0.875rem;
+}
+
+footer p {
+  max-width: 46rem;
+  margin: 0 0 0.6rem 0;
+  margin-left: clamp(0rem, 4vw, 4rem);
+}
+
+footer a {
+  color: var(--ivoire);
+}
+
+/* ---------- Machine à remonter le temps ---------- */
+.dock {
+  position: fixed;
+  z-index: 6;
+  /* Centré par marges automatiques : avec left: 50%, la largeur utile serait limitée à la moitié droite. */
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: fit-content;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  max-width: calc(100% - 32px);
+  background: rgba(8, 14, 32, 0.92);
+  border: 1px solid var(--filet-fort);
+  border-radius: 6px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+
+.dock .sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 0.25rem 0.2rem;
+  background: var(--filet);
+}
+
+.dock .check {
+  width: 14px;
+  height: 14px;
+  margin-left: 0.3rem;
+  vertical-align: -3px;
+}
+
+.ibtn {
+  display: grid;
+  place-items: center;
+  min-width: 42px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+}
+
+.ibtn:hover {
+  background: rgba(236, 229, 211, 0.08);
+}
+
+.ibtn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 4px;
+  background: rgba(236, 229, 211, 0.05);
+}
+
+.seg button {
+  min-height: 40px;
+  padding: 0.2rem 0.6rem;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  font-size: 0.8125rem;
+  color: var(--brume);
+  white-space: nowrap;
+}
+
+.seg button[aria-pressed="true"] {
+  background: var(--ivoire);
+  color: var(--nuit);
+  font-weight: 700;
+}
+
+.date {
+  min-width: 9.6rem;
+  margin: 0;
+  padding: 0 0.5rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.date small {
+  display: block;
+  font-weight: 400;
+  font-size: 0.6875rem;
+  color: var(--brume);
+}
+
+.today {
+  font-size: 0.8125rem;
+  min-height: 40px;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: 4px;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.today:hover {
+  border-color: var(--ivoire);
+}
+
+.today svg {
+  vertical-align: -2px;
+}
+
+.toggle[aria-pressed="true"] {
+  background: var(--soleil);
+  border-color: var(--soleil);
+  color: var(--encre);
+  font-weight: 700;
+}
+
+.cycle {
+  display: none;
+}
+
+/* Note d'échelle : visible tant que les distances réelles sont actives, masquable. */
+.scale-note {
+  position: fixed;
+  z-index: 6;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.9rem;
+  width: min(36rem, calc(100% - 32px));
+  padding: 0.75rem 1rem;
+  background: rgba(8, 14, 32, 0.94);
+  border: 1px solid var(--soleil);
+  border-radius: 4px;
+  font-size: 0.9375rem;
+  text-align: center;
+}
+
+/* Au repos, la boîte reste dans le DOM (la région status doit préexister) sans se voir. */
+.scale-note[data-visible="false"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scale-note p {
+  flex: 1 1 18rem;
+  margin: 0;
+}
+
+.scale-note button {
+  min-height: 40px;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: 4px;
+  background: transparent;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.scale-note button:hover {
+  border-color: var(--ivoire);
+}
+
+/* ---------- Petits écrans ---------- */
+@media (max-width: 860px) {
+  :root {
+    --rail-w: 1.5rem;
+  }
+
+  .rail {
+    height: min(56vh, 440px);
+  }
+
+  .rail .tick {
+    display: none;
+  }
+
+  /* Pastille centrée sur l'axe ; le nom devient une infobulle au survol et au focus. */
+  .rail a {
+    right: calc(-0.55rem - 6px);
+    padding: 0.55rem;
+  }
+
+  .rail a span {
+    position: absolute;
+    top: 50%;
+    right: calc(100% + 0.25rem);
+    transform: translateY(-50%);
+    padding: 0.3rem 0.55rem;
+    border: 1px solid var(--filet-fort);
+    border-radius: 4px;
+    background: rgba(8, 14, 32, 0.94);
+    color: var(--ivoire);
+    text-shadow: none;
+    visibility: hidden;
+  }
+
+  .rail a:hover span,
+  .rail a:focus-visible span {
+    visibility: visible;
+  }
+
+  /* Échap referme l'infobulle jusqu'au prochain survol ou focus. */
+  .rail[data-tips="off"] a span {
+    visibility: hidden;
+  }
+
+  .where span {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .bar {
+    gap: 0.6rem;
+  }
+
+  .brand {
+    font-size: 1.2rem;
+  }
+
+  .hero {
+    justify-content: flex-start;
+    min-height: 0;
+    padding-block: 46vh 9rem;
+    margin-left: 0;
+  }
+
+  .hero h1 {
+    font-size: 2.6rem;
+  }
+
+  .stop {
+    align-items: flex-start;
+    padding-block: 56vh 14vh;
+  }
+
+  .plate {
+    margin-left: 0;
+    padding: 1.25rem 1.1rem 1.1rem;
+  }
+
+  .interlude {
+    padding-block: 40vh 20vh;
+  }
+
+  .interlude blockquote {
+    margin-left: 0;
+  }
+
+  .seg button {
+    padding: 0.2rem 0.45rem;
+  }
+
+  .seg .long {
+    display: none;
+  }
+
+  #speedSeg {
+    display: none;
+  }
+
+  .cycle {
+    display: inline-block;
+    min-width: 4.6rem;
+  }
+
+  .dock .toggle span {
+    display: none;
+  }
+
+  .date {
+    min-width: 0;
+    font-size: 0.875rem;
+    padding: 0 0.3rem;
+  }
+
+  .date small,
+  .dock .today span,
+  .dock .sep.opt {
+    display: none;
+  }
+
+  .dock {
+    gap: 0.2rem;
+    padding: 0.3rem;
+  }
+
+  .scales li {
+    grid-template-columns: 4.8rem 1fr 4.2rem;
+  }
+
+  footer p {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 400px) {
+  .seg .xs-hide {
+    display: none;
+  }
+}
+
+/* 320 px (zoom à 400 %) : date compacte, et le dock passe à la ligne plutôt que de déborder. */
+@media (max-width: 359px) {
+  .dock {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .cycle {
+    min-width: 0;
+  }
+
+  .scale-note {
+    bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Écran bas ou zoom à 400 % : la barre et le dock reprennent leur place dans la page. */
+@media (max-height: 30rem) {
+  html {
+    scroll-padding-block: 1rem;
+  }
+
+  .bar {
+    position: relative;
+    top: auto;
+  }
+
+  .dock {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    width: fit-content;
+    margin: 0 auto calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .scale-note {
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+
+  footer {
+    padding-bottom: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

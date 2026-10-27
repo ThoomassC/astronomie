@@ -1,0 +1,1717 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Planétaire</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Maquette interactive d'un site pédagogique sur le système solaire.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,200..800;1,200..800&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&display=swap">
+<style>
+/* Planétaire : scène 3D fixe en fond (l'instrument), plaques de lecture à gauche,
+   règle des distances à droite, machine à remonter le temps en bas. Un seul monde, sombre. */
+:root{
+  color-scheme: dark;
+  --nuit:#060B18;
+  --plaque:#0B1430;
+  --ivoire:#ECE5D3;
+  --brume:#959EB5;
+  --laiton:#C2A36B;
+  --soleil:#FFB547;
+  --encre:#1A1204;
+  --plaque-a:rgba(11,20,48,.86);
+  --filet:rgba(194,163,107,.26);
+  --filet-fort:rgba(194,163,107,.6);
+  --voile:rgba(6,11,24,.72);
+  --f-display:"Bodoni Moda","Bodoni 72",Didot,"Didot LT STD",Georgia,serif;
+  --f-text:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --gl:max(16px, env(safe-area-inset-left, 0px));
+  --gr:max(16px, env(safe-area-inset-right, 0px));
+  --rail-w:9.5rem;
+  --c:var(--soleil);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--nuit);scroll-behavior:smooth}
+body{margin:0;background:var(--nuit);color:var(--ivoire);font:400 1rem/1.6 var(--f-text);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--soleil);outline-offset:3px;border-radius:3px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- Scène ---------- */
+#sky{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0;background:var(--nuit)}
+#labels{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;left:0;top:0;display:flex;align-items:center;gap:.45rem;padding:.35rem .5rem .35rem .2rem;margin:0;border:0;background:none;color:var(--ivoire);font-size:.8125rem;letter-spacing:.01em;pointer-events:auto;will-change:transform,opacity;white-space:nowrap;text-shadow:0 1px 6px var(--nuit)}
+.lbl i{width:10px;height:10px;border-radius:50%;border:1px solid var(--lc,var(--laiton));flex:none;transition:transform .4s,border-width .4s}
+.lbl span{opacity:.85}
+.lbl:hover span,.lbl:focus-visible span{opacity:1;text-decoration:underline;text-underline-offset:3px}
+.real .lbl i{transform:scale(1.6);border-width:1.5px}
+.lbl[hidden]{display:none}
+
+/* ---------- Barre haute ---------- */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--nuit)}
+.bar{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:6;display:flex;align-items:center;gap:1rem;padding:.9rem var(--gr) .9rem var(--gl);background:linear-gradient(var(--voile),rgba(6,11,24,0))}
+.brand{display:flex;align-items:center;gap:.6rem;color:var(--ivoire);text-decoration:none;font-family:var(--f-display);font-size:1.375rem;font-weight:500;letter-spacing:.01em}
+.brand svg{width:28px;height:28px}
+.where{display:flex;align-items:center;gap:.5rem;margin-left:auto;font-size:.875rem;color:var(--brume)}
+.where b{color:var(--ivoire);font-weight:600}
+.where i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.notes-btn{display:flex;align-items:center;gap:.45rem;min-height:40px;padding:.4rem .8rem;border:1px solid var(--filet-fort);border-radius:4px;background:var(--voile);font-size:.875rem}
+.notes-btn[aria-pressed="true"]{background:var(--laiton);color:var(--encre);border-color:var(--laiton)}
+
+/* ---------- Règle des distances ---------- */
+.rail{position:fixed;z-index:4;right:calc(var(--gr) + .25rem);top:50%;transform:translateY(-50%);height:min(66vh,560px);width:var(--rail-w)}
+.rail .axis{position:absolute;right:0;top:0;bottom:0;width:1px;background:var(--filet-fort)}
+.rail .tick{position:absolute;right:0;height:1px;background:var(--laiton);opacity:.55}
+.rail .tick.maj{opacity:.9}
+.rail .tick em{position:absolute;right:12px;top:-.55em;font-style:normal;font-size:.6875rem;color:var(--brume);white-space:nowrap;opacity:0}
+.rail button{position:absolute;right:-6px;transform:translateY(-50%);display:flex;align-items:center;gap:.5rem;padding:.2rem 0 .2rem .4rem;border:0;background:none;color:var(--brume);font-size:.8125rem;line-height:1.1;white-space:nowrap;text-shadow:0 0 3px var(--nuit),0 1px 8px var(--nuit),0 0 14px var(--nuit)}
+.rail button i{order:2;width:11px;height:11px;border-radius:50%;background:var(--nuit);border:1.5px solid var(--pc)}
+.rail button small{display:block;font-size:.6875rem;opacity:.8;font-variant-numeric:tabular-nums}
+.rail button span{text-align:right}
+.rail button:hover,.rail button[aria-current="step"]{color:var(--ivoire)}
+.rail button[aria-current="step"] i{background:var(--pc);box-shadow:0 0 0 4px rgba(236,229,211,.08)}
+.rail .cursor{position:absolute;right:-1px;width:18px;height:2px;background:var(--soleil);transform:translateY(-50%);transition:none}
+.rail .cursor::after{content:"";position:absolute;right:16px;top:-4px;border:5px solid transparent;border-right-color:var(--soleil)}
+
+/* ---------- Contenu ---------- */
+main{position:relative;z-index:2;padding-left:var(--gl);padding-right:calc(var(--gr) + var(--rail-w) + 1rem);pointer-events:none}
+main > section > *{pointer-events:auto}
+.no3d #sky{background:radial-gradient(circle at 66% 45%,#FFB13B 0 2.2rem,rgba(255,150,60,.25) 2.3rem,rgba(6,11,24,0) 9rem),var(--nuit)}
+.stop{min-height:100vh;display:flex;align-items:center;padding-block:22vh 16vh}
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding-block:7rem 8rem;max-width:40rem;margin-left:clamp(0rem,4vw,4rem)}
+.hero h1{font-family:var(--f-display);font-weight:450;font-size:clamp(2.9rem,6.6vw,6.2rem);line-height:.96;letter-spacing:-.012em;margin:0 0 1.4rem;text-wrap:balance;font-optical-sizing:auto}
+.hero p{margin:0 0 1rem;font-size:1.125rem;max-width:33rem;color:var(--ivoire);text-shadow:0 1px 12px var(--nuit)}
+.hero .stamp{font-size:.9375rem;color:var(--brume);display:flex;align-items:center;gap:.5rem;font-variant-numeric:tabular-nums}
+.hero .stamp i{width:7px;height:7px;border-radius:50%;background:var(--soleil);box-shadow:0 0 0 4px rgba(255,181,71,.18);animation:beat 2.4s ease-in-out infinite}
+@keyframes beat{50%{box-shadow:0 0 0 7px rgba(255,181,71,0)}}
+.actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1.4rem}
+.btn{display:inline-flex;align-items:center;gap:.5rem;min-height:46px;padding:.7rem 1.15rem;border-radius:4px;border:1px solid var(--soleil);background:var(--soleil);color:var(--encre);font-weight:700;text-decoration:none;transition:background .2s,color .2s,border-color .2s}
+.btn:hover{background:#FFC772}
+.btn.ghost{background:var(--voile);color:var(--ivoire);border-color:rgba(236,229,211,.4)}
+.btn.ghost:hover{border-color:var(--ivoire)}
+.btn.ghost[aria-pressed="true"]{border-color:var(--soleil);color:var(--soleil)}
+
+.plate{position:relative;width:min(31rem,100%);margin-left:clamp(0rem,4vw,4rem);padding:1.6rem 1.6rem 1.4rem;background:var(--plaque-a);border:1px solid var(--filet);border-radius:4px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.plate::before{content:"";position:absolute;left:-1px;right:-1px;top:-1px;height:2px;background:var(--c);opacity:.9}
+.rank{margin:0 0 .25rem;font-size:.875rem;color:var(--brume)}
+.rank i{display:inline-block;width:9px;height:9px;margin-right:.5rem;border-radius:50%;background:var(--c);vertical-align:.02em}
+.rank sup{font-size:.68em;line-height:0}
+.plate h2{font-family:var(--f-display);font-weight:450;font-size:clamp(3rem,6vw,4.75rem);line-height:1;letter-spacing:-.01em;margin:0 0 .35rem;font-optical-sizing:auto}
+.hook{font-family:var(--f-display);font-style:italic;font-size:1.375rem;line-height:1.3;margin:0 0 1rem;color:var(--ivoire);text-wrap:balance}
+.lede{margin:0 0 1.25rem;color:#D9D3C4;max-width:62ch}
+.facts{display:grid;grid-template-columns:1fr 1fr;column-gap:1.25rem;margin:0 0 .25rem}
+.facts div{padding:.55rem 0 .6rem;border-top:1px solid var(--filet)}
+.facts dt{font-size:.8125rem;color:var(--brume)}
+.facts dd{margin:0;font-size:1.0625rem;font-weight:600;font-variant-numeric:tabular-nums}
+.facts dd small{display:block;font-weight:400;font-size:.8125rem;color:var(--brume)}
+.facts .live{grid-column:1/-1}
+.facts .live dt::before{content:"";display:inline-block;width:6px;height:6px;margin-right:.45rem;border-radius:50%;background:var(--soleil);vertical-align:.12em}
+
+.module{margin:1.1rem 0 0;padding-top:1rem;border-top:1px solid var(--filet-fort)}
+.module h3{margin:0 0 .2rem;font-size:1.0625rem;font-weight:700}
+.module > p{margin:0 0 .75rem;font-size:.9375rem;color:var(--brume)}
+.module canvas{display:block;width:100%;height:auto;border-radius:3px;background:rgba(3,6,15,.55)}
+.ctrls{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-top:.7rem}
+.chip{min-height:40px;padding:.35rem .75rem;border:1px solid var(--filet-fort);border-radius:4px;background:transparent;font-size:.875rem;font-variant-numeric:tabular-nums}
+.chip:hover{border-color:var(--ivoire)}
+.chip[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:var(--encre);font-weight:700}
+.ctrls label{font-size:.875rem;color:var(--brume);display:flex;align-items:center;gap:.5rem}
+.ctrls input[type="range"]{flex:1;min-width:9rem;accent-color:var(--c)}
+.ctrls input[type="number"]{width:5.5rem;min-height:40px;padding:.3rem .5rem;border:1px solid var(--filet-fort);border-radius:4px;background:var(--nuit);font-variant-numeric:tabular-nums}
+.readout{margin:.65rem 0 0;font-size:.9375rem;font-variant-numeric:tabular-nums;color:var(--ivoire)}
+.readout b{font-weight:700}
+.grow{flex:1}
+
+/* Balance (Mars) */
+.scales{list-style:none;margin:.4rem 0 0;padding:0;display:grid;gap:.35rem}
+.scales li{display:grid;grid-template-columns:5.6rem 1fr 4.6rem;align-items:center;gap:.6rem;font-size:.875rem}
+.scales .bar-t{height:10px;border-radius:2px;background:rgba(236,229,211,.08);overflow:hidden}
+.scales .bar-t span{display:block;height:100%;width:0;background:var(--bc);transition:width .7s cubic-bezier(.2,.7,.2,1)}
+.scales output{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.scales li.here{color:var(--c)}
+
+/* Interlude */
+.interlude{min-height:90vh;display:flex;align-items:center;padding-block:20vh}
+.interlude blockquote{margin:0 0 0 clamp(0rem,4vw,4rem);max-width:34rem;font-family:var(--f-display);font-style:italic;font-size:clamp(1.6rem,3vw,2.3rem);line-height:1.25;text-wrap:balance;text-shadow:0 2px 18px var(--nuit)}
+.interlude blockquote p{margin:0 0 .8rem}
+.interlude cite{display:block;font-family:var(--f-text);font-style:normal;font-size:.9375rem;color:var(--brume)}
+
+/* Au-delà : échelle en heures-lumière */
+.lightscale{position:relative;height:5.2rem;margin:1rem 0 .4rem;border-bottom:1px solid var(--filet-fort)}
+.lightscale span{position:absolute;bottom:0;transform:translateX(-1px);border-left:1px solid var(--lc,var(--laiton));padding:0 0 .35rem .4rem;font-size:.75rem;line-height:1.25;white-space:nowrap;font-variant-numeric:tabular-nums}
+.lightscale span.r{transform:translateX(-100%);border-left:0;border-right:1px solid var(--lc);padding:0 .4rem .35rem 0;text-align:right}
+.lightscale span b{font-size:.8125rem}
+.axis-l{display:flex;justify-content:space-between;font-size:.75rem;color:var(--brume);font-variant-numeric:tabular-nums}
+
+footer{position:relative;z-index:2;padding:4rem calc(var(--gr) + var(--rail-w) + 1rem) 9rem var(--gl);color:var(--brume);font-size:.875rem}
+footer p{max-width:46rem;margin:0 0 .6rem 0;margin-left:clamp(0rem,4vw,4rem)}
+footer a{color:var(--ivoire)}
+
+/* ---------- Machine à remonter le temps ---------- */
+.dock{position:fixed;z-index:6;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;align-items:center;gap:.4rem;padding:.4rem;max-width:calc(100% - 32px);background:rgba(8,14,32,.92);border:1px solid var(--filet-fort);border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+.dock .sep{width:1px;align-self:stretch;margin:.25rem .2rem;background:var(--filet)}
+.ibtn{display:grid;place-items:center;min-width:42px;min-height:42px;border:0;border-radius:4px;background:transparent}
+.ibtn:hover{background:rgba(236,229,211,.08)}
+.ibtn svg{width:18px;height:18px}
+.seg{display:flex;gap:2px;padding:2px;border-radius:4px;background:rgba(236,229,211,.05)}
+.seg button{min-height:38px;padding:.2rem .6rem;border:0;border-radius:3px;background:transparent;font-size:.8125rem;color:var(--brume);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--ivoire);color:var(--nuit);font-weight:700}
+.date{min-width:9.6rem;padding:0 .5rem;text-align:center;font-weight:600;font-size:.9375rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.date small{display:block;font-weight:400;font-size:.6875rem;color:var(--brume)}
+.today{font-size:.8125rem;min-height:38px;padding:.2rem .6rem;border:1px solid var(--filet-fort);border-radius:4px;background:transparent;white-space:nowrap}
+.today:hover{border-color:var(--ivoire)}
+.toggle[aria-pressed="true"]{background:var(--soleil);border-color:var(--soleil);color:var(--encre);font-weight:700}
+.cycle{display:none}
+.scale-note{position:fixed;z-index:6;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(36rem,calc(100% - 32px));padding:.75rem 1rem;background:rgba(8,14,32,.94);border:1px solid var(--soleil);border-radius:4px;font-size:.9375rem;text-align:center}
+
+/* ---------- Notes de maquette ---------- */
+.pin{display:none;position:absolute;z-index:7;width:28px;height:28px;border-radius:50%;border:0;background:var(--laiton);color:var(--encre);font-weight:800;font-size:.8125rem;box-shadow:0 0 0 4px rgba(194,163,107,.25)}
+.notes-on .pin{display:grid;place-items:center}
+.notes{position:fixed;z-index:9;top:0;right:0;bottom:0;width:min(25rem,100%);overflow-y:auto;padding:calc(1.25rem + env(safe-area-inset-top,0px)) calc(1.25rem + env(safe-area-inset-right,0px)) 6rem 1.25rem;background:#0A1229;border-left:1px solid var(--filet-fort);transform:translateX(102%);transition:transform .35s cubic-bezier(.2,.7,.2,1);visibility:hidden}
+.notes-open .notes{transform:none;visibility:visible}
+.notes h2{font-family:var(--f-display);font-weight:500;font-size:1.75rem;margin:0 0 .3rem}
+.notes > p{color:var(--brume);font-size:.9375rem;margin:0 0 1rem}
+.notes ol{margin:0;padding:0;list-style:none;display:grid;gap:.9rem;counter-reset:n}
+.notes li{display:grid;grid-template-columns:28px 1fr;gap:.75rem;font-size:.9375rem;line-height:1.5}
+.notes li::before{counter-increment:n;content:counter(n);display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--laiton);color:var(--encre);font-weight:800;font-size:.8125rem}
+.notes li b{display:block;color:var(--ivoire)}
+.notes li span{color:#C9C3B4}
+.notes li.flash{animation:flash 1.2s}
+@keyframes flash{30%{background:rgba(194,163,107,.18)}}
+.notes h3{font-size:1rem;margin:1.5rem 0 .5rem}
+.notes ul{margin:0;padding-left:1.1rem;color:#C9C3B4;font-size:.9375rem}
+.notes .close{position:absolute;top:calc(.8rem + env(safe-area-inset-top,0px));right:calc(.8rem + env(safe-area-inset-right,0px))}
+
+/* ---------- Petits écrans ---------- */
+@media (max-width:860px){
+  :root{--rail-w:1.5rem}
+  .rail{height:min(56vh,440px)}
+  .rail button span,.rail .tick{display:none}
+  .rail button{right:-10px;padding:.55rem}
+  .where span{display:none}
+}
+@media (max-width:640px){
+  .bar{gap:.6rem}
+  .brand{font-size:1.2rem}
+  .notes-btn span{display:none}
+  .hero{justify-content:flex-start;min-height:0;padding-block:46vh 9rem;margin-left:0}
+  .hero h1{font-size:2.6rem}
+  .stop{align-items:flex-start;padding-block:56vh 14vh}
+  .plate{margin-left:0;padding:1.25rem 1.1rem 1.1rem}
+  .interlude{padding-block:40vh 20vh}
+  .interlude blockquote{margin-left:0}
+  .seg button{padding:.2rem .45rem}
+  .seg .long{display:none}
+  #speedSeg{display:none}
+  .cycle{display:inline-block;min-width:4.6rem}
+  .dock .toggle span{display:none}
+  .date{min-width:0;font-size:.875rem;padding:0 .3rem}
+  .date small,.dock .today span,.dock .sep.opt{display:none}
+  .dock{gap:.2rem;padding:.3rem}
+  .scales li{grid-template-columns:4.8rem 1fr 4.2rem}
+  footer p{margin-left:0}
+}
+@media (max-width:400px){ .seg .xs-hide{display:none} }
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+<canvas id="sky" aria-hidden="true"></canvas>
+<div id="labels"></div>
+
+<header class="bar">
+  <a class="brand" href="#accueil" aria-label="Planétaire, retour à l'accueil">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="16" rx="14" ry="6.5" fill="none" stroke="#C2A36B" stroke-width="1.2" transform="rotate(-18 16 16)"/><ellipse cx="16" cy="16" rx="8.5" ry="3.8" fill="none" stroke="#C2A36B" stroke-width="1.2" transform="rotate(-18 16 16)"/><circle cx="16" cy="16" r="3.6" fill="#FFB547"/><circle cx="28.6" cy="11.6" r="1.9" fill="#5B9BE6"/><circle cx="9" cy="19.8" r="1.4" fill="#DA6A43"/></svg>
+    Planétaire
+  </a>
+  <p class="where" aria-live="polite"><span>Escale</span><i id="whereDot"></i><b id="whereName">Vue d'ensemble</b></p>
+  <button class="notes-btn" id="notesBtn" type="button" aria-pressed="false" aria-controls="notes">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h10v11H3z M5.5 5.5h5 M5.5 8h5 M5.5 10.5h3" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+    <span>Notes de maquette</span>
+  </button>
+</header>
+
+<nav class="rail" id="rail" aria-label="Escales, du Soleil vers l'extérieur"><div class="axis"></div><div class="cursor" id="railCursor"></div></nav>
+<button class="pin" type="button" data-note="4" style="position:fixed;right:calc(var(--gr) + 2.4rem);top:calc(50% - min(33vh,280px) - 34px)" aria-label="Note 4">4</button>
+<button class="pin" type="button" data-note="1" style="position:fixed;left:64%;top:24%" aria-label="Note 1">1</button>
+
+<main>
+  <section class="hero" id="accueil" data-stop="hero" style="position:relative">
+    <h1>Huit planètes, une étoile, et beaucoup de vide.</h1>
+    <p>Chaque planète part de sa vraie place du jour. Faites défiler pour quitter le Soleil et rejoindre Neptune, à quatre heures-lumière de là.</p>
+    <p class="stamp" style="position:relative"><i></i><span id="heroStamp">Positions calculées pour le 27 octobre 2026</span>
+      <button class="pin" type="button" data-note="2" style="right:-38px;top:-4px" aria-label="Note 2">2</button></p>
+    <div class="actions" style="position:relative">
+      <a class="btn" href="#soleil" data-goto="sun">Partir du Soleil</a>
+      <button class="btn ghost" type="button" data-scale-toggle aria-pressed="false">Voir les distances réelles</button>
+      <button class="pin" type="button" data-note="3" style="left:-14px;top:-34px" aria-label="Note 3">3</button>
+    </div>
+  </section>
+
+  <section class="stop" id="soleil" data-stop="sun">
+    <article class="plate" style="--c:#FFB13B">
+      <p class="rank"><i></i>L'étoile au centre</p>
+      <h2>Soleil</h2>
+      <p class="hook">Une étoile ordinaire, vue de très près.</p>
+      <p class="lede">Le Soleil concentre 99,86 % de la masse du système solaire. En son cœur, à 15 millions de degrés, il transforme chaque seconde environ 600 millions de tonnes d'hydrogène en hélium. Sa lumière met 8 minutes et 19 secondes à nous parvenir : on voit toujours le Soleil tel qu'il était un peu plus tôt.</p>
+      <dl class="facts" style="position:relative">
+        <div><dt>Diamètre</dt><dd>1 392 700 km<small>109 Terres côte à côte</small></dd></div>
+        <div><dt>Masse</dt><dd>333 000 Terres<small>99,86 % du système</small></dd></div>
+        <div><dt>Surface</dt><dd>5 500 °C</dd></div>
+        <div><dt>Cœur</dt><dd>15 millions °C</dd></div>
+        <div><dt>Un tour sur lui-même</dt><dd>25 jours<small>à l'équateur, 35 aux pôles</small></dd></div>
+        <div><dt>Âge</dt><dd>4,6 milliards d'années</dd></div>
+        <div class="live"><dt>Ce jour, depuis la Terre</dt><dd data-live="sun">–</dd></div>
+        <button class="pin" type="button" data-note="6" style="right:-14px;top:-14px" aria-label="Note 6">6</button>
+      </dl>
+      <figure class="module" style="position:relative">
+        <h3>La course de la lumière</h3>
+        <p>Un éclair part du Soleil. Les distances sont à l'échelle : regardez où se trouvent les quatre premières planètes.</p>
+        <canvas id="mLight" width="560" height="236" role="img" aria-label="Piste à l'échelle du Soleil à Neptune, avec un zoom sur les planètes intérieures"></canvas>
+        <div class="ctrls">
+          <button class="chip" type="button" id="lightPlay">Lancer l'éclair</button>
+          <span class="grow"></span>
+          <div class="seg" role="group" aria-label="Accélération">
+            <button type="button" data-lx="100" aria-pressed="false">×100</button>
+            <button type="button" data-lx="1000" aria-pressed="true">×1 000</button>
+            <button type="button" data-lx="10000" aria-pressed="false">×10 000</button>
+          </div>
+        </div>
+        <p class="readout" id="lightOut" aria-live="polite">Prêt. À ×1 000, l'éclair atteint Neptune en 15 secondes.</p>
+        <button class="pin" type="button" data-note="7" style="right:-14px;top:-14px" aria-label="Note 7">7</button>
+      </figure>
+    </article>
+  </section>
+
+  <section class="stop" id="mercure" data-stop="mercury">
+    <article class="plate" style="--c:#B5ADA3">
+      <p class="rank"><i></i>1<sup>re</sup> planète en partant du Soleil</p>
+      <h2>Mercure</h2>
+      <p class="hook">La plus petite, et la plus rapide.</p>
+      <p class="lede">Mercure fait le tour du Soleil en 88 jours, à 47 km/s en moyenne. Son orbite est la plus allongée des huit : sa distance au Soleil varie de 46 à 70 millions de km. Sans atmosphère pour garder la chaleur, sa surface passe de 430 °C le jour à −180 °C la nuit.</p>
+      <dl class="facts">
+        <div><dt>Distance au Soleil</dt><dd>0,39 UA<small>57,9 millions de km</small></dd></div>
+        <div><dt>Diamètre</dt><dd>4 879 km<small>0,38 Terre</small></dd></div>
+        <div><dt>Une année</dt><dd>88 jours</dd></div>
+        <div><dt>Un jour, de lever à lever</dt><dd>176 jours</dd></div>
+        <div><dt>Températures</dt><dd>−180 à 430 °C</dd></div>
+        <div><dt>Gravité</dt><dd>0,38 g</dd></div>
+        <div><dt>Lunes</dt><dd>0</dd></div>
+        <div><dt>Vitesse moyenne</dt><dd>47,4 km/s</dd></div>
+        <div class="live"><dt>Ce jour, depuis la Terre</dt><dd data-live="mercury">–</dd></div>
+      </dl>
+      <figure class="module">
+        <h3>La loi des aires</h3>
+        <p>Kepler, 1609 : une planète balaie des aires égales en des temps égaux. Chaque secteur dure 8 jours. Près du Soleil, Mercure accélère.</p>
+        <canvas id="mKepler" width="560" height="300" role="img" aria-label="Orbite de Mercure découpée en secteurs de même aire"></canvas>
+        <div class="ctrls">
+          <button class="chip" type="button" id="keplerPlay" aria-pressed="true">Animation en cours</button>
+          <button class="chip" type="button" id="keplerAreas" aria-pressed="true">Afficher les aires</button>
+        </div>
+        <p class="readout" id="keplerOut" aria-live="off">–</p>
+      </figure>
+    </article>
+  </section>
+
+  <section class="stop" id="venus" data-stop="venus">
+    <article class="plate" style="--c:#E6CB94">
+      <p class="rank"><i></i>2<sup>e</sup> planète en partant du Soleil</p>
+      <h2>Vénus</h2>
+      <p class="hook">Un jour plus long que son année.</p>
+      <p class="lede">Vénus tourne sur elle-même en 243 jours, plus lentement qu'elle ne fait le tour du Soleil (225 jours). Elle tourne aussi dans l'autre sens : là-bas, le Soleil se lève à l'ouest. Son atmosphère épaisse de gaz carbonique piège la chaleur : 464 °C au sol, plus que sur Mercure.</p>
+      <dl class="facts">
+        <div><dt>Distance au Soleil</dt><dd>0,72 UA<small>108,2 millions de km</small></dd></div>
+        <div><dt>Diamètre</dt><dd>12 104 km<small>0,95 Terre</small></dd></div>
+        <div><dt>Une année</dt><dd>225 jours</dd></div>
+        <div><dt>Un tour sur elle-même</dt><dd>243 jours<small>dans l'autre sens</small></dd></div>
+        <div><dt>Température au sol</dt><dd>464 °C</dd></div>
+        <div><dt>Gravité</dt><dd>0,90 g</dd></div>
+        <div><dt>Lunes</dt><dd>0</dd></div>
+        <div><dt>Pression au sol</dt><dd>92 bar<small>92 fois celle de la Terre</small></dd></div>
+        <div class="live"><dt>Ce jour, depuis la Terre</dt><dd data-live="venus">–</dd></div>
+      </dl>
+      <figure class="module">
+        <h3>Qui boucle son tour en premier ?</h3>
+        <p>À gauche, le tour du Soleil. À droite, le tour de Vénus sur elle-même. Même horloge pour les deux.</p>
+        <canvas id="mVenus" width="560" height="236" role="img" aria-label="Deux cadrans : l'année de Vénus et sa rotation"></canvas>
+        <div class="ctrls"><button class="chip" type="button" id="venusPlay">Lancer la course</button></div>
+        <p class="readout" id="venusOut" aria-live="polite">Jour 0.</p>
+      </figure>
+    </article>
+  </section>
+
+  <section class="stop" id="terre" data-stop="earth">
+    <article class="plate" style="--c:#5B9BE6">
+      <p class="rank"><i></i>3<sup>e</sup> planète en partant du Soleil</p>
+      <h2>Terre</h2>
+      <p class="hook">Inclinée de 23,44°, d'où les saisons.</p>
+      <p class="lede">Les saisons ne viennent pas de la distance au Soleil : la Terre en est même au plus près début janvier. Elles viennent de l'inclinaison de son axe, qui pointe toujours dans la même direction. En juin, l'hémisphère nord reçoit le Soleil plus haut et plus longtemps ; en décembre, c'est l'inverse.</p>
+      <dl class="facts">
+        <div><dt>Distance au Soleil</dt><dd>1 UA<small>149,6 millions de km</small></dd></div>
+        <div><dt>Diamètre</dt><dd>12 756 km</dd></div>
+        <div><dt>Une année</dt><dd>365,25 jours</dd></div>
+        <div><dt>Un jour</dt><dd>24 h</dd></div>
+        <div><dt>Température moyenne</dt><dd>15 °C</dd></div>
+        <div><dt>Gravité</dt><dd>1 g<small>9,81 m/s²</small></dd></div>
+        <div><dt>Lunes</dt><dd>1</dd></div>
+        <div><dt>Inclinaison de l'axe</dt><dd>23,44°</dd></div>
+        <div class="live"><dt>Ce jour, distance au Soleil</dt><dd data-live="earth">–</dd></div>
+      </dl>
+      <figure class="module">
+        <h3>Pourquoi des saisons ?</h3>
+        <p>À gauche, la Terre sur son orbite, vue d'en haut. À droite, vue de côté : la part du tour passée au soleil à la latitude de Paris.</p>
+        <canvas id="mSeasonsE" width="560" height="280" role="img" aria-label="Orbite de la Terre et éclairement selon la date"></canvas>
+        <div class="ctrls">
+          <button class="chip" type="button" id="seasonsESync" aria-pressed="true">Suivre la date du site</button>
+          <label class="grow" for="seasonsERange">Date <input id="seasonsERange" type="range" min="0" max="364" step="1" value="299"></label>
+        </div>
+        <p class="readout" id="seasonsEOut" aria-live="polite">–</p>
+      </figure>
+    </article>
+  </section>
+
+  <section class="stop" id="mars" data-stop="mars">
+    <article class="plate" style="--c:#DA6A43">
+      <p class="rank"><i></i>4<sup>e</sup> planète en partant du Soleil</p>
+      <h2>Mars</h2>
+      <p class="hook">Un désert froid, couleur de rouille.</p>
+      <p class="lede">Sa couleur vient de l'oxyde de fer, la rouille, qui recouvre ses roches et sa poussière. Mars porte Olympus Mons, le plus haut volcan connu : environ 22 km, deux fois et demie l'Everest. Sa gravité ne vaut que 38 % de celle de la Terre.</p>
+      <dl class="facts">
+        <div><dt>Distance au Soleil</dt><dd>1,52 UA<small>227,9 millions de km</small></dd></div>
+        <div><dt>Diamètre</dt><dd>6 792 km<small>0,53 Terre</small></dd></div>
+        <div><dt>Une année</dt><dd>687 jours</dd></div>
+        <div><dt>Un jour</dt><dd>24 h 40 min</dd></div>
+        <div><dt>Température moyenne</dt><dd>−65 °C</dd></div>
+        <div><dt>Gravité</dt><dd>0,38 g</dd></div>
+        <div><dt>Lunes</dt><dd>2<small>Phobos et Déimos</small></dd></div>
+        <div><dt>Plus haut volcan</dt><dd>≈ 22 km</dd></div>
+        <div class="live"><dt>Ce jour, depuis la Terre</dt><dd data-live="mars">–</dd></div>
+      </dl>
+      <figure class="module">
+        <h3>Ce qu'afficherait une balance</h3>
+        <p>Votre masse reste la même partout. Le poids, lui, dépend de la gravité de l'astre.</p>
+        <div class="ctrls"><label for="mass">Masse sur Terre <input id="mass" type="number" min="1" max="300" step="1" value="40"> kg</label><span style="font-size:.8125rem;color:var(--brume)">exemple, modifiable</span></div>
+        <ul class="scales" id="scales" aria-live="polite"></ul>
+        <p class="readout" style="color:var(--brume);font-size:.8125rem">Pour les géantes gazeuses, gravité au sommet des nuages : on ne peut pas s'y poser.</p>
+      </figure>
+    </article>
+  </section>
+
+  <section class="interlude" id="ceinture" data-stop="belt">
+    <blockquote>
+      <p>Entre Mars et Jupiter, plus d'un million d'astéroïdes connus. Réunis, ils pèseraient à peine 3 % de la Lune.</p>
+      <cite>La ceinture principale, entre 2,1 et 3,3 UA du Soleil</cite>
+    </blockquote>
+  </section>
+
+  <section class="stop" id="jupiter" data-stop="jupiter">
+    <article class="plate" style="--c:#D8A878">
+      <p class="rank"><i></i>5<sup>e</sup> planète en partant du Soleil</p>
+      <h2>Jupiter</h2>
+      <p class="hook">Deux fois et demie plus massive que toutes les autres planètes réunies.</p>
+      <p class="lede">Jupiter est une géante gazeuse : pas de sol, mais des couches de nuages emportées par des vents violents. On pourrait aligner 11 Terres sur son diamètre. Sa Grande Tache rouge est une tempête plus large que la Terre, observée depuis plus de 150 ans.</p>
+      <dl class="facts">
+        <div><dt>Distance au Soleil</dt><dd>5,20 UA<small>778,5 millions de km</small></dd></div>
+        <div><dt>Diamètre</dt><dd>142 984 km<small>11,2 Terres</small></dd></div>
+        <div><dt>Une année</dt><dd>11,9 ans</dd></div>
+        <div><dt>Un jour</dt><dd>9 h 56 min<small>le plus court</small></dd></div>
+        <div><dt>Sommet des nuages</dt><dd>−110 °C</dd></div>
+        <div><dt>Gravité</dt><dd>2,53 g</dd></div>
+        <div><dt>Lunes</dt><dd>95 connues</dd></div>
+        <div><dt>Volume</dt><dd>1 321 Terres</dd></div>
+        <div class="live"><dt>Ce jour, depuis la Terre</dt><dd data-live="jupiter">–</dd></div>
+      </dl>
+      <figure class="module">
+        <h3>Les tailles, enfin à l'échelle</h3>
+        <p>Survolez ou touchez une planète pour lire son diamètre.</p>
+        <canvas id="mSizes" width="560" height="250" role="img" aria-label="Les huit planètes dessinées à la même échelle"></canvas>
+        <div class="ctrls">
+          <div class="seg" role="group" aria-label="Cadrage">
+            <button type="button" data-sz="0" aria-pressed="true">Les planètes</button>
+            <button type="button" data-sz="1" aria-pressed="false">Avec le Soleil</button>
+          </div>
+          <button class="chip" type="button" id="sizesEarths" aria-pressed="false">Aligner 11 Terres</button>
+        </div>
+        <p class="readout" id="sizesOut" aria-live="polite">Jupiter : 142 984 km, 11,2 fois la Terre.</p>
+      </figure>
+    </article>
+  </section>
+
+  <section class="stop" id="saturne" data-stop="saturn">
+    <article class="plate" style="--c:#E2C98F">
+      <p class="rank"><i></i>6<sup>e</sup> planète en partant du Soleil</p>
+      <h2>Saturne</h2>
+      <p class="hook">Des anneaux larges de 270 000 km, épais d'une dizaine de mètres.</p>
+      <p class="lede">Les anneaux sont faits de milliards de blocs de glace, du grain de poussière à la taille d'une maison. Ils sont si fins que, vus par la tranche, ils disparaissent presque : c'est arrivé depuis la Terre en mars 2025. Saturne elle-même est moins dense que l'eau.</p>
+      <dl class="facts">
+        <div><dt>Distance au Soleil</dt><dd>9,54 UA<small>1,43 milliard de km</small></dd></div>
+        <div><dt>Diamètre</dt><dd>120 536 km<small>9,4 Terres</small></dd></div>
+        <div><dt>Une année</dt><dd>29,4 ans</dd></div>
+        <div><dt>Un jour</dt><dd>10 h 34 min</dd></div>
+        <div><dt>Sommet des nuages</dt><dd>−140 °C</dd></div>
+        <div><dt>Gravité</dt><dd>1,07 g</dd></div>
+        <div><dt>Lunes</dt><dd>274 connues</dd></div>
+        <div><dt>Densité</dt><dd>0,69<small>l'eau : 1</small></dd></div>
+        <div class="live"><dt>Ce jour, depuis la Terre</dt><dd data-live="saturn">–</dd></div>
+      </dl>
+      <figure class="module">
+        <h3>Les anneaux vus depuis la Terre</h3>
+        <p>Selon l'endroit de son orbite de 29 ans, on voit les anneaux par-dessus, par-dessous ou par la tranche.</p>
+        <canvas id="mRings" width="560" height="250" role="img" aria-label="Saturne et l'ouverture de ses anneaux selon l'année"></canvas>
+        <div class="ctrls">
+          <button class="chip" type="button" id="ringsPlay" aria-pressed="false">Faire défiler les années</button>
+          <label class="grow" for="ringsRange">Année <input id="ringsRange" type="range" min="2010" max="2050" step="0.05" value="2026.8"></label>
+        </div>
+        <p class="readout" id="ringsOut" aria-live="polite">–</p>
+      </figure>
+    </article>
+  </section>
+
+  <section class="stop" id="uranus" data-stop="uranus">
+    <article class="plate" style="--c:#9ED9DE">
+      <p class="rank"><i></i>7<sup>e</sup> planète en partant du Soleil</p>
+      <h2>Uranus</h2>
+      <p class="hook">Elle tourne autour du Soleil couchée sur le côté.</p>
+      <p class="lede">Son axe est incliné de 98° : chaque pôle connaît environ 42 ans de jour, puis 42 ans de nuit. Sa couleur bleu-vert vient du méthane, qui absorbe la lumière rouge. C'est la première planète découverte au télescope, par William Herschel en 1781.</p>
+      <dl class="facts">
+        <div><dt>Distance au Soleil</dt><dd>19,2 UA<small>2,87 milliards de km</small></dd></div>
+        <div><dt>Diamètre</dt><dd>51 118 km<small>4 Terres</small></dd></div>
+        <div><dt>Une année</dt><dd>84 ans</dd></div>
+        <div><dt>Un jour</dt><dd>17 h 14 min<small>dans l'autre sens</small></dd></div>
+        <div><dt>Sommet des nuages</dt><dd>−195 °C</dd></div>
+        <div><dt>Gravité</dt><dd>0,90 g</dd></div>
+        <div><dt>Lunes</dt><dd>29 connues</dd></div>
+        <div><dt>Inclinaison de l'axe</dt><dd>97,8°</dd></div>
+        <div class="live"><dt>Ce jour, depuis la Terre</dt><dd data-live="uranus">–</dd></div>
+      </dl>
+      <figure class="module">
+        <h3>Les saisons d'Uranus</h3>
+        <p>Le même schéma que pour la Terre, avec un axe incliné de 98°. Latitude de référence : 49° nord, comme Paris.</p>
+        <canvas id="mSeasonsU" width="560" height="280" role="img" aria-label="Orbite d'Uranus et éclairement selon l'année"></canvas>
+        <div class="ctrls">
+          <button class="chip" type="button" id="seasonsUSync" aria-pressed="true">Suivre la date du site</button>
+          <label class="grow" for="seasonsURange">Année <input id="seasonsURange" type="range" min="0" max="1000" step="1" value="500"></label>
+        </div>
+        <p class="readout" id="seasonsUOut" aria-live="polite">–</p>
+      </figure>
+    </article>
+  </section>
+
+  <section class="stop" id="neptune" data-stop="neptune">
+    <article class="plate" style="--c:#5878E8">
+      <p class="rank"><i></i>8<sup>e</sup> planète en partant du Soleil</p>
+      <h2>Neptune</h2>
+      <p class="hook">Trouvée par le calcul avant d'être vue.</p>
+      <p class="lede">En 1846, Urbain Le Verrier constate qu'Uranus s'écarte de la route prévue. Il en déduit la position d'une planète inconnue. Le 23 septembre, Johann Galle pointe son télescope à l'endroit indiqué : Neptune est là, à environ un degré de la prédiction. Depuis, elle n'a bouclé qu'un seul tour du Soleil, en 2011.</p>
+      <dl class="facts">
+        <div><dt>Distance au Soleil</dt><dd>30,1 UA<small>4,5 milliards de km</small></dd></div>
+        <div><dt>Diamètre</dt><dd>49 528 km<small>3,9 Terres</small></dd></div>
+        <div><dt>Une année</dt><dd>164,8 ans</dd></div>
+        <div><dt>Un jour</dt><dd>16 h 06 min</dd></div>
+        <div><dt>Sommet des nuages</dt><dd>−200 °C</dd></div>
+        <div><dt>Gravité</dt><dd>1,14 g</dd></div>
+        <div><dt>Lunes</dt><dd>16 connues</dd></div>
+        <div><dt>Vents</dt><dd>jusqu'à 2 100 km/h</dd></div>
+        <div class="live"><dt>Ce jour, depuis la Terre</dt><dd data-live="neptune">–</dd></div>
+      </dl>
+      <figure class="module">
+        <h3>Une seule année neptunienne</h3>
+        <p>Le cadran représente un tour complet de Neptune autour du Soleil, depuis sa découverte. Situez votre vie dessus.</p>
+        <canvas id="mNeptune" width="560" height="270" role="img" aria-label="Cadran de l'orbite de Neptune de 1846 à 2011"></canvas>
+        <div class="ctrls"><label for="birth">Année de naissance <input id="birth" type="number" min="1900" max="2026" step="1" value="2012"></label><span style="font-size:.8125rem;color:var(--brume)">exemple, modifiable</span></div>
+        <p class="readout" id="neptuneOut" aria-live="polite">–</p>
+      </figure>
+    </article>
+  </section>
+
+  <section class="stop" id="au-dela" data-stop="beyond">
+    <article class="plate" style="--c:#C2A36B">
+      <p class="rank"><i></i>Au-delà de Neptune</p>
+      <h2>Le grand vide</h2>
+      <p class="hook">Les distances, enfin à l'échelle.</p>
+      <p class="lede">Au-delà de Neptune s'étend la ceinture de Kuiper : des milliers de corps glacés, dont Pluton, classée planète naine depuis 2006. Plus loin encore voyage Voyager 1, lancée en 1977. En novembre 2026, elle atteindra un jour-lumière de la Terre : 25,9 milliards de km.</p>
+      <h3 style="font-size:1rem;margin:1.2rem 0 0">Distances en temps de lumière depuis le Soleil</h3>
+      <div class="lightscale" aria-hidden="true">
+        <span style="left:17.4%;height:4.7rem;--lc:#5878E8"><b>Neptune</b> 4 h 10</span>
+        <span style="left:22.8%;height:3.3rem;--lc:#B5ADA3"><b>Pluton</b> 5 h 28</span>
+        <span style="left:28.9%;height:1.9rem;--lc:#C2A36B"><b>Kuiper</b> ≈ 7 h</span>
+        <span class="r" style="left:83%;height:3.3rem;--lc:#929BB2"><b>Voyager 2</b> ≈ 20 h</span>
+        <span class="r" style="left:100%;height:4.7rem;--lc:#FFB547"><b>Voyager 1</b> ≈ 24 h</span>
+      </div>
+      <div class="axis-l"><span>Soleil, 0 h</span><span>12 h</span><span>24 h</span></div>
+      <p class="sr">Neptune est à 4 heures 10 minutes-lumière du Soleil, Pluton à 5 heures 28, le bord de la ceinture de Kuiper à environ 7 heures, Voyager 2 à environ 20 heures et Voyager 1 à près de 24 heures.</p>
+      <div class="actions">
+        <button class="btn" type="button" data-scale-toggle aria-pressed="false">Voir les distances réelles</button>
+        <a class="btn ghost" href="#soleil" data-goto="sun">Revenir au Soleil</a>
+      </div>
+    </article>
+  </section>
+</main>
+
+<footer>
+  <p>Sources : NASA, Planetary Fact Sheet ; JPL, éléments orbitaux approchés des planètes (valables de 1800 à 2050) ; nombres de lunes : NASA et UAI, 2025. Sauf en mode « distances réelles », les tailles sont agrandies et les distances compressées pour que tout tienne à l'écran.</p>
+  <p>Maquette du 27 octobre 2026. Textures dessinées par le code : la version finale utilisera des cartes photographiques.</p>
+</footer>
+
+<div class="scale-note" id="scaleNote" role="status" hidden>Distances à l'échelle : la Terre est à 1 UA du Soleil, Neptune à 30. À cette échelle, les planètes seraient plus petites qu'un pixel : un cercle signale chacune.</div>
+
+<div class="dock" role="group" aria-label="Machine à remonter le temps">
+  <button class="ibtn" type="button" id="playBtn" aria-label="Mettre le temps en pause">
+    <svg viewBox="0 0 18 18" aria-hidden="true"><g id="icoPause"><rect x="4" y="3" width="3.2" height="12" rx="1" fill="currentColor"/><rect x="10.8" y="3" width="3.2" height="12" rx="1" fill="currentColor"/></g><path id="icoPlay" d="M5 3.2v11.6L14.6 9z" fill="currentColor" style="display:none"/></svg>
+  </button>
+  <div class="seg" id="speedSeg" role="group" aria-label="Vitesse du temps">
+    <button type="button" data-speed="1" aria-pressed="false">1 j<span class="long">our</span>/s</button>
+    <button type="button" data-speed="7" aria-pressed="true">1 sem<span class="long">aine</span>/s</button>
+    <button type="button" data-speed="30.44" aria-pressed="false">1 mois/s</button>
+    <button type="button" data-speed="365.25" aria-pressed="false">1 an/s</button>
+  </div>
+  <button class="today cycle" type="button" id="speedCycle" aria-label="Changer la vitesse du temps">1 sem/s</button>
+  <span class="sep"></span>
+  <p class="date" id="dateOut" style="margin:0"><span id="dateTxt">27 octobre 2026</span><small id="dateSub">aujourd'hui</small></p>
+  <button class="today" type="button" id="todayBtn" aria-label="Revenir à aujourd'hui">
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style="vertical-align:-2px"><path d="M3.5 8a4.5 4.5 0 1 0 1.4-3.3M3.2 2.2v2.9h2.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Aujourd'hui</span>
+  </button>
+  <span class="sep opt"></span>
+  <button class="today toggle" type="button" id="scaleBtn" data-scale-toggle aria-pressed="false" aria-label="Distances réelles">
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style="vertical-align:-2px"><path d="M1.5 8h13M1.5 5.5v5M14.5 5.5v5M5.5 7v2M8 6.5v3M10.5 7v2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    <span>Distances réelles</span>
+  </button>
+  <button class="pin" type="button" data-note="5" style="left:-12px;top:-14px" aria-label="Note 5">5</button>
+  <button class="pin" type="button" data-note="8" style="right:-12px;top:-14px" aria-label="Note 8">8</button>
+</div>
+
+<aside class="notes" id="notes" aria-label="Notes de maquette">
+  <button class="ibtn close" type="button" id="notesClose" aria-label="Fermer les notes"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+  <h2>Notes de maquette</h2>
+  <p>Ce qui est prévu derrière chaque zone de la page. Les numéros correspondent aux pastilles affichées sur l'écran.</p>
+  <ol>
+    <li id="note1"><div><b>Scène 3D</b><span>Three.js (WebGL) en fond fixe. Ici les textures sont dessinées par le code ; en version finale, cartes photographiques NASA. Prévoir une image fixe de repli si WebGL est absent.</span></div></li>
+    <li id="note2"><div><b>Positions réelles</b><span>Calculées en direct à partir des éléments orbitaux du JPL (valables de 1800 à 2050). Les distances sont compressées par une racine carrée pour que tout tienne à l'écran.</span></div></li>
+    <li id="note3"><div><b>Caméra pilotée par le défilement</b><span>Chaque section est une escale. La caméra interpole cible, distance et angle entre deux escales, et contourne le Soleil. Version finale : GSAP ScrollTrigger, ou défilement natif avec lissage.</span></div></li>
+    <li id="note4"><div><b>Règle des distances</b><span>Sommaire et repère à la fois : échelle logarithmique en UA, curseur qui suit la caméra. Sur mobile, elle se réduit à des points.</span></div></li>
+    <li id="note5"><div><b>Machine à remonter le temps</b><span>Une date simulée partagée par la scène, les fiches et les modules. En pause au chargement si la personne a demandé à réduire les animations.</span></div></li>
+    <li id="note6"><div><b>Fiche de l'astre</b><span>Données NASA. La ligne « ce jour » se recalcule avec la date simulée : distance à la Terre et temps de trajet de la lumière.</span></div></li>
+    <li id="note7"><div><b>Module explicatif</b><span>Une animation par escale, en Canvas 2D, pilotable au clavier, avec un texte équivalent lu par les lecteurs d'écran. Animée seulement quand elle est visible.</span></div></li>
+    <li id="note8"><div><b>Distances réelles</b><span>Remet les distances à l'échelle. Les planètes deviennent invisibles, d'où les cercles de repérage.</span></div></li>
+  </ol>
+  <h3>Pages prévues</h3>
+  <ul>
+    <li>Le voyage (cette page)</li>
+    <li>Phénomènes : éclipses, marées, phases de la Lune</li>
+    <li>Comparer deux astres</li>
+    <li>Lexique et quiz</li>
+  </ul>
+  <h3>Pile technique proposée</h3>
+  <ul>
+    <li>Vite ou Next.js, TypeScript</li>
+    <li>Three.js (ou React Three Fiber), GSAP ScrollTrigger</li>
+    <li>Contenus des astres en JSON validé, textes en MDX</li>
+    <li>Déploiement Vercel, budget : 60 i/s sur un portable récent</li>
+  </ul>
+</aside>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, D2R = Math.PI / 180;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = t => t * t * t * (t * (t * 6 - 15) + 10);
+const sstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const nf = (v, d = 0) => v.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const mixc = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+const AU_KM = 149597870.7, LIGHT_S_PER_AU = 499.004784;
+
+/* ---------- Données : éléments orbitaux JPL (J2000, 1800-2050) ---------- */
+const PLANETS = [
+  { k: 'mercury', name: 'Mercure', color: '#B5ADA3', R: .62, tilt: .03, rotH: 1407.6, a: .387,
+    el: [0.38709927, 0.20563593, 7.00497902, 252.25032350, 77.45779628, 48.33076593],
+    rt: [0.00000037, 0.00001906, -0.00594749, 149472.67411175, 0.16047689, -0.12534081] },
+  { k: 'venus', name: 'Vénus', color: '#E6CB94', R: .98, tilt: 177.36, rotH: 5832.5, a: .723,
+    el: [0.72333566, 0.00677672, 3.39467605, 181.97909950, 131.60246718, 76.67984255],
+    rt: [0.00000390, -0.00004107, -0.00078890, 58517.81538729, 0.00268329, -0.27769418] },
+  { k: 'earth', name: 'Terre', color: '#5B9BE6', R: 1.02, tilt: 23.44, rotH: 23.93, a: 1,
+    el: [1.00000261, 0.01671123, -0.00001531, 100.46457166, 102.93768193, 0],
+    rt: [0.00000562, -0.00004392, -0.01294668, 35999.37244981, 0.32327364, 0] },
+  { k: 'mars', name: 'Mars', color: '#DA6A43', R: .74, tilt: 25.19, rotH: 24.62, a: 1.524,
+    el: [1.52371034, 0.09339410, 1.84969142, -4.55343205, -23.94362959, 49.55953891],
+    rt: [0.00001847, 0.00007882, -0.00813131, 19140.30268499, 0.44441088, -0.29257343] },
+  { k: 'jupiter', name: 'Jupiter', color: '#D8A878', R: 3.3, tilt: 3.13, rotH: 9.93, a: 5.203,
+    el: [5.20288700, 0.04838624, 1.30439695, 34.39644051, 14.72847983, 100.47390909],
+    rt: [-0.00011607, -0.00013253, -0.00183714, 3034.74612775, 0.21252668, 0.20469106] },
+  { k: 'saturn', name: 'Saturne', color: '#E2C98F', R: 2.8, tilt: 26.73, rotH: 10.56, a: 9.537,
+    el: [9.53667594, 0.05386179, 2.48599187, 49.95424423, 92.59887831, 113.66242448],
+    rt: [-0.00125060, -0.00050991, 0.00193609, 1222.49362201, -0.41897216, -0.28867794] },
+  { k: 'uranus', name: 'Uranus', color: '#9ED9DE', R: 1.85, tilt: 97.77, rotH: 17.24, a: 19.19,
+    el: [19.18916464, 0.04725744, 0.77263783, 313.23810451, 170.95427630, 74.01692503],
+    rt: [-0.00196176, -0.00004397, -0.00242939, 428.48202785, 0.40805281, 0.04240589] },
+  { k: 'neptune', name: 'Neptune', color: '#5878E8', R: 1.8, tilt: 28.32, rotH: 16.11, a: 30.07,
+    el: [30.06992276, 0.00859048, 1.77004347, -55.12002969, 44.96476227, 131.78422574],
+    rt: [0.00026291, 0.00005105, 0.00035372, 218.45945325, -0.32241464, -0.00508664] }
+];
+const BY = Object.fromEntries(PLANETS.map(p => [p.k, p]));
+
+function elements(p, jd) {
+  const T = (jd - 2451545) / 36525, e0 = p.el, e1 = p.rt;
+  const a = e0[0] + e1[0] * T, e = e0[1] + e1[1] * T, I = (e0[2] + e1[2] * T) * D2R;
+  const L = e0[3] + e1[3] * T, wb = e0[4] + e1[4] * T, O = (e0[5] + e1[5] * T) * D2R;
+  const M = ((((L - wb) % 360) + 540) % 360 - 180) * D2R;
+  return { a, e, I, O, w: wb * D2R - O, M };
+}
+function posFromE(m, E) {
+  const xp = m.a * (Math.cos(E) - m.e), yp = m.a * Math.sqrt(1 - m.e * m.e) * Math.sin(E);
+  const cw = Math.cos(m.w), sw = Math.sin(m.w), cO = Math.cos(m.O), sO = Math.sin(m.O), cI = Math.cos(m.I), sI = Math.sin(m.I);
+  return {
+    x: (cw * cO - sw * sO * cI) * xp + (-sw * cO - cw * sO * cI) * yp,
+    y: (cw * sO + sw * cO * cI) * xp + (-sw * sO + cw * cO * cI) * yp,
+    z: (sw * sI) * xp + (cw * sI) * yp
+  };
+}
+function helio(p, jd) {
+  const m = elements(p, jd);
+  let E = m.M + m.e * Math.sin(m.M);
+  for (let i = 0; i < 6; i++) E -= (E - m.e * Math.sin(E) - m.M) / (1 - m.e * Math.cos(E));
+  return posFromE(m, E);
+}
+const jdOf = ms => ms / 86400000 + 2440587.5;
+
+/* Échelle : racine carrée (compressée) ou linéaire (réelle) */
+const comp = r => 12 + 22 * Math.sqrt(r);
+const LIN = 4.41;
+const mapR = (r, s) => lerp(comp(r), LIN * r, s);
+function toScene(v, s, out) {
+  const r = Math.hypot(v.x, v.y, v.z) || 1e-9, k = mapR(r, s) / r;
+  out.x = v.x * k; out.y = v.z * k; out.z = -v.y * k;
+  return out;
+}
+
+/* ---------- Bruit pour les textures ---------- */
+function h3(x, y, z, s) {
+  let h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(z, 1274126177) ^ Math.imul(s, 2246822519);
+  h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+function vnoise(x, y, z, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  let u = x - xi, v = y - yi, w = z - zi;
+  u = u * u * (3 - 2 * u); v = v * v * (3 - 2 * v); w = w * w * (3 - 2 * w);
+  const a = h3(xi, yi, zi, s), b = h3(xi + 1, yi, zi, s), c = h3(xi, yi + 1, zi, s), d = h3(xi + 1, yi + 1, zi, s);
+  const e = h3(xi, yi, zi + 1, s), f = h3(xi + 1, yi, zi + 1, s), g = h3(xi, yi + 1, zi + 1, s), hh = h3(xi + 1, yi + 1, zi + 1, s);
+  const x1 = a + (b - a) * u, x2 = c + (d - c) * u, x3 = e + (f - e) * u, x4 = g + (hh - g) * u;
+  const y1 = x1 + (x2 - x1) * v, y2 = x3 + (x4 - x3) * v;
+  return y1 + (y2 - y1) * w;
+}
+function fbm(x, y, z, oct, s) {
+  let t = 0, a = .5, f = 1, n = 0;
+  for (let i = 0; i < oct; i++) { t += a * vnoise(x * f, y * f, z * f, s + i * 31); n += a; a *= .5; f *= 2.03; }
+  return t / n;
+}
+function paintSphere(w, h, fn) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h), d = img.data, C = [0, 0, 0, 255];
+  for (let j = 0; j < h; j++) {
+    const lat = (.5 - (j + .5) / h) * Math.PI, cl = Math.cos(lat), sl = Math.sin(lat);
+    for (let i = 0; i < w; i++) {
+      const lon = ((i + .5) / w) * TAU - Math.PI;
+      C[3] = 255;
+      fn(cl * Math.cos(lon), sl, cl * Math.sin(lon), lat, lon, C);
+      const o = (j * w + i) * 4; d[o] = C[0]; d[o + 1] = C[1]; d[o + 2] = C[2]; d[o + 3] = C[3];
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return cv;
+}
+const put = (C, c) => { C[0] = c[0]; C[1] = c[1]; C[2] = c[2]; };
+
+const TEX = {
+  mercury: () => paintSphere(256, 128, (x, y, z, la, lo, C) => {
+    const n = fbm(x * 3, y * 3, z * 3, 5, 3), k = fbm(x * 11, y * 11, z * 11, 3, 9);
+    let c = mixc(hex('#5E5853'), hex('#CFC6BA'), n);
+    if (k > .62) c = mixc(c, hex('#E4DCD0'), sstep(.62, .7, k) * .6);
+    if (k < .3) c = mixc(c, hex('#4A4541'), .4);
+    put(C, c);
+  }),
+  venus: () => paintSphere(256, 128, (x, y, z, la, lo, C) => {
+    const n = fbm(x * 2.2, y * 2.2, z * 2.2, 5, 4);
+    const t = .5 + .5 * Math.sin(la * 7 + n * 5);
+    put(C, mixc(hex('#C9A465'), hex('#F4E5BE'), t * .6 + n * .4));
+  }),
+  mars: () => paintSphere(256, 128, (x, y, z, la, lo, C) => {
+    const n = fbm(x * 2.6, y * 2.6, z * 2.6, 5, 5), m = fbm(x * 9, y * 9, z * 9, 3, 2);
+    let c = mixc(hex('#D9844F'), hex('#B4502C'), sstep(.42, .58, n));
+    c = mixc(c, hex('#6E2F1C'), sstep(.56, .7, n) * .85);
+    c = mixc(c, hex('#E9A272'), sstep(.6, .8, m) * .25);
+    if (Math.abs(la) > 1.32) c = mixc(c, hex('#F4EEE8'), sstep(1.32, 1.42, Math.abs(la) + (n - .5) * .2));
+    put(C, c);
+  }),
+  jupiter: () => paintSphere(512, 256, (x, y, z, la, lo, C) => {
+    const tu = fbm(x * 3, y * 9, z * 3, 4, 6) - .5;
+    const b = la + tu * .09;
+    const t1 = .5 + .5 * Math.sin(b * 14.5), t2 = .5 + .5 * Math.sin(b * 31 + 1.3);
+    let c = mixc(hex('#A26E49'), hex('#EFE2C8'), t1 * .75 + t2 * .25);
+    c = mixc(c, hex('#D99A5E'), sstep(.6, .9, t2) * .35 * (Math.abs(la) < .6 ? 1 : .4));
+    if (Math.abs(la) > 1.1) c = mixc(c, hex('#9A8D80'), sstep(1.1, 1.4, Math.abs(la)) * .6);
+    const dl = (lo - .7) / .3, dt = (la + .38) / .1, de = dl * dl + dt * dt;
+    if (de < 1.6) c = mixc(c, hex('#C35A3A'), sstep(1.6, .2, de) * .9);
+    put(C, c);
+  }),
+  saturn: () => paintSphere(512, 256, (x, y, z, la, lo, C) => {
+    const tu = fbm(x * 3, y * 10, z * 3, 3, 8) - .5, b = la + tu * .03;
+    const t = .5 + .5 * Math.sin(b * 12), t2 = .5 + .5 * Math.sin(b * 37);
+    let c = mixc(hex('#C29A5E'), hex('#F2E3BC'), t * .7 + t2 * .3);
+    if (Math.abs(la) > 1.05) c = mixc(c, hex('#A8A27A'), sstep(1.05, 1.45, Math.abs(la)) * .5);
+    put(C, c);
+  }),
+  uranus: () => paintSphere(256, 128, (x, y, z, la, lo, C) => {
+    const t = .5 + .5 * Math.sin(la * 9 + fbm(x * 2, y * 6, z * 2, 3, 12) * 2);
+    put(C, mixc(hex('#86C9D1'), hex('#B9E8EA'), t * .5 + .25));
+  }),
+  neptune: () => paintSphere(256, 128, (x, y, z, la, lo, C) => {
+    const n = fbm(x * 2.5, y * 7, z * 2.5, 4, 14), t = .5 + .5 * Math.sin(la * 8 + n * 3);
+    let c = mixc(hex('#2F4CC0'), hex('#5D82EA'), t);
+    if (n > .66) c = mixc(c, hex('#E6EEFF'), sstep(.66, .78, n) * .7);
+    const dl = (lo + 1.1) / .28, dt = (la + .38) / .1;
+    if (dl * dl + dt * dt < 1) c = mixc(c, hex('#1B2C80'), .8);
+    put(C, c);
+  }),
+  moon: () => paintSphere(128, 64, (x, y, z, la, lo, C) => {
+    const n = fbm(x * 2.5, y * 2.5, z * 2.5, 5, 21);
+    put(C, mixc(hex('#55565A'), hex('#C4C1BB'), sstep(.3, .7, n)));
+  }),
+  clouds: () => paintSphere(512, 256, (x, y, z, la, lo, C) => {
+    const n = fbm(x * 3, y * 4.2, z * 3, 5, 41);
+    C[0] = C[1] = C[2] = 255; C[3] = 255 * sstep(.5, .74, n) * .9;
+  })
+};
+
+/* Terre : contours simplifiés des continents (lon, lat) */
+const LANDS = [
+  [-165,65,-150,71,-125,70,-95,73,-80,68,-75,62,-62,58,-56,52,-66,44,-71,41,-76,35,-81,31,-80,25,-83,29,-90,30,-97,27,-97,22,-92,18,-87,21,-83,15,-78,8,-80,7,-86,12,-92,15,-105,20,-110,23,-115,30,-118,34,-124,40,-124,48,-133,56,-150,60,-160,58,-165,62],
+  [-55,60,-43,60,-22,70,-18,80,-35,83,-60,82,-72,78,-60,70],
+  [-80,8,-72,12,-62,10,-50,0,-35,-5,-38,-14,-41,-22,-48,-28,-58,-38,-65,-42,-68,-52,-74,-52,-73,-40,-71,-30,-70,-18,-76,-14,-81,-6,-80,0],
+  [-10,36,-9,43,-2,44,-4,48,2,51,8,54,10,58,5,62,14,67,25,71,40,68,60,70,80,73,100,77,120,73,140,72,160,70,180,68,180,64,170,60,160,55,142,52,140,45,130,42,126,38,122,31,121,25,110,20,106,10,104,1,100,7,98,16,92,22,88,22,80,15,77,8,72,20,67,25,58,25,57,20,52,16,45,13,43,15,35,28,32,31,35,36,28,37,26,40,22,37,16,38,18,40,12,44,8,44,3,43,0,39,-6,37],
+  [-17,21,-16,12,-10,6,-5,5,5,6,9,4,10,-2,12,-6,13,-12,12,-18,15,-27,18,-34,20,-35,25,-34,30,-31,33,-26,35,-20,40,-15,40,-10,39,-5,42,0,48,5,51,12,44,11,38,18,35,25,33,31,25,32,20,31,11,33,10,37,3,37,-6,36,-10,30,-13,27],
+  [113,-22,115,-34,123,-34,131,-31,138,-35,141,-38,147,-38,150,-37,153,-28,153,-25,146,-19,142,-11,136,-12,136,-15,130,-12,125,-15,120,-20],
+  [-5,50,2,51,0,58,-6,58],[130,31,136,34,141,41,142,45,140,40,135,35],[95,5,106,-6,103,-5],[109,-2,118,1,119,-4,110,-4],
+  [131,-1,150,-6,143,-9],[44,-25,50,-15,48,-13],[167,-46,174,-41,178,-38,172,-35],[-24,64,-14,66,-16,63],[-85,22,-74,20,-78,22]
+];
+function earthTex() {
+  const W = 1024, H = 512, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const X = lo => (lo + 180) / 360 * W, Y = la => (90 - la) / 180 * H;
+  const sea = g.createLinearGradient(0, 0, 0, H);
+  sea.addColorStop(0, '#1d3f66'); sea.addColorStop(.5, '#123f7a'); sea.addColorStop(1, '#1d3f66');
+  g.fillStyle = sea; g.fillRect(0, 0, W, H);
+  const land = g.createLinearGradient(0, 0, 0, H);
+  [[90, '#f2f4f5'], [72, '#9aa08d'], [58, '#3f5f34'], [42, '#6f7a45'], [28, '#c9a86c'], [16, '#b89a62'], [6, '#2f6a2c'], [-8, '#2e6a2c'], [-22, '#a98f5a'], [-34, '#7d8450'], [-50, '#4c6a3c'], [-64, '#e9eef0'], [-90, '#f5f7f8']]
+    .forEach(([la, c]) => land.addColorStop((90 - la) / 180, c));
+  g.fillStyle = land;
+  for (const poly of LANDS) {
+    g.beginPath();
+    for (let i = 0; i < poly.length; i += 2) g[i ? 'lineTo' : 'moveTo'](X(poly[i]), Y(poly[i + 1]));
+    g.closePath(); g.fill();
+  }
+  g.fillStyle = '#eef2f4'; g.fillRect(0, Y(-70), W, H - Y(-70));
+  g.fillStyle = 'rgba(238,242,244,.75)'; g.fillRect(0, 0, W, Y(80));
+  const nz = paintSphere(256, 128, (x, y, z, la, lo, C) => { const v = fbm(x * 6, y * 6, z * 6, 4, 77) * 255; C[0] = C[1] = C[2] = v; });
+  g.globalCompositeOperation = 'overlay'; g.globalAlpha = .45; g.drawImage(nz, 0, 0, W, H);
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  return cv;
+}
+function glowTex(stops) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const g = cv.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  stops.forEach(([o, c]) => gr.addColorStop(o, c));
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  return cv;
+}
+function ringTex(kind) {
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 4;
+  const g = cv.getContext('2d');
+  for (let i = 0; i < 1024; i++) {
+    const u = i / 1023;
+    let a, col;
+    if (kind === 'saturn') {
+      const r = 1.24 + u * (2.27 - 1.24);
+      a = r < 1.53 ? .22 + .1 * Math.sin(r * 90) : r < 1.95 ? .8 + .12 * Math.sin(r * 140) : r < 2.03 ? .06 : r > 2.205 && r < 2.218 ? .05 : .58 + .08 * Math.sin(r * 120);
+      a *= .85 + .15 * h3(i, 0, 0, 5);
+      col = r < 1.53 ? '150,135,112' : r < 1.95 ? '232,214,176' : '210,192,158';
+    } else {
+      a = (u > .1 && u < .14) || (u > .55 && u < .58) || u > .93 ? .55 : .04;
+      col = '200,225,230';
+    }
+    g.fillStyle = `rgba(${col},${a.toFixed(3)})`; g.fillRect(i, 0, 1, 4);
+  }
+  return cv;
+}
+
+/* ---------- Scène 3D ---------- */
+const canvas = $('#sky');
+let renderer = null;
+try {
+  if (window.THREE) renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (e) { renderer = null; }
+const HAS3D = !!renderer;
+if (!HAS3D) document.body.classList.add('no3d');
+
+const scene = HAS3D ? new THREE.Scene() : null;
+const camera = HAS3D ? new THREE.PerspectiveCamera(36, 1, .05, 7000) : null;
+const B = {}; // corps célestes de la scène
+const SC = { s: 0, target: 0 }; // facteur d'échelle 0 compressée, 1 réelle
+
+if (HAS3D) {
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.setClearColor(0x060B18, 1);
+
+  // Étoiles et Voie lactée
+  const starLayer = (n, size, band) => {
+    const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), axis = new THREE.Vector3(1, 0, .3).normalize(), v = new THREE.Vector3();
+    for (let i = 0; i < n; i++) {
+      if (band) {
+        const a = Math.random() * TAU, off = (Math.random() + Math.random() + Math.random() - 1.5) * .2;
+        v.set(Math.cos(a), off, Math.sin(a)).normalize().applyAxisAngle(axis, 1.05);
+      } else {
+        const u = Math.random() * 2 - 1, a = Math.random() * TAU, s = Math.sqrt(1 - u * u);
+        v.set(s * Math.cos(a), u, s * Math.sin(a));
+      }
+      v.multiplyScalar(2600); pos[i * 3] = v.x; pos[i * 3 + 1] = v.y; pos[i * 3 + 2] = v.z;
+      const t = Math.random(), c = t < .12 ? [1, .78, .6] : t < .32 ? [.72, .82, 1] : [1, .97, .92];
+      const b = (band ? .22 : .35) + Math.pow(Math.random(), 3) * (band ? .5 : .85);
+      col[i * 3] = c[0] * b; col[i * 3 + 1] = c[1] * b; col[i * 3 + 2] = c[2] * b;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return new THREE.Points(g, new THREE.PointsMaterial({ size, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false }));
+  };
+  B.sky = new THREE.Group();
+  B.sky.add(starLayer(2600, 1.25, false), starLayer(2400, 1.05, true), starLayer(160, 2.4, false));
+  scene.add(B.sky);
+
+  // Soleil
+  const NOISE = `
+    float hs(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+    float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
+      return mix(mix(mix(hs(i),hs(i+vec3(1,0,0)),f.x),mix(hs(i+vec3(0,1,0)),hs(i+vec3(1,1,0)),f.x),f.y),
+                 mix(mix(hs(i+vec3(0,0,1)),hs(i+vec3(1,0,1)),f.x),mix(hs(i+vec3(0,1,1)),hs(i+vec3(1,1,1)),f.x),f.y),f.z);}
+    float fb(vec3 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*vn(p);p*=2.03;a*=.5;}return v;}`;
+  B.sunMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: `varying vec3 vP;varying vec3 vN;void main(){vP=position;vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader: `uniform float uTime;varying vec3 vP;varying vec3 vN;${NOISE}
+      void main(){vec3 p=normalize(vP)*3.4;float n=fb(p+vec3(0.,uTime*.05,uTime*.03));float m=fb(p*2.7-vec3(uTime*.04));float f=n*.62+m*.38;
+      vec3 c=mix(vec3(.93,.33,.05),vec3(1.,.66,.2),smoothstep(.32,.6,f));c=mix(c,vec3(1.,.93,.7),smoothstep(.6,.82,f));
+      float mu=clamp(dot(vN,vec3(0.,0.,1.)),0.,1.);c*=.5+.5*pow(mu,.5);gl_FragColor=vec4(c,1.);}`
+  });
+  B.sun = new THREE.Mesh(new THREE.SphereGeometry(7, 64, 40), B.sunMat);
+  scene.add(B.sun);
+  const glow = (size, stops, op) => {
+    const t = new THREE.CanvasTexture(glowTex(stops));
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: op }));
+    s.scale.set(size, size, 1); s.userData.base = size; scene.add(s); return s;
+  };
+  B.glow1 = glow(46, [[0, 'rgba(255,214,140,1)'], [.18, 'rgba(255,170,70,.75)'], [.42, 'rgba(255,120,40,.18)'], [1, 'rgba(255,90,20,0)']], 1);
+  B.glow2 = glow(190, [[0, 'rgba(255,170,80,.35)'], [.3, 'rgba(255,140,60,.08)'], [1, 'rgba(255,120,40,0)']], .9);
+
+  scene.add(new THREE.PointLight(0xfff1de, 1.55, 0, 1));
+  scene.add(new THREE.AmbientLight(0x2b3858, .55));
+
+  // Atmosphère (halo de bord, côté éclairé)
+  const atmoMat = color => new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(color) } },
+    vertexShader: `varying vec3 vW;varying vec3 vWN;void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;vWN=normalize(mat3(modelMatrix)*normal);gl_Position=projectionMatrix*viewMatrix*w;}`,
+    fragmentShader: `uniform vec3 uColor;varying vec3 vW;varying vec3 vWN;void main(){vec3 V=normalize(cameraPosition-vW);vec3 S=normalize(-vW);
+      float fr=pow(1.-max(dot(vWN,V),0.),2.6);float lit=smoothstep(-.25,.6,dot(vWN,S));gl_FragColor=vec4(uColor*fr*lit*1.25,1.);}`,
+    blending: THREE.AdditiveBlending, transparent: true, depthWrite: false
+  });
+  const ATMO = { venus: '#F5E2B5', earth: '#78B0FF', mars: '#E39A72', uranus: '#B4F0F4', neptune: '#7D97FF' };
+
+  // Planètes
+  for (const p of PLANETS) {
+    const group = new THREE.Group(), tiltG = new THREE.Group();
+    tiltG.rotation.z = p.tilt * D2R; group.add(tiltG); scene.add(group);
+    const mat = p.k === 'earth' ? new THREE.MeshPhongMaterial({ color: p.color, shininess: 14, specular: 0x1a2a3a }) : new THREE.MeshLambertMaterial({ color: p.color });
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(p.R, 64, 40), mat);
+    tiltG.add(mesh);
+    const b = B[p.k] = { p, group, tiltG, mesh, spin: clamp(.25 * 24 / p.rotH, .03, .6), pos: new THREE.Vector3(), helio: { x: 1, y: 0, z: 0 }, moons: [] };
+    if (ATMO[p.k]) tiltG.add(new THREE.Mesh(new THREE.SphereGeometry(p.R * (p.k === 'mars' ? 1.025 : 1.06), 48, 32), atmoMat(ATMO[p.k])));
+    if (p.k === 'saturn' || p.k === 'uranus') {
+      const r0 = p.k === 'saturn' ? 1.24 : 1.6, r1 = p.k === 'saturn' ? 2.27 : 2.05;
+      const geo = new THREE.RingGeometry(p.R * r0, p.R * r1, 160, 1), uv = geo.attributes.uv, ps = geo.attributes.position;
+      for (let i = 0; i < uv.count; i++) { const r = Math.hypot(ps.getX(i), ps.getY(i)); uv.setXY(i, (r / p.R - r0) / (r1 - r0), .5); }
+      const ring = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(ringTex(p.k)), transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: p.k === 'saturn' ? 1 : .5 }));
+      ring.rotation.x = -Math.PI / 2; tiltG.add(ring); b.ring = ring;
+    }
+  }
+  // Lunes : rayon, distance, période (jours)
+  const MOONS = { earth: [[.28, 2.4, 27.32, '#BDB9B2']], mars: [[.07, 1.3, .319, '#8C7B6E'], [.05, 1.75, 1.263, '#9C8C80']],
+    jupiter: [[.2, 4.9, 1.769, '#E8D27A'], [.17, 5.9, 3.551, '#D9CDBA'], [.27, 7.2, 7.155, '#A79B8C'], [.25, 8.6, 16.689, '#7D7268']],
+    neptune: [[.16, 3.1, -5.877, '#D6C9C2']] };
+  for (const [k, list] of Object.entries(MOONS)) for (const [r, d, per, c] of list) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), new THREE.MeshLambertMaterial({ color: c }));
+    m.userData = { d, per, ph: Math.random() * TAU }; B[k].group.add(m); B[k].moons.push(m);
+  }
+
+  // Orbites
+  for (const p of PLANETS) {
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(361 * 3), 3));
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xC2A36B, transparent: true, opacity: .3, depthWrite: false }));
+    scene.add(line); B[p.k].orbit = line;
+  }
+
+  // Ceinture d'astéroïdes et ceinture de Kuiper
+  const belt = (n, a0, a1, size, color, op, spread) => {
+    const g = new THREE.BufferGeometry(), pos = new Float32Array(n * 3), data = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { data[i * 3] = lerp(a0, a1, Math.pow(Math.random(), .8)); data[i * 3 + 1] = Math.random() * TAU; data[i * 3 + 2] = (Math.random() - .5) * spread; }
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ size, sizeAttenuation: false, color, transparent: true, opacity: op, depthWrite: false }));
+    pts.userData.data = data; scene.add(pts); return pts;
+  };
+  B.belt = belt(2600, 2.15, 3.3, 1.15, 0xA89C88, .55, .12);
+  B.kuiper = belt(2200, 30.5, 50, 1.05, 0x7F93B5, .32, .25);
+}
+
+/* Textures : générées une par image après le premier rendu */
+const texQueue = HAS3D ? [
+  () => { B.earth.mesh.material.map = new THREE.CanvasTexture(earthTex()); },
+  () => { const t = new THREE.CanvasTexture(TEX.clouds()); const c = new THREE.Mesh(new THREE.SphereGeometry(BY.earth.R * 1.015, 64, 40), new THREE.MeshLambertMaterial({ map: t, transparent: true, depthWrite: false })); B.earth.tiltG.add(c); B.earth.clouds = c; },
+  ...['jupiter', 'saturn', 'mars', 'venus', 'mercury', 'uranus', 'neptune'].map(k => () => { B[k].mesh.material.map = new THREE.CanvasTexture(TEX[k]()); }),
+  () => { const t = new THREE.CanvasTexture(TEX.moon()); const mm = B.earth.moons[0].material; t.encoding = THREE.sRGBEncoding; mm.map = t; mm.color.set(0xffffff); mm.needsUpdate = true; }
+] : [];
+function stepTextures() {
+  const job = texQueue.shift(); if (!job) return;
+  job();
+  for (const p of PLANETS) { const m = B[p.k].mesh.material; if (m.map) { m.map.encoding = THREE.sRGBEncoding; m.color.set(0xffffff); m.needsUpdate = true; } }
+}
+
+/* ---------- Temps simulé ---------- */
+const TIME = { ms: Date.now(), speed: 7, playing: !REDUCED, moonDays: 0 };
+const NAMES = { hero: "Vue d'ensemble", sun: 'Soleil', belt: 'Astéroïdes', beyond: 'Au-delà' };
+PLANETS.forEach(p => { NAMES[p.k] = p.name; });
+const COLORS = { hero: '#FFB547', sun: '#FFB13B', belt: '#A89F94', beyond: '#C2A36B' };
+PLANETS.forEach(p => { COLORS[p.k] = p.color; });
+
+/* ---------- Mise à jour de la scène ---------- */
+let orbitS = -1, orbitJD = 0;
+const tmp = { x: 0, y: 0, z: 0 };
+function updateScene(dt) {
+  const jd = jdOf(TIME.ms);
+  SC.s += (SC.target - SC.s) * (1 - Math.exp(-dt * (REDUCED ? 60 : 1.8)));
+  if (Math.abs(SC.target - SC.s) < 1e-4) SC.s = SC.target;
+  const s = SC.s, shrink = lerp(1, .012, s), run = TIME.playing ? 1 : 0;
+  if (TIME.playing) TIME.moonDays += dt * Math.min(TIME.speed, 1.5);
+  for (const p of PLANETS) {
+    const b = B[p.k];
+    b.helio = helio(p, jd);
+    toScene(b.helio, s, b.pos);
+    b.group.position.copy(b.pos);
+    b.group.scale.setScalar(shrink);
+    b.mesh.rotation.y += b.spin * dt * run;
+    if (b.clouds) b.clouds.rotation.y += b.spin * 1.15 * dt * run;
+    for (const m of b.moons) {
+      const a = m.userData.ph + TAU * TIME.moonDays / m.userData.per;
+      m.position.set(Math.cos(a) * m.userData.d, 0, -Math.sin(a) * m.userData.d);
+      m.visible = s < .3;
+    }
+  }
+  if (Math.abs(s - orbitS) > .0005 || Math.abs(jd - orbitJD) > 3650) {
+    orbitS = s; orbitJD = jd;
+    for (const p of PLANETS) {
+      const m = elements(p, jd), arr = B[p.k].orbit.geometry.attributes.position;
+      for (let i = 0; i <= 360; i++) { toScene(posFromE(m, i / 360 * TAU), s, tmp); arr.setXYZ(i, tmp.x, tmp.y, tmp.z); }
+      arr.needsUpdate = true;
+    }
+  }
+  const days = jd - 2451545;
+  for (const pts of [B.belt, B.kuiper]) {
+    const d = pts.userData.data, arr = pts.geometry.attributes.position.array;
+    for (let i = 0; i < d.length; i += 3) {
+      const a = d[i], th = d[i + 1] + .0172021 / Math.pow(a, 1.5) * days, R = mapR(a, s);
+      arr[i] = Math.cos(th) * R; arr[i + 1] = d[i + 2] * R * .06; arr[i + 2] = -Math.sin(th) * R;
+    }
+    pts.geometry.attributes.position.needsUpdate = true;
+  }
+  B.sun.scale.setScalar(lerp(1, .05, s));
+  B.glow1.scale.setScalar(lerp(46, 9, s)); B.glow2.scale.setScalar(lerp(190, 60, s));
+  B.sunMat.uniforms.uTime.value += dt * (REDUCED ? .2 : 1);
+}
+
+/* ---------- Caméra pilotée par le défilement ---------- */
+const VIEW = { w: innerWidth, h: innerHeight, aspect: innerWidth / innerHeight };
+const STOPCFG = {
+  hero: { focus: null, dist: 420, elev: 24, azim: 206, offX: .23, offY: .05 },
+  sun: { focus: 'sun', dist: 46, elev: 8, azim: 226, offX: .17 },
+  mercury: { k: 9 }, venus: { k: 7.5 }, earth: { k: 8 }, mars: { k: 8.5 },
+  belt: { focus: 'belt', dist: 82, elev: 38, phi: 30 },
+  jupiter: { k: 6.6 }, saturn: { k: 9.8, elev: 17 }, uranus: { k: 7.8 }, neptune: { k: 7.8 },
+  beyond: { focus: null, dist: 640, elev: 62, azim: 206, offX: .14, offY: 0 }
+};
+function camState(key, o) {
+  const c = STOPCFG[key], portrait = VIEW.aspect < .9;
+  o.tx = 0; o.ty = 0; o.tz = 0; o.elev = (c.elev ?? 11) * D2R; o.planet = false;
+  if (c.focus === null || c.focus === 'sun') {
+    o.dist = c.dist * (portrait ? (c.focus ? 1.45 : 1.75) : 1); o.azim = c.azim * D2R;
+  } else if (c.focus === 'belt') {
+    const th = Math.atan2(B.mars.pos.z, B.mars.pos.x) - .55, R = mapR(2.7, SC.s);
+    o.tx = R * Math.cos(th); o.tz = R * Math.sin(th);
+    o.dist = c.dist * (portrait ? 1.3 : 1); o.azim = th + Math.PI + c.phi * D2R; o.planet = true;
+  } else {
+    const b = B[key], th = Math.atan2(b.pos.z, b.pos.x);
+    o.tx = b.pos.x; o.ty = b.pos.y; o.tz = b.pos.z;
+    o.dist = c.k * b.p.R * (portrait ? 1.4 : 1); o.azim = th + Math.PI + (c.phi ?? 55) * D2R; o.planet = true;
+  }
+  o.offX = portrait ? 0 : (c.offX ?? .17);
+  o.offY = portrait ? (key === 'hero' ? -.29 : c.focus === null ? -.1 : -.21) : (c.offY ?? 0);
+  return o;
+}
+const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
+const SA = {}, SB = {}, CAM = { dist: 330 };
+function blendState(A, Bs, t, o) {
+  const rA = Math.hypot(A.tx, A.tz), rB = Math.hypot(Bs.tx, Bs.tz);
+  let thA = Math.atan2(A.tz, A.tx), thB = Math.atan2(Bs.tz, Bs.tx);
+  if (rA < .01) thA = thB; if (rB < .01) thB = thA;
+  const dTh = angDiff(thA, thB), th = thA + dTh * t, r = lerp(rA, rB, t);
+  o.tx = r * Math.cos(th); o.tz = r * Math.sin(th); o.ty = lerp(A.ty, Bs.ty, t);
+  const hop = A.planet && Bs.planet ? clamp(Math.abs(dTh) / Math.PI + .15, 0, 1) : .2;
+  const arc = Math.sin(Math.PI * t);
+  o.dist = Math.exp(lerp(Math.log(A.dist), Math.log(Bs.dist), t)) * (1 + 2.2 * hop * arc);
+  o.azim = A.azim + angDiff(A.azim, Bs.azim) * t;
+  o.elev = lerp(A.elev, Bs.elev, t) + .32 * hop * arc;
+  o.offX = lerp(A.offX, Bs.offX, t); o.offY = lerp(A.offY, Bs.offY, t);
+  return o;
+}
+
+let SECTIONS = [];
+function measure() {
+  VIEW.w = innerWidth; VIEW.h = innerHeight; VIEW.aspect = VIEW.w / VIEW.h;
+  const vh = VIEW.h;
+  SECTIONS = $$('[data-stop]').map(el => {
+    const r = el.getBoundingClientRect();
+    return { el, key: el.dataset.stop, top: r.top + scrollY, h: r.height };
+  });
+  SECTIONS.forEach((s, i) => { s.A = i === 0 ? 0 : s.top - .12 * vh; s.D = Math.max(s.A, s.top + s.h - vh); });
+  if (HAS3D) {
+    renderer.setSize(VIEW.w, VIEW.h, false);
+    camera.aspect = VIEW.aspect; camera.fov = VIEW.aspect < .9 ? 50 : 36; camera.updateProjectionMatrix();
+  }
+}
+function scrollPos(y) {
+  let i = 0;
+  while (i < SECTIONS.length - 1 && SECTIONS[i + 1].A <= y) i++;
+  const s = SECTIONS[i];
+  if (i === SECTIONS.length - 1 || y <= s.D) return { i, j: i, t: 0 };
+  const n = SECTIONS[i + 1];
+  return { i, j: i + 1, t: clamp((y - s.D) / Math.max(1, n.A - s.D), 0, 1) };
+}
+let scrollS = scrollY;
+const PAR = { x: 0, y: 0, tx: 0, ty: 0 };
+addEventListener('pointermove', e => { PAR.tx = e.clientX / VIEW.w * 2 - 1; PAR.ty = e.clientY / VIEW.h * 2 - 1; }, { passive: true });
+let SP = { i: 0, j: 0, t: 0 };
+function updateCamera(dt) {
+  scrollS = REDUCED ? scrollY : scrollS + (scrollY - scrollS) * (1 - Math.exp(-dt * 5));
+  if (Math.abs(scrollY - scrollS) < .5) scrollS = scrollY;
+  SP = scrollPos(scrollS);
+  if (!HAS3D) return;
+  camState(SECTIONS[SP.i].key, SA);
+  const st = SP.t > 0 ? blendState(SA, camState(SECTIONS[SP.j].key, SB), smooth(SP.t), {}) : SA;
+  PAR.x += (PAR.tx - PAR.x) * (1 - Math.exp(-dt * 2)); PAR.y += (PAR.ty - PAR.y) * (1 - Math.exp(-dt * 2));
+  const az = st.azim + (REDUCED ? 0 : PAR.x * .05), el = clamp(st.elev + (REDUCED ? 0 : PAR.y * .03), -1.2, 1.45), ce = Math.cos(el);
+  camera.position.set(st.tx + st.dist * ce * Math.cos(az), st.ty + st.dist * Math.sin(el), st.tz + st.dist * ce * Math.sin(az));
+  camera.lookAt(st.tx, st.ty, st.tz);
+  camera.setViewOffset(VIEW.w, VIEW.h, -st.offX * VIEW.w, -st.offY * VIEW.h, VIEW.w, VIEW.h);
+  B.sky.position.copy(camera.position);
+  CAM.dist = st.dist;
+  const focus = SP.t < .5 ? SECTIONS[SP.i].key : SECTIONS[SP.j].key;
+  for (const p of PLANETS) {
+    const mat = B[p.k].orbit.material, on = p.k === focus;
+    mat.opacity += ((on ? .85 : focus in BY ? .14 : .3) - mat.opacity) * (1 - Math.exp(-dt * 4));
+    mat.color.set(on ? p.color : '#C2A36B');
+  }
+}
+
+/* ---------- Étiquettes des astres ---------- */
+const LBL = [{ k: 'sun', name: 'Soleil', color: '#FFB13B' }, ...PLANETS];
+const lblEl = {};
+const lblWrap = $('#labels');
+const prio = ['sun', 'earth', 'jupiter', 'saturn', 'neptune', 'uranus', 'mars', 'venus', 'mercury'];
+for (const l of LBL) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'lbl'; b.style.setProperty('--lc', l.color);
+  b.innerHTML = `<i></i><span>${l.name}</span>`;
+  b.setAttribute('aria-label', `Aller à : ${l.name}`);
+  b.addEventListener('click', () => goTo(l.k));
+  lblWrap.appendChild(b); lblEl[l.k] = b;
+}
+const vproj = HAS3D ? new THREE.Vector3() : null;
+function updateLabels() {
+  const real = SC.s > .5, alpha = real ? 1 : sstep(28, 95, CAM.dist), placed = [];
+  for (const k of prio) {
+    const el = lblEl[k];
+    if (alpha < .02) { if (!el.hidden) el.hidden = true; continue; }
+    if (k === 'sun') vproj.set(0, 0, 0); else vproj.copy(B[k].pos);
+    vproj.project(camera);
+    const x = (vproj.x + 1) / 2 * VIEW.w, y = (1 - vproj.y) / 2 * VIEW.h;
+    const w = (el._w ||= el.offsetWidth || 70), box = [x - 9, y - 12, x + w, y + 12];
+    const off = vproj.z > 1 || x < -40 || x > VIEW.w + 40 || y < 40 || y > VIEW.h - 60 || placed.some(p => box[0] < p[2] && box[2] > p[0] && box[1] < p[3] && box[3] > p[1]);
+    if (off) { if (!el.hidden) el.hidden = true; continue; }
+    placed.push(box);
+    if (el.hidden) { el.hidden = false; el._w = el.offsetWidth; }
+    el.style.transform = `translate3d(${(x - 8).toFixed(1)}px,${(y - 15).toFixed(1)}px,0)`;
+    el.style.opacity = alpha.toFixed(3);
+  }
+}
+
+/* Clic direct sur un astre dans la scène */
+if (HAS3D) {
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  const pick = e => {
+    ndc.set(e.clientX / VIEW.w * 2 - 1, -(e.clientY / VIEW.h) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const objs = [B.sun, ...PLANETS.map(p => B[p.k].mesh)];
+    const hit = ray.intersectObjects(objs, false)[0];
+    if (!hit) return null;
+    return hit.object === B.sun ? 'sun' : PLANETS.find(p => B[p.k].mesh === hit.object).k;
+  };
+  canvas.addEventListener('pointermove', e => { canvas.style.cursor = pick(e) ? 'pointer' : ''; });
+  canvas.addEventListener('click', e => { const k = pick(e); if (k) goTo(k); });
+}
+
+/* ---------- Navigation ---------- */
+function goTo(key) {
+  const s = SECTIONS.find(x => x.key === key); if (!s) return;
+  scrollTo({ top: Math.max(0, s.A + 2), behavior: REDUCED ? 'auto' : 'smooth' });
+}
+$$('[data-goto]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); goTo(a.dataset.goto); }));
+$('.brand').addEventListener('click', e => { e.preventDefault(); goTo('hero'); });
+
+/* Règle des distances (échelle logarithmique en UA) */
+const RAIL = [['sun', 0], ['mercury', .387], ['venus', .723], ['earth', 1], ['mars', 1.524], ['belt', 2.7], ['jupiter', 5.2], ['saturn', 9.54], ['uranus', 19.19], ['neptune', 30.07], ['beyond', 45]];
+const railY = au => au === 0 ? 2 : 6 + 88 * (Math.log(au) - Math.log(.3)) / (Math.log(50) - Math.log(.3));
+const rail = $('#rail'), railBtn = {};
+[[.3, 1, .1], [1, 10, 1], [10, 50, 10]].forEach(([a, b, st]) => {
+  for (let v = a; v < b + 1e-6; v += st) {
+    const t = document.createElement('div'), maj = Math.abs(v - 1) < 1e-6 || Math.abs(v - 10) < 1e-6;
+    t.className = 'tick' + (maj ? ' maj' : ''); t.style.top = railY(v) + '%'; t.style.width = maj ? '12px' : '6px';
+    rail.appendChild(t);
+  }
+});
+for (const [k, au] of RAIL) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.style.top = railY(au) + '%'; b.style.setProperty('--pc', COLORS[k]);
+  const dist = au === 0 ? 'le centre' : k === 'belt' ? '2,1 à 3,3 UA' : k === 'beyond' ? 'plus de 30 UA' : nf(au, au < 10 ? 2 : 1) + ' UA';
+  b.innerHTML = `<span>${NAMES[k]}<small>${dist}</small></span><i></i>`;
+  b.setAttribute('aria-label', `${NAMES[k]}, ${dist}`);
+  b.addEventListener('click', () => goTo(k));
+  rail.appendChild(b); railBtn[k] = b;
+}
+const railAU = Object.fromEntries(RAIL); railAU.hero = 0;
+
+/* ---------- Machine à remonter le temps ---------- */
+const dateTxt = $('#dateTxt'), dateSub = $('#dateSub'), playBtn = $('#playBtn');
+const rtf = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' });
+const SPEEDS = [[1, '1 j/s'], [7, '1 sem/s'], [30.44, '1 mois/s'], [365.25, '1 an/s']];
+function setPlaying(on) {
+  TIME.playing = on;
+  $('#icoPause').style.display = on ? '' : 'none'; $('#icoPlay').style.display = on ? 'none' : '';
+  playBtn.setAttribute('aria-label', on ? 'Mettre le temps en pause' : 'Relancer le temps');
+}
+function setSpeed(v) {
+  TIME.speed = v;
+  $$('#speedSeg button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.speed === v)));
+  $('#speedCycle').textContent = SPEEDS.find(s => s[0] === v)[1];
+  if (!TIME.playing) setPlaying(true);
+}
+playBtn.addEventListener('click', () => setPlaying(!TIME.playing));
+$$('#speedSeg button').forEach(b => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
+$('#speedCycle').addEventListener('click', () => { const i = SPEEDS.findIndex(s => s[0] === TIME.speed); setSpeed(SPEEDS[(i + 1) % SPEEDS.length][0]); });
+$('#todayBtn').addEventListener('click', () => { TIME.ms = Date.now(); lastDay = null; });
+setPlaying(TIME.playing);
+
+let noteTimer = 0;
+function setReal(on) {
+  SC.target = on ? 1 : 0;
+  document.body.classList.toggle('real', on);
+  $$('[data-scale-toggle]').forEach(b => {
+    b.setAttribute('aria-pressed', String(on));
+    if (b.classList.contains('btn')) b.textContent = on ? 'Revenir aux distances compressées' : 'Voir les distances réelles';
+  });
+  const n = $('#scaleNote'); n.hidden = !on; clearTimeout(noteTimer);
+  if (on) noteTimer = setTimeout(() => { n.hidden = true; }, 8000);
+}
+$$('[data-scale-toggle]').forEach(b => b.addEventListener('click', () => setReal(SC.target < .5)));
+
+/* Fiches : ligne « ce jour » */
+const pad2 = v => String(v).padStart(2, '0');
+function lightTime(au) {
+  const s = au * LIGHT_S_PER_AU;
+  if (s < 3600) return `${Math.floor(s / 60)} min ${pad2(Math.round(s % 60) % 60)} s`;
+  return `${Math.floor(s / 3600)} h ${pad2(Math.round((s % 3600) / 60) % 60)} min`;
+}
+function updateLive(jd) {
+  const E = helio(BY.earth, jd);
+  for (const dd of $$('[data-live]')) {
+    const k = dd.dataset.live;
+    if (k === 'earth') { const r = Math.hypot(E.x, E.y, E.z); dd.innerHTML = `${nf(r, 4)} UA<small>${nf(r * AU_KM / 1e6, 1)} millions de km</small>`; continue; }
+    const P = k === 'sun' ? { x: 0, y: 0, z: 0 } : helio(BY[k], jd);
+    const d = Math.hypot(P.x - E.x, P.y - E.y, P.z - E.z);
+    dd.innerHTML = `${nf(d, d < 10 ? 2 : 1)} UA<small>soit ${lightTime(d)} à la vitesse de la lumière</small>`;
+  }
+}
+$('#heroStamp').textContent = 'Positions réelles au départ : ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+/* Interface : date, escale courante, curseur de la règle */
+let lastDay = null, lastStop = null;
+const narrow = matchMedia('(max-width: 640px)');
+function updateUI() {
+  const day = Math.floor(TIME.ms / 86400000);
+  if (day !== lastDay) {
+    lastDay = day;
+    const d = new Date(TIME.ms);
+    dateTxt.textContent = d.toLocaleDateString('fr-FR', narrow.matches ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'long', year: 'numeric' });
+    const diff = Math.round((TIME.ms - Date.now()) / 86400000);
+    dateSub.textContent = Math.abs(diff) < 1 ? "aujourd'hui" : Math.abs(diff) < 60 ? rtf.format(diff, 'day') : Math.abs(diff) < 730 ? rtf.format(Math.round(diff / 30.44), 'month') : rtf.format(Math.round(diff / 365.25), 'year');
+    updateLive(jdOf(TIME.ms));
+  }
+  const ka = SECTIONS[SP.i]?.key, kb = SECTIONS[SP.j]?.key;
+  if (!ka) return;
+  const cur = SP.t < .5 ? ka : kb;
+  if (cur !== lastStop) {
+    lastStop = cur;
+    $('#whereName').textContent = NAMES[cur]; $('#whereDot').style.background = COLORS[cur];
+    for (const [k, b] of Object.entries(railBtn)) { if (k === cur) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); }
+  }
+  $('#railCursor').style.top = lerp(railY(railAU[ka]), railY(railAU[kb]), smooth(SP.t)) + '%';
+}
+
+/* ---------- Notes de maquette ---------- */
+const notesBtn = $('#notesBtn');
+function setNotes(pins, open) {
+  document.body.classList.toggle('notes-on', pins);
+  document.body.classList.toggle('notes-open', open);
+  notesBtn.setAttribute('aria-pressed', String(pins));
+}
+notesBtn.addEventListener('click', () => { const on = !document.body.classList.contains('notes-on'); setNotes(on, on); });
+$('#notesClose').addEventListener('click', () => { setNotes(true, false); notesBtn.focus(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('notes-open')) setNotes(true, false); });
+$$('.pin').forEach(p => p.addEventListener('click', () => {
+  setNotes(true, true);
+  const li = $('#note' + p.dataset.note);
+  li.classList.remove('flash'); void li.offsetWidth; li.classList.add('flash');
+  li.scrollIntoView({ block: 'nearest', behavior: REDUCED ? 'auto' : 'smooth' });
+}));
+
+/* ---------- Modules explicatifs (Canvas 2D) ---------- */
+const INK = { ivoire: '#ECE5D3', brume: '#959EB5', laiton: '#C2A36B', soleil: '#FFB547', nuit: '#060B18' };
+const FONT = (w, s) => `${w} ${s}px "Atkinson Hyperlegible Next", system-ui, sans-serif`;
+const MODS = [];
+function mod(id, o) {
+  const cv = $('#' + id), m = Object.assign({ cv, ctx: cv.getContext('2d'), ratio: cv.height / cv.width, vis: false, w: 0, h: 0 }, o);
+  MODS.push(m); return m;
+}
+function sizeMod(m) {
+  const dpr = Math.min(devicePixelRatio || 1, 2), w = m.cv.clientWidth || 300, h = Math.round(w * (m.ratioNarrow && w < 420 ? m.ratioNarrow : m.ratio));
+  m.cv.width = Math.round(w * dpr); m.cv.height = Math.round(h * dpr);
+  m.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); m.w = w; m.h = h;
+}
+function txt(c, s, x, y, o = {}) {
+  c.font = FONT(o.w || 400, o.s || 12); c.fillStyle = o.c || INK.ivoire; c.textAlign = o.a || 'left'; c.textBaseline = o.b || 'alphabetic';
+  c.fillText(s, x, y);
+}
+function dot(c, x, y, r, col) { c.beginPath(); c.arc(x, y, r, 0, TAU); c.fillStyle = col; c.fill(); }
+const pressed = (b, v) => b.setAttribute('aria-pressed', String(v));
+const fmtDur = s => s < 60 ? `${Math.floor(s)} s` : s < 3600 ? `${Math.floor(s / 60)} min ${pad2(Math.floor(s % 60))} s` : `${Math.floor(s / 3600)} h ${pad2(Math.floor(s % 3600 / 60))} min`;
+
+/* 1. La course de la lumière */
+(() => {
+  const SET = [['Mercure', .387, '#B5ADA3'], ['Vénus', .723, '#E6CB94'], ['Terre', 1, '#5B9BE6'], ['Mars', 1.524, '#DA6A43'], ['Jupiter', 5.203, '#D8A878'], ['Saturne', 9.537, '#E2C98F'], ['Uranus', 19.19, '#9ED9DE'], ['Neptune', 30.07, '#5878E8']];
+  const btn = $('#lightPlay'), out = $('#lightOut');
+  const m = mod('mLight', { t: 0, run: false, x: 1000, reached: 0, ratioNarrow: .78 });
+  const END = 30.07 * LIGHT_S_PER_AU;
+  btn.addEventListener('click', () => {
+    if (m.t >= END) { m.t = 0; m.reached = 0; }
+    m.run = !m.run; btn.textContent = m.run ? 'Pause' : m.t > 0 ? 'Reprendre' : "Lancer l'éclair";
+  });
+  $$('[data-lx]').forEach(b => b.addEventListener('click', () => {
+    m.x = +b.dataset.lx; $$('[data-lx]').forEach(o => pressed(o, o === b));
+    if (!m.run && m.t === 0) out.textContent = `Prêt. À ×${nf(m.x)}, l'éclair atteint Neptune en ${fmtDur(END / m.x)}.`;
+  }));
+  m.tick = dt => {
+    if (m.run) {
+      m.t = Math.min(END, m.t + dt * m.x);
+      const n = SET.filter(p => p[1] * LIGHT_S_PER_AU <= m.t).length;
+      if (n !== m.reached) { m.reached = n; out.textContent = `${SET[n - 1][0]} atteinte après ${fmtDur(SET[n - 1][1] * LIGHT_S_PER_AU)} de trajet.`; }
+      if (m.t >= END) { m.run = false; btn.textContent = 'Relancer'; out.textContent = "Neptune atteinte après 4 h 10 min. Les quatre premières planètes tiennent dans les 5 premiers pour cent du trajet."; }
+    }
+    const c = m.ctx, w = m.w, h = m.h, L = 22, R = w - 22, au = m.t / LIGHT_S_PER_AU;
+    c.clearRect(0, 0, w, h);
+    const nar = w < 420;
+    txt(c, `Temps écoulé : ${fmtDur(m.t)}`, L, 22, { w: 700, s: 13 });
+    txt(c, `0 à 30 UA, à l'échelle`, nar ? L : R, nar ? 40 : 22, { a: nar ? 'left' : 'right', c: INK.brume });
+    const y1 = h * (nar ? .44 : .4), y2 = h * (nar ? .84 : .82), X1 = a => L + a / 30.07 * (R - L), X2 = a => L + a / 1.6 * (R - L);
+    // loupe
+    c.fillStyle = 'rgba(194,163,107,.10)';
+    c.beginPath(); c.moveTo(X1(0), y1 + 8); c.lineTo(X1(1.6), y1 + 8); c.lineTo(R, y2 - 14); c.lineTo(L, y2 - 14); c.closePath(); c.fill();
+    txt(c, 'Zoom sur les 1,6 premières UA', (L + R) / 2, (y1 + y2) / 2 + 4, { a: 'center', c: INK.brume, s: 11 });
+    for (const [y, X, max] of [[y1, X1, 30.07], [y2, X2, 1.6]]) {
+      c.strokeStyle = 'rgba(194,163,107,.55)'; c.lineWidth = 1; c.beginPath(); c.moveTo(L, y); c.lineTo(R, y); c.stroke();
+      dot(c, L, y, 6, '#FFB13B');
+      SET.forEach(([n, a, col], i) => {
+        if (a > max) return;
+        const x = X(a), hit = a <= au + 1e-9;
+        if (hit) dot(c, x, y, 8, col + '44');
+        dot(c, x, y, hit ? 4.5 : 3.5, hit ? col : INK.nuit); c.strokeStyle = col; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, hit ? 4.5 : 3.5, 0, TAU); c.stroke();
+        if (max > 2 && a < 2) return;
+        const up = max > 2 ? true : i % 2 === 0;
+        txt(c, n, x, up ? y - 12 : y + 20, { a: 'center', s: 11.5, c: hit ? INK.ivoire : INK.brume, w: hit ? 700 : 400 });
+      });
+      if (max > 2) txt(c, 'Mercure à Mars', L - 4, y1 + 22, { a: 'left', s: 11, c: INK.brume });
+      if (au > 0 && au <= max) {
+        const x = X(au), g = c.createLinearGradient(x - 60, 0, x, 0);
+        g.addColorStop(0, 'rgba(255,214,140,0)'); g.addColorStop(1, 'rgba(255,214,140,.9)');
+        c.fillStyle = g; c.fillRect(Math.max(L, x - 60), y - 1.5, Math.min(60, x - L), 3);
+        dot(c, x, y, 3.2, '#FFF4D6');
+      }
+    }
+  };
+})();
+
+/* 2. La loi des aires (Mercure) */
+(() => {
+  const e = .20563, a = .387 * AU_KM, GM = 1.32712440018e11, N = 11;
+  const play = $('#keplerPlay'), areas = $('#keplerAreas'), out = $('#keplerOut');
+  const m = mod('mKepler', { M: 0, run: !REDUCED, areas: true, acc: 0 });
+  pressed(play, m.run); play.textContent = m.run ? 'Animation en cours' : "Lancer l'animation";
+  play.addEventListener('click', () => { m.run = !m.run; pressed(play, m.run); play.textContent = m.run ? 'Animation en cours' : "Lancer l'animation"; });
+  areas.addEventListener('click', () => { m.areas = !m.areas; pressed(areas, m.areas); });
+  const Ek = M => { let E = M; for (let i = 0; i < 8; i++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E)); return E; };
+  m.tick = dt => {
+    if (m.run) m.M = (m.M + dt * TAU / 8.8) % TAU;
+    const c = m.ctx, w = m.w, h = m.h, A = Math.min(w * .3, h * .36), Bm = A * Math.sqrt(1 - e * e);
+    const cx = w * .5 - A * e * .5, cy = h * .53, sx = cx + A * e;
+    const P = E => [cx + A * Math.cos(E), cy - Bm * Math.sin(E)];
+    c.clearRect(0, 0, w, h);
+    if (m.areas) for (let k = 0; k < N; k++) {
+      const M0 = k * TAU / N;
+      const cur = m.M >= M0 && m.M < (k + 1) * TAU / N;
+      const end = cur ? m.M : (k + 1) * TAU / N;
+      c.beginPath(); c.moveTo(sx, cy);
+      for (let s = 0; s <= 24; s++) { const p = P(Ek(M0 + (end - M0) * s / 24)); c.lineTo(p[0], p[1]); }
+      c.closePath(); c.fillStyle = cur ? 'rgba(255,181,71,.32)' : k % 2 ? 'rgba(181,173,163,.22)' : 'rgba(181,173,163,.1)'; c.fill();
+    }
+    c.strokeStyle = 'rgba(194,163,107,.7)'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(cx, cy, A, Bm, 0, 0, TAU); c.stroke();
+    const sg = c.createRadialGradient(sx, cy, 0, sx, cy, 16); sg.addColorStop(0, '#FFE2A8'); sg.addColorStop(.45, '#FFB13B'); sg.addColorStop(1, 'rgba(255,140,40,0)');
+    c.fillStyle = sg; c.beginPath(); c.arc(sx, cy, 16, 0, TAU); c.fill();
+    const E = Ek(m.M), [px, py] = P(E), r = a * (1 - e * Math.cos(E)), v = Math.sqrt(GM * (2 / r - 1 / a));
+    const tx = -A * Math.sin(E), ty = -Bm * Math.cos(E), tl = Math.hypot(tx, ty), L = v * 1.15;
+    c.strokeStyle = INK.soleil; c.lineWidth = 2; c.beginPath(); c.moveTo(px, py); c.lineTo(px + tx / tl * L, py + ty / tl * L); c.stroke();
+    dot(c, px, py, 6, '#B5ADA3');
+    c.strokeStyle = 'rgba(149,158,181,.5)'; c.lineWidth = 1; c.setLineDash([2, 3]);
+    c.beginPath(); c.moveTo(w - 14, 46); c.lineTo(cx + A, cy); c.moveTo(14, 46); c.lineTo(cx - A, cy); c.stroke(); c.setLineDash([]);
+    txt(c, 'Périhélie', w - 14, 18, { s: 11.5, w: 700, a: 'right' }); txt(c, '46 millions de km, 59 km/s', w - 14, 33, { s: 11, c: INK.brume, a: 'right' });
+    txt(c, 'Aphélie', 14, 18, { s: 11.5, w: 700 }); txt(c, '70 millions de km, 39 km/s', 14, 33, { s: 11, c: INK.brume });
+    txt(c, `${nf(v, 1)} km/s`, 14, h - 14, { w: 700, s: 14, c: INK.soleil });
+    txt(c, `à ${nf(r / 1e6, 1)} millions de km du Soleil`, 14 + c.measureText(`${nf(v, 1)} km/s`).width + 26, h - 14, { s: 12, c: INK.brume });
+    m.acc += dt; if (m.acc > .3) { m.acc = 0; out.textContent = `Vitesse : ${nf(v, 1)} km/s. Distance au Soleil : ${nf(r / 1e6, 1)} millions de km.`; }
+  };
+})();
+
+/* 3. Vénus : l'année contre la rotation */
+(() => {
+  const YEAR = 224.7, ROT = 243.02, btn = $('#venusPlay'), out = $('#venusOut');
+  const m = mod('mVenus', { d: 0, run: false, flash: 0 });
+  btn.addEventListener('click', () => {
+    if (m.d >= ROT) m.d = 0;
+    m.run = !m.run; btn.textContent = m.run ? 'Pause' : m.d > 0 ? 'Reprendre' : 'Lancer la course';
+  });
+  m.tick = dt => {
+    if (m.run) {
+      const before = m.d; m.d = Math.min(ROT, m.d + dt * 28);
+      if (before < YEAR && m.d >= YEAR) { m.flash = 1; out.textContent = "Jour 224,7 : l'année de Vénus est bouclée. Sa rotation n'en est qu'à 92 %."; }
+      if (m.d >= ROT) { m.run = false; btn.textContent = 'Relancer'; out.textContent = "Jour 243 : Vénus a enfin fait un tour sur elle-même. Son jour sidéral dure plus longtemps que son année. Du lever au lever du Soleil, il s'écoule 117 jours."; }
+    }
+    m.flash = Math.max(0, m.flash - dt * .8);
+    const c = m.ctx, w = m.w, h = m.h, r = Math.min(w * .18, h * .3), y = h * .44;
+    c.clearRect(0, 0, w, h);
+    const dial = (x, frac, label, sub, done) => {
+      c.strokeStyle = 'rgba(236,229,211,.12)'; c.lineWidth = 8; c.beginPath(); c.arc(x, y, r, 0, TAU); c.stroke();
+      c.strokeStyle = done ? INK.soleil : '#E6CB94'; c.beginPath(); c.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, frac)); c.stroke();
+      txt(c, label, x, y + r + 26, { a: 'center', w: 700, s: 12.5 }); txt(c, sub, x, y + r + 42, { a: 'center', s: 11.5, c: INK.brume });
+      txt(c, `${Math.floor(Math.min(1, frac) * 100)} %`, x, y + r * .62, { a: 'center', s: 12, c: INK.brume });
+    };
+    const x1 = w * .27, x2 = w * .73, fy = m.d / YEAR, fr = m.d / ROT;
+    dial(x1, fy, 'Un tour du Soleil', '224,7 jours', fy >= 1);
+    dial(x2, fr, 'Un tour sur elle-même', '243 jours, dans l’autre sens', fr >= 1);
+    dot(c, x1, y, 7, '#FFB13B');
+    const ay = -Math.PI / 2 + TAU * fy; dot(c, x1 + Math.cos(ay) * r * .62, y + Math.sin(ay) * r * .62, 5.5, '#E6CB94');
+    c.strokeStyle = 'rgba(194,163,107,.35)'; c.lineWidth = 1; c.beginPath(); c.arc(x1, y, r * .62, 0, TAU); c.stroke();
+    dot(c, x2, y, r * .42, '#E6CB94');
+    const ar = -Math.PI / 2 - TAU * fr; // sens rétrograde
+    c.strokeStyle = INK.nuit; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x2, y); c.lineTo(x2 + Math.cos(ar) * r * .42, y + Math.sin(ar) * r * .42); c.stroke();
+    dot(c, x2 + Math.cos(ar) * r * .42, y + Math.sin(ar) * r * .42, 3.5, INK.soleil);
+    txt(c, `Jour ${nf(Math.floor(m.d))}`, w / 2, 22, { a: 'center', w: 700, s: 14 });
+    if (m.flash > 0) { c.globalAlpha = m.flash; txt(c, 'Année bouclée', x1, y - r - 14, { a: 'center', w: 700, c: INK.soleil }); c.globalAlpha = 1; }
+  };
+})();
+
+/* 4 et 8. Les saisons (Terre, Uranus) */
+function seasons(id, cfg) {
+  const range = $('#' + cfg.range), sync = $('#' + cfg.sync), out = $('#' + cfg.out);
+  const m = mod(id, Object.assign({ sync: true, ms: TIME.ms, acc: 1, ratioNarrow: 1.08 }, cfg));
+  const lonAt = ms => { const v = helio(BY[cfg.k], jdOf(ms)); return (Math.atan2(v.y, v.x) / D2R + 360) % 360; };
+  m.Leq = cfg.k === 'earth' ? 180 : lonAt(cfg.eqMs);
+  sync.addEventListener('click', () => { m.sync = !m.sync; pressed(sync, m.sync); m.acc = 1; });
+  range.addEventListener('input', () => { m.sync = false; pressed(sync, false); m.ms = cfg.fromRange(+range.value); m.acc = 1; });
+  m.tick = dt => {
+    if (m.sync) { m.ms = TIME.ms; range.value = cfg.toRange(m.ms); }
+    const L = lonAt(m.ms), dl = ((L - m.Leq) % 360 + 360) % 360, eps = cfg.tilt * D2R;
+    const dec = Math.asin(Math.sin(eps) * Math.sin(dl * D2R)), phi = 48.85 * D2R;
+    const c = m.ctx, w = m.w, h = m.h, nar = w < 420; c.clearRect(0, 0, w, h);
+    // Vue du dessus (au-dessus de la vue de côté sur petit écran)
+    const ox = nar ? w * .5 : w * .25, oy = nar ? h * .27 : h * .5, R = nar ? Math.min(w * .27, h * .17) : Math.min(w * .19, h * .36);
+    c.strokeStyle = 'rgba(194,163,107,.6)'; c.lineWidth = 1; c.beginPath(); c.arc(ox, oy, R, 0, TAU); c.stroke();
+    const sg = c.createRadialGradient(ox, oy, 0, ox, oy, 14); sg.addColorStop(0, '#FFE2A8'); sg.addColorStop(.5, '#FFB13B'); sg.addColorStop(1, 'rgba(255,140,40,0)');
+    c.fillStyle = sg; c.beginPath(); c.arc(ox, oy, 14, 0, TAU); c.fill();
+    cfg.marks.forEach((lab, i) => {
+      const a = (m.Leq + i * 90) * D2R, x = ox + Math.cos(a) * R, y = oy - Math.sin(a) * R;
+      c.fillStyle = 'rgba(194,163,107,.9)'; c.fillRect(x - 1.5, y - 1.5, 3, 3);
+      const lx = ox + Math.cos(a) * (R + 14), ly = oy - Math.sin(a) * (R + 14);
+      txt(c, lab, lx, ly + 4, { a: Math.abs(Math.cos(a)) < .3 ? 'center' : Math.cos(a) > 0 ? 'left' : 'right', s: 10.5, c: INK.brume });
+    });
+    const pa = L * D2R, px = ox + Math.cos(pa) * R, py = oy - Math.sin(pa) * R, toS = Math.atan2(oy - py, ox - px);
+    dot(c, px, py, 7, '#16233F');
+    c.beginPath(); c.arc(px, py, 7, toS - Math.PI / 2, toS + Math.PI / 2); c.fillStyle = cfg.color; c.fill();
+    const pole = (m.Leq + 270) * D2R, len = 8 + 16 * Math.abs(Math.sin(eps)), ux = Math.cos(pole), uy = -Math.sin(pole);
+    c.strokeStyle = INK.ivoire; c.lineWidth = 1.5; c.beginPath(); c.moveTo(px - ux * len, py - uy * len); c.lineTo(px + ux * len, py + uy * len); c.stroke();
+    txt(c, 'N', px + ux * (len + 7), py + uy * (len + 7) + 4, { a: 'center', s: 10, w: 700 });
+    txt(c, 'Vue du dessus', nar ? 8 : ox, nar ? 16 : h - 10, { a: nar ? 'left' : 'center', s: 11, c: INK.brume });
+    // Vue de côté
+    const gx = nar ? w * .62 : w * .73, gy = nar ? h * .76 : h * .5, gr = nar ? Math.min(w * .18, h * .15) : Math.min(w * .15, h * .3), ax0 = nar ? w * .06 : w * .5;
+    for (let i = -2; i <= 2; i++) { const yy = gy + i * gr * .42; c.strokeStyle = 'rgba(255,181,71,.45)'; c.lineWidth = 1; c.beginPath(); c.moveTo(ax0, yy); c.lineTo(gx - gr - 10, yy); c.stroke(); c.beginPath(); c.moveTo(gx - gr - 10, yy); c.lineTo(gx - gr - 16, yy - 3); c.lineTo(gx - gr - 16, yy + 3); c.fillStyle = 'rgba(255,181,71,.6)'; c.fill(); }
+    txt(c, 'Lumière du Soleil', ax0, gy - gr - 12, { s: 11, c: INK.soleil });
+    dot(c, gx, gy, gr, cfg.color);
+    c.save(); c.beginPath(); c.arc(gx, gy, gr, 0, TAU); c.clip(); c.fillStyle = 'rgba(6,11,24,.72)'; c.fillRect(gx, gy - gr, gr, gr * 2); c.restore();
+    const ax = -Math.sin(dec), ay = -Math.cos(dec), ex = Math.cos(dec), ey = -Math.sin(dec);
+    c.setLineDash([4, 4]); c.strokeStyle = INK.ivoire; c.lineWidth = 1.2; c.beginPath(); c.moveTo(gx - ax * gr * 1.35, gy - ay * gr * 1.35); c.lineTo(gx + ax * gr * 1.35, gy + ay * gr * 1.35); c.stroke(); c.setLineDash([]);
+    txt(c, 'N', gx + ax * gr * 1.5, gy + ay * gr * 1.5 + 4, { a: 'center', s: 11, w: 700 });
+    c.strokeStyle = 'rgba(236,229,211,.35)'; c.beginPath(); c.moveTo(gx - ex * gr, gy - ey * gr); c.lineTo(gx + ex * gr, gy + ey * gr); c.stroke();
+    const cx2 = gx + ax * gr * Math.sin(phi), cy2 = gy + ay * gr * Math.sin(phi), hl = gr * Math.cos(phi);
+    const x0 = cx2 - ex * hl, y0 = cy2 - ey * hl, x1 = cx2 + ex * hl, y1 = cy2 + ey * hl;
+    const tt = Math.abs(x1 - x0) < 1e-6 ? (x0 < gx ? 1 : 0) : clamp((gx - x0) / (x1 - x0), 0, 1);
+    c.lineWidth = 3; c.strokeStyle = INK.soleil; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 + (x1 - x0) * tt, y0 + (y1 - y0) * tt); c.stroke();
+    c.strokeStyle = '#3B4A75'; c.beginPath(); c.moveTo(x0 + (x1 - x0) * tt, y0 + (y1 - y0) * tt); c.lineTo(x1, y1); c.stroke();
+    txt(c, cfg.latLabel, x1 + 8, y1 + 4, { s: 11, w: 700 });
+    txt(c, 'Vue de côté', nar ? 8 : gx, h - 10, { a: nar ? 'left' : 'center', s: 11, c: INK.brume });
+    m.acc += dt;
+    if (m.acc > .25) {
+      m.acc = 0;
+      const season = ['printemps', 'été', 'automne', 'hiver'][Math.floor(dl / 90) % 4];
+      const h0 = (cfg.h0 || 0) * D2R, k = (Math.sin(h0) - Math.sin(phi) * Math.sin(dec)) / (Math.cos(phi) * Math.cos(dec));
+      const frac = k <= -1 ? 1 : k >= 1 ? 0 : Math.acos(k) / Math.PI;
+      const noon = 90 - 48.85 + dec / D2R;
+      const day = frac >= 1 ? 'Soleil permanent, il ne se couche pas' : frac <= 0 ? 'nuit permanente, le Soleil ne se lève pas' : cfg.dayText(frac);
+      out.innerHTML = `${cfg.when(m.ms)} : <b>${season}</b> dans l'hémisphère nord. ${cfg.latName} : ${day}. Soleil à midi : ${noon > 0 ? nf(Math.min(noon, 180 - noon), 0) + '° au-dessus de l’horizon' : 'sous l’horizon'}.`;
+    }
+  };
+  return m;
+}
+const yearStart = ms => new Date(new Date(ms).getFullYear(), 0, 1).getTime();
+seasons('mSeasonsE', {
+  k: 'earth', tilt: 23.44, color: '#5B9BE6', range: 'seasonsERange', sync: 'seasonsESync', out: 'seasonsEOut',
+  marks: ['20 mars', '21 juin', '22 sept.', '21 déc.'], latLabel: 'Paris', latName: 'Durée du jour à Paris', h0: -.833,
+  fromRange: v => yearStart(TIME.ms) + v * 864e5, toRange: ms => Math.floor((ms - yearStart(ms)) / 864e5),
+  when: ms => new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }),
+  dayText: f => { const mn = Math.round(f * 1440); return `${Math.floor(mn / 60)} h ${pad2(mn % 60)}`; }
+});
+const U_EQ = Date.UTC(2007, 11, 7), U_YEAR = 84.01 * 365.25 * 864e5;
+seasons('mSeasonsU', {
+  k: 'uranus', tilt: 97.77, color: '#9ED9DE', eqMs: U_EQ, range: 'seasonsURange', sync: 'seasonsUSync', out: 'seasonsUOut',
+  marks: ['2007', '2028', '2049', '2070'], latLabel: '49° N', latName: 'À 49° nord',
+  fromRange: v => U_EQ + v / 1000 * U_YEAR, toRange: ms => Math.round((((ms - U_EQ) / U_YEAR) % 1 + 1) % 1 * 1000),
+  when: ms => 'En ' + new Date(ms).getFullYear(),
+  dayText: f => `${nf(f * 100, 0)} % de chaque rotation au soleil`
+});
+
+/* 5. La balance (Mars) */
+(() => {
+  const G = [['Mercure', 3.70, '#B5ADA3'], ['Vénus', 8.87, '#E6CB94'], ['Terre', 9.81, '#5B9BE6'], ['Lune', 1.62, '#BDB9B2'], ['Mars', 3.71, '#DA6A43'], ['Jupiter', 24.79, '#D8A878'], ['Saturne', 10.44, '#E2C98F'], ['Uranus', 8.87, '#9ED9DE'], ['Neptune', 11.15, '#5878E8']];
+  const ul = $('#scales'), input = $('#mass');
+  ul.innerHTML = G.map(([n, g, c]) => `<li${n === 'Mars' ? ' class="here"' : ''}><span>${n}</span><span class="bar-t"><span style="--bc:${c}"></span></span><output></output></li>`).join('');
+  const rows = $$('li', ul);
+  const upd = () => {
+    const v = +input.value;
+    if (!(v >= 1 && v <= 300)) { input.setAttribute('aria-invalid', 'true'); return; }
+    input.removeAttribute('aria-invalid');
+    G.forEach(([n, g], i) => {
+      const kg = v * g / 9.81;
+      rows[i].querySelector('output').textContent = `${nf(kg, kg < 100 ? 1 : 0)} kg`;
+      rows[i].querySelector('.bar-t span').style.width = (g / 24.79 * 100).toFixed(1) + '%';
+    });
+  };
+  input.addEventListener('input', upd); upd();
+})();
+
+/* 6. Les tailles à l'échelle (Jupiter) */
+(() => {
+  const P = [['Mercure', 4879, '#B5ADA3'], ['Vénus', 12104, '#E6CB94'], ['Terre', 12756, '#5B9BE6'], ['Mars', 6792, '#DA6A43'], ['Jupiter', 142984, '#D8A878'], ['Saturne', 120536, '#E2C98F'], ['Uranus', 51118, '#9ED9DE'], ['Neptune', 49528, '#5878E8']];
+  const out = $('#sizesOut'), earthsBtn = $('#sizesEarths');
+  const m = mod('mSizes', { mode: 0, k: 0, earths: 0, show: false, hover: 4, spots: [] });
+  $$('[data-sz]').forEach(b => b.addEventListener('click', () => {
+    m.mode = +b.dataset.sz; $$('[data-sz]').forEach(o => pressed(o, o === b));
+    earthsBtn.disabled = m.mode === 1;
+    out.textContent = m.mode ? 'Le Soleil mesure 1 392 700 km : 109 Terres, ou presque 10 Jupiter.' : 'Jupiter : 142 984 km, 11,2 fois la Terre.';
+  }));
+  earthsBtn.addEventListener('click', () => { m.show = !m.show; m.earths = 0; pressed(earthsBtn, m.show); if (m.show) out.textContent = '11 Terres côte à côte couvrent presque le diamètre de Jupiter (11,2 exactement).'; });
+  const pick = e => {
+    const r = m.cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const i = m.spots.findIndex(s => Math.hypot(x - s[0], y - s[1]) <= Math.max(s[2], 8));
+    if (i >= 0 && i !== m.hover) { m.hover = i; const [n, d] = P[i]; out.textContent = `${n} : ${nf(d)} km, ${nf(d / 12756, d < 12756 ? 2 : 1)} fois la Terre.`; }
+  };
+  m.cv.addEventListener('pointermove', pick); m.cv.addEventListener('pointerdown', pick);
+  m.tick = dt => {
+    m.k += ((m.mode) - m.k) * (1 - Math.exp(-dt * (REDUCED ? 60 : 3)));
+    if (m.show) m.earths = Math.min(11, m.earths + dt * 9);
+    const c = m.ctx, w = m.w, h = m.h, base = h - 34, gap = 8, k = smooth(clamp(m.k, 0, 1));
+    const foot = d => d === 120536 ? d * 1.75 : d;
+    const sum = P.reduce((s, p) => s + foot(p[1]), 0);
+    const s0 = Math.min((w - 32 - gap * 7) / sum, (base - 18) / 142984), s1 = (w * .62 - gap * 7) / sum;
+    const sc = lerp(s0, s1, k), x0 = lerp(16, w * .36, k);
+    c.clearRect(0, 0, w, h);
+    if (k > .01) {
+      const sr = 696350 * sc, sx = x0 - 14 - sr;
+      const g = c.createRadialGradient(sx, base - sr, sr * .7, sx, base - sr, sr);
+      g.addColorStop(0, '#FFC25C'); g.addColorStop(1, '#F07A1E');
+      c.globalAlpha = k; c.fillStyle = g; c.beginPath(); c.arc(sx, base - sr, sr, 0, TAU); c.fill();
+      txt(c, 'Soleil', 14, 24, { w: 700, s: 13, c: INK.nuit }); c.globalAlpha = 1;
+    }
+    c.strokeStyle = 'rgba(194,163,107,.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, base + .5); c.lineTo(w, base + .5); c.stroke();
+    let x = x0; m.spots = [];
+    P.forEach(([n, d, col], i) => {
+      const r = d / 2 * sc, fw = foot(d) * sc, cx = x + fw / 2, cy = base - r;
+      if (n === 'Saturne') { c.strokeStyle = 'rgba(226,201,143,.75)'; c.lineWidth = Math.max(1, r * .22); c.beginPath(); c.ellipse(cx, cy, r * 1.85, r * .42, -.2, Math.PI, TAU); c.stroke(); }
+      dot(c, cx, cy, Math.max(r, .6), col);
+      if (n === 'Saturne') { c.beginPath(); c.ellipse(cx, cy, r * 1.85, r * .42, -.2, 0, Math.PI); c.stroke(); }
+      if (i === m.hover) { c.strokeStyle = INK.ivoire; c.lineWidth = 1.5; c.beginPath(); c.arc(cx, cy, Math.max(r, 2) + 4, 0, TAU); c.stroke(); }
+      if (r >= 6 || i === m.hover) txt(c, n, cx, base + 18, { a: 'center', s: 11.5, c: i === m.hover ? INK.ivoire : INK.brume, w: i === m.hover ? 700 : 400 });
+      else if (i === 0 && m.hover > 3) txt(c, 'Mercure à Mars', cx - 2, base + 18, { s: 11, c: INK.brume });
+      m.spots.push([cx, cy, Math.max(r, 7)]);
+      x += fw + gap;
+    });
+    if (m.show && m.mode === 0) {
+      const [jx, jy, jr] = m.spots[4], er = 12756 / 2 * sc;
+      for (let i = 0; i < Math.floor(m.earths); i++) dot(c, jx - jr + er + i * er * 2, jy, er, '#5B9BE6');
+    }
+  };
+})();
+
+/* 7. Les anneaux de Saturne vus de la Terre */
+(() => {
+  const range = $('#ringsRange'), btn = $('#ringsPlay'), out = $('#ringsOut');
+  const yearOf = ms => 1970 + ms / (365.25 * 864e5);
+  const m = mod('mRings', { y: +yearOf(TIME.ms).toFixed(2), run: false, acc: 1 });
+  range.value = m.y;
+  const tiltAt = y => -26.7 * Math.sin(TAU * (y - 2025.2) / 29.457);
+  range.addEventListener('input', () => { m.y = +range.value; m.acc = 1; });
+  btn.addEventListener('click', () => { m.run = !m.run; pressed(btn, m.run); btn.textContent = m.run ? 'Pause' : 'Faire défiler les années'; });
+  m.tick = dt => {
+    if (m.run) { m.y += dt * 2.5; if (m.y > 2050) m.y = 2010; range.value = m.y.toFixed(2); m.acc += .2; }
+    const tb = tiltAt(m.y), sb = Math.sin(tb * D2R);
+    const c = m.ctx, w = m.w, h = m.h, cx = w / 2, cy = h * .42, R = Math.min(w * .14, h * .26), ry = R * .9;
+    c.clearRect(0, 0, w, h);
+    const ring = (from, to) => {
+      [[1.24, 1.53, .3], [1.53, 1.95, .85], [2.03, 2.27, .6]].forEach(([a, b, o]) => {
+        c.strokeStyle = `rgba(232,214,176,${o})`; c.lineWidth = (b - a) * R;
+        const rr = (a + b) / 2 * R; c.beginPath(); c.ellipse(cx, cy, rr, Math.max(.4, rr * Math.abs(sb)), 0, from, to); c.stroke();
+      });
+    };
+    const backFirst = tb > 0 ? [Math.PI, TAU] : [0, Math.PI], front = tb > 0 ? [0, Math.PI] : [Math.PI, TAU];
+    ring(backFirst[0], backFirst[1]);
+    const g = c.createLinearGradient(0, cy - ry, 0, cy + ry);
+    g.addColorStop(0, '#CDB27C'); g.addColorStop(.35, '#F0DFB4'); g.addColorStop(.55, '#D4B57A'); g.addColorStop(1, '#B8955E');
+    c.fillStyle = g; c.beginPath(); c.ellipse(cx, cy, R, ry, 0, 0, TAU); c.fill();
+    ring(front[0], front[1]);
+    // frise des années
+    const L = 24, Rr = w - 24, ty = h - 30, X = y => L + (y - 2010) / 40 * (Rr - L);
+    c.strokeStyle = 'rgba(194,163,107,.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(L, ty); c.lineTo(Rr, ty); c.stroke();
+    c.beginPath();
+    for (let y = 2010; y <= 2050; y += .25) { const yy = ty - 14 * Math.abs(tiltAt(y)) / 26.7; y === 2010 ? c.moveTo(X(y), yy) : c.lineTo(X(y), yy); }
+    c.strokeStyle = 'rgba(226,201,143,.7)'; c.stroke();
+    [2010, 2020, 2030, 2040, 2050].forEach(y => txt(c, String(y), X(y), ty + 15, { a: 'center', s: 10.5, c: INK.brume }));
+    [2025.2, 2039.9].forEach(y => { c.fillStyle = INK.brume; c.fillRect(X(y) - .5, ty - 4, 1, 8); });
+    txt(c, 'par la tranche', X(2025.2), ty - 20, { a: 'center', s: 10, c: INK.brume });
+    dot(c, X(m.y), ty, 4.5, INK.soleil);
+    txt(c, String(Math.floor(m.y)), 16, 24, { w: 700, s: 15 });
+    m.acc += dt;
+    if (m.acc > .3) {
+      m.acc = 0;
+      const a = Math.abs(tb), side = tb > 0 ? 'par-dessus (face nord)' : 'par-dessous (face sud)';
+      out.textContent = a < 1.2 ? `${Math.floor(m.y)} : anneaux vus par la tranche, presque invisibles.` : `${Math.floor(m.y)} : anneaux ouverts d'environ ${nf(a)}°, vus ${side}.`;
+    }
+  };
+})();
+
+/* 9. Une seule année neptunienne */
+(() => {
+  const input = $('#birth'), out = $('#neptuneOut'), PER = 164.79;
+  const m = mod('mNeptune', { acc: 1 });
+  const yearNow = () => 1970 + TIME.ms / (365.25 * 864e5);
+  input.addEventListener('input', () => { m.acc = 1; });
+  m.tick = dt => {
+    const now = yearNow(), by = +input.value, ok = by >= 1846 && by <= now;
+    const c = m.ctx, w = m.w, h = m.h, cx = w * .27, cy = h * .56, R = Math.min(w * .2, h * .36);
+    const ang = y => -Math.PI / 2 + TAU * ((((y - 1846) / PER) % 1 + 1) % 1);
+    c.clearRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(194,163,107,.55)'; c.lineWidth = 1; c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.stroke();
+    for (let y = 1846; y < 1846 + PER; y += 10) { const a = ang(y), l = (y - 1846) % 50 === 0 ? 9 : 4; c.beginPath(); c.moveTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); c.lineTo(cx + Math.cos(a) * (R - l), cy + Math.sin(a) * (R - l)); c.stroke(); }
+    dot(c, cx, cy, 8, '#FFB13B');
+    c.lineWidth = 3; c.strokeStyle = 'rgba(88,120,232,.45)'; c.beginPath(); c.arc(cx, cy, R, -Math.PI / 2, ang(now) + (now - 1846 >= PER ? TAU : 0)); c.stroke();
+    if (ok) { c.strokeStyle = INK.soleil; c.lineWidth = 4; c.beginPath(); c.arc(cx, cy, R, ang(by), ang(now) + (ang(now) < ang(by) ? TAU : 0)); c.stroke(); }
+    const an = ang(now); dot(c, cx + Math.cos(an) * R, cy + Math.sin(an) * R, 7, '#5878E8');
+    c.strokeStyle = 'rgba(149,158,181,.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(cx, cy - R); c.lineTo(cx + R * .7, cy - R - 2); c.stroke();
+    txt(c, '1846, découverte', cx + R * .7 + 6, cy - R + 2, { s: 11.5, w: 700 });
+    txt(c, '2011, un tour complet', cx + R * .7 + 6, cy - R + 16, { s: 11, c: INK.brume });
+    const tx = w * .62;
+    txt(c, 'Votre vie', tx, h * .5, { s: 12, c: INK.soleil, w: 700 });
+    txt(c, ok ? `${nf((now - by) / PER * 100, 1)} % d'une orbite` : '–', tx, h * .5 + 19, { s: 14, w: 700 });
+    txt(c, 'Depuis la découverte', tx, h * .78, { s: 12, c: '#7D97FF', w: 700 });
+    txt(c, `${nf((now - 1846) / PER, 2)} tour`, tx, h * .78 + 19, { s: 14, w: 700 });
+    m.acc += dt;
+    if (m.acc > .3) {
+      m.acc = 0;
+      out.textContent = ok ? `Depuis ${by}, Neptune a parcouru ${nf((now - by) / PER * 100, 1)} % de son orbite. Sur Neptune, vous n'auriez pas encore un an : ${nf((now - by) / PER, 2)} année neptunienne. Sur Mars, vous auriez ${nf((now - by) / 1.8808, 1)} ans.` : `Entrez une année entre 1846 et ${Math.floor(now)}.`;
+    }
+  };
+})();
+
+/* ---------- Démarrage ---------- */
+const io = new IntersectionObserver(es => es.forEach(e => { const m = MODS.find(x => x.cv === e.target); if (m) m.vis = e.isIntersecting; }), { rootMargin: '120px' });
+MODS.forEach(m => { sizeMod(m); io.observe(m.cv); });
+measure();
+let rt;
+addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { measure(); MODS.forEach(sizeMod); for (const k in lblEl) lblEl[k]._w = 0; lastDay = null; }, 120); });
+if (document.fonts) document.fonts.ready.then(() => { measure(); for (const k in lblEl) lblEl[k]._w = 0; });
+new ResizeObserver(() => measure()).observe($('main'));
+
+let last = performance.now(), frame = 0;
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; frame++;
+  if (TIME.playing) TIME.ms += dt * TIME.speed * 864e5;
+  if (HAS3D) {
+    if (frame > 2 && frame % 2 === 0) stepTextures();
+    updateScene(dt);
+  }
+  updateCamera(dt);
+  if (HAS3D) { renderer.render(scene, camera); updateLabels(); }
+  updateUI();
+  for (const m of MODS) if (m.vis) m.tick(dt);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
