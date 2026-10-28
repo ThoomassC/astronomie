@@ -21,6 +21,12 @@
   --f-display-italic: var(--font-bodoni-italic, "Bodoni Moda"), "Bodoni 72", Didot, "Didot LT STD", Georgia, serif;
   --f-text: var(--font-atkinson, "Atkinson Hyperlegible Next"), "Atkinson Hyperlegible", system-ui, -apple-system,
     "Segoe UI", sans-serif;
+  /* Arrondis : commandes en pilule, encarts doux, plaques généreuses. */
+  --r-xs: 6px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 26px;
+  --r-pill: 999px;
   --gl: max(16px, env(safe-area-inset-left, 0px));
   --gr: max(16px, env(safe-area-inset-right, 0px));
   --rail-w: 9.5rem;
@@ -59,10 +65,14 @@ button {
   cursor: pointer;
 }
 
+/* Le contour suit l'arrondi de chaque commande ; les liens de texte, sans arrondi propre, en reçoivent un. */
 :focus-visible {
   outline: 2px solid var(--soleil);
   outline-offset: 3px;
-  border-radius: 3px;
+}
+
+:where(a):focus-visible {
+  border-radius: var(--r-xs);
 }
 
 /* Le contenu et les sections reçoivent le focus après un saut : cibles de lecture, pas des commandes. */
@@ -86,8 +96,8 @@ main > section:focus {
   z-index: 20;
   top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
   left: var(--gl);
-  padding: 0.65rem 1rem;
-  border-radius: 4px;
+  padding: 0.65rem 1.1rem;
+  border-radius: var(--r-pill);
   background: var(--soleil);
   color: var(--encre);
   font-weight: 700;
@@ -486,8 +496,8 @@ main > section > * {
   align-items: center;
   gap: 0.5rem;
   min-height: 46px;
-  padding: 0.7rem 1.15rem;
-  border-radius: 4px;
+  padding: 0.7rem 1.35rem;
+  border-radius: var(--r-pill);
   border: 1px solid var(--soleil);
   background: var(--soleil);
   color: var(--encre);
@@ -536,18 +546,18 @@ main > section > * {
   padding: 1.6rem 1.6rem 1.4rem;
   background: var(--plaque-a);
   border: 1px solid var(--filet);
-  border-radius: 4px;
+  border-radius: var(--r-lg);
 }
 
+/* Filet de la couleur de l'astre : il suit l'arrondi du haut de la plaque et s'affine dans les coins. */
 .plate::before {
   content: "";
   position: absolute;
-  left: -1px;
-  right: -1px;
-  top: -1px;
-  height: 2px;
-  background: var(--c);
+  inset: -1px;
+  border-top: 2px solid var(--c);
+  border-radius: inherit;
   opacity: 0.9;
+  pointer-events: none;
 }
 
 .rank {
@@ -667,7 +677,7 @@ main > section > * {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 3px;
+  border-radius: var(--r-sm);
   background: rgba(3, 6, 15, 0.55);
 }
 
@@ -681,9 +691,9 @@ main > section > * {
 
 .chip {
   min-height: 40px;
-  padding: 0.35rem 0.75rem;
+  padding: 0.35rem 0.9rem;
   border: 1px solid var(--filet-fort);
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   background: transparent;
   font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
@@ -728,9 +738,9 @@ main > section > * {
 .ctrls input[type="number"] {
   width: 5.5rem;
   min-height: 40px;
-  padding: 0.3rem 0.5rem;
+  padding: 0.3rem 0.7rem;
   border: 1px solid var(--filet-fort);
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   background: var(--nuit);
   font-variant-numeric: tabular-nums;
 }
@@ -769,7 +779,7 @@ main > section > * {
 
 .scales .bar-t {
   height: 10px;
-  border-radius: 2px;
+  border-radius: var(--r-pill);
   background: rgba(236, 229, 211, 0.08);
   overflow: hidden;
 }
@@ -902,19 +912,22 @@ footer a {
   bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   padding: 0.4rem;
   max-width: calc(100% - 32px);
   background: rgba(8, 14, 32, 0.92);
   border: 1px solid var(--filet-fort);
-  border-radius: 6px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  /* Capsule : chaque commande intérieure est une pilule, les arrondis s'emboîtent. */
+  border-radius: var(--r-pill);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(236, 229, 211, 0.07);
 }
 
 .dock .sep {
   width: 1px;
   align-self: stretch;
-  margin: 0.25rem 0.2rem;
+  margin: 0.55rem 0.15rem;
   background: var(--filet);
 }
 
@@ -931,12 +944,13 @@ footer a {
   min-width: 42px;
   min-height: 42px;
   border: 0;
-  border-radius: 4px;
-  background: transparent;
+  border-radius: 50%;
+  background: rgba(236, 229, 211, 0.06);
+  transition: background 0.2s;
 }
 
 .ibtn:hover {
-  background: rgba(236, 229, 211, 0.08);
+  background: rgba(236, 229, 211, 0.14);
 }
 
 .ibtn svg {
@@ -944,29 +958,151 @@ footer a {
   height: 18px;
 }
 
+/* Groupe de boutons exclusifs (vitesse du dock, réglages des modules) : piste et pilules. */
 .seg {
   display: flex;
   gap: 2px;
-  padding: 2px;
-  border-radius: 4px;
-  background: rgba(236, 229, 211, 0.05);
+  padding: 3px;
+  border-radius: var(--r-pill);
+  background: rgba(236, 229, 211, 0.06);
 }
 
 .seg button {
   min-height: 40px;
-  padding: 0.2rem 0.6rem;
+  padding: 0.2rem 0.85rem;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--r-pill);
   background: transparent;
   font-size: 0.8125rem;
   color: var(--brume);
   white-space: nowrap;
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+
+.seg button:hover {
+  color: var(--ivoire);
 }
 
 .seg button[aria-pressed="true"] {
   background: var(--ivoire);
   color: var(--nuit);
   font-weight: 700;
+}
+
+/*
+ * Vitesse du temps (SpeedSelector). La position de la bulle est une paire de variables animées,
+ * que suivent la bulle et la copie sombre des libellés. Le bord qui mène part le premier, l'autre
+ * suit un peu après : la bulle s'étire en chemin, se resserre et rebondit légèrement à l'arrivée.
+ */
+@property --bubble-left {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --bubble-right {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+.speed {
+  position: relative;
+  transition-property: --bubble-left, --bubble-right;
+  transition-duration: 0.5s;
+  transition-timing-function: cubic-bezier(0.34, 1.32, 0.64, 1);
+}
+
+.speed[data-dir="next"] {
+  transition-delay: 0.09s, 0s;
+}
+
+.speed[data-dir="prev"] {
+  transition-delay: 0s, 0.09s;
+}
+
+/* Premier placement, et retour de la piste après un masquage : la bulle ne glisse pas. */
+.speed:not([data-ready]),
+.speed[data-instant] {
+  transition: none;
+}
+
+.seg-bubble,
+.seg-ink {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.speed[data-ready] .seg-bubble,
+.speed[data-ready] .seg-ink {
+  opacity: 1;
+}
+
+/* Au-dessus des libellés clairs des boutons, qu'elle masque. */
+.seg-bubble {
+  z-index: 1;
+  top: 3px;
+  bottom: 3px;
+  left: var(--bubble-left);
+  right: var(--bubble-right);
+  border-radius: var(--r-pill);
+  background: var(--ivoire);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* Copie sombre des libellés, découpée à la forme de la bulle : le texte s'inverse là où elle passe. */
+.seg-ink {
+  z-index: 2;
+  inset: 0;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  clip-path: inset(3px var(--bubble-right) 3px var(--bubble-left) round var(--r-pill));
+}
+
+.seg-ink > span {
+  display: grid;
+  place-items: center;
+  min-height: 40px;
+  padding: 0.2rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--nuit);
+  white-space: nowrap;
+}
+
+/* Boutons à la largeur du gras : la copie, en gras, s'y superpose exactement. */
+.speed button {
+  display: inline-grid;
+  place-items: center;
+}
+
+.speed button > span,
+.speed button::after {
+  grid-area: 1 / 1;
+}
+
+.speed button::after {
+  content: attr(data-label);
+  font-weight: 700;
+  visibility: hidden;
+}
+
+/* Bulle placée : c'est elle, avec la copie, qui marque la vitesse active (avant, le bouton portait son fond). */
+.speed[data-ready] button[aria-pressed="true"] {
+  background: transparent;
+  color: var(--brume);
+  font-weight: 400;
+}
+
+/* Couleurs forcées : les fonds disparaissent, un contour garde la bulle visible. */
+@media (forced-colors: active) {
+  .seg-bubble {
+    border: 2px solid CanvasText;
+  }
 }
 
 .date {
@@ -990,15 +1126,19 @@ footer a {
 .today {
   font-size: 0.8125rem;
   min-height: 40px;
-  padding: 0.2rem 0.6rem;
+  padding: 0.2rem 0.85rem;
   border: 1px solid var(--filet-fort);
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   background: transparent;
   white-space: nowrap;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 
 .today:hover {
   border-color: var(--ivoire);
+  background: rgba(236, 229, 211, 0.06);
 }
 
 .today svg {
@@ -1014,6 +1154,15 @@ footer a {
 
 .cycle {
   display: none;
+}
+
+/* Libellé courant et tous les libellés invisibles, empilés : la pilule garde la largeur du plus long. */
+.cycle > span {
+  grid-area: 1 / 1;
+}
+
+.cycle .ghost {
+  visibility: hidden;
 }
 
 /* Note d'échelle : visible tant que les distances réelles sont actives, masquable. */
@@ -1032,7 +1181,7 @@ footer a {
   padding: 0.75rem 1rem;
   background: rgba(8, 14, 32, 0.94);
   border: 1px solid var(--soleil);
-  border-radius: 4px;
+  border-radius: var(--r-md);
   font-size: 0.9375rem;
   text-align: center;
 }
@@ -1050,9 +1199,9 @@ footer a {
 
 .scale-note button {
   min-height: 40px;
-  padding: 0.35rem 0.75rem;
+  padding: 0.35rem 0.9rem;
   border: 1px solid var(--filet-fort);
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   background: transparent;
   font-size: 0.875rem;
   white-space: nowrap;
@@ -1087,9 +1236,9 @@ footer a {
     top: 50%;
     right: calc(100% + 0.25rem);
     transform: translateY(-50%);
-    padding: 0.3rem 0.55rem;
+    padding: 0.3rem 0.7rem;
     border: 1px solid var(--filet-fort);
-    border-radius: 4px;
+    border-radius: var(--r-pill);
     background: rgba(8, 14, 32, 0.94);
     color: var(--ivoire);
     text-shadow: none;
@@ -1108,6 +1257,66 @@ footer a {
 
   .where span {
     display: none;
+  }
+}
+
+/*
+ * Le dock ne passe jamais à la ligne au-dessus de 360 px : il s'allège avant de déborder.
+ * Fenêtre moyenne (tablette, portable zoomé à 200 %) : la piste des vitesses reste, les deux
+ * boutons de droite ne montrent plus que leur icône (leur nom accessible ne change pas).
+ */
+@media (max-width: 56.25rem) {
+  .dock .label {
+    display: none;
+  }
+}
+
+/* Dock compact : un seul bouton fait défiler les vitesses, date courte (même seuil dans SimDate). */
+@media (max-width: 47.5rem) {
+  #speedSeg {
+    display: none;
+  }
+
+  .cycle {
+    display: inline-grid;
+    place-items: center;
+  }
+
+  .date {
+    min-width: 0;
+    font-size: 0.875rem;
+    padding: 0 0.3rem;
+  }
+
+  .date small,
+  .dock .sep.opt {
+    display: none;
+  }
+
+  .dock {
+    gap: 0.2rem;
+    padding: 0.3rem;
+  }
+
+  /* Boutons réduits à leur icône : ronds de 40 px. */
+  .dock .today:not(.cycle) {
+    min-width: 40px;
+    padding-inline: 0.5rem;
+  }
+}
+
+/* Téléphones étroits (360 px) : une marge de sécurité avant le passage sur deux lignes. */
+@media (max-width: 24rem) {
+  .dock {
+    gap: 0.15rem;
+  }
+
+  .cycle {
+    padding-inline: 0.6rem;
+  }
+
+  .dock .today:not(.cycle) {
+    padding-inline: 0.4rem;
   }
 }
 
@@ -1153,40 +1362,6 @@ footer a {
     padding: 0.2rem 0.45rem;
   }
 
-  .seg .long {
-    display: none;
-  }
-
-  #speedSeg {
-    display: none;
-  }
-
-  .cycle {
-    display: inline-block;
-    min-width: 4.6rem;
-  }
-
-  .dock .toggle span {
-    display: none;
-  }
-
-  .date {
-    min-width: 0;
-    font-size: 0.875rem;
-    padding: 0 0.3rem;
-  }
-
-  .date small,
-  .dock .today span,
-  .dock .sep.opt {
-    display: none;
-  }
-
-  .dock {
-    gap: 0.2rem;
-    padding: 0.3rem;
-  }
-
   .scales li {
     grid-template-columns: 4.8rem 1fr 4.2rem;
   }
@@ -1196,21 +1371,13 @@ footer a {
   }
 }
 
-@media (max-width: 400px) {
-  .seg .xs-hide {
-    display: none;
-  }
-}
-
 /* 320 px (zoom à 400 %) : date compacte, et le dock passe à la ligne plutôt que de déborder. */
 @media (max-width: 359px) {
+  /* Sur deux lignes, une capsule pincerait ses coins : arrondi de plaque. */
   .dock {
     flex-wrap: wrap;
     justify-content: center;
-  }
-
-  .cycle {
-    min-width: 0;
+    border-radius: var(--r-lg);
   }
 
   .scale-note {
