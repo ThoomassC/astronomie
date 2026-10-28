@@ -49,6 +49,7 @@ export default function SolarScene() {
       obstacles: rail ? [rail] : [],
       plates,
       bar: document.querySelector(".bar"),
+      rail,
       note: document.querySelector<HTMLElement>(".scale-note"),
       onPick: goTo,
     });

@@ -9,12 +9,14 @@ import {
   freeBand,
   RAIL_STOPS,
   railPercent,
+  restProgress,
   restRange,
   scrollState,
   sectionRanges,
   smootherstep,
   type CamState,
   type ScreenBand,
+  type ScreenZone,
   type SectionRange,
   type StopCameraContext,
 } from "@/lib/journey/camera";
@@ -49,6 +51,7 @@ function context({
   aspect = 16 / 9,
   fov = 36,
   band,
+  zone,
 }: {
   positions?: Partial<Record<PlanetKey, Vec3>>;
   radii?: Partial<Record<PlanetKey, number>>;
@@ -57,6 +60,7 @@ function context({
   aspect?: number;
   fov?: number;
   band?: ScreenBand;
+  zone?: ScreenZone;
 } = {}): StopCameraContext {
   return {
     planetPosition: (key) => positions[key] ?? { x: 1, y: 0, z: 0 },
@@ -66,6 +70,7 @@ function context({
     aspect,
     fov,
     band: band ? () => band : undefined,
+    zone: zone ? () => zone : undefined,
   };
 }
 
@@ -530,5 +535,58 @@ describe("freeBand", () => {
 
   it("devrait renoncer quand la bande tombe sous 8 % de l'écran (texte très agrandi)", () => {
     expect(freeBand(800, 80, { height: 560, bottom: 82 })).toBeNull();
+  });
+});
+
+describe("cameraFor sur grand écran (zone libre entre la plaque et la règle)", () => {
+  /** 1440 × 900 : la plaque s'arrête à 41 % de la largeur, la règle commence à 86 %. */
+  const DESK = { aspect: 1440 / 900, fov: 36, zone: { left: 0.41, right: 0.86 } };
+  const saturn = { positions: { saturn: { x: 120, y: 0, z: 0 } }, radii: { saturn: 2.8 } };
+  const jupiter = { positions: { jupiter: { x: 70, y: 0, z: 0 } }, radii: { jupiter: 3.1 } };
+
+  it("devrait centrer l'astre dans la zone libre, à la hauteur habituelle", () => {
+    const cam = cameraFor("jupiter", context({ ...jupiter, ...DESK }));
+    expect(cam.offX).toBeCloseTo((0.41 + 0.86) / 2 - 0.5, 9);
+    expect(cam.offY).toBe(0);
+  });
+
+  it("devrait garder la distance habituelle quand l'astre tient dans la zone", () => {
+    const cam = cameraFor("jupiter", context({ ...jupiter, ...DESK }));
+    expect(cam.dist).toBeCloseTo(6.6 * 3.1, 9);
+  });
+
+  it("devrait reculer Saturne pour que ses anneaux tiennent dans 90 % de la zone", () => {
+    const cam = cameraFor("saturn", context({ ...saturn, ...DESK }));
+    expect(cam.dist).toBeGreaterThan(9.8 * 2.8);
+    expect(widthShare(2.8 * 2.337, cam.dist, DESK.fov, DESK.aspect)).toBeCloseTo(0.9 * 0.45, 9);
+  });
+
+  it("devrait laisser la bande du téléphone l'emporter, et ne pas toucher aux escales sans astre", () => {
+    const phone = cameraFor(
+      "jupiter",
+      context({ ...jupiter, ...DESK, portrait: true, band: { top: 0.08, bottom: 0.53 } }),
+    );
+    expect(phone.offX).toBe(0);
+    expect(cameraFor("beyond", context(DESK)).offX).toBe(0.14);
+    expect(cameraFor("hero", context(DESK)).offX).toBe(0.23);
+  });
+});
+
+describe("restProgress", () => {
+  const RANGE: SectionRange = { key: "mars", arrive: 1000, depart: 1600 };
+
+  it("devrait aller de 0 à l'arrivée à 1 au départ", () => {
+    expect(restProgress(RANGE, 1000)).toBe(0);
+    expect(restProgress(RANGE, 1300)).toBe(0.5);
+    expect(restProgress(RANGE, 1600)).toBe(1);
+  });
+
+  it("devrait rester borné avant l'arrivée et après le départ", () => {
+    expect(restProgress(RANGE, 900)).toBe(0);
+    expect(restProgress(RANGE, 1700)).toBe(1);
+  });
+
+  it("devrait valoir 1 pour une section sans repos (départ dès l'arrivée)", () => {
+    expect(restProgress({ key: "mars", arrive: 1000, depart: 1000 }, 1000)).toBe(1);
   });
 });

@@ -30,6 +30,7 @@ import {
   smootherstep,
   type CamState,
   type ScreenBand,
+  type ScreenZone,
   type StopCameraContext,
   type StopKey,
 } from "@/lib/journey/camera";
@@ -69,6 +70,8 @@ export interface SolarSceneOptions {
   plates: ReadonlyMap<StopKey, HTMLElement>;
   /** Barre du haut : la bande libre commence sous elle. */
   bar: Element | null;
+  /** Règle des distances : sur grand écran, la zone libre s'arrête avant elle. */
+  rail: Element | null;
   /** Note d'échelle : visible sur téléphone, elle borde aussi la bande libre par le haut. */
   note: HTMLElement | null;
   /** Clic sur un astre de la scène. */
@@ -84,8 +87,12 @@ export interface SolarScene {
 
 /** En dessous de ce rapport largeur / hauteur, l'écran est traité en portrait. */
 const PORTRAIT_ASPECT = 0.9;
-/** Mise en page téléphone (globals.css) : plaques repliées, collées au bas de l'écran. */
-const MOBILE_LAYOUT = "(max-width: 640px)";
+/** Mise en page compacte (globals.css) : plaques repliées collées au bas de l'écran (téléphone, tablette en portrait). */
+const MOBILE_LAYOUT = "(max-width: 640px), (max-width: 1100px) and (orientation: portrait)";
+/** Grand écran : air entre la zone libre et ce qui la borde (plaque, règle), en px. */
+const ZONE_MARGIN_PX = 24;
+/** Zone plus étroite que cette part de l'écran (fenêtre très étroite) : cadrage habituel. */
+const MIN_ZONE_SHARE = 0.2;
 /** Vitesse à laquelle le cadrage rejoint une bande libre qui change (barre d'outils, note), par seconde. */
 const BAND_FOLLOW_RATE = 6;
 const BAND_EPSILON = 1e-4;
@@ -188,7 +195,7 @@ export function createSolarScene(options: SolarSceneOptions): SolarScene | null 
 
 function setupScene(
   renderer: WebGLRenderer,
-  { canvas, labels, obstacles, plates, bar, note, onPick }: SolarSceneOptions,
+  { canvas, labels, obstacles, plates, bar, rail, note, onPick }: SolarSceneOptions,
 ): SolarScene {
   renderer.outputColorSpace = SRGBColorSpace;
   // Les shaders sortent en HDR : PBR Neutral garde les teintes des cartes et adoucit les hautes lumières.
@@ -361,11 +368,16 @@ function setupScene(
     aspect: 1,
     fov: 36,
     band: (key) => shownBands.get(key) ?? null,
+    zone: () => zone,
   };
+  /** Grand écran : zone libre entre la colonne des plaques et la règle, en fractions de la largeur. */
+  let zone: ScreenZone | null = null;
   /** Plaque repliée de chaque escale, collée en bas : hauteur et écart au bas de l'écran, en px. */
   const compactPlates = new Map<StopKey, { height: number; bottom: number }>();
   /** Largeur de vue des mesures repliées : une plaque change de hauteur avec elle. */
   let compactWidth = 0;
+  /** Bas de la note d'échelle repliée : la déplier ne déplace pas la caméra. */
+  let noteBottom = 0;
   /** Bande libre mesurée au-dessus de chaque plaque, en fractions de la hauteur de la vue (téléphone seulement). */
   const bands = new Map<StopKey, ScreenBand>();
   /** Bandes du cadrage : elles rejoignent en douceur les bandes mesurées. */
@@ -394,10 +406,10 @@ function setupScene(
   }
 
   /**
-   * Téléphone : bande libre entre la barre du haut (ou la note d'échelle visible) et la plaque repliée
-   * de chaque escale. Une plaque dépliée garde la mesure de sa forme repliée, pour que la caméra ne
-   * bouge pas ; cette mesure se perd si la largeur change. Sans barre fixe ni plaque collée en bas
-   * (écran bas), pas de bande.
+   * Mise en page compacte : bande libre entre la barre du haut (ou la note d'échelle visible) et la
+   * plaque repliée de chaque escale. Une plaque ou une note dépliée garde la mesure de sa forme
+   * repliée, pour que la caméra ne bouge pas ; la mesure des plaques se perd si la largeur change.
+   * Sans barre fixe ni plaque collée en bas (écran bas), pas de bande.
    */
   function measureBands(): void {
     bands.clear();
@@ -411,7 +423,12 @@ function setupScene(
       return;
     }
     let top = bar.getBoundingClientRect().bottom;
-    if (note?.dataset.visible === "true") top = Math.max(top, note.getBoundingClientRect().bottom);
+    if (note?.dataset.visible === "true") {
+      if (!note.hasAttribute("data-open")) noteBottom = note.getBoundingClientRect().bottom;
+      top = Math.max(top, noteBottom);
+    } else {
+      noteBottom = 0;
+    }
     for (const [key, plate] of plates) {
       if (!plate.hasAttribute("data-expanded")) {
         const style = getComputedStyle(plate);
@@ -450,7 +467,20 @@ function setupScene(
     bandsSettled = settled;
   }
 
-  /** Une seule passe de lecture : taille des neuf étiquettes, zones à éviter, bandes libres. */
+  /** Grand écran : zone libre entre la colonne des plaques (toutes alignées) et la règle des distances. */
+  function measureZone(): void {
+    zone = null;
+    if (mobileLayout.matches || !rail) return;
+    const plate = plates.values().next().value;
+    if (!plate) return;
+    const left = plate.getBoundingClientRect().right + ZONE_MARGIN_PX;
+    // Règle masquée (liste des escales à sa place) : la zone va jusqu'au bord de l'écran.
+    const railBox = rail.getBoundingClientRect();
+    const right = (railBox.width > 0 ? railBox.left : view.width) - ZONE_MARGIN_PX;
+    if (right - left >= MIN_ZONE_SHARE * view.width) zone = { left: left / view.width, right: right / view.width };
+  }
+
+  /** Une seule passe de lecture : taille des neuf étiquettes, zones à éviter, bandes et zone libres. */
   function measureLayout(): void {
     for (const [key, element] of labels) {
       labelSizes.set(key, { width: element.offsetWidth, height: element.offsetHeight });
@@ -460,6 +490,7 @@ function setupScene(
       return [rect.left, rect.top, rect.right, rect.bottom] as const;
     });
     measureBands();
+    measureZone();
     needsRender = true;
   }
 

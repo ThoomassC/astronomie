@@ -9,6 +9,8 @@ const DEFAULTS = { elev: 11, phi: 55, offX: 0.17, offY: 0 };
 const BAND_FILL = 0.9;
 /** … et au plus 80 % de la largeur de l'écran, anneaux compris. */
 const WIDTH_FILL = 0.8;
+/** Grand écran : l'astre occupe au plus 90 % de la largeur de la zone libre, anneaux compris. */
+const ZONE_FILL = 0.9;
 /** Rayon extérieur des anneaux visibles, en rayons de la planète. */
 const RING_EXTENT: Partial<Record<PlanetKey, number>> = { saturn: 2.337, uranus: 2.05 };
 /** Air entre la bande libre et ce qui la borde (bandeaux du haut, plaque), en px. */
@@ -62,6 +64,12 @@ export interface ScreenBand {
   bottom: number;
 }
 
+/** Bande verticale de l'écran, en fractions de sa largeur (0 à gauche, 1 à droite). */
+export interface ScreenZone {
+  left: number;
+  right: number;
+}
+
 export interface StopCameraContext {
   /** Position de scène actuelle de la planète. */
   planetPosition(key: PlanetKey): Vec3;
@@ -81,6 +89,12 @@ export interface StopCameraContext {
    * y est centrée. `null` ou absente ailleurs.
    */
   band?(key: StopKey): ScreenBand | null;
+  /**
+   * Grand écran seulement : zone libre entre la plaque (à gauche) et la règle des distances
+   * (à droite), mesurée dans la page. Le Soleil et les planètes y sont centrés, et reculés
+   * s'ils n'y tiennent pas. `null` ou absente ailleurs.
+   */
+  zone?(key: StopKey): ScreenZone | null;
 }
 
 /**
@@ -113,6 +127,23 @@ export function freeBand(viewHeight: number, top: number, plate: { height: numbe
   return lower - upper >= MIN_BAND_SHARE * viewHeight ? { top: upper / viewHeight, bottom: lower / viewHeight } : null;
 }
 
+/** Rayon affiché du Soleil ou d'une planète, et rayon de ses anneaux visibles s'il en a. */
+function bodySize(key: "sun" | PlanetKey, ctx: StopCameraContext): { radius: number; extent: number } {
+  if (key === "sun") return { radius: SUN.displayRadius, extent: SUN.displayRadius };
+  const radius = ctx.planetRadius(key);
+  return { radius, extent: radius * (RING_EXTENT[key] ?? 1) };
+}
+
+/**
+ * Distance à laquelle un astre, anneaux compris (`extent`), occupe au plus ZONE_FILL de la largeur
+ * de la zone. Même relation que pour la bande, appliquée à la largeur.
+ */
+function zoneDistance(extent: number, zone: ScreenZone, ctx: StopCameraContext): number {
+  const tanHalf = Math.tan((ctx.fov * D2R) / 2);
+  const tanWidth = ZONE_FILL * (zone.right - zone.left) * ctx.aspect * tanHalf;
+  return extent / Math.sin(Math.atan(tanWidth));
+}
+
 /**
  * Distance qui fait tenir un astre de rayon `radius` (anneaux jusqu'à `extent`) dans la bande :
  * au plus BAND_FILL de sa hauteur et WIDTH_FILL de la largeur d'écran, la plus contraignante gagne.
@@ -138,6 +169,8 @@ function bandDistance(radius: number, extent: number, band: ScreenBand, ctx: Sto
  * - offY = portrait ? (hero : −0,29 ; beyond : −0,1 ; autres : −0,21) : offY de l'escale (0 par défaut).
  * - Mise en page mobile (bande fournie), Soleil, planètes et au-delà : offX = 0, offY = milieu de la bande − 0,5 ;
  *   Soleil et planètes seulement : dist = bandDistance (rayon du Soleil : SUN.displayRadius ; anneaux : RING_EXTENT).
+ * - Grand écran (zone fournie, pas de bande), Soleil et planètes : offX = milieu de la zone − 0,5,
+ *   dist = max(dist, zoneDistance) : l'astre ne recule que s'il déborde de la zone.
  */
 export function cameraFor(key: StopKey, ctx: StopCameraContext, out: CamState = emptyCam()): CamState {
   const cfg: StopCameraConfig = STOP_CAMERA[key];
@@ -173,17 +206,21 @@ export function cameraFor(key: StopKey, ctx: StopCameraContext, out: CamState = 
   out.offX = portrait ? 0 : (cfg.offX ?? DEFAULTS.offX);
   out.offY = portrait ? (key === "hero" ? -0.29 : key === "beyond" ? -0.1 : -0.21) : (cfg.offY ?? DEFAULTS.offY);
 
-  if (key !== "hero" && key !== "belt") {
-    const band = ctx.band?.(key);
-    if (band) {
-      out.offX = 0;
-      out.offY = (band.top + band.bottom) / 2 - 0.5;
-      if (key !== "beyond") {
-        const radius = key === "sun" ? SUN.displayRadius : ctx.planetRadius(key);
-        const extent = key === "sun" ? radius : radius * (RING_EXTENT[key] ?? 1);
-        out.dist = bandDistance(radius, extent, band, ctx);
-      }
+  if (key === "hero" || key === "belt") return out;
+  const band = ctx.band?.(key);
+  if (band) {
+    out.offX = 0;
+    out.offY = (band.top + band.bottom) / 2 - 0.5;
+    if (key !== "beyond") {
+      const { radius, extent } = bodySize(key, ctx);
+      out.dist = bandDistance(radius, extent, band, ctx);
     }
+    return out;
+  }
+  const zone = key === "beyond" ? null : ctx.zone?.(key);
+  if (zone && key !== "beyond") {
+    out.offX = (zone.left + zone.right) / 2 - 0.5;
+    out.dist = Math.max(out.dist, zoneDistance(bodySize(key, ctx).extent, zone, ctx));
   }
   return out;
 }
@@ -276,6 +313,15 @@ export function clampToRest(wanted: number, box: { top: number; height: number }
   const { arrive, depart } = restRange(box, viewportHeight);
   const low = arrive + 2;
   return Math.min(Math.max(wanted, low), Math.max(low, Math.floor(depart)));
+}
+
+/**
+ * Avancement du repos sur une section : 0 à l'arrivée, 1 au départ (le vol vers la suivante
+ * commence), borné entre les deux ; 1 pour une section sans repos.
+ */
+export function restProgress(range: SectionRange, scrollY: number): number {
+  if (range.depart <= range.arrive) return 1;
+  return clamp((scrollY - range.arrive) / (range.depart - range.arrive), 0, 1);
 }
 
 /** Plages de défilement par section : restRange, sauf arrive = 0 pour la première. */
