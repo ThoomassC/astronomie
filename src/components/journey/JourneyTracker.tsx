@@ -1,32 +1,16 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { STOP_ORDER, scrollState, sectionRanges, type SectionBox, type StopKey } from "@/lib/journey/camera";
+import { scrollState } from "@/lib/journey/camera";
 import { journeyStore } from "@/lib/journey/store";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { useReducedMotion } from "@/lib/sim/reducedMotion";
-import { getSectionRanges, setSectionRanges } from "./navigation";
+import { getSectionRanges, measureSections, takeSkipSmoothing } from "./navigation";
 
 /** Délai avant de remesurer après un redimensionnement, en ms. */
 const RESIZE_DEBOUNCE_MS = 120;
 /** Taux du lissage exponentiel du défilement, par seconde. */
 const SCROLL_SMOOTHING_RATE = 5;
-
-function isStopKey(value: string | undefined): value is StopKey {
-  return value !== undefined && (STOP_ORDER as readonly string[]).includes(value);
-}
-
-/** Position de chaque `[data-stop]` dans le document, convertie en plages de défilement. */
-function measureSections(): void {
-  const boxes: SectionBox[] = [];
-  for (const element of document.querySelectorAll<HTMLElement>("[data-stop]")) {
-    const key = element.dataset.stop;
-    if (!isStopKey(key)) continue;
-    const rect = element.getBoundingClientRect();
-    boxes.push({ key, top: rect.top + window.scrollY, height: rect.height });
-  }
-  setSectionRanges(sectionRanges(boxes, window.innerHeight));
-}
 
 /**
  * Suit le défilement : mesure les escales (montage, redimensionnement, contenu qui change
@@ -63,7 +47,8 @@ export function JourneyTracker(): null {
   useFrame((dt) => {
     const y = window.scrollY;
     const previous = smoothedY.current ?? y;
-    let next = reducedMotion ? y : previous + (y - previous) * (1 - Math.exp(-dt * SCROLL_SMOOTHING_RATE));
+    const jump = takeSkipSmoothing() || reducedMotion;
+    let next = jump ? y : previous + (y - previous) * (1 - Math.exp(-dt * SCROLL_SMOOTHING_RATE));
     if (Math.abs(y - next) < 0.5) next = y;
     smoothedY.current = next;
     const ranges = getSectionRanges();

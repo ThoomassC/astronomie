@@ -3,9 +3,10 @@
 import { useEffect, useRef } from "react";
 import { cssVars } from "@/components/journey/cssVars";
 import { RAIL_ID } from "@/components/journey/ids";
-import { goTo } from "@/components/journey/navigation";
+import { goTo, isStopKey } from "@/components/journey/navigation";
 import { useRealScale } from "@/components/journey/realScale";
 import { PLANETS, SUN } from "@/lib/astro/planets";
+import type { StopKey } from "@/lib/journey/camera";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { createSolarScene, type BodyKey, type SolarScene as SceneEngine } from "./engine";
 import { setSceneFallback } from "./fallback";
@@ -36,8 +37,21 @@ export default function SolarScene() {
       const key = element.dataset.body;
       if (isBodyKey(key)) labels.set(key, element);
     }
+    const plates = new Map<StopKey, HTMLElement>();
+    for (const plate of document.querySelectorAll<HTMLElement>("[data-stop] > .plate")) {
+      const key = plate.parentElement?.dataset.stop;
+      if (isStopKey(key)) plates.set(key, plate);
+    }
     const rail = document.getElementById(RAIL_ID);
-    const engine = createSolarScene({ canvas, labels, obstacles: rail ? [rail] : [], onPick: goTo });
+    const engine = createSolarScene({
+      canvas,
+      labels,
+      obstacles: rail ? [rail] : [],
+      plates,
+      bar: document.querySelector(".bar"),
+      note: document.querySelector<HTMLElement>(".scale-note"),
+      onPick: goTo,
+    });
     if (engine) engineRef.current = engine;
     else setSceneFallback("webgl", true);
     return () => {

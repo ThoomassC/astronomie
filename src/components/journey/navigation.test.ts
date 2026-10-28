@@ -153,3 +153,27 @@ describe("goTo", () => {
     });
   });
 });
+
+describe("scrollInstantly", () => {
+  it("devrait défiler sans douceur, même quand la page défile en douceur par défaut", async () => {
+    const { scrollInstantly } = await import("@/components/journey/navigation");
+    scrollInstantly(1200);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1200, behavior: "instant" });
+  });
+
+  it("ne devrait rien faire sauter quand la page est déjà à la position (défilement doux interrompu)", async () => {
+    const { scrollInstantly, takeSkipSmoothing } = await import("@/components/journey/navigation");
+    scrolledTo(1200);
+    scrollInstantly(1200);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1200, behavior: "instant" });
+    expect(takeSkipSmoothing()).toBe(false);
+  });
+
+  it("devrait demander au suivi du voyage de sauter une seule fois à la nouvelle position, sans lisser", async () => {
+    const { scrollInstantly, takeSkipSmoothing } = await import("@/components/journey/navigation");
+    expect(takeSkipSmoothing()).toBe(false);
+    scrollInstantly(1200);
+    expect(takeSkipSmoothing()).toBe(true);
+    expect(takeSkipSmoothing()).toBe(false);
+  });
+});

@@ -1,4 +1,4 @@
-import type { SectionRange, StopKey } from "@/lib/journey/camera";
+import { STOP_ORDER, sectionRanges, type SectionBox, type SectionRange, type StopKey } from "@/lib/journey/camera";
 import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
 
 /** Plages de défilement des escales, mesurées par le suivi du voyage. */
@@ -10,6 +10,47 @@ export function setSectionRanges(next: readonly SectionRange[]): void {
 
 export function getSectionRanges(): readonly SectionRange[] {
   return ranges;
+}
+
+export function isStopKey(value: string | undefined): value is StopKey {
+  return value !== undefined && (STOP_ORDER as readonly string[]).includes(value);
+}
+
+/**
+ * Position de chaque `[data-stop]` dans le document, convertie en plages de défilement.
+ * Appelée par le suivi du voyage, et par une plaque qui vient de changer de hauteur.
+ */
+export function measureSections(): void {
+  const boxes: SectionBox[] = [];
+  for (const element of document.querySelectorAll<HTMLElement>("[data-stop]")) {
+    const key = element.dataset.stop;
+    if (!isStopKey(key)) continue;
+    const rect = element.getBoundingClientRect();
+    boxes.push({ key, top: rect.top + window.scrollY, height: rect.height });
+  }
+  setSectionRanges(sectionRanges(boxes, window.innerHeight));
+}
+
+/** Le prochain relevé du suivi prend le défilement tel quel, sans le lisser. */
+let skipSmoothing = false;
+
+/**
+ * Défilement immédiat que la caméra ne doit pas suivre en vol : le suivi saute à la nouvelle
+ * position au lieu de la rejoindre en douceur. Sans cela, sa position lissée, encore sur
+ * l'ancienne, pourrait tomber hors de la plage de repos d'une section qui vient de raccourcir.
+ * Interrompt aussi un défilement doux en cours.
+ */
+export function scrollInstantly(top: number): void {
+  // Sans déplacement, l'appel interrompt seulement un défilement doux en cours : rien à sauter.
+  if (Math.abs(top - window.scrollY) >= 1) skipSmoothing = true;
+  window.scrollTo({ top, behavior: "instant" });
+}
+
+/** Lu par le suivi à chaque image : vrai une seule fois après `scrollInstantly`. */
+export function takeSkipSmoothing(): boolean {
+  const skip = skipSmoothing;
+  skipSmoothing = false;
+  return skip;
 }
 
 /** Écart toléré entre la position atteinte et la cible, en px. */

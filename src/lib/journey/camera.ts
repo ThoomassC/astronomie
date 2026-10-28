@@ -1,10 +1,23 @@
 import type { Vec3 } from "@/lib/astro/constants";
-import type { PlanetKey } from "@/lib/astro/planets";
+import { SUN, type PlanetKey } from "@/lib/astro/planets";
 import { sceneRadius } from "@/lib/astro/scale";
 
 const D2R = Math.PI / 180;
 const TAU = Math.PI * 2;
 const DEFAULTS = { elev: 11, phi: 55, offX: 0.17, offY: 0 };
+/** Mise en page mobile : l'astre occupe au plus 90 % de la hauteur de la bande libre… */
+const BAND_FILL = 0.9;
+/** … et au plus 80 % de la largeur de l'écran, anneaux compris. */
+const WIDTH_FILL = 0.8;
+/** Rayon extérieur des anneaux visibles, en rayons de la planète. */
+const RING_EXTENT: Partial<Record<PlanetKey, number>> = { saturn: 2.337, uranus: 2.05 };
+/** Air entre la bande libre et ce qui la borde (bandeaux du haut, plaque), en px. */
+const BAND_MARGIN_PX = 8;
+/**
+ * Sous cette part de l'écran (texte très agrandi), pas de bande : cadrage portrait habituel.
+ * Au-dessus, même un petit astre visible vaut mieux qu'un grand caché derrière la plaque.
+ */
+const MIN_BAND_SHARE = 0.08;
 
 interface StopCameraConfig {
   dist?: number;
@@ -43,6 +56,12 @@ export interface CamState {
   planet: boolean;
 }
 
+/** Bande horizontale de l'écran, en fractions de sa hauteur (0 en haut, 1 en bas). */
+export interface ScreenBand {
+  top: number;
+  bottom: number;
+}
+
 export interface StopCameraContext {
   /** Position de scène actuelle de la planète. */
   planetPosition(key: PlanetKey): Vec3;
@@ -52,6 +71,16 @@ export interface StopCameraContext {
   realScale: number;
   /** Écran en portrait (largeur / hauteur < 0,9). */
   portrait: boolean;
+  /** Largeur / hauteur de la vue. */
+  aspect: number;
+  /** Champ vertical de la caméra, en degrés. */
+  fov: number;
+  /**
+   * Mise en page mobile seulement : bande libre au-dessus de la plaque compacte de l'escale,
+   * mesurée dans la page. Le Soleil et les planètes y sont cadrés, la vue d'ensemble de l'au-delà
+   * y est centrée. `null` ou absente ailleurs.
+   */
+  band?(key: StopKey): ScreenBand | null;
 }
 
 /**
@@ -74,6 +103,29 @@ export const STOP_CAMERA = {
 } as const;
 
 /**
+ * Bande libre de la mise en page mobile, en fractions de la hauteur de la vue : du bas des bandeaux
+ * fixés en haut de l'écran (`top`, en px) au haut de la plaque repliée collée en bas (hauteur et écart
+ * au bas de l'écran, en px), 8 px d'air de chaque côté. `null` si elle fait moins de 8 % de la vue.
+ */
+export function freeBand(viewHeight: number, top: number, plate: { height: number; bottom: number }): ScreenBand | null {
+  const upper = top + BAND_MARGIN_PX;
+  const lower = viewHeight - plate.bottom - plate.height - BAND_MARGIN_PX;
+  return lower - upper >= MIN_BAND_SHARE * viewHeight ? { top: upper / viewHeight, bottom: lower / viewHeight } : null;
+}
+
+/**
+ * Distance qui fait tenir un astre de rayon `radius` (anneaux jusqu'à `extent`) dans la bande :
+ * au plus BAND_FILL de sa hauteur et WIDTH_FILL de la largeur d'écran, la plus contraignante gagne.
+ * Diamètre apparent en fraction de la hauteur : tan(asin(r / d)) / tan(champ / 2).
+ */
+function bandDistance(radius: number, extent: number, band: ScreenBand, ctx: StopCameraContext): number {
+  const tanHalf = Math.tan((ctx.fov * D2R) / 2);
+  const tanHeight = BAND_FILL * (band.bottom - band.top) * tanHalf;
+  const tanWidth = WIDTH_FILL * ctx.aspect * tanHalf;
+  return Math.max(radius / Math.sin(Math.atan(tanHeight)), extent / Math.sin(Math.atan(tanWidth)));
+}
+
+/**
  * Caméra au repos sur une escale. Règles (angles convertis en radians) :
  * - elev = elev de l'escale, 11° par défaut.
  * - hero, beyond : cible (0,0,0), dist × (portrait ? 1,75 : 1), azim fixe, planet = false.
@@ -84,6 +136,8 @@ export const STOP_CAMERA = {
  *   azim = θ + π + phi (55° par défaut) ; planet = true.
  * - offX = portrait ? 0 : offX de l'escale (0,17 par défaut).
  * - offY = portrait ? (hero : −0,29 ; beyond : −0,1 ; autres : −0,21) : offY de l'escale (0 par défaut).
+ * - Mise en page mobile (bande fournie), Soleil, planètes et au-delà : offX = 0, offY = milieu de la bande − 0,5 ;
+ *   Soleil et planètes seulement : dist = bandDistance (rayon du Soleil : SUN.displayRadius ; anneaux : RING_EXTENT).
  */
 export function cameraFor(key: StopKey, ctx: StopCameraContext, out: CamState = emptyCam()): CamState {
   const cfg: StopCameraConfig = STOP_CAMERA[key];
@@ -118,6 +172,19 @@ export function cameraFor(key: StopKey, ctx: StopCameraContext, out: CamState = 
   }
   out.offX = portrait ? 0 : (cfg.offX ?? DEFAULTS.offX);
   out.offY = portrait ? (key === "hero" ? -0.29 : key === "beyond" ? -0.1 : -0.21) : (cfg.offY ?? DEFAULTS.offY);
+
+  if (key !== "hero" && key !== "belt") {
+    const band = ctx.band?.(key);
+    if (band) {
+      out.offX = 0;
+      out.offY = (band.top + band.bottom) / 2 - 0.5;
+      if (key !== "beyond") {
+        const radius = key === "sun" ? SUN.displayRadius : ctx.planetRadius(key);
+        const extent = key === "sun" ? radius : radius * (RING_EXTENT[key] ?? 1);
+        out.dist = bandDistance(radius, extent, band, ctx);
+      }
+    }
+  }
   return out;
 }
 
@@ -191,13 +258,33 @@ export interface SectionRange {
 }
 
 /**
- * Plages de défilement par section : arrive = 0 pour la première, sinon top − 0,12 × hauteur de vue ;
- * depart = max(arrive, top + height − hauteur de vue).
+ * Plage de défilement où la caméra est posée sur une section (hors la première) :
+ * arrive = top − 0,12 × hauteur de vue ; depart = max(arrive, top + height − hauteur de vue).
  */
+export function restRange(box: { top: number; height: number }, viewportHeight: number): { arrive: number; depart: number } {
+  const arrive = box.top - 0.12 * viewportHeight;
+  return { arrive, depart: Math.max(arrive, box.top + box.height - viewportHeight) };
+}
+
+/**
+ * Défilement le plus proche de `wanted` où la caméra reste posée sur la section : entre 2 px après
+ * l'arrivée (cible de la navigation) et le départ ; 2 px après l'arrivée si la section n'a pas de repos.
+ * Le départ est arrondi au pixel inférieur : le navigateur arrondit le défilement au pixel d'écran,
+ * parfois vers le haut, ce qui lancerait le vol d'une fraction de pixel.
+ */
+export function clampToRest(wanted: number, box: { top: number; height: number }, viewportHeight: number): number {
+  const { arrive, depart } = restRange(box, viewportHeight);
+  const low = arrive + 2;
+  return Math.min(Math.max(wanted, low), Math.max(low, Math.floor(depart)));
+}
+
+/** Plages de défilement par section : restRange, sauf arrive = 0 pour la première. */
 export function sectionRanges(boxes: readonly SectionBox[], viewportHeight: number): SectionRange[] {
   return boxes.map((box, i) => {
-    const arrive = i === 0 ? 0 : box.top - 0.12 * viewportHeight;
-    return { key: box.key, arrive, depart: Math.max(arrive, box.top + box.height - viewportHeight) };
+    const { arrive, depart } = restRange(box, viewportHeight);
+    return i === 0
+      ? { key: box.key, arrive: 0, depart: Math.max(0, box.top + box.height - viewportHeight) }
+      : { key: box.key, arrive, depart };
   });
 }
 

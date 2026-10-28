@@ -26,8 +26,10 @@ import { toScene } from "@/lib/astro/scale";
 import {
   blendCameras,
   cameraFor,
+  freeBand,
   smootherstep,
   type CamState,
+  type ScreenBand,
   type StopCameraContext,
   type StopKey,
 } from "@/lib/journey/camera";
@@ -63,6 +65,12 @@ export interface SolarSceneOptions {
   labels: ReadonlyMap<BodyKey, HTMLElement>;
   /** Éléments que les étiquettes ne recouvrent jamais (règle des distances). */
   obstacles: readonly Element[];
+  /** Plaques des escales : sur téléphone, l'astre est cadré dans la bande libre au-dessus de la sienne. */
+  plates: ReadonlyMap<StopKey, HTMLElement>;
+  /** Barre du haut : la bande libre commence sous elle. */
+  bar: Element | null;
+  /** Note d'échelle : visible sur téléphone, elle borde aussi la bande libre par le haut. */
+  note: HTMLElement | null;
   /** Clic sur un astre de la scène. */
   onPick(key: BodyKey): void;
 }
@@ -76,6 +84,11 @@ export interface SolarScene {
 
 /** En dessous de ce rapport largeur / hauteur, l'écran est traité en portrait. */
 const PORTRAIT_ASPECT = 0.9;
+/** Mise en page téléphone (globals.css) : plaques repliées, collées au bas de l'écran. */
+const MOBILE_LAYOUT = "(max-width: 640px)";
+/** Vitesse à laquelle le cadrage rejoint une bande libre qui change (barre d'outils, note), par seconde. */
+const BAND_FOLLOW_RATE = 6;
+const BAND_EPSILON = 1e-4;
 const RESIZE_DEBOUNCE_MS = 120;
 /** Au-delà, le coût par pixel l'emporte sur le gain de netteté. */
 const MAX_PIXEL_RATIO = 1.5;
@@ -173,7 +186,10 @@ export function createSolarScene(options: SolarSceneOptions): SolarScene | null 
   }
 }
 
-function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick }: SolarSceneOptions): SolarScene {
+function setupScene(
+  renderer: WebGLRenderer,
+  { canvas, labels, obstacles, plates, bar, note, onPick }: SolarSceneOptions,
+): SolarScene {
   renderer.outputColorSpace = SRGBColorSpace;
   // Les shaders sortent en HDR : PBR Neutral garde les teintes des cartes et adoucit les hautes lumières.
   renderer.toneMapping = NeutralToneMapping;
@@ -308,6 +324,7 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
   // ---------- État ----------
   const view = { width: 1, height: 1 };
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const mobileLayout = window.matchMedia(MOBILE_LAYOUT);
   const brass = rawColor(BRASS_HEX);
   /** Échelle affichée : 0 compressée, 1 réelle, lissée vers la demande de l'horloge. */
   let realScale = 0;
@@ -341,7 +358,19 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
     planetRadius: (key) => PLANET_BY_KEY[key].displayRadius,
     realScale: 0,
     portrait: false,
+    aspect: 1,
+    fov: 36,
+    band: (key) => shownBands.get(key) ?? null,
   };
+  /** Plaque repliée de chaque escale, collée en bas : hauteur et écart au bas de l'écran, en px. */
+  const compactPlates = new Map<StopKey, { height: number; bottom: number }>();
+  /** Largeur de vue des mesures repliées : une plaque change de hauteur avec elle. */
+  let compactWidth = 0;
+  /** Bande libre mesurée au-dessus de chaque plaque, en fractions de la hauteur de la vue (téléphone seulement). */
+  const bands = new Map<StopKey, ScreenBand>();
+  /** Bandes du cadrage : elles rejoignent en douceur les bandes mesurées. */
+  const shownBands = new Map<StopKey, ScreenBand>();
+  let bandsSettled = true;
   const orbitPoint = new Vector3();
   const projected = new Vector3();
   const labelSizes = new Map<BodyKey, { width: number; height: number }>();
@@ -359,10 +388,69 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
     camera.aspect = view.width / view.height;
     camera.fov = camera.aspect < PORTRAIT_ASPECT ? 50 : 36;
     camera.updateProjectionMatrix();
+    cameraContext.aspect = camera.aspect;
+    cameraContext.fov = camera.fov;
     needsRender = true;
   }
 
-  /** Une seule passe de lecture : taille des neuf étiquettes et zones à éviter. */
+  /**
+   * Téléphone : bande libre entre la barre du haut (ou la note d'échelle visible) et la plaque repliée
+   * de chaque escale. Une plaque dépliée garde la mesure de sa forme repliée, pour que la caméra ne
+   * bouge pas ; cette mesure se perd si la largeur change. Sans barre fixe ni plaque collée en bas
+   * (écran bas), pas de bande.
+   */
+  function measureBands(): void {
+    bands.clear();
+    bandsSettled = false;
+    if (view.width !== compactWidth) {
+      compactPlates.clear();
+      compactWidth = view.width;
+    }
+    if (!mobileLayout.matches || !bar || getComputedStyle(bar).position !== "fixed") {
+      compactPlates.clear();
+      return;
+    }
+    let top = bar.getBoundingClientRect().bottom;
+    if (note?.dataset.visible === "true") top = Math.max(top, note.getBoundingClientRect().bottom);
+    for (const [key, plate] of plates) {
+      if (!plate.hasAttribute("data-expanded")) {
+        const style = getComputedStyle(plate);
+        if (style.position === "sticky") {
+          compactPlates.set(key, { height: plate.offsetHeight, bottom: parseFloat(style.bottom) || 0 });
+        } else {
+          compactPlates.delete(key);
+        }
+      }
+      const compact = compactPlates.get(key);
+      const band = compact ? freeBand(view.height, top, compact) : null;
+      if (band) bands.set(key, band);
+    }
+  }
+
+  /**
+   * Le cadrage rejoint les bandes mesurées en douceur : la barre d'outils du navigateur qui se replie
+   * ou la note qui apparaît ne font pas sauter l'astre. Une bande qui apparaît ou disparaît s'applique
+   * aussitôt (pas de forme intermédiaire), comme tout changement en mouvement réduit.
+   */
+  function settleBands(dt: number, reduced: boolean): void {
+    if (bandsSettled) return;
+    const follow = reduced ? 1 : easeFactor(dt, BAND_FOLLOW_RATE);
+    let settled = true;
+    for (const key of shownBands.keys()) if (!bands.has(key)) shownBands.delete(key);
+    for (const [key, target] of bands) {
+      const shown = shownBands.get(key);
+      if (!shown) {
+        shownBands.set(key, { ...target });
+        continue;
+      }
+      shown.top = approach(shown.top, target.top, follow, BAND_EPSILON);
+      shown.bottom = approach(shown.bottom, target.bottom, follow, BAND_EPSILON);
+      if (shown.top !== target.top || shown.bottom !== target.bottom) settled = false;
+    }
+    bandsSettled = settled;
+  }
+
+  /** Une seule passe de lecture : taille des neuf étiquettes, zones à éviter, bandes libres. */
   function measureLayout(): void {
     for (const [key, element] of labels) {
       labelSizes.set(key, { width: element.offsetWidth, height: element.offsetHeight });
@@ -371,6 +459,7 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
       const rect = element.getBoundingClientRect();
       return [rect.left, rect.top, rect.right, rect.bottom] as const;
     });
+    measureBands();
     needsRender = true;
   }
 
@@ -386,6 +475,15 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
     }, RESIZE_DEBOUNCE_MS);
   };
   window.addEventListener("resize", onResize);
+  // Une plaque change de hauteur (dépliée, repliée, texte agrandi) : nouvelles bandes libres.
+  let platesTimer: ReturnType<typeof setTimeout> | undefined;
+  const platesObserver = new ResizeObserver(() => {
+    clearTimeout(platesTimer);
+    platesTimer = setTimeout(measureLayout, RESIZE_DEBOUNCE_MS);
+  });
+  for (const plate of plates.values()) platesObserver.observe(plate);
+  // La note change de taille en apparaissant ou en disparaissant.
+  if (note) platesObserver.observe(note);
   void document.fonts?.ready.then(() => {
     if (!disposed) measureLayout();
   });
@@ -509,6 +607,7 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
   }
 
   function updateCamera(dt: number, journey: JourneyState, reduced: boolean): void {
+    settleBands(dt, reduced);
     cameraContext.realScale = realScale;
     cameraContext.portrait = view.width / view.height < PORTRAIT_ASPECT;
     const from = cameraFor(journey.from, cameraContext, camFrom);
@@ -628,7 +727,8 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
         journey.t !== lastT ||
         realScale !== (snapshot.realScale ? 1 : 0) ||
         (!reduced && (parallax.x !== parallax.targetX || parallax.y !== parallax.targetY)) ||
-        !orbitsSettled;
+        !orbitsSettled ||
+        !bandsSettled;
       if (!moving) {
         // Rien n'a bougé (temps en pause, défilement et pointeur immobiles) : pas de nouvelle image.
         if (now === lastNow) return;
@@ -655,6 +755,8 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
       if (disposed) return;
       disposed = true;
       clearTimeout(resizeTimer);
+      clearTimeout(platesTimer);
+      platesObserver.disconnect();
       window.removeEventListener("resize", onResize);
       window.removeEventListener("pointermove", onWindowPointerMove);
       canvas.removeEventListener("pointermove", onCanvasPointerMove);

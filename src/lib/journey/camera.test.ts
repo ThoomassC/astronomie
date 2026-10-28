@@ -5,12 +5,16 @@ import {
   angleDiff,
   blendCameras,
   cameraFor,
+  clampToRest,
+  freeBand,
   RAIL_STOPS,
   railPercent,
+  restRange,
   scrollState,
   sectionRanges,
   smootherstep,
   type CamState,
+  type ScreenBand,
   type SectionRange,
   type StopCameraContext,
 } from "@/lib/journey/camera";
@@ -42,19 +46,35 @@ function context({
   radii = {},
   realScale = 0,
   portrait = false,
+  aspect = 16 / 9,
+  fov = 36,
+  band,
 }: {
   positions?: Partial<Record<PlanetKey, Vec3>>;
   radii?: Partial<Record<PlanetKey, number>>;
   realScale?: number;
   portrait?: boolean;
+  aspect?: number;
+  fov?: number;
+  band?: ScreenBand;
 } = {}): StopCameraContext {
   return {
     planetPosition: (key) => positions[key] ?? { x: 1, y: 0, z: 0 },
     planetRadius: (key) => radii[key] ?? 1,
     realScale,
     portrait,
+    aspect,
+    fov,
+    band: band ? () => band : undefined,
   };
 }
+
+const tanHalf = (fov: number) => Math.tan((fov * DEG) / 2);
+/** Diamètre apparent d'une sphère, en fraction de la hauteur d'écran. */
+const heightShare = (radius: number, dist: number, fov: number) => Math.tan(Math.asin(radius / dist)) / tanHalf(fov);
+/** Demi-largeur apparente (anneaux compris), en fraction de la demi-largeur d'écran. */
+const widthShare = (extent: number, dist: number, fov: number, aspect: number) =>
+  Math.tan(Math.asin(extent / dist)) / (tanHalf(fov) * aspect);
 
 describe("cameraFor", () => {
   describe("vue d'ensemble (hero)", () => {
@@ -412,5 +432,103 @@ describe("railPercent", () => {
 
   it.each(consecutiveStops)("devrait placer %s avant %s sur la règle", (_inner, _outer, innerAu, outerAu) => {
     expect(railPercent(outerAu)).toBeGreaterThan(railPercent(innerAu));
+  });
+});
+
+describe("cameraFor en mise en page mobile (bande libre mesurée)", () => {
+  /** iPhone 375 × 812 : barre haute jusqu'à 8 %, plaque compacte à partir de 53 %. */
+  const PHONE = { aspect: 375 / 812, fov: 50, band: { top: 0.08, bottom: 0.53 } };
+  /** iPhone SE dans Safari (375 × 553) : la plaque commence à 31 % de la hauteur. */
+  const SHORT_PHONE = { aspect: 375 / 553, fov: 50, band: { top: 0.12, bottom: 0.31 } };
+  const earth = { positions: { earth: { x: 34, y: 0, z: 0 } }, radii: { earth: 1.02 } };
+
+  it("devrait centrer l'astre dans la bande libre, au milieu de l'écran en largeur", () => {
+    const cam = cameraFor("earth", context({ ...earth, portrait: true, ...PHONE }));
+    expect(cam.offX).toBe(0);
+    expect(cam.offY).toBeCloseTo((0.08 + 0.53) / 2 - 0.5, 9);
+  });
+
+  it("devrait remplir la bande ou la largeur au plus près, sans déborder de l'une ni de l'autre", () => {
+    const cam = cameraFor("earth", context({ ...earth, portrait: true, ...PHONE }));
+    const height = heightShare(1.02, cam.dist, PHONE.fov) / (0.9 * (PHONE.band.bottom - PHONE.band.top));
+    const width = widthShare(1.02, cam.dist, PHONE.fov, PHONE.aspect) / 0.8;
+    expect(Math.max(height, width)).toBeCloseTo(1, 9);
+  });
+
+  it("devrait rapetisser l'astre sur un écran court pour qu'il reste au-dessus de la plaque", () => {
+    const tall = cameraFor("earth", context({ ...earth, portrait: true, ...PHONE }));
+    const short = cameraFor("earth", context({ ...earth, portrait: true, ...SHORT_PHONE }));
+    expect(short.dist).toBeGreaterThan(tall.dist);
+    expect(heightShare(1.02, short.dist, SHORT_PHONE.fov)).toBeLessThanOrEqual(0.9 * 0.19 + 1e-9);
+  });
+
+  it("devrait faire tenir les anneaux de Saturne dans 80 % de la largeur", () => {
+    const ctx = context({ positions: { saturn: { x: 0, y: 3, z: -90 } }, radii: { saturn: 2.8 }, portrait: true, ...PHONE });
+    const cam = cameraFor("saturn", ctx);
+    expect(widthShare(2.8 * 2.337, cam.dist, PHONE.fov, PHONE.aspect)).toBeLessThanOrEqual(0.8 + 1e-9);
+  });
+
+  it("devrait cadrer le Soleil dans la bande, comme une planète", () => {
+    const cam = cameraFor("sun", context({ portrait: true, ...PHONE }));
+    expect(cam.offY).toBeCloseTo((0.08 + 0.53) / 2 - 0.5, 9);
+    expect(heightShare(7, cam.dist, PHONE.fov)).toBeLessThanOrEqual(0.9 * 0.45 + 1e-9);
+  });
+
+  it("devrait centrer la vue d'ensemble de l'au-delà dans la bande, à la même distance", () => {
+    const cam = cameraFor("beyond", context({ portrait: true, ...PHONE }));
+    expect(cam.offX).toBe(0);
+    expect(cam.offY).toBeCloseTo((0.08 + 0.53) / 2 - 0.5, 9);
+    expect(cam.dist).toBeCloseTo(640 * 1.75, 9);
+  });
+
+  it("ne devrait pas toucher à l'accueil ni à la ceinture (aucune plaque collée en bas)", () => {
+    expect(cameraFor("hero", context({ portrait: true, ...PHONE })).offY).toBe(-0.29);
+    expect(cameraFor("belt", context({ portrait: true, ...PHONE })).offY).toBe(-0.21);
+  });
+});
+
+describe("restRange", () => {
+  it("devrait poser la caméra dès que la section arrive à 12 % du haut, jusqu'à ce que son bas atteigne le bas de l'écran", () => {
+    expect(restRange({ top: 2000, height: 1340 }, 812)).toEqual({ arrive: 2000 - 0.12 * 812, depart: 2000 + 1340 - 812 });
+  });
+
+  it("ne devrait jamais partir avant d'être arrivée (section plus courte que l'écran)", () => {
+    const range = restRange({ top: 2000, height: 300 }, 812);
+    expect(range.depart).toBe(range.arrive);
+  });
+});
+
+describe("clampToRest", () => {
+  /** Vue de 800 px : caméra posée de 1904 (arrivée) à 2600 px de défilement (départ). */
+  const BOX = { top: 2000, height: 1400 };
+
+  it("devrait laisser tel quel un défilement déjà dans la plage de repos", () => {
+    expect(clampToRest(2300, BOX, 800)).toBe(2300);
+  });
+
+  it("devrait s'arrêter au départ plutôt que de lancer le vol vers l'escale suivante", () => {
+    expect(clampToRest(3000, BOX, 800)).toBe(2600);
+  });
+
+  it("devrait viser 2 px après l'arrivée, comme la navigation, plutôt que le vol précédent", () => {
+    expect(clampToRest(100, BOX, 800)).toBe(1906);
+  });
+
+  it("devrait viser un pixel entier sous un départ fractionnaire (le navigateur arrondit le défilement)", () => {
+    expect(clampToRest(3000, { top: 2000.4, height: 1400 }, 800)).toBe(2600);
+  });
+
+  it("devrait viser 2 px après l'arrivée quand la section est trop courte pour un repos", () => {
+    expect(clampToRest(2500, { top: 2000, height: 500 }, 800)).toBe(1906);
+  });
+});
+
+describe("freeBand", () => {
+  it("devrait aller du bas des bandeaux du haut au haut de la plaque repliée, 8 px d'air de chaque côté", () => {
+    expect(freeBand(800, 80, { height: 280, bottom: 82 })).toEqual({ top: 88 / 800, bottom: 430 / 800 });
+  });
+
+  it("devrait renoncer quand la bande tombe sous 8 % de l'écran (texte très agrandi)", () => {
+    expect(freeBand(800, 80, { height: 560, bottom: 82 })).toBeNull();
   });
 });
