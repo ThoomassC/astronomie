@@ -1,15 +1,16 @@
 import {
-  AmbientLight,
-  CanvasTexture,
+  ClampToEdgeWrapping,
   Line,
   Mesh,
+  NeutralToneMapping,
+  NoColorSpace,
   PerspectiveCamera,
-  PointLight,
   Points,
   Raycaster,
+  RedFormat,
+  RepeatWrapping,
   SRGBColorSpace,
   Scene,
-  Sprite,
   Texture,
   Vector2,
   Vector3,
@@ -19,7 +20,8 @@ import {
 } from "three";
 import { J2000_JD } from "@/lib/astro/constants";
 import { elementsAt, heliocentric, julianDate, positionAt } from "@/lib/astro/ephemeris";
-import { PLANETS, PLANET_BY_KEY, type PlanetKey } from "@/lib/astro/planets";
+import { ROTATION } from "@/lib/astro/orientation";
+import { PLANETS, PLANET_BY_KEY, SUN, type PlanetKey } from "@/lib/astro/planets";
 import { toScene } from "@/lib/astro/scale";
 import {
   blendCameras,
@@ -37,18 +39,21 @@ import {
   KUIPER_BELT,
   ORBIT_SEGMENTS,
   createBelt,
-  createClouds,
   createPlanet,
-  createStarfield,
+  createSky,
   createSun,
+  scaleSun,
+  texturedMoon,
   updateBelt,
   type PlanetBody,
-  type SurfaceMaterial,
 } from "./bodies";
+import { orientAxis, primeMeridianAngle } from "./axes";
 import { rawColor } from "./color";
 import { placeLabel, type LabelBox } from "./labels";
+import { createPlaceholderTexture, type SurfaceUniforms, type Uniform } from "./materials";
 import { TAU, clamp, easeFactor, lerp, smoothstep } from "./math";
-import { cloudTexture, earthTexture, moonTexture, planetTexture, type TexturedPlanet } from "./textures";
+import { createTextureStream } from "./textureLoader";
+import { pickTextureTier, textureLoadOrder, type TextureKey } from "./textureSet";
 
 export type BodyKey = "sun" | PlanetKey;
 
@@ -74,13 +79,21 @@ const PORTRAIT_ASPECT = 0.9;
 const RESIZE_DEBOUNCE_MS = 120;
 /** Au-delà, le coût par pixel l'emporte sur le gain de netteté. */
 const MAX_PIXEL_RATIO = 1.5;
+/** Plafond de pixels rendus : un écran 4K externe en 1,5 en compterait 8 millions. */
+const MAX_PIXELS = 4_200_000;
+/** Distance minimale entre la caméra et le centre du Soleil, en rayons solaires (certains vols le frôlent). */
+const SUN_CLEARANCE = 2.5;
 /** Seuils sous lesquels parallaxe et fondu des orbites sont considérés comme arrivés. */
 const PARALLAX_EPSILON = 1e-4;
 const ORBIT_FADE_EPSILON = 1e-3;
 /** Ordre de placement des étiquettes : les premières gagnent en cas de chevauchement. */
 const LABEL_PRIORITY: readonly BodyKey[] = ["sun", "earth", "jupiter", "saturn", "neptune", "uranus", "mars", "venus", "mercury"];
-/** Ordre de génération des cartes, après la Terre et ses nuages. */
-const TEXTURE_ORDER: readonly TexturedPlanet[] = ["jupiter", "saturn", "mars", "venus", "mercury", "uranus", "neptune"];
+/** Durée du passage de la couleur unie à la carte photographique. */
+const TEXTURE_FADE_SECONDS = 0.6;
+/** Dérive des nuages terrestres par rapport au sol, en tours par seconde (temps en marche). */
+const CLOUD_DRIFT = 0.005;
+/** Si la compilation asynchrone des shaders traîne, on rend quand même (compilation au premier rendu). */
+const MAX_COMPILE_WAIT_FRAMES = 120;
 const PLANET_KEYS = new Set<StopKey>(PLANETS.map((planet) => planet.key));
 
 const isPlanetKey = (key: StopKey): key is PlanetKey => PLANET_KEYS.has(key);
@@ -103,17 +116,6 @@ function approach(value: number, target: number, factor: number, epsilon: number
   return Math.abs(target - next) < epsilon ? target : next;
 }
 
-function srgb<T extends Texture>(texture: T): T {
-  texture.colorSpace = SRGBColorSpace;
-  return texture;
-}
-
-function applyMap(material: SurfaceMaterial, map: Texture): void {
-  material.map = map;
-  material.color.set(0xffffff);
-  material.needsUpdate = true;
-}
-
 function disposeMaterials(material: Material | Material[]): void {
   for (const item of Array.isArray(material) ? material : [material]) {
     if ("map" in item && item.map instanceof Texture) item.map.dispose();
@@ -125,11 +127,31 @@ function disposeObject(object: Object3D): void {
   if (object instanceof Mesh || object instanceof Points || object instanceof Line) {
     object.geometry.dispose();
     disposeMaterials(object.material);
-  } else if (object instanceof Sprite) {
-    // La géométrie des sprites est partagée par Three : seul le matériau est libéré.
-    disposeMaterials(object.material);
   }
 }
+
+/** Où va une carte photographique, et comment la lire. */
+interface TextureSlot {
+  textures: Uniform<Texture>[];
+  /** Mélanges qui passent de 0 à 1 à son arrivée. */
+  mixes: Uniform<number>[];
+  /** Couleur (sRGB) ou donnée brute (nuages, océans). */
+  color: boolean;
+  /** Une seule composante utile (nuages, océans) : un canal au lieu de quatre en mémoire graphique. */
+  mono?: true;
+  /** Répétée en longitude (cartes de sphère). */
+  wrap: boolean;
+  /** Filtrage anisotrope : nette jusqu'au bord du disque. */
+  sharp: boolean;
+}
+
+const surfaceSlot = (surface: SurfaceUniforms, sharp = true): TextureSlot => ({
+  textures: [surface.uMap],
+  mixes: [surface.uMapMix],
+  color: true,
+  wrap: true,
+  sharp,
+});
 
 /**
  * Scène 3D du système solaire, portée de la maquette (Three r128) vers Three 0.186.
@@ -153,20 +175,29 @@ export function createSolarScene(options: SolarSceneOptions): SolarScene | null 
 
 function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick }: SolarSceneOptions): SolarScene {
   renderer.outputColorSpace = SRGBColorSpace;
+  // Les shaders sortent en HDR : PBR Neutral garde les teintes des cartes et adoucit les hautes lumières.
+  renderer.toneMapping = NeutralToneMapping;
+  renderer.toneMappingExposure = 1;
   renderer.setClearColor(0x060b18, 1);
+  // Lire le journal de compilation coûte des allers-retours synchrones avec le GPU : en développement seulement.
+  renderer.debug.checkShaderErrors = process.env.NODE_ENV !== "production";
 
   const scene = new Scene();
   const camera = new PerspectiveCamera(36, 1, 0.05, 7000);
+  const placeholder = createPlaceholderTexture();
+  const tier = pickTextureTier({
+    coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+    shortSide: Math.min(window.screen.width, window.screen.height),
+    maxTextureSize: renderer.capabilities.maxTextureSize,
+    pixelHeight: Math.round(window.innerHeight * Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO)),
+  });
 
-  const sky = createStarfield();
-  scene.add(sky);
+  const sky = createSky(placeholder);
+  scene.add(sky.group);
   const sun = createSun();
-  scene.add(sun.mesh, sun.innerGlow, sun.outerGlow);
-  // Éclairage physique (Three ≥ 0.155) : intensités × π et sans atténuation pour retrouver r128.
-  scene.add(new PointLight(rawColor(0xfff1de), 1.55 * Math.PI, 0, 0));
-  scene.add(new AmbientLight(rawColor(0x2b3858), 0.55 * Math.PI));
+  scene.add(sun.mesh, sun.corona);
 
-  const planets = PLANETS.map(createPlanet);
+  const planets = PLANETS.map((planet) => createPlanet(planet, placeholder));
   for (const body of planets) scene.add(body.group);
   for (const body of planets) scene.add(body.orbit);
   const belts = [createBelt(ASTEROID_BELT), createBelt(KUIPER_BELT)];
@@ -178,6 +209,101 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
     if (!body) throw new Error(`Astre absent de la scène : ${key}`);
     return body;
   };
+  const earth = bodyOf("earth");
+  const moon = texturedMoon(earth);
+  if (!moon) throw new Error("Lune absente de la scène");
+  const saturn = bodyOf("saturn");
+
+  // ---------- Orientation des axes (pôles UAI) ----------
+  /** Le pôle est écrit directement dans l'uniforme partagé (nuages de la Terre, anneaux de Saturne). */
+  function orientBodies(jd: number): void {
+    for (const body of planets) orientAxis(body.tilt, ROTATION[body.planet.key], jd, body.surface.uPlanetPole.value);
+  }
+
+  // Méridien origine à sa vraie place au chargement ; ensuite la rotation affichée est ralentie.
+  const startJd = julianDate(getClock().now());
+  orientBodies(startJd);
+  for (const body of planets) body.mesh.rotation.y = primeMeridianAngle(ROTATION[body.planet.key], startJd);
+
+  // ---------- Cartes photographiques : téléchargées par ordre d'escale, fondues à leur arrivée ----------
+  const slots: Record<TextureKey, TextureSlot> = {
+    mercury: surfaceSlot(bodyOf("mercury").surface),
+    venus: surfaceSlot(bodyOf("venus").surface),
+    earth: surfaceSlot(earth.surface),
+    earthClouds: {
+      textures: [earth.surface.uClouds],
+      mixes: [earth.surface.uCloudsMix],
+      color: false,
+      mono: true,
+      wrap: true,
+      sharp: true,
+    },
+    earthNight: { textures: [earth.surface.uNight], mixes: [earth.surface.uNightMix], color: true, wrap: true, sharp: true },
+    earthSpecular: {
+      textures: [earth.surface.uSpecular],
+      mixes: [earth.surface.uSpecularMix],
+      color: false,
+      mono: true,
+      wrap: true,
+      sharp: false,
+    },
+    moon: surfaceSlot(moon.surface, false),
+    mars: surfaceSlot(bodyOf("mars").surface),
+    jupiter: surfaceSlot(bodyOf("jupiter").surface),
+    saturn: surfaceSlot(saturn.surface),
+    // La texture des anneaux sert aussi à l'ombre qu'ils portent sur Saturne (uniformes partagés).
+    saturnRing: { textures: [saturn.surface.uRingMap], mixes: [saturn.surface.uRingMix], color: true, wrap: false, sharp: false },
+    uranus: surfaceSlot(bodyOf("uranus").surface),
+    neptune: surfaceSlot(bodyOf("neptune").surface),
+    milkyWay: { textures: [sky.uniforms.uMap], mixes: [sky.uniforms.uMapMix], color: true, wrap: true, sharp: false },
+  };
+  // Le filtrage anisotrope ne joue qu'au bord des disques : moins en 1K.
+  const anisotropy = Math.min(tier === "2k" ? 8 : 4, renderer.capabilities.getMaxAnisotropy());
+  function configureTexture(key: TextureKey, texture: Texture): void {
+    const slot = slots[key];
+    texture.colorSpace = slot.color ? SRGBColorSpace : NoColorSpace;
+    if (slot.mono) texture.format = RedFormat;
+    texture.wrapS = slot.wrap ? RepeatWrapping : ClampToEdgeWrapping;
+    texture.anisotropy = slot.sharp ? anisotropy : 1;
+  }
+  let textures = createTextureStream(tier, configureTexture);
+  const fading = new Set<Uniform<number>>();
+  let loadStop: StopKey | null = null;
+  let loadOrder: TextureKey[] = [];
+  /** Images à attendre avant d'envoyer la carte suivante au GPU (quelques ms pour une 2K). */
+  let installCooldown = 0;
+
+  /** Demande les cartes suivantes, installe au plus une carte arrivée, avance les fondus. */
+  function updateTextures(journey: JourneyState, dt: number, reduced: boolean): void {
+    if (journey.current !== loadStop) {
+      loadStop = journey.current;
+      loadOrder = textureLoadOrder(journey.current);
+    }
+    textures.pump(loadOrder);
+    // Pas d'envoi au GPU pendant un vol : une image perdue y décalerait la scène du texte qui défile.
+    const flying = journey.from !== lastFrom || journey.to !== lastTo || journey.t !== lastT;
+    if (installCooldown > 0) installCooldown -= 1;
+    else if (compiled && !flying) {
+      const arrived = textures.take();
+      if (arrived) {
+        const slot = slots[arrived.key];
+        for (const target of slot.textures) target.value = arrived.texture;
+        renderer.initTexture(arrived.texture);
+        for (const mix of slot.mixes) {
+          if (reduced) mix.value = 1;
+          else fading.add(mix);
+        }
+        installCooldown = tier === "2k" ? 4 : 2;
+        needsRender = true;
+      }
+    }
+    if (fading.size === 0) return;
+    for (const mix of fading) {
+      mix.value = Math.min(1, mix.value + dt / TEXTURE_FADE_SECONDS);
+      if (mix.value === 1) fading.delete(mix);
+    }
+    needsRender = true;
+  }
 
   // ---------- État ----------
   const view = { width: 1, height: 1 };
@@ -192,8 +318,13 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
   let bodiesJd = Number.NaN;
   let bodiesScale = Number.NaN;
   let cameraDistance = 330;
-  let frameCount = 0;
   let disposed = false;
+  /** Shaders compilés (en parallèle du fil principal quand le navigateur le permet). */
+  let compiled = false;
+  let compileWaitFrames = 0;
+  /** Quand seul le temps simulé avance, une image sur deux est sautée et son pas de temps reporté. */
+  let skipNextFrame = false;
+  let pendingDt = 0;
   /** Quelque chose impose une nouvelle image (taille, polices, texture). */
   let needsRender = true;
   let orbitsSettled = false;
@@ -218,26 +349,12 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
   let obstacleBoxes: LabelBox[] = [];
   const occupied: LabelBox[] = [];
 
-  // ---------- Textures : une génération toutes les deux images, après les premiers rendus ----------
-  const textureJobs: (() => void)[] = [
-    () => applyMap(bodyOf("earth").mesh.material, srgb(new CanvasTexture(earthTexture()))),
-    () => {
-      const earth = bodyOf("earth");
-      earth.clouds = createClouds(earth.planet, new CanvasTexture(cloudTexture()));
-      earth.tilt.add(earth.clouds);
-    },
-    ...TEXTURE_ORDER.map((key) => () => applyMap(bodyOf(key).mesh.material, srgb(new CanvasTexture(planetTexture(key))))),
-    () => {
-      const moon = bodyOf("earth").moons[0];
-      if (moon) applyMap(moon.mesh.material, srgb(new CanvasTexture(moonTexture())));
-    },
-  ];
-
   // ---------- Taille de la vue, mesures du DOM ----------
   function resize(): void {
     view.width = Math.max(1, window.innerWidth);
     view.height = Math.max(1, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
+    const pixelBudget = Math.sqrt(MAX_PIXELS / (view.width * view.height));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO, pixelBudget));
     renderer.setSize(view.width, view.height, false);
     camera.aspect = view.width / view.height;
     camera.fov = camera.aspect < PORTRAIT_ASPECT ? 50 : 36;
@@ -272,6 +389,30 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
   void document.fonts?.ready.then(() => {
     if (!disposed) measureLayout();
   });
+
+  // Compilation des shaders hors du premier rendu ; en cas d'échec, elle se fera au premier rendu.
+  const onCompiled = () => {
+    compiled = true;
+    needsRender = true;
+  };
+  renderer.compileAsync(scene, camera).then(onCompiled, onCompiled);
+
+  /**
+   * Contexte WebGL restauré (GPU réinitialisé, onglet mobile repris) : Three renvoie chaque texture
+   * depuis son image, or celles des cartes ont été libérées après leur envoi. On repart donc des
+   * couleurs unies et on recharge les cartes, que le cache HTTP sert aussitôt.
+   */
+  const onContextRestored = () => {
+    textures.dispose();
+    for (const slot of Object.values(slots)) {
+      for (const target of slot.textures) target.value = placeholder;
+      for (const mix of slot.mixes) mix.value = 0;
+    }
+    fading.clear();
+    textures = createTextureStream(tier, configureTexture);
+    needsRender = true;
+  };
+  canvas.addEventListener("webglcontextrestored", onContextRestored);
 
   // ---------- Pointeur : parallaxe et clic sur les astres ----------
   const raycaster = new Raycaster();
@@ -322,25 +463,33 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
         toScene(heliocentric(body.planet, jd), s, body.position);
         body.group.position.copy(body.position);
         body.group.scale.setScalar(shrink);
+        // Repère monde de la planète, pour l'ombre des anneaux et le halo d'atmosphère.
+        const radius = body.planet.displayRadius * shrink;
+        body.surface.uPlanetCenter.value.copy(body.position);
+        body.surface.uPlanetRadius.value = radius;
+        if (body.atmosphere) {
+          body.atmosphere.uPlanetCenter.value.copy(body.position);
+          body.atmosphere.uPlanetRadius.value = radius;
+        }
       }
       const days = jd - J2000_JD;
       for (const belt of belts) updateBelt(belt, days, s);
-      sun.mesh.scale.setScalar(lerp(1, 0.05, s));
-      sun.innerGlow.scale.setScalar(lerp(46, 9, s));
-      sun.outerGlow.scale.setScalar(lerp(190, 60, s));
+      scaleSun(sun, s);
     }
 
     for (const body of planets) {
       body.mesh.rotation.y += body.spin * dt * run;
-      if (body.clouds) body.clouds.rotation.y += body.spin * 1.15 * dt * run;
-      for (const moon of body.moons) {
-        const angle = moon.phase + (TAU * moonDays) / moon.periodDays;
-        moon.mesh.position.set(Math.cos(angle) * moon.distance, 0, -Math.sin(angle) * moon.distance);
-        moon.mesh.visible = s < 0.3;
+      for (const satellite of body.moons) {
+        const angle = satellite.phase + (TAU * moonDays) / satellite.periodDays;
+        satellite.mesh.position.set(Math.cos(angle) * satellite.distance, 0, -Math.sin(angle) * satellite.distance);
+        // Rotation synchrone : chaque lune montre toujours la même face à sa planète.
+        satellite.mesh.rotation.y = angle + Math.PI;
+        satellite.mesh.visible = s < 0.3;
       }
     }
+    earth.surface.uCloudDrift.value = (earth.surface.uCloudDrift.value + CLOUD_DRIFT * dt * run) % 1;
 
-    // Les orbites se recalculent quand l'échelle bouge, ou tous les dix ans simulés (précession lente).
+    // Orbites et axes se recalculent quand l'échelle bouge, ou tous les dix ans simulés (précession lente).
     if (Math.abs(s - orbitScale) > 0.0005 || Math.abs(jd - orbitJd) > 3650) {
       orbitScale = s;
       orbitJd = jd;
@@ -352,6 +501,7 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
         }
         body.orbitPositions.needsUpdate = true;
       }
+      orientBodies(jd);
     }
 
     // La surface du Soleil ne bouille que si le temps tourne, et jamais en mouvement réduit.
@@ -383,6 +533,9 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
       state.ty + state.dist * Math.sin(elevation),
       state.tz + horizontal * Math.sin(azimuth),
     );
+    // Certains vols entre le Soleil et Mercure passeraient dans le Soleil : on le contourne.
+    const clearance = SUN.displayRadius * SUN_CLEARANCE * lerp(1, 0.05, realScale);
+    if (camera.position.lengthSq() < clearance * clearance) camera.position.setLength(clearance);
     camera.lookAt(state.tx, state.ty, state.tz);
     // Décale la cible à l'écran (offX, offY) pour laisser la place aux plaques.
     camera.setViewOffset(
@@ -393,23 +546,25 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
       view.width,
       view.height,
     );
-    sky.position.copy(camera.position);
+    sky.group.position.copy(camera.position);
     cameraDistance = state.dist;
+    // Éblouissement : discret près du Soleil, plus large quand on le regarde de loin.
+    sun.coronaUniforms.uGlare.value = lerp(0.08, 0.32, smoothstep(60, 420, camera.position.length()));
 
     // L'orbite de l'escale en cours ressort dans sa couleur, les autres s'effacent.
     const focus = journey.current;
     const focusOnPlanet = isPlanetKey(focus);
     const fade = easeFactor(dt, 4);
-    let fading = false;
+    let fadingOrbits = false;
     for (const body of planets) {
       const on = body.planet.key === focus;
       const material = body.orbit.material;
       const target = on ? 0.85 : focusOnPlanet ? 0.14 : 0.3;
       material.opacity = approach(material.opacity, target, fade, ORBIT_FADE_EPSILON);
-      if (material.opacity !== target) fading = true;
+      if (material.opacity !== target) fadingOrbits = true;
       material.color.copy(on ? body.color : brass);
     }
-    orbitsSettled = !fading;
+    orbitsSettled = !fadingOrbits;
   }
 
   function setLabelShown(key: BodyKey, element: HTMLElement, shown: boolean): void {
@@ -456,34 +611,43 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
   return {
     frame(dt) {
       if (disposed) return;
-      frameCount += 1;
-      if (frameCount > 2 && frameCount % 2 === 0 && textureJobs.length > 0) {
-        textureJobs.shift()?.();
-        needsRender = true;
+      const journey = journeyStore.get();
+      const reduced = reducedMotion.matches;
+      updateTextures(journey, dt, reduced);
+      if (!compiled) {
+        if (++compileWaitFrames < MAX_COMPILE_WAIT_FRAMES) return;
+        compiled = true;
       }
       const clock = getClock();
       const now = clock.now();
       const snapshot = clock.snapshot();
-      const journey = journeyStore.get();
-      const reduced = reducedMotion.matches;
-      // Rien n'a bougé (temps en pause, défilement et pointeur immobiles) : pas de nouvelle image.
-      const changed =
+      const moving =
         needsRender ||
-        now !== lastNow ||
         journey.from !== lastFrom ||
         journey.to !== lastTo ||
         journey.t !== lastT ||
         realScale !== (snapshot.realScale ? 1 : 0) ||
         (!reduced && (parallax.x !== parallax.targetX || parallax.y !== parallax.targetY)) ||
         !orbitsSettled;
-      if (!changed) return;
+      if (!moving) {
+        // Rien n'a bougé (temps en pause, défilement et pointeur immobiles) : pas de nouvelle image.
+        if (now === lastNow) return;
+        // Seul le temps simulé avance : 30 images par seconde suffisent, le pas de temps est reporté.
+        skipNextFrame = !skipNextFrame;
+        if (skipNextFrame) {
+          pendingDt += dt;
+          return;
+        }
+      }
+      const step = dt + pendingDt;
+      pendingDt = 0;
       needsRender = false;
       lastNow = now;
       lastFrom = journey.from;
       lastTo = journey.to;
       lastT = journey.t;
-      updateBodies(dt, now, snapshot, reduced);
-      updateCamera(dt, journey, reduced);
+      updateBodies(step, now, snapshot, reduced);
+      updateCamera(step, journey, reduced);
       renderer.render(scene, camera);
       updateLabels();
     },
@@ -495,10 +659,12 @@ function setupScene(renderer: WebGLRenderer, { canvas, labels, obstacles, onPick
       window.removeEventListener("pointermove", onWindowPointerMove);
       canvas.removeEventListener("pointermove", onCanvasPointerMove);
       canvas.removeEventListener("click", onCanvasClick);
+      canvas.removeEventListener("webglcontextrestored", onContextRestored);
       canvas.style.cursor = "";
       for (const element of labels.values()) element.style.visibility = "hidden";
-      textureJobs.length = 0;
+      textures.dispose();
       scene.traverse(disposeObject);
+      placeholder.dispose();
       renderer.dispose();
     },
   };

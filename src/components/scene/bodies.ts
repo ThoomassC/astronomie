@@ -1,35 +1,47 @@
 import {
-  AdditiveBlending,
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
+  Color,
   DoubleSide,
   Group,
   Line,
   LineBasicMaterial,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
-  MeshLambertMaterial,
-  MeshPhongMaterial,
   Points,
   PointsMaterial,
   RingGeometry,
   ShaderMaterial,
   SphereGeometry,
-  Sprite,
-  SpriteMaterial,
   Vector3,
-  type Color,
   type Texture,
 } from "three";
+import { sceneFromGalactic } from "@/lib/astro/galactic";
+import { ROTATION } from "@/lib/astro/orientation";
 import { SUN, type Planet, type PlanetKey } from "@/lib/astro/planets";
 import { sceneRadius } from "@/lib/astro/scale";
 import { rawColor } from "./color";
-import { DEG, TAU, clamp, lerp } from "./math";
-import { ATMOSPHERE_FRAGMENT, ATMOSPHERE_VERTEX, SUN_FRAGMENT, SUN_VERTEX } from "./shaders";
-import { glowTexture, ringTexture, type GradientStop } from "./textures";
+import {
+  createAtmosphereMaterial,
+  createCoronaMaterial,
+  createRingMaterial,
+  createSkyMaterial,
+  createSunMaterial,
+  createSurfaceMaterial,
+  type AtmosphereUniforms,
+  type CoronaUniforms,
+  type Lighting,
+  type SkyUniforms,
+  type SurfaceUniforms,
+  type Uniform,
+} from "./materials";
+import { TAU, clamp, lerp } from "./math";
+import { SATURN_RING } from "./textureSet";
+import { uranusRingTexture } from "./textures";
 
-/** Construction des objets Three de la scène, reprise de la maquette. */
+/** Construction des objets Three de la scène. */
 
 /** Couleur des traits d'instrument (orbites). */
 export const BRASS_HEX = 0xc2a36b;
@@ -38,10 +50,9 @@ export const ORBIT_SEGMENTS = 360;
 /** Mouvement moyen à 1 UA (constante de Gauss), en radians par jour. */
 const MEAN_MOTION_RAD_PER_DAY = 0.0172021;
 
-// ---------- Étoiles et Voie lactée ----------
+// ---------- Ciel : Voie lactée et étoiles ----------
 
 const STAR_SPHERE_RADIUS = 2600;
-const MILKY_WAY_AXIS = new Vector3(1, 0, 0.3).normalize();
 const STAR_TINTS = {
   warm: [1, 0.78, 0.6],
   cool: [0.72, 0.82, 1],
@@ -54,10 +65,10 @@ function starLayer(count: number, size: number, band: boolean): Points<BufferGeo
   const v = new Vector3();
   for (let i = 0; i < count; i++) {
     if (band) {
-      // Bande de la Voie lactée : un anneau épaissi, incliné sur l'écliptique.
-      const angle = Math.random() * TAU;
-      const offset = (Math.random() + Math.random() + Math.random() - 1.5) * 0.2;
-      v.set(Math.cos(angle), offset, Math.sin(angle)).normalize().applyAxisAngle(MILKY_WAY_AXIS, 1.05);
+      // Étoiles serrées dans le plan de la Galaxie, plus denses vers son centre (Sagittaire).
+      const l = Math.random() < 0.5 ? Math.random() * 360 : Math.pow(Math.random() * 2 - 1, 3) * 120;
+      const b = (Math.random() + Math.random() + Math.random() - 1.5) * 9;
+      sceneFromGalactic(l, b, v);
     } else {
       const u = Math.random() * 2 - 1;
       const angle = Math.random() * TAU;
@@ -80,64 +91,144 @@ function starLayer(count: number, size: number, band: boolean): Points<BufferGeo
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
   return new Points(
     geometry,
-    new PointsMaterial({ size, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false }),
+    new PointsMaterial({
+      size,
+      sizeAttenuation: false,
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+    }),
   );
 }
 
-/** Ciel étoilé, recentré sur la caméra à chaque image. */
-export function createStarfield(): Group {
-  const sky = new Group();
-  sky.add(starLayer(2600, 1.25, false), starLayer(2400, 1.05, true), starLayer(160, 2.4, false));
-  return sky;
+export interface SkyBody {
+  /** Recentré sur la caméra à chaque image. */
+  group: Group;
+  /** Sphère de la Voie lactée, orientée en coordonnées galactiques. */
+  milkyWay: Mesh<SphereGeometry, ShaderMaterial>;
+  uniforms: SkyUniforms;
+}
+
+/**
+ * Oriente la sphère pour que ses UV lisent la carte galactique telle quelle (u = 0,5 − l/360°,
+ * v = 0,5 − b/180°). Repère de SphereGeometry : u = 0,5 en +X, u = 0,25 en +Z, v = 1 en +Y.
+ * D'où le centre galactique en +X, l = 90° en +Z et le pôle sud galactique en +Y (sud en haut).
+ */
+function orientMilkyWay(sphere: Mesh): void {
+  const center = new Vector3();
+  const south = new Vector3();
+  const l90 = new Vector3();
+  sceneFromGalactic(0, 0, center);
+  sceneFromGalactic(0, -90, south);
+  sceneFromGalactic(90, 0, l90);
+  sphere.quaternion.setFromRotationMatrix(new Matrix4().makeBasis(center, south, l90));
+}
+
+/** Ciel : la Voie lactée photographiée (lueur diffuse) sous des étoiles ponctuelles, nettes à tout grossissement. */
+export function createSky(placeholder: Texture): SkyBody {
+  // Carte de 256 × 128 lue presque à son plein niveau : les étoiles s'y fondent, la bande reste.
+  const { material, uniforms } = createSkyMaterial(placeholder, 0.2, 1.1);
+  const milkyWay = new Mesh(new SphereGeometry(STAR_SPHERE_RADIUS * 1.05, 64, 32), material);
+  orientMilkyWay(milkyWay);
+  // Dessinée après les astres opaques : la profondeur écarte les pixels qu'ils cachent.
+  milkyWay.renderOrder = 1;
+  const group = new Group();
+  group.add(milkyWay, starLayer(2600, 1.25, false), starLayer(1800, 1.05, true), starLayer(160, 2.4, false));
+  return { group, milkyWay, uniforms };
 }
 
 // ---------- Soleil ----------
 
-const INNER_GLOW: readonly GradientStop[] = [
-  [0, "rgba(255,214,140,1)"],
-  [0.18, "rgba(255,170,70,.75)"],
-  [0.42, "rgba(255,120,40,.18)"],
-  [1, "rgba(255,90,20,0)"],
-];
-const OUTER_GLOW: readonly GradientStop[] = [
-  [0, "rgba(255,170,80,.35)"],
-  [0.3, "rgba(255,140,60,.08)"],
-  [1, "rgba(255,120,40,0)"],
-];
+/** Demi-côté du panneau de la couronne, en échelle compressée puis réelle. */
+const CORONA_SIZE = [95, 30] as const;
 
 export interface SunBody {
   mesh: Mesh<SphereGeometry, ShaderMaterial>;
-  /** Uniforme du temps du shader, typé. */
-  time: { value: number };
-  innerGlow: Sprite;
-  outerGlow: Sprite;
-}
-
-function glowSprite(size: number, stops: readonly GradientStop[], opacity: number): Sprite {
-  const material = new SpriteMaterial({
-    map: new CanvasTexture(glowTexture(stops)),
-    blending: AdditiveBlending,
-    depthWrite: false,
-    transparent: true,
-    opacity,
-  });
-  const sprite = new Sprite(material);
-  sprite.scale.set(size, size, 1);
-  return sprite;
+  /** Uniforme du temps, partagé par la surface et la couronne. */
+  time: Uniform<number>;
+  corona: Mesh<RingGeometry, ShaderMaterial>;
+  coronaUniforms: CoronaUniforms;
 }
 
 export function createSun(): SunBody {
   const time = { value: 0 };
-  const material = new ShaderMaterial({ uniforms: { uTime: time }, vertexShader: SUN_VERTEX, fragmentShader: SUN_FRAGMENT });
+  const { material, uniforms } = createCoronaMaterial(time, CORONA_SIZE[0], SUN.displayRadius);
+  // Disque plutôt que carré : les coins, invisibles, ne coûtent plus rien. 256 secteurs pour les jets.
+  const corona = new Mesh(new RingGeometry(0.01, 1, 256, 1), material);
+  // Disque orienté dans le shader : sa sphère englobante ne dit rien de sa taille réelle.
+  corona.frustumCulled = false;
   return {
-    mesh: new Mesh(new SphereGeometry(SUN.displayRadius, 64, 40), material),
+    mesh: new Mesh(new SphereGeometry(SUN.displayRadius, 64, 40), createSunMaterial(time)),
     time,
-    innerGlow: glowSprite(46, INNER_GLOW, 1),
-    outerGlow: glowSprite(190, OUTER_GLOW, 0.9),
+    corona,
+    coronaUniforms: uniforms,
   };
 }
 
+/** Taille du Soleil et de sa couronne pour une échelle donnée (0 compressée, 1 réelle). */
+export function scaleSun(sun: SunBody, realScale: number): void {
+  const shrink = lerp(1, 0.05, realScale);
+  sun.mesh.scale.setScalar(shrink);
+  sun.coronaUniforms.uSunRadius.value = SUN.displayRadius * shrink;
+  sun.coronaUniforms.uSize.value = lerp(CORONA_SIZE[0], CORONA_SIZE[1], realScale);
+}
+
 // ---------- Planètes ----------
+
+interface PlanetLook {
+  lighting: Lighting;
+  /** Exposant de Minnaert : 1 = Lambert, au-delà le bord s'assombrit. */
+  minnaert: number;
+  /** Rayon polaire / rayon équatorial (Jupiter et Saturne sont nettement aplaties). */
+  polarRatio: number;
+  /** Brume du bord du disque : couleur et intensité. */
+  haze?: readonly [color: string, strength: number];
+  /** Halo au-delà du bord : épaisseur (en rayons), couleur de jour, couleur du couchant, intensité. */
+  atmosphere?: { thickness: number; day: string; twilight: string; strength: number };
+}
+
+const LOOKS: Record<PlanetKey, PlanetLook> = {
+  mercury: { lighting: "airless", minnaert: 1, polarRatio: 1 },
+  venus: {
+    lighting: "venus",
+    minnaert: 1,
+    polarRatio: 1,
+    haze: ["#FFE7BF", 0.3],
+    atmosphere: { thickness: 0.05, day: "#FFDDA8", twilight: "#FF9446", strength: 1.1 },
+  },
+  earth: {
+    lighting: "earth",
+    minnaert: 1,
+    polarRatio: 0.9966,
+    haze: ["#5C9DFF", 0.5],
+    atmosphere: { thickness: 0.028, day: "#4D8BFF", twilight: "#FF7438", strength: 1.6 },
+  },
+  mars: {
+    lighting: "rocky",
+    minnaert: 0.96,
+    polarRatio: 0.9941,
+    haze: ["#EBB592", 0.16],
+    // Les couchers de soleil martiens sont bleus : la poussière diffuse le bleu vers l'avant.
+    atmosphere: { thickness: 0.014, day: "#E8A07A", twilight: "#7AA2E8", strength: 0.7 },
+  },
+  jupiter: { lighting: "gas", minnaert: 1.08, polarRatio: 0.9351, haze: ["#DDB88E", 0.1] },
+  saturn: { lighting: "gas", minnaert: 1.08, polarRatio: 0.902, haze: ["#E8D2A2", 0.1] },
+  uranus: {
+    lighting: "gas",
+    minnaert: 0.98,
+    polarRatio: 0.9771,
+    haze: ["#BDF0F2", 0.25],
+    atmosphere: { thickness: 0.03, day: "#A2E6EC", twilight: "#5E9EC4", strength: 0.8 },
+  },
+  neptune: {
+    lighting: "gas",
+    minnaert: 0.98,
+    polarRatio: 0.9829,
+    haze: ["#94ABFF", 0.25],
+    atmosphere: { thickness: 0.03, day: "#7290FF", twilight: "#4458C4", strength: 0.8 },
+  },
+};
 
 interface MoonSpec {
   radius: number;
@@ -145,148 +236,156 @@ interface MoonSpec {
   /** Période en jours ; négative = rétrograde (Triton). */
   periodDays: number;
   color: string;
+  /** Carte photographique (la Lune) ; sinon couleur unie. */
+  textured?: true;
+  /** Orbite dans le plan de l'équateur de la planète (sinon dans l'écliptique, comme la Lune). */
+  equatorial?: true;
 }
 
 /** Lunes principales (tailles et distances de scène, périodes réelles). */
 const MOONS: Partial<Record<PlanetKey, readonly MoonSpec[]>> = {
-  earth: [{ radius: 0.28, distance: 2.4, periodDays: 27.32, color: "#BDB9B2" }],
+  earth: [{ radius: 0.28, distance: 2.4, periodDays: 27.32, color: "#BDB9B2", textured: true }],
   mars: [
-    { radius: 0.07, distance: 1.3, periodDays: 0.319, color: "#8C7B6E" },
-    { radius: 0.05, distance: 1.75, periodDays: 1.263, color: "#9C8C80" },
+    { radius: 0.07, distance: 1.3, periodDays: 0.319, color: "#8C7B6E", equatorial: true },
+    { radius: 0.05, distance: 1.75, periodDays: 1.263, color: "#9C8C80", equatorial: true },
   ],
   jupiter: [
-    { radius: 0.2, distance: 4.9, periodDays: 1.769, color: "#E8D27A" },
-    { radius: 0.17, distance: 5.9, periodDays: 3.551, color: "#D9CDBA" },
-    { radius: 0.27, distance: 7.2, periodDays: 7.155, color: "#A79B8C" },
-    { radius: 0.25, distance: 8.6, periodDays: 16.689, color: "#7D7268" },
+    { radius: 0.2, distance: 4.9, periodDays: 1.769, color: "#E8D27A", equatorial: true },
+    { radius: 0.17, distance: 5.9, periodDays: 3.551, color: "#D9CDBA", equatorial: true },
+    { radius: 0.27, distance: 7.2, periodDays: 7.155, color: "#A79B8C", equatorial: true },
+    { radius: 0.25, distance: 8.6, periodDays: 16.689, color: "#7D7268", equatorial: true },
   ],
-  neptune: [{ radius: 0.16, distance: 3.1, periodDays: -5.877, color: "#D6C9C2" }],
+  neptune: [{ radius: 0.16, distance: 3.1, periodDays: -5.877, color: "#D6C9C2", equatorial: true }],
 };
 
-/** Couleur du halo d'atmosphère. */
-const ATMOSPHERES: Partial<Record<PlanetKey, string>> = {
-  venus: "#F5E2B5",
-  earth: "#78B0FF",
-  mars: "#E39A72",
-  uranus: "#B4F0F4",
-  neptune: "#7D97FF",
-};
-
-interface RingSpec {
-  kind: "saturn" | "uranus";
-  /** Rayons intérieur et extérieur, en rayons de la planète. */
-  inner: number;
-  outer: number;
-  opacity: number;
-}
-
-const RINGS: Partial<Record<PlanetKey, RingSpec>> = {
-  saturn: { kind: "saturn", inner: 1.24, outer: 2.27, opacity: 1 },
-  uranus: { kind: "uranus", inner: 1.6, outer: 2.05, opacity: 0.5 },
-};
+/** Anneaux d'Uranus, en rayons de la planète. */
+const URANUS_RING = { inner: 1.6, outer: 2.05, opacity: 0.5 } as const;
 
 export interface MoonBody {
-  mesh: Mesh<SphereGeometry, MeshLambertMaterial>;
+  mesh: Mesh<SphereGeometry, ShaderMaterial>;
+  surface: SurfaceUniforms;
   distance: number;
   periodDays: number;
   phase: number;
 }
 
-export type SurfaceMaterial = MeshLambertMaterial | MeshPhongMaterial;
-
 export interface PlanetBody {
   planet: Planet;
   /** Position orbitale et réduction en échelle réelle. */
   group: Group;
-  /** Inclinaison de l'axe. */
+  /** Repère de l'axe de rotation (pôle UAI), orienté par le moteur. */
   tilt: Group;
   /** Surface, en rotation sur son axe. */
-  mesh: Mesh<SphereGeometry, SurfaceMaterial>;
-  /** Vitesse de rotation affichée, en radians par seconde. */
+  mesh: Mesh<SphereGeometry, ShaderMaterial>;
+  surface: SurfaceUniforms;
+  atmosphere: AtmosphereUniforms | null;
+  /** Vitesse de rotation affichée, en radians par seconde, négative pour une rotation rétrograde. */
   spin: number;
   /** Position de scène, mise à jour à chaque image. */
   position: Vector3;
   /** Couleur de l'astre, sans conversion (orbite mise en avant). */
   color: Color;
   moons: MoonBody[];
-  clouds: Mesh<SphereGeometry, MeshLambertMaterial> | null;
   orbit: Line<BufferGeometry, LineBasicMaterial>;
   orbitPositions: BufferAttribute;
 }
 
-function createAtmosphere(planet: Planet, color: string): Mesh<SphereGeometry, ShaderMaterial> {
-  const scale = planet.key === "mars" ? 1.025 : 1.06;
-  const material = new ShaderMaterial({
-    uniforms: { uColor: { value: rawColor(color) } },
-    vertexShader: ATMOSPHERE_VERTEX,
-    fragmentShader: ATMOSPHERE_FRAGMENT,
-    blending: AdditiveBlending,
-    transparent: true,
-    depthWrite: false,
-  });
-  return new Mesh(new SphereGeometry(planet.displayRadius * scale, 48, 32), material);
+/** Saturne : anneaux éclairés, ombrés par la planète (shader), texture et repère partagés avec la surface. */
+function createSaturnRing(planet: Planet, surface: SurfaceUniforms, polarRatio: number): Mesh<RingGeometry, ShaderMaterial> {
+  const radius = planet.displayRadius;
+  const ring = new Mesh(
+    new RingGeometry(radius * SATURN_RING.inner, radius * SATURN_RING.outer, 256, 1),
+    createRingMaterial(surface, radius, polarRatio),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  return ring;
 }
 
-function createRing(planet: Planet, spec: RingSpec): Mesh<RingGeometry, MeshBasicMaterial> {
+function createUranusRing(planet: Planet): Mesh<RingGeometry, MeshBasicMaterial> {
   const radius = planet.displayRadius;
-  const geometry = new RingGeometry(radius * spec.inner, radius * spec.outer, 160, 1);
+  const geometry = new RingGeometry(radius * URANUS_RING.inner, radius * URANUS_RING.outer, 160, 1);
   // UV radiales : u suit la distance au centre, pour lire le profil de la texture.
   const uv = geometry.getAttribute("uv");
   const position = geometry.getAttribute("position");
   for (let i = 0; i < uv.count; i++) {
     const r = Math.hypot(position.getX(i), position.getY(i));
-    uv.setXY(i, (r / radius - spec.inner) / (spec.outer - spec.inner), 0.5);
+    uv.setXY(i, (r / radius - URANUS_RING.inner) / (URANUS_RING.outer - URANUS_RING.inner), 0.5);
   }
-  const material = new MeshBasicMaterial({
-    map: new CanvasTexture(ringTexture(spec.kind)),
-    transparent: true,
-    side: DoubleSide,
-    depthWrite: false,
-    opacity: spec.opacity,
-  });
-  const ring = new Mesh(geometry, material);
+  const ring = new Mesh(
+    geometry,
+    new MeshBasicMaterial({
+      map: new CanvasTexture(uranusRingTexture()),
+      transparent: true,
+      side: DoubleSide,
+      forceSinglePass: true,
+      depthWrite: false,
+      opacity: URANUS_RING.opacity,
+    }),
+  );
   ring.rotation.x = -Math.PI / 2;
   return ring;
 }
 
-function createMoon(spec: MoonSpec): MoonBody {
-  const material = new MeshLambertMaterial({ color: rawColor(spec.color) });
+function createMoon(spec: MoonSpec, placeholder: Texture): MoonBody {
+  const { material, uniforms } = createSurfaceMaterial(
+    { lighting: "airless", minnaert: 1, baseColor: new Color(spec.color), haze: new Color(0, 0, 0), ringShadow: false },
+    placeholder,
+  );
   return {
-    mesh: new Mesh(new SphereGeometry(spec.radius, 24, 16), material),
+    mesh: new Mesh(new SphereGeometry(spec.radius, 32, 24), material),
+    surface: uniforms,
     distance: spec.distance,
     periodDays: spec.periodDays,
     phase: Math.random() * TAU,
   };
 }
 
-export function createPlanet(planet: Planet): PlanetBody {
+export function createPlanet(planet: Planet, placeholder: Texture): PlanetBody {
+  const look = LOOKS[planet.key];
   const group = new Group();
   const tilt = new Group();
-  tilt.rotation.z = planet.tiltDeg * DEG;
   group.add(tilt);
 
-  const color = rawColor(planet.color);
-  const material: SurfaceMaterial =
-    planet.key === "earth"
-      ? new MeshPhongMaterial({ color, shininess: 14, specular: rawColor(0x1a2a3a) })
-      : new MeshLambertMaterial({ color });
+  const { material, uniforms: surface } = createSurfaceMaterial(
+    {
+      lighting: look.lighting,
+      minnaert: look.minnaert,
+      baseColor: new Color(planet.color),
+      haze: look.haze ? new Color(look.haze[0]).multiplyScalar(look.haze[1]) : new Color(0, 0, 0),
+      ringShadow: planet.key === "saturn",
+    },
+    placeholder,
+  );
   const mesh = new Mesh(new SphereGeometry(planet.displayRadius, 64, 40), material);
+  mesh.scale.y = look.polarRatio;
   tilt.add(mesh);
 
-  const atmosphere = ATMOSPHERES[planet.key];
-  if (atmosphere) tilt.add(createAtmosphere(planet, atmosphere));
-  const ring = RINGS[planet.key];
-  if (ring) tilt.add(createRing(planet, ring));
+  let atmosphere: AtmosphereUniforms | null = null;
+  if (look.atmosphere) {
+    const { thickness, day, twilight, strength } = look.atmosphere;
+    const shell = createAtmosphereMaterial({ thickness, day: new Color(day), twilight: new Color(twilight), strength });
+    tilt.add(new Mesh(new SphereGeometry(planet.displayRadius * (1 + thickness), 48, 32), shell.material));
+    atmosphere = shell.uniforms;
+  }
+  if (planet.key === "saturn") tilt.add(createSaturnRing(planet, surface, look.polarRatio));
+  if (planet.key === "uranus") tilt.add(createUranusRing(planet));
 
-  const moons = (MOONS[planet.key] ?? []).map(createMoon);
-  for (const moon of moons) group.add(moon.mesh);
+  const specs = MOONS[planet.key] ?? [];
+  const moons = specs.map((spec) => createMoon(spec, placeholder));
+  specs.forEach((spec, i) => (spec.equatorial ? tilt : group).add(moons[i].mesh));
 
   const orbitPositions = new BufferAttribute(new Float32Array((ORBIT_SEGMENTS + 1) * 3), 3);
   const orbitGeometry = new BufferGeometry();
   orbitGeometry.setAttribute("position", orbitPositions);
   const orbit = new Line(
     orbitGeometry,
-    new LineBasicMaterial({ color: rawColor(BRASS_HEX), transparent: true, opacity: 0.3, depthWrite: false }),
+    new LineBasicMaterial({
+      color: rawColor(BRASS_HEX),
+      transparent: true,
+      opacity: 0.3,
+      depthWrite: false,
+      toneMapped: false,
+    }),
   );
   // Les orbites changent de rayon avec l'échelle : pas de test de visibilité sur une sphère figée.
   orbit.frustumCulled = false;
@@ -296,22 +395,22 @@ export function createPlanet(planet: Planet): PlanetBody {
     group,
     tilt,
     mesh,
-    spin: clamp((0.25 * 24) / planet.rotationHours, 0.03, 0.6),
+    surface,
+    atmosphere,
+    spin: Math.sign(ROTATION[planet.key].w[1]) * clamp((0.25 * 24) / planet.rotationHours, 0.03, 0.6),
     position: new Vector3(),
-    color,
+    color: rawColor(planet.color),
     moons,
-    clouds: null,
     orbit,
     orbitPositions,
   };
 }
 
-/** Couche de nuages de la Terre, légèrement au-dessus de la surface. */
-export function createClouds(planet: Planet, map: Texture): Mesh<SphereGeometry, MeshLambertMaterial> {
-  return new Mesh(
-    new SphereGeometry(planet.displayRadius * 1.015, 64, 40),
-    new MeshLambertMaterial({ map, transparent: true, depthWrite: false }),
-  );
+/** Lune texturée de la planète (la Lune de la Terre), s'il y en a une. */
+export function texturedMoon(body: PlanetBody): MoonBody | null {
+  const specs = MOONS[body.planet.key] ?? [];
+  const index = specs.findIndex((spec) => spec.textured);
+  return index >= 0 ? body.moons[index] : null;
 }
 
 // ---------- Ceintures ----------
@@ -392,6 +491,7 @@ export function createBelt(spec: BeltSpec): BeltBody {
       transparent: true,
       opacity: spec.opacity,
       depthWrite: false,
+      toneMapped: false,
     }),
   );
   points.frustumCulled = false;
