@@ -4,7 +4,8 @@ import { useEffect, useRef } from "react";
 import { getClock } from "@/lib/sim/clock";
 import { formatRelativeDate } from "./relativeDate";
 
-const NARROW_QUERY = "(max-width: 640px)";
+/** Même seuil que le dock compact (globals.css). */
+const NARROW_QUERY = "(max-width: 47.5rem)";
 const TINY_QUERY = "(max-width: 359px)";
 /** Formats créés une fois : « 27 octobre 2026 », « 27 oct. 2026 », « 27/10/26 » sous 360 px. */
 const LONG_DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });

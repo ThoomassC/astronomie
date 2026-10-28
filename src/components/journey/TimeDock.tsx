@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SPEEDS, getClock, type ClockSnapshot, type Speed } from "@/lib/sim/clock";
+import { SPEEDS, getClock, type ClockSnapshot } from "@/lib/sim/clock";
 import { DOCK_ID, DOCK_SCALE_TOGGLE_ID } from "./ids";
 import { toggleRealScale, useRealScale } from "./realScale";
 import { CheckIcon } from "./ScaleToggle";
 import { SimDate } from "./SimDate";
+import { SpeedSelector } from "./SpeedSelector";
 import { useClockValue } from "./useClockValue";
 
 /**
@@ -20,9 +21,6 @@ const TODAY_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "
 
 const selectPlaying = (snapshot: ClockSnapshot) => snapshot.playing;
 const selectSpeedDays = (snapshot: ClockSnapshot) => snapshot.speedDays;
-
-/** « 1 jour/s » → « 1 jour par seconde » : le nom accessible commence par le texte visible. */
-const spokenSpeed = (speed: Speed) => speed.label.replace("/s", " par seconde");
 
 function togglePlaying(): void {
   const clock = getClock();
@@ -74,19 +72,7 @@ export function TimeDock() {
         </svg>
       </button>
 
-      <div className="seg" id="speedSeg" role="group" aria-label="Vitesse du temps">
-        {SPEEDS.map((speed) => (
-          <button
-            key={speed.days}
-            type="button"
-            aria-pressed={speed.days === speedDays}
-            aria-label={spokenSpeed(speed)}
-            onClick={() => getClock().setSpeed(speed.days)}
-          >
-            {speed.label}
-          </button>
-        ))}
-      </div>
+      <SpeedSelector value={speedDays} onChange={(days) => getClock().setSpeed(days)} />
       {/* Sur mobile, un seul bouton fait défiler les vitesses ; son nom reste le texte visible. */}
       <button
         className="today cycle"
@@ -94,7 +80,13 @@ export function TimeDock() {
         aria-describedby="speedCycleHint"
         onClick={() => getClock().setSpeed(nextSpeed.days)}
       >
-        {SPEEDS[speedIndex].short}
+        <span>{SPEEDS[speedIndex].short}</span>
+        {/* Tous les libellés, invisibles : la pilule garde la largeur du plus long d'une vitesse à l'autre. */}
+        {SPEEDS.map((speed) => (
+          <span key={speed.days} className="ghost" aria-hidden="true">
+            {speed.short}
+          </span>
+        ))}
       </button>
       <span id="speedCycleHint" hidden>
         Changer la vitesse du temps
@@ -113,7 +105,7 @@ export function TimeDock() {
             strokeLinejoin="round"
           />
         </svg>{" "}
-        <span>{"Aujourd'hui"}</span>
+        <span className="label">{"Aujourd'hui"}</span>
       </button>
 
       <span className="sep opt" />
@@ -134,7 +126,7 @@ export function TimeDock() {
             strokeLinecap="round"
           />
         </svg>{" "}
-        <span>Distances réelles</span>
+        <span className="label">Distances réelles</span>
         {realScale ? <CheckIcon checked /> : null}
       </button>
 
