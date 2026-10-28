@@ -1407,8 +1407,9 @@ footer a {
    * Téléphones : la plaque reste compacte (rang, nom, accroche, boutons) et collée au bas de
    * l'écran, au-dessus du dock ; la scène cadre l'astre dans la bande libre au-dessus d'elle.
    * L'escale reste haute pour que la caméra s'y pose le temps de lire. L'espace sous la plaque
-   * (au moins 12 % de l'écran, l'avance de l'arrivée) fait sortir celle de l'escale précédente
-   * avant l'arrivée sur la suivante.
+   * vaut le dégagement du dock : elle reste collée jusqu'au départ de la caméra, pas avant. À
+   * l'arrivée sur l'escale suivante, la plaque précédente dépasse d'au plus quelques pixels,
+   * sous la partie opaque de la barre.
    */
   .stop {
     min-height: 165vh;
@@ -1416,7 +1417,7 @@ footer a {
     flex-direction: column;
     justify-content: flex-end;
     align-items: stretch;
-    padding-block: 0 max(var(--dock-clear), 12vh);
+    padding-block: 0 var(--dock-clear);
   }
 
   .plate {
