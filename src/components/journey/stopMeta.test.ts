@@ -66,4 +66,8 @@ describe("railDistanceLabel", () => {
   ] as const)("devrait écrire la distance de %s en UA avec une virgule décimale", (key, au) => {
     expect(railDistanceLabel(key, au)).toMatch(/^\d+,\d+ UA$/);
   });
+
+  it("devrait écrire une distance entière sans décimales, comme la fiche (la Terre à 1 UA)", () => {
+    expect(railDistanceLabel("earth", 1)).toBe("1 UA");
+  });
 });

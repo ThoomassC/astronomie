@@ -155,43 +155,46 @@ export function Plate({ id, name, color, header, sections, footer }: PlateProps)
       data-expanded={expanded || undefined}
     >
       {header}
-      {sections.map((section) => {
-        const zoneId = `${id}-${section.key}`;
-        const isOpen = open.has(section.key);
-        return (
-          <Fragment key={section.key}>
-            <h3 className="more-heading">
-              <button
-                type="button"
-                className="more-btn"
-                aria-expanded={isOpen}
-                aria-controls={zoneId}
-                onClick={(event) => toggle(event.currentTarget, section.key)}
+      {/* Sur téléphone, les titres-boutons se rangent sur une ligne quand ils y tiennent (globals.css). */}
+      <div className="plate-sections">
+        {sections.map((section) => {
+          const zoneId = `${id}-${section.key}`;
+          const isOpen = open.has(section.key);
+          return (
+            <Fragment key={section.key}>
+              <h3 className="more-heading">
+                <button
+                  type="button"
+                  className="more-btn"
+                  aria-expanded={isOpen}
+                  aria-controls={zoneId}
+                  onClick={(event) => toggle(event.currentTarget, section.key)}
+                >
+                  <span>{section.label}</span>
+                  <Chevron />
+                </button>
+              </h3>
+              <div
+                id={zoneId}
+                className="more-zone"
+                data-open={isOpen || undefined}
+                onFocus={() => openOnFocus(section.key)}
               >
-                <span>{section.label}</span>
-                <Chevron />
-              </button>
-            </h3>
-            <div
-              id={zoneId}
-              className="more-zone"
-              data-open={isOpen || undefined}
-              onFocus={() => openOnFocus(section.key)}
-            >
-              {section.content}
-            </div>
-          </Fragment>
-        );
-      })}
-      {expanded && (
-        <button type="button" className="more-btn more-fold" onClick={foldAll}>
-          <span>
-            {PLATE_MORE.fold}
-            <span className="sr">, {name}</span>
-          </span>
-          <Chevron />
-        </button>
-      )}
+                {section.content}
+              </div>
+            </Fragment>
+          );
+        })}
+        {expanded && (
+          <button type="button" className="more-btn more-fold" onClick={foldAll}>
+            <span>
+              {PLATE_MORE.fold}
+              <span className="sr">, {name}</span>
+            </span>
+            <Chevron />
+          </button>
+        )}
+      </div>
       {footer}
     </article>
   );

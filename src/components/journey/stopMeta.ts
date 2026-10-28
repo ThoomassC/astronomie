@@ -39,5 +39,6 @@ export function railDistanceLabel(key: StopKey, au: number): string {
   if (au === 0) return "le centre";
   if (key === "belt") return "2,1 à 3,3 UA";
   if (key === "beyond") return "plus de 30 UA";
-  return `${formatNumber(au, au < 10 ? 2 : 1)} UA`;
+  // Distance entière sans décimales, comme dans la fiche : « 1 UA », pas « 1,00 UA ».
+  return `${formatNumber(au, Number.isInteger(au) ? 0 : au < 10 ? 2 : 1)} UA`;
 }

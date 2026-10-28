@@ -74,4 +74,27 @@ describe("ScaleNote", () => {
     await user.keyboard("{Escape}");
     expect(screen.getByRole("button", { name: "Masquer la note" })).toBeInTheDocument();
   });
+
+  it("devrait proposer de lire toute la note, qui reste entière pour les lecteurs d'écran", async () => {
+    const user = userEvent.setup();
+    renderWithDock();
+    act(() => setRealScale(true));
+    // Sur téléphone, la note tient sur une ligne : ce bouton l'affiche en entier.
+    const more = screen.getByRole("button", { name: "Lire toute la note" });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("status")).toHaveTextContent(/plus petite qu'un pixel/);
+    await user.click(more);
+    expect(more).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("devrait revenir repliée après avoir été masquée", async () => {
+    const user = userEvent.setup();
+    renderWithDock();
+    act(() => setRealScale(true));
+    await user.click(screen.getByRole("button", { name: "Lire toute la note" }));
+    await user.click(screen.getByRole("button", { name: "Masquer la note" }));
+    act(() => setRealScale(false));
+    act(() => setRealScale(true));
+    expect(screen.getByRole("button", { name: "Lire toute la note" })).toHaveAttribute("aria-expanded", "false");
+  });
 });

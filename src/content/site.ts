@@ -21,7 +21,7 @@ export const PLATE_MORE = {
 export const SCALE_TOGGLE = {
   off: "Voir les distances réelles",
   on: "Revenir aux distances compressées",
-  note: "Distances à l'échelle : la Terre est à 1 UA du Soleil, Neptune à 30. À cette échelle, les planètes seraient plus petites qu'un pixel : un cercle signale chacune.",
+  note: "Distances réelles : chaque planète serait plus petite qu'un pixel, un cercle la signale. La Terre est à 1 UA du Soleil, Neptune à 30.",
 };
 
 export const BEYOND = {
