@@ -1,4 +1,4 @@
-# Planétaire
+# Astronomia
 
 Site pédagogique sur le système solaire. On part du Soleil et on rejoint Neptune en faisant défiler la page : la caméra vole de planète en planète, chaque escale présente l'astre avec des données réelles et une animation qui explique un phénomène.
 

@@ -1,6 +1,7 @@
-import { BEYOND } from "@/content/site";
+import { BEYOND, PLATE_MORE } from "@/content/site";
 import { cssVars } from "./cssVars";
 import { GoToLink } from "./GoToLink";
+import { Plate } from "./Plate";
 import { ScaleToggle } from "./ScaleToggle";
 
 /** L'échelle couvre 24 heures-lumière. */
@@ -33,49 +34,67 @@ export function BeyondPlate({ sunHref }: { sunHref: `#${string}` }) {
   const marks = BEYOND.marks;
   return (
     <section className="stop" id={BEYOND.id} data-stop="beyond" tabIndex={-1} aria-labelledby={TITLE_ID}>
-      <article className="plate" style={cssVars({ "--c": "var(--laiton)" })}>
-        <p className="rank">
-          <i aria-hidden="true" />
-          {BEYOND.rank}
-        </p>
-        <h2 id={TITLE_ID}>{BEYOND.name}</h2>
-        <p className="hook">{BEYOND.hook}</p>
-        <p className="lede">{BEYOND.lede}</p>
+      <Plate
+        id={BEYOND.id}
+        name={BEYOND.name}
+        color="var(--laiton)"
+        header={
+          <>
+            <p className="rank">
+              <i aria-hidden="true" />
+              {BEYOND.rank}
+            </p>
+            <h2 id={TITLE_ID}>{BEYOND.name}</h2>
+            <p className="hook">{BEYOND.hook}</p>
+          </>
+        }
+        sections={[
+          {
+            key: "suite",
+            label: PLATE_MORE.beyond,
+            content: (
+              <>
+                <p className="lede">{BEYOND.lede}</p>
 
-        <h3 className="lightscale-title">{BEYOND.scaleTitle}</h3>
-        <div className="lightscale" aria-hidden="true">
-          {marks.map((mark, index) => (
-            <span
-              key={mark.label}
-              className={isRightAligned(mark) ? "r" : undefined}
-              style={cssVars(
-                { "--lc": mark.color },
-                {
-                  left: `${(mark.hours / SCALE_HOURS) * 100}%`,
-                  height: `${MARK_BASE_REM + index * MARK_STEP_REM}rem`,
-                },
-              )}
-            >
-              <b>{mark.label}</b> {mark.value}
-            </span>
-          ))}
-        </div>
-        <div className="axis-l" aria-hidden="true">
-          <span>Soleil, 0 h</span>
-          <span>{SCALE_HOURS / 2} h</span>
-          <span>{SCALE_HOURS} h</span>
-        </div>
-        <p className="sr">
-          {marks.map((mark) => `${mark.label} : ${spokenDuration(mark.value)}`).join(" ; ")}.
-        </p>
-
-        <div className="actions">
-          <ScaleToggle className="btn" />
-          <GoToLink className="btn ghost" href={sunHref} stop="sun">
-            {BEYOND.back}
-          </GoToLink>
-        </div>
-      </article>
+                <h3 className="lightscale-title">{BEYOND.scaleTitle}</h3>
+                <div className="lightscale" aria-hidden="true">
+                  {marks.map((mark, index) => (
+                    <span
+                      key={mark.label}
+                      className={isRightAligned(mark) ? "r" : undefined}
+                      style={cssVars(
+                        { "--lc": mark.color },
+                        {
+                          left: `${(mark.hours / SCALE_HOURS) * 100}%`,
+                          height: `${MARK_BASE_REM + index * MARK_STEP_REM}rem`,
+                        },
+                      )}
+                    >
+                      <b>{mark.label}</b> {mark.value}
+                    </span>
+                  ))}
+                </div>
+                <div className="axis-l" aria-hidden="true">
+                  <span>Soleil, 0 h</span>
+                  <span>{SCALE_HOURS / 2} h</span>
+                  <span>{SCALE_HOURS} h</span>
+                </div>
+                <p className="sr">
+                  {marks.map((mark) => `${mark.label} : ${spokenDuration(mark.value)}`).join(" ; ")}.
+                </p>
+              </>
+            ),
+          },
+        ]}
+        footer={
+          <div className="actions">
+            <ScaleToggle className="btn" />
+            <GoToLink className="btn ghost" href={sunHref} stop="sun">
+              {BEYOND.back}
+            </GoToLink>
+          </div>
+        }
+      />
     </section>
   );
 }

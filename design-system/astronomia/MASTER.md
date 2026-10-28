@@ -1,4 +1,4 @@
-# Planétaire — design system (MASTER)
+# Astronomia — design system (MASTER)
 
 > Généré le 2026-10-27 avec ui-ux-pro-max, puis **remplacé** : la proposition automatique
 > (vert « catégorie », Outfit / Work Sans, fond menthe clair, style SaaS) ne correspondait pas
@@ -56,10 +56,23 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 
 - **Plaque** : panneau de lecture semi-opaque `--plaque` à 88 %, filet laiton 1 px, angles `--r-lg`,
   filet de la couleur de l'astre qui suit l'arrondi du haut.
+  Sur téléphone (≤ 640 px), elle est compacte et collée en bas, au-dessus du dock : rang, nom,
+  accroche, puis un titre-bouton pleine largeur par section (`h3` > `button[aria-expanded]`, motif
+  accordéon), « Lire la fiche » et un libellé propre au module (« Votre poids sur chaque astre »),
+  qui remplace le titre du module. Chaque section s'ouvre sous son titre et « Replier » referme
+  tout. Dépliée, la plaque reprend sa place en haut de l'escale et s'allonge vers le bas ; le
+  bouton touché passe sous la barre sans quitter la plage de repos de la caméra, et aucun repli ne
+  déplace la caméra. La scène cadre l'astre dans la bande libre entre la barre (ou la note
+  d'échelle) et la plaque repliée, au plus 90 % de sa hauteur et 80 % de la largeur, anneaux
+  compris ; la vue d'ensemble de l'au-delà y est centrée. Écran court (≤ 700 px de haut) : plaque
+  plus serrée. Sur grand écran ou sans JavaScript, tout est visible et les boutons sont masqués.
 - **Fiche** : grille 2 colonnes `dt` / `dd`, une ligne « ce jour » recalculée avec la date simulée.
 - **Module** : une animation explicative par escale (Canvas 2D), boutons au clavier,
   texte équivalent en `aria-live`.
 - **Règle des distances** : sommaire vertical à échelle logarithmique (UA), curseur suivant la caméra.
+- **Note d'échelle** : encart `--r-md` bordé `--soleil`, visible avec les distances réelles ; au-dessus
+  du dock ; sur téléphone, en haut sous la barre et dans la colonne de lecture, pour ne couvrir ni
+  la plaque ni la règle. Échap la masque (après avoir fermé une infobulle de la règle, s'il y en a une).
 - **Machine à remonter le temps** : dock bas en capsule, vitesse 1 jour à 1 an par seconde, retour à
   aujourd'hui. La vitesse active est une bulle ivoire qui glisse d'un choix à l'autre : le bord avant
   part le premier, l'arrière suit, léger rebond à l'arrivée ; instantanée en mouvement réduit. Une copie

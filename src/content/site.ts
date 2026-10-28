@@ -1,5 +1,5 @@
 export const SITE = {
-  name: "Planétaire",
+  name: "Astronomia",
   description:
     "Le système solaire en mouvement : voyage du Soleil à Neptune, positions réelles des planètes et animations pour comprendre les saisons, les orbites et les distances.",
 };
@@ -9,6 +9,13 @@ export const HERO = {
   text: "Chaque planète part de sa vraie place du jour. Faites défiler pour quitter le Soleil et rejoindre Neptune, à quatre heures-lumière de là.",
   stampPrefix: "Positions réelles au départ :",
   start: "Partir du Soleil",
+};
+
+/** Boutons qui déplient les plaques sur téléphone (sur grand écran, tout est déjà visible). */
+export const PLATE_MORE = {
+  story: "Lire la fiche",
+  beyond: "Lire la suite",
+  fold: "Replier",
 };
 
 export const SCALE_TOGGLE = {
