@@ -1,7 +1,9 @@
 import { SITE } from "@/content/site";
 import { anchorOf } from "./anchors";
 import { CurrentStop } from "./CurrentStop";
+import type { RailStop } from "./DistanceRail";
 import { GoToLink } from "./GoToLink";
+import { StopsMenu } from "./StopsMenu";
 
 /** Pictogramme du planétaire : deux orbites en laiton, le Soleil, la Terre et Mars. */
 function BrandMark() {
@@ -16,15 +18,16 @@ function BrandMark() {
   );
 }
 
-/** Barre haute : marque (retour à l'accueil) et escale en cours. */
-export function TopBar() {
+/** Barre haute : marque (retour à l'accueil) et escale en cours ; sur téléphone, celle-ci ouvre la liste des escales. */
+export function TopBar({ stops }: { stops: readonly RailStop[] }) {
   return (
     <header className="bar">
       <GoToLink className="brand" href={anchorOf("hero")} stop="hero" aria-label={`${SITE.name}, retour à l'accueil`}>
         <BrandMark />
-        {SITE.name}
+        <span className="brand-name">{SITE.name}</span>
       </GoToLink>
       <CurrentStop />
+      <StopsMenu stops={stops} />
     </header>
   );
 }

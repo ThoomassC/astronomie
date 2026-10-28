@@ -729,6 +729,14 @@ main > section > * {
   transform: rotate(180deg);
 }
 
+/* Une section qui s'ouvre glisse légèrement vers sa place (coupé en mouvement réduit). */
+@keyframes zone-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.4rem);
+  }
+}
+
 /* « Replier » ferme toute la plaque : en retrait, centré sous le contenu. */
 .more-fold {
   display: none;
@@ -1156,6 +1164,11 @@ footer a {
 
 /* Couleurs forcées : les fonds disparaissent, un contour garde la bulle visible. */
 @media (forced-colors: active) {
+  .stops-list a[aria-current="location"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
   .seg-bubble {
     border: 2px solid CanvasText;
   }
@@ -1267,6 +1280,17 @@ footer a {
   border-color: var(--ivoire);
 }
 
+/* Bouton « lire toute la note » et croix : sur téléphone seulement, où la note tient sur une ligne. */
+.note-more,
+.note-hide svg {
+  display: none;
+}
+
+/* Liste des escales dans la barre : sur téléphone seulement, à la place de la règle. */
+.stops-menu {
+  display: none;
+}
+
 /* ---------- Petits écrans ---------- */
 @media (max-width: 860px) {
   :root {
@@ -1301,9 +1325,22 @@ footer a {
     visibility: hidden;
   }
 
-  .rail a:hover span,
   .rail a:focus-visible span {
     visibility: visible;
+  }
+
+  /* Au toucher, l'infobulle ne doit pas rester posée sur l'astre après le saut vers l'escale. */
+  @media (hover: hover) {
+    .rail a:hover span {
+      visibility: visible;
+    }
+  }
+
+  /* Au doigt, sans survol : le nom de l'escale en cours reste affiché près de sa pastille. */
+  @media (hover: none) {
+    .rail a[aria-current] span {
+      visibility: visible;
+    }
   }
 
   /* Échap referme l'infobulle jusqu'au prochain survol ou focus. */
@@ -1376,41 +1413,21 @@ footer a {
   }
 }
 
-@media (max-width: 640px) {
-  /* Les plaques défilent sous la barre : un voile plus dense garde la marque lisible. */
-  .bar {
-    gap: 0.6rem;
-    background: linear-gradient(rgba(6, 11, 24, 0.94) 55%, rgba(6, 11, 24, 0));
-  }
-
-  .brand {
-    font-size: 1.2rem;
-  }
-
-  .hero {
-    justify-content: flex-start;
-    min-height: 0;
-    padding-block: 46vh 9rem;
-    margin-left: 0;
-  }
-
-  .hero h1 {
-    font-size: 2.6rem;
-  }
-
+/*
+ * Mise en page compacte, téléphone et tablette en portrait (même requête dans engine.ts) : la plaque
+ * reste compacte (nom, accroche, boutons) et collée au bas de l'écran, au-dessus du dock ; la scène
+ * cadre l'astre dans la bande libre au-dessus d'elle. L'escale reste haute pour que la caméra s'y
+ * pose le temps de lire. L'espace sous la plaque vaut le dégagement du dock : elle reste collée
+ * jusqu'au départ de la caméra, pas avant. Entre deux escales, hors de leur plage de repos, un
+ * espace couvre le reste de l'avance de l'arrivée (12 % de l'écran) : à l'arrivée sur l'escale
+ * suivante, la plaque précédente est déjà sortie de l'écran, même sur une grande tablette.
+ */
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait) {
   /* Hauteur réservée au dock en bas de l'écran (sur deux lignes sous 360 px, voir plus bas). */
   :root {
     --dock-clear: calc(82px + env(safe-area-inset-bottom, 0px));
   }
 
-  /*
-   * Téléphones : la plaque reste compacte (rang, nom, accroche, boutons) et collée au bas de
-   * l'écran, au-dessus du dock ; la scène cadre l'astre dans la bande libre au-dessus d'elle.
-   * L'escale reste haute pour que la caméra s'y pose le temps de lire. L'espace sous la plaque
-   * vaut le dégagement du dock : elle reste collée jusqu'au départ de la caméra, pas avant. À
-   * l'arrivée sur l'escale suivante, la plaque précédente dépasse d'au plus quelques pixels,
-   * sous la partie opaque de la barre.
-   */
   .stop {
     min-height: 165vh;
     min-height: 165svh;
@@ -1418,38 +1435,80 @@ footer a {
     justify-content: flex-end;
     align-items: stretch;
     padding-block: 0 var(--dock-clear);
+    margin-bottom: max(0px, calc(12vh - var(--dock-clear)));
   }
 
   .plate {
     position: sticky;
     bottom: var(--dock-clear);
-    margin-left: 0;
-    padding: 1.15rem 1.1rem 1.1rem;
+    margin-inline: auto;
+    padding: 1rem;
   }
 
-  /* Titres-boutons pleine largeur, chevron à droite : une colonne nette, facile à toucher. */
+  .plate h2 {
+    font-size: clamp(2.5rem, 7vw, 3.25rem);
+  }
+
+  .hook {
+    font-size: 1.1875rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Le filet de couleur se remplit pendant le repos de la caméra : plein, le vol vers l'escale suivante commence. */
+  .plate::before {
+    opacity: 0.5;
+  }
+
+  .plate::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: var(--r-lg);
+    right: var(--r-lg);
+    height: 2px;
+    background: var(--c);
+    transform: scaleX(var(--rest, 0));
+    transform-origin: left;
+    pointer-events: none;
+  }
+
+  /* Dernière escale : aucun départ ne suit, le filet reste plein et ne mesure rien. */
+  [data-stop="beyond"] > .plate::before {
+    opacity: 0.9;
+  }
+
+  [data-stop="beyond"] > .plate::after {
+    display: none;
+  }
+
+  /* Titres-boutons côte à côte quand ils tiennent, sinon l'un sous l'autre ; une section ouverte prend toute la largeur, sous son titre. */
+  .plate-sections {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
   .more-heading {
     display: block;
-    margin-top: 0.5rem;
+    flex: 1 1 auto;
   }
 
   .more-fold {
     display: flex;
-    margin-top: 0.5rem;
+    flex-basis: 100%;
+  }
+
+  .more-zone {
+    flex-basis: 100%;
   }
 
   .more-zone:not([data-open]) {
     display: none;
   }
 
-  /* Accordéon : la section s'ouvre sous son titre, le titre suivant prend du recul. */
   .more-zone[data-open] {
-    padding-top: 0.85rem;
-  }
-
-  .more-zone[data-open] + .more-heading,
-  .more-zone[data-open] + .more-fold {
-    margin-top: 1rem;
+    padding-block: 0.35rem 0.5rem;
+    animation: zone-in 0.2s ease-out;
   }
 
   .more-zone .module {
@@ -1465,12 +1524,20 @@ footer a {
 
   /*
    * Plaque dépliée : elle reprend sa place dans la page, en haut de l'escale, et s'allonge vers le bas ;
-   * replier une section ne déplace donc pas le titre-bouton touché.
+   * replier une section ne déplace donc pas le titre-bouton touché. Le filet redevient plein.
    */
   .plate[data-expanded] {
     position: relative;
     bottom: auto;
     margin-bottom: auto;
+  }
+
+  .plate[data-expanded]::before {
+    opacity: 0.9;
+  }
+
+  .plate[data-expanded]::after {
+    display: none;
   }
 
   /*
@@ -1496,6 +1563,109 @@ footer a {
   html:has(.scale-note[data-visible="true"]) {
     scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 5.25rem + var(--note-h, 11rem) + 0.75rem);
   }
+}
+
+@media (max-width: 640px) {
+  /* Les plaques défilent sous la barre : un voile plus dense garde la marque lisible. */
+  .bar {
+    gap: 0.6rem;
+    background: linear-gradient(rgba(6, 11, 24, 0.94) 55%, rgba(6, 11, 24, 0));
+  }
+
+  .brand {
+    font-size: 1.2rem;
+  }
+
+  /*
+   * Accueil : le bouton de départ reste visible dès l'arrivée, au-dessus du dock et de la barre du
+   * navigateur ; l'accueil dépasse la hauteur de l'écran : la plaque du Soleil ne se devine pas,
+   * même sous la barre vitrée de Safari.
+   */
+  .hero {
+    justify-content: flex-start;
+    min-height: calc(100vh + 4rem);
+    padding-block: 34vh 9rem;
+    padding-block: 34svh 9rem;
+    margin-left: 0;
+  }
+
+  .hero h1 {
+    font-size: 2.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .hero p {
+    font-size: 1rem;
+  }
+
+  .hero .actions {
+    margin-top: 1rem;
+  }
+
+  /* La date de départ passe sous les boutons (ordre visuel seulement, rien de focalisable) : le départ remonte. */
+  .hero .stamp {
+    order: 1;
+    margin: 1.5rem 0 0;
+  }
+
+  /* Rang en version courte : il situe l'astre sans prendre la place de l'accroche. */
+  .plate .rank {
+    margin-bottom: 0.1rem;
+    font-size: 0.8125rem;
+  }
+
+  /* Note d'échelle sur deux lignes ; le texte complet s'ouvre d'un toucher et reste entier pour les lecteurs d'écran. */
+  .scale-note {
+    right: var(--gr);
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.25rem 0.3rem 0.25rem 0.9rem;
+    text-align: left;
+  }
+
+  .scale-note p {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-self: center;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .scale-note[data-open] p {
+    display: block;
+    padding-block: 0.6rem;
+  }
+
+  .scale-note .note-more,
+  .scale-note .note-hide {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+  }
+
+  .scale-note[data-open] .note-more svg {
+    transform: rotate(180deg);
+  }
+
+  .note-hide-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .scale-note .note-hide svg {
+    display: block;
+  }
 
   .interlude {
     padding-block: 40vh 20vh;
@@ -1518,13 +1688,153 @@ footer a {
   }
 }
 
+/*
+ * La liste des escales remplace la règle des distances là où celle-ci n'a plus que des pastilles
+ * sans nom au doigt (860 px et moins) et en mise en page compacte. Pas sur un écran bas (zoom à
+ * 400 %, téléphone en paysage) : la barre y suit la page et la règle fixe reste la navigation.
+ * Pas sans JavaScript non plus : la liste ne s'ouvrirait pas.
+ */
+@media (max-width: 860px) and (min-height: 30.0625rem) and (scripting: enabled),
+  (max-width: 1100px) and (orientation: portrait) and (min-height: 30.0625rem) and (scripting: enabled) {
+  :root {
+    --rail-w: 0px;
+  }
+
+  /* Sans la règle, la colonne de lecture retrouve des marges égales. */
+  main,
+  footer {
+    padding-right: var(--gr);
+  }
+
+  .rail,
+  .where {
+    display: none;
+  }
+
+  /* La liste ouverte passe devant la note d'échelle, placée juste sous la barre. */
+  .bar {
+    z-index: 7;
+  }
+
+  .stops-menu {
+    display: block;
+    min-width: 0;
+    margin-left: auto;
+  }
+
+  .stops-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid var(--filet-fort);
+    border-radius: var(--r-pill);
+    background: rgba(8, 14, 32, 0.6);
+    color: var(--ivoire);
+    font-size: 0.9375rem;
+    white-space: nowrap;
+  }
+
+  .stops-toggle i {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .stops-toggle b {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+  }
+
+  .stops-toggle svg {
+    flex: none;
+    transition: transform 0.25s;
+  }
+
+  .stops-toggle[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+
+  /* Pleine largeur sur téléphone, ancrée à droite sous le bouton sur tablette. */
+  .stops-list {
+    position: absolute;
+    top: 100%;
+    right: var(--gr);
+    width: min(24rem, calc(100% - var(--gl) - var(--gr)));
+    margin: 0;
+    padding: 0.35rem;
+    list-style: none;
+    max-height: calc(100vh - 6rem - var(--dock-clear) - env(safe-area-inset-top, 0px));
+    max-height: calc(100svh - 6rem - var(--dock-clear) - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: #080e20;
+    border: 1px solid var(--filet-fort);
+    border-radius: var(--r-md);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  }
+
+  .stops-list a {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 44px;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--r-sm);
+    color: var(--ivoire);
+    text-decoration: none;
+  }
+
+  /* Même convention que la règle : pastille creuse, pleine pour l'escale en cours. */
+  .stops-list a i {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--lc);
+    border-radius: 50%;
+  }
+
+  .stops-list a b {
+    font-weight: 500;
+  }
+
+  .stops-list a small {
+    margin-left: auto;
+    font-size: 0.8125rem;
+    color: var(--brume);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stops-list a[aria-current="location"] {
+    background: rgba(236, 229, 211, 0.08);
+  }
+
+  .stops-list a[aria-current="location"] i {
+    background: var(--lc);
+  }
+
+  .stops-list a[aria-current="location"] b {
+    font-weight: 700;
+  }
+}
+
 /* Sans JavaScript, les boutons ne déplieraient rien : la plaque reste entière et suit la page. */
-@media (max-width: 640px) and (scripting: none) {
+@media (max-width: 640px) and (scripting: none), (max-width: 1100px) and (orientation: portrait) and (scripting: none) {
   .plate {
     position: relative;
     bottom: auto;
   }
 
+  .plate::before {
+    opacity: 0.9;
+  }
+
+  .plate::after,
   .more-heading {
     display: none;
   }
@@ -1544,23 +1854,36 @@ footer a {
   }
 }
 
-/* Téléphone à écran court (iPhone SE, barres du navigateur) : plaque repliée plus serrée, astre plus grand. */
+/* Téléphone à écran court (iPhone SE, barres du navigateur) : plaque et accueil plus serrés, astre plus grand. */
 @media (max-width: 640px) and (max-height: 700px) {
   .bar {
     padding-block: 0.6rem;
   }
 
   .plate {
-    padding: 0.95rem 1rem 1rem;
+    padding: 0.85rem 0.95rem 0.95rem;
   }
 
   .plate h2 {
-    font-size: 2.5rem;
+    font-size: 2.25rem;
   }
 
   .hook {
-    font-size: 1.125rem;
-    margin-bottom: 0.75rem;
+    font-size: 1.0625rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .hero {
+    padding-block: 26vh 8rem;
+    padding-block: 26svh 8rem;
+  }
+
+  .hero h1 {
+    font-size: 2.1rem;
+  }
+
+  .hero p {
+    font-size: 0.9375rem;
   }
 }
 
@@ -1571,6 +1894,27 @@ footer a {
     flex-wrap: wrap;
     justify-content: center;
     border-radius: var(--r-lg);
+  }
+
+  /* La marque se réduit à son pictogramme (son nom accessible reste) : le nom de l'escale tient sur une ligne. */
+  .brand-name {
+    display: none;
+  }
+
+  .brand {
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Accueil plus serré : le bouton de départ reste au-dessus du dock sur deux lignes. */
+  .hero {
+    padding-block: 20vh 8rem;
+    padding-block: 20svh 8rem;
+  }
+
+  .hero h1 {
+    font-size: 1.9rem;
   }
 
   /* Les plaques collées en bas et le focus restent au-dessus du dock sur deux lignes. */
@@ -1589,10 +1933,18 @@ footer a {
     scroll-padding-block: 1rem;
   }
 
-  /* Le dock rejoint la page : la plaque n'a plus à rester collée au-dessus de lui. */
+  /* Le dock rejoint la page : la plaque n'a plus à rester collée au-dessus de lui, ni à montrer le repos. */
   .plate {
     position: relative;
     bottom: auto;
+  }
+
+  .plate::before {
+    opacity: 0.9;
+  }
+
+  .plate::after {
+    display: none;
   }
 
   .bar {

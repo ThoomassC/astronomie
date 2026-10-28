@@ -32,7 +32,7 @@ export default function Home() {
       <SceneErrorBoundary>
         <SceneMount />
       </SceneErrorBoundary>
-      <TopBar />
+      <TopBar stops={railStops} />
       <DistanceRail stops={railStops} />
       <main id={MAIN_ID} tabIndex={-1}>
         <Hero sunHref={sunHref} />
