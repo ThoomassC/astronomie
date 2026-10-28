@@ -6,6 +6,8 @@ export const DAY_MS = 86_400_000;
 export const YEAR_DAYS = 365.25;
 /** Jour julien de l'époque J2000 (1er janvier 2000, 12 h TT). */
 export const J2000_JD = 2_451_545;
+/** Obliquité de l'écliptique à J2000 (UAI 2006), en degrés. */
+export const OBLIQUITY_J2000_DEG = 23.4392911;
 /** Gravité de référence à la surface de la Terre, en m/s². */
 export const EARTH_G = 9.81;
 
