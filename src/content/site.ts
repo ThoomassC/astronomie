@@ -1,5 +1,5 @@
 export const SITE = {
-  name: "Astronomia",
+  name: "Astronomie",
   description:
     "Le système solaire en mouvement : voyage du Soleil à Neptune, positions réelles des planètes et animations pour comprendre les saisons, les orbites et les distances.",
 };
