@@ -39,5 +39,13 @@ export const FOOTER = {
   sources:
     "Sources : NASA, Planetary Fact Sheet ; JPL, éléments orbitaux approchés des planètes (valables de 1800 à 2050) ; nombres de lunes : NASA et UAI, 2025.",
   scale:
-    "Sauf en mode « distances réelles », les tailles sont agrandies et les distances compressées pour que tout tienne à l'écran. Textures des planètes générées par le code.",
+    "Sauf en mode « distances réelles », les tailles sont agrandies et les distances compressées pour que tout tienne à l'écran.",
+  /** Crédit des cartes photographiques, comme le demande la licence CC BY 4.0 : auteur, licence, modifications. */
+  textures: {
+    before: "Cartes des astres : ",
+    source: { label: "Solar System Scope", href: "https://www.solarsystemscope.com/textures/" },
+    between: ", d'après des données de la NASA, redimensionnées pour le site. Licence ",
+    license: { label: "CC BY 4.0", href: "https://creativecommons.org/licenses/by/4.0/deed.fr" },
+    after: ".",
+  },
 };
