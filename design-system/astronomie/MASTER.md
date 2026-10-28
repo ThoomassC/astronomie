@@ -1,4 +1,4 @@
-# Astronomia — design system (MASTER)
+# Astronomie — design system (MASTER)
 
 > Généré le 2026-10-27 avec ui-ux-pro-max, puis **remplacé** : la proposition automatique
 > (vert « catégorie », Outfit / Work Sans, fond menthe clair, style SaaS) ne correspondait pas
