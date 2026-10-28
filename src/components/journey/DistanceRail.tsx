@@ -20,6 +20,8 @@ export interface RailStop {
 
 /** Écart minimal entre deux repères, en px (relevé à la hauteur réelle d'un repère si elle est plus grande). */
 const MIN_GAP_PX = 26;
+/** Petits écrans : le nom d'un repère devient une infobulle au survol et au focus (globals.css). */
+const TIPS_QUERY = "(max-width: 860px)";
 
 /** Graduations logarithmiques : dixièmes d'UA jusqu'à 1, unités jusqu'à 10, dizaines jusqu'à 50. */
 const TICKS: readonly { au: number; major: boolean }[] = [
@@ -84,8 +86,11 @@ export function DistanceRail({ stops }: { stops: readonly RailStop[] }) {
   }, FRAME_ORDER.ui);
 
   // Échap masque l'infobulle des petits écrans ; elle revient au prochain survol ou focus.
+  // Quand une infobulle était affichée, cet appui ne ferme qu'elle (pas la note d'échelle).
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "Escape") setTipsDismissed(true);
+    if (event.key !== "Escape" || tipsDismissed) return;
+    setTipsDismissed(true);
+    if (window.matchMedia(TIPS_QUERY).matches) event.preventDefault();
   };
 
   const idealPercent = stops.map((stop) => railPercent(stop.au));

@@ -31,7 +31,8 @@ export interface BodyStop {
   facts: readonly Fact[];
   /** Ligne recalculée avec la date simulée (distance à la Terre, ou au Soleil pour la Terre). */
   live: { label: string };
-  module: { kind: ModuleKind; title: string; intro: string };
+  /** `button` : libellé du bouton qui déplie le module sur téléphone. */
+  module: { kind: ModuleKind; title: string; intro: string; button: string };
 }
 
 export interface InterludeStop {
@@ -62,7 +63,7 @@ export const STOPS: readonly Stop[] = [
       { label: "Âge", value: "4,6 milliards d'années" },
     ],
     live: { label: FROM_EARTH },
-    module: { kind: "light-race", title: "La course de la lumière", intro: "Un éclair part du Soleil. Les distances sont à l'échelle : regardez où se trouvent les quatre premières planètes." },
+    module: { kind: "light-race", title: "La course de la lumière", button: "La course de la lumière", intro: "Un éclair part du Soleil. Les distances sont à l'échelle : regardez où se trouvent les quatre premières planètes." },
   },
   {
     kind: "body", key: "mercury", id: "mercure", name: "Mercure", color: "#B5ADA3",
@@ -80,7 +81,7 @@ export const STOPS: readonly Stop[] = [
       { label: "Vitesse moyenne", value: "47,4 km/s" },
     ],
     live: { label: FROM_EARTH },
-    module: { kind: "kepler", title: "La loi des aires", intro: "Kepler, 1609 : une planète balaie des aires égales en des temps égaux. Chaque secteur dure 8 jours. Près du Soleil, Mercure accélère." },
+    module: { kind: "kepler", title: "La loi des aires", button: "Pourquoi Mercure accélère", intro: "Kepler, 1609 : une planète balaie des aires égales en des temps égaux. Chaque secteur dure 8 jours. Près du Soleil, Mercure accélère." },
   },
   {
     kind: "body", key: "venus", id: "venus", name: "Vénus", color: "#E6CB94",
@@ -98,7 +99,7 @@ export const STOPS: readonly Stop[] = [
       { label: "Pression au sol", value: "92 bar", note: "92 fois celle de la Terre" },
     ],
     live: { label: FROM_EARTH },
-    module: { kind: "venus-race", title: "Qui boucle son tour en premier ?", intro: "À gauche, le tour du Soleil. À droite, le tour de Vénus sur elle-même. Même horloge pour les deux." },
+    module: { kind: "venus-race", title: "Qui boucle son tour en premier ?", button: "Le jour contre l'année", intro: "À gauche, le tour du Soleil. À droite, le tour de Vénus sur elle-même. Même horloge pour les deux." },
   },
   {
     kind: "body", key: "earth", id: "terre", name: "Terre", color: "#5B9BE6",
@@ -116,7 +117,7 @@ export const STOPS: readonly Stop[] = [
       { label: "Inclinaison de l'axe", value: "23,44°" },
     ],
     live: { label: "Ce jour, distance au Soleil" },
-    module: { kind: "seasons-earth", title: "Pourquoi des saisons ?", intro: "En haut ou à gauche, la Terre sur son orbite, vue d'en haut. Vue de côté : la part du tour passée au soleil à la latitude de Paris." },
+    module: { kind: "seasons-earth", title: "Pourquoi des saisons ?", button: "Pourquoi des saisons ?", intro: "En haut ou à gauche, la Terre sur son orbite, vue d'en haut. Vue de côté : la part du tour passée au soleil à la latitude de Paris." },
   },
   {
     kind: "body", key: "mars", id: "mars", name: "Mars", color: "#DA6A43",
@@ -134,7 +135,7 @@ export const STOPS: readonly Stop[] = [
       { label: "Plus haut volcan", value: "≈ 22 km" },
     ],
     live: { label: FROM_EARTH },
-    module: { kind: "weight", title: "Ce qu'afficherait une balance", intro: "Votre masse reste la même partout. Le poids, lui, dépend de la gravité de l'astre." },
+    module: { kind: "weight", title: "Ce qu'afficherait une balance", button: "Votre poids sur chaque astre", intro: "Votre masse reste la même partout. Le poids, lui, dépend de la gravité de l'astre." },
   },
   {
     kind: "interlude", key: "belt", id: "ceinture",
@@ -157,7 +158,7 @@ export const STOPS: readonly Stop[] = [
       { label: "Volume", value: "1 321 Terres" },
     ],
     live: { label: FROM_EARTH },
-    module: { kind: "sizes", title: "Les tailles, enfin à l'échelle", intro: "Survolez ou touchez une planète pour lire son diamètre." },
+    module: { kind: "sizes", title: "Les tailles, enfin à l'échelle", button: "Comparer les tailles", intro: "Survolez ou touchez une planète pour lire son diamètre." },
   },
   {
     kind: "body", key: "saturn", id: "saturne", name: "Saturne", color: "#E2C98F",
@@ -175,7 +176,7 @@ export const STOPS: readonly Stop[] = [
       { label: "Densité", value: "0,69", note: "l'eau : 1" },
     ],
     live: { label: FROM_EARTH },
-    module: { kind: "saturn-rings", title: "Les anneaux vus depuis la Terre", intro: "Selon l'endroit de son orbite de 29 ans, on voit les anneaux par-dessus, par-dessous ou par la tranche." },
+    module: { kind: "saturn-rings", title: "Les anneaux vus depuis la Terre", button: "Les anneaux vus de la Terre", intro: "Selon l'endroit de son orbite de 29 ans, on voit les anneaux par-dessus, par-dessous ou par la tranche." },
   },
   {
     kind: "body", key: "uranus", id: "uranus", name: "Uranus", color: "#9ED9DE",
@@ -193,7 +194,7 @@ export const STOPS: readonly Stop[] = [
       { label: "Inclinaison de l'axe", value: "97,8°" },
     ],
     live: { label: FROM_EARTH },
-    module: { kind: "seasons-uranus", title: "Les saisons d'Uranus", intro: "Le même schéma que pour la Terre, avec un axe incliné de 98°. Latitude de référence : 49° nord, comme Paris." },
+    module: { kind: "seasons-uranus", title: "Les saisons d'Uranus", button: "Les saisons d'Uranus", intro: "Le même schéma que pour la Terre, avec un axe incliné de 98°. Latitude de référence : 49° nord, comme Paris." },
   },
   {
     kind: "body", key: "neptune", id: "neptune", name: "Neptune", color: "#5878E8",
@@ -211,6 +212,6 @@ export const STOPS: readonly Stop[] = [
       { label: "Vents", value: "jusqu'à 2 100 km/h" },
     ],
     live: { label: FROM_EARTH },
-    module: { kind: "neptune-year", title: "Une seule année neptunienne", intro: "Le cadran représente un tour complet de Neptune autour du Soleil, depuis sa découverte. Situez votre vie dessus." },
+    module: { kind: "neptune-year", title: "Une seule année neptunienne", button: "Votre âge sur Neptune", intro: "Le cadran représente un tour complet de Neptune autour du Soleil, depuis sa découverte. Situez votre vie dessus." },
   },
 ];

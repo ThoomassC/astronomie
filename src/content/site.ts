@@ -11,6 +11,13 @@ export const HERO = {
   start: "Partir du Soleil",
 };
 
+/** Boutons qui déplient les plaques sur téléphone (sur grand écran, tout est déjà visible). */
+export const PLATE_MORE = {
+  story: "Lire la fiche",
+  beyond: "Lire la suite",
+  fold: "Replier",
+};
+
 export const SCALE_TOGGLE = {
   off: "Voir les distances réelles",
   on: "Revenir aux distances compressées",
