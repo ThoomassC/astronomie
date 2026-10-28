@@ -45,7 +45,7 @@ Puis ouvrir http://localhost:3000.
 src/
   app/              layout, page, styles globaux
   components/
-    scene/          scène Three.js (planètes, orbites, ceintures, étiquettes)
+    scene/          scène Three.js (shaders, chargement des cartes, orbites, ceintures, étiquettes)
     journey/        parcours : en-tête, règle des distances, dock, plaques d'escale
     modules/        animations explicatives en Canvas 2D
   content/          textes et données affichées des escales
@@ -53,6 +53,7 @@ src/
     astro/          éphémérides, échelles, saisons, lumière, conversions (testé)
     journey/        caméra et suivi du défilement (testé)
     sim/            horloge simulée et boucle d'animation unique
+public/textures/    cartes des astres, en 2K, en 1K et communes aux deux
 docs/maquette/      maquette interactive d'origine (un seul fichier HTML)
 design-system/      direction artistique et jetons du projet
 ```
@@ -63,4 +64,6 @@ design-system/      direction artistique et jetons du projet
 - Données physiques : NASA, *Planetary Fact Sheet*. Nombres de lunes : NASA et UAI, 2025.
 - Les tailles des planètes sont agrandies et les distances compressées (racine carrée), sauf en mode « distances réelles ».
 - L'ouverture des anneaux de Saturne suit un modèle sinusoïdal, juste à environ un an près.
-- Les textures des planètes sont générées par le code.
+- Cartes des astres et de la Voie lactée (`public/textures/`) : [Solar System Scope](https://www.solarsystemscope.com/textures/), d'après des données de la NASA, sous licence [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.fr). Modifications : renommées ; redimensionnées (1K, 512 px pour la Lune, 256 px pour la Voie lactée) ; carte spéculaire convertie de TIFF en JPEG.
+- Orientation des axes de rotation : modèles de l'UAI (WGCCRE 2015 ; Mars, rapport 2009), sans les termes périodiques (moins d'un degré). Au chargement, chaque planète montre son vrai méridien origine ; ensuite, sa rotation affichée est ralentie.
+- Les anneaux de Saturne s'étendent sur la texture de 1,159 à 2,337 rayons équatoriaux, valeurs mesurées sur ses divisions de Cassini et d'Encke.
