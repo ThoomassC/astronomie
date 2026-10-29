@@ -1,9 +1,12 @@
-import { ABOUT_URLS, ccByUrl, numberSample } from "./structure";
+import { ABOUT_URLS, ccByUrl, numberSample, sourcedFigures } from "./structure";
 import type { AboutContent } from "./types";
 
+/** Chiffres clés de l'accueil, écrits en anglais, posés à côté de leurs sources. */
+const figures = sourcedFigures("en");
+
 /**
- * About page, in British English: “ ” quotation marks, British spelling (centre, kilometres, licence as a noun).
- * Link names are proper names, left in their own language.
+ * Page À propos, en anglais britannique : guillemets “ ”, orthographe britannique (centre, kilometres, licence pour
+ * le nom). Les noms des liens sont des noms propres, laissés dans leur langue.
  */
 export const ABOUT_EN: AboutContent = {
   title: "About",
@@ -43,9 +46,19 @@ export const ABOUT_EN: AboutContent = {
       ],
       links: [
         {
+          label: "NASA, Sun Fact Sheet",
+          href: ABOUT_URLS.nasaSunFactSheet,
+          description: `Diameter of the Sun: ${figures.sunInEarths} Earths side by side.`,
+        },
+        {
           label: "NASA, Planetary Fact Sheet",
           href: ABOUT_URLS.nasaFactSheet,
-          description: "Physical data on the planets.",
+          description: "Physical data on the planets, including the Earth's diameter.",
+        },
+        {
+          label: "IAU, 2012 Resolution B2",
+          href: ABOUT_URLS.iauResolutions,
+          description: `The astronomical unit, roughly the average distance from the Earth to the Sun: light covers it in ${figures.sunlight}.`,
         },
         {
           label: "JPL, Approximate Positions of the Planets",
@@ -55,9 +68,14 @@ export const ABOUT_EN: AboutContent = {
         {
           label: "ESA, Gaia DR3",
           href: ABOUT_URLS.gaiaDr3,
-          description: "Distances to the nearby stars, supplemented by Hipparcos and RECONS.",
+          description: `Distances to the nearby stars, including Proxima Centauri at ${figures.nearestStar}; supplemented by Hipparcos and RECONS.`,
         },
         { label: "CDS, SIMBAD", href: ABOUT_URLS.simbad, description: "Positions of the stars in the sky." },
+        {
+          label: "Wittkowski et al., 2012",
+          href: ABOUT_URLS.wittkowski2012,
+          description: `Radius of VY Canis Majoris, measured by interferometry: ${figures.vyCanisMajoris}.`,
+        },
         {
           label: "GRAVITY Collaboration, 2022",
           href: ABOUT_URLS.gravity2022,

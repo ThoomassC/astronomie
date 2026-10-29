@@ -111,15 +111,47 @@ describe("liens de la page À propos", () => {
 
   it.each(LOCALES)("devrait citer les sources principales du site, dans l'ordre du voyage, en %s", (locale) => {
     expect(section(locale, "sources").links?.map(({ href }) => href)).toEqual([
+      ABOUT_URLS.nasaSunFactSheet,
       ABOUT_URLS.nasaFactSheet,
+      ABOUT_URLS.iauResolutions,
       ABOUT_URLS.jplApproximatePositions,
       ABOUT_URLS.gaiaDr3,
       ABOUT_URLS.simbad,
+      ABOUT_URLS.wittkowski2012,
       ABOUT_URLS.gravity2022,
       ABOUT_URLS.reid2019,
       ABOUT_URLS.mcConnachie2012,
       ABOUT_URLS.planck2018,
     ]);
+  });
+
+  /*
+   * Les chiffres clés de l'accueil renvoient ici pour leurs sources : chacun figure dans la description de la sienne,
+   * écrit comme l'accueil l'écrit (formateurs du site : l'espagnol ne groupe pas quatre chiffres).
+   */
+  it.each([
+    ["fr", "4,2 al", "1\u202f420 R☉"],
+    ["en", "4.2 ly", "1,420 R☉"],
+    ["es", "4,2 al", "1420 R☉"],
+  ] as const)("devrait sourcer les quatre chiffres clés de l'accueil en %s", (locale, proxima, vyCanisMajoris) => {
+    const source = (href: string) => {
+      const found = section(locale, "sources").links?.find((link) => link.href === href);
+      if (!found) throw new Error(`Source ${href} absente en ${locale}`);
+      return found;
+    };
+    // 109 Terres dans la largeur du Soleil : NASA, diamètres du Soleil et de la Terre.
+    expect(source(ABOUT_URLS.nasaSunFactSheet).label).toContain("NASA");
+    expect(source(ABOUT_URLS.nasaSunFactSheet).description).toContain("109");
+    expect(source(ABOUT_URLS.nasaFactSheet).label).toContain("NASA");
+    // 8 min 19 s de trajet pour la lumière du Soleil : l'unité astronomique de l'UAI (2012).
+    expect(source(ABOUT_URLS.iauResolutions).label).toMatch(/\b(UAI|IAU)\b.*\b2012\b/);
+    expect(source(ABOUT_URLS.iauResolutions).description).toContain("8 min 19 s");
+    // Proxima du Centaure à 4,2 al : ESA, Gaia DR3.
+    expect(source(ABOUT_URLS.gaiaDr3).label).toContain("Gaia DR3");
+    expect(source(ABOUT_URLS.gaiaDr3).description).toContain(proxima);
+    // VY Canis Majoris, 1 420 R☉ : Wittkowski et al. (2012).
+    expect(source(ABOUT_URLS.wittkowski2012).label).toMatch(/^Wittkowski et al\., 2012$/);
+    expect(source(ABOUT_URLS.wittkowski2012).description).toContain(vyCanisMajoris);
   });
 
   it.each(LOCALES)("devrait créditer cartes, polices et logiciels, la licence CC BY dans la langue (%s)", (locale) => {

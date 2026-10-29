@@ -87,3 +87,6 @@ Textes : `src/content/about/` (`fr.ts`, `en.ts`, `es.ts` ; ancres et adresses da
   collés. L'exemple de nombres de la section Langues sort des formateurs du site (`numberSample`).
 - Les sources citées sont celles des plaques et des données (README, `stars.ts`, `localGroup.ts`, `universe.ts`) ;
   RECONS, sans adresse https valide, est nommé sans lien.
+- Les chiffres clés de l'accueil renvoient à la section Sources : chacun y figure à côté de sa source (NASA pour les
+  109 Terres, UAI 2012 pour les 8 min 19 s, Gaia DR3 pour Proxima, Wittkowski et al. 2012 pour VY Canis Majoris),
+  écrit par `sourcedFigures` avec les mêmes données et les mêmes formateurs que l'accueil.

@@ -1,9 +1,12 @@
-import { ABOUT_URLS, ccByUrl, numberSample } from "./structure";
+import { ABOUT_URLS, ccByUrl, numberSample, sourcedFigures } from "./structure";
 import type { AboutContent } from "./types";
 
+/** Chiffres clés de l'accueil, écrits en espagnol, posés à côté de leurs sources. */
+const figures = sourcedFigures("es");
+
 /**
- * Página Acerca de, en español: tuteo (público de 12 años o más), comillas « » sin espacios. Los nombres de los
- * enlaces son nombres propios, en su idioma.
+ * Page À propos, en espagnol : tutoiement (public de 12 ans et plus), guillemets « » sans espace. Les noms des liens
+ * sont des noms propres, laissés dans leur langue.
  */
 export const ABOUT_ES: AboutContent = {
   title: "Acerca de",
@@ -43,9 +46,19 @@ export const ABOUT_ES: AboutContent = {
       ],
       links: [
         {
+          label: "NASA, Sun Fact Sheet",
+          href: ABOUT_URLS.nasaSunFactSheet,
+          description: `Diámetro del Sol: ${figures.sunInEarths} Tierras en fila.`,
+        },
+        {
           label: "NASA, Planetary Fact Sheet",
           href: ABOUT_URLS.nasaFactSheet,
-          description: "Datos físicos de los planetas.",
+          description: "Datos físicos de los planetas, entre ellos el diámetro de la Tierra.",
+        },
+        {
+          label: "UAI, resolución B2 de 2012",
+          href: ABOUT_URLS.iauResolutions,
+          description: `La unidad astronómica, más o menos la distancia media de la Tierra al Sol: la luz la recorre en ${figures.sunlight}.`,
         },
         {
           label: "JPL, Approximate Positions of the Planets",
@@ -55,9 +68,14 @@ export const ABOUT_ES: AboutContent = {
         {
           label: "ESA, Gaia DR3",
           href: ABOUT_URLS.gaiaDr3,
-          description: "Distancias de las estrellas vecinas, completadas con Hipparcos y RECONS.",
+          description: `Distancias de las estrellas vecinas, entre ellas Próxima Centauri a ${figures.nearestStar}; completadas con Hipparcos y RECONS.`,
         },
         { label: "CDS, SIMBAD", href: ABOUT_URLS.simbad, description: "Posiciones de las estrellas en el cielo." },
+        {
+          label: "Wittkowski et al., 2012",
+          href: ABOUT_URLS.wittkowski2012,
+          description: `Radio de VY Canis Majoris, medido por interferometría: ${figures.vyCanisMajoris}.`,
+        },
         {
           label: "GRAVITY Collaboration, 2022",
           href: ABOUT_URLS.gravity2022,

@@ -1,5 +1,8 @@
-import { ABOUT_URLS, ccByUrl, numberSample } from "./structure";
+import { ABOUT_URLS, ccByUrl, numberSample, sourcedFigures } from "./structure";
 import type { AboutContent } from "./types";
+
+/** Chiffres clés de l'accueil, écrits en français, posés à côté de leurs sources. */
+const figures = sourcedFigures("fr");
 
 /**
  * Page À propos, en français : vouvoiement ; espace insécable (U+00A0) à l'intérieur des guillemets « » et avant
@@ -43,9 +46,19 @@ export const ABOUT_FR: AboutContent = {
       ],
       links: [
         {
+          label: "NASA, Sun Fact Sheet",
+          href: ABOUT_URLS.nasaSunFactSheet,
+          description: `Diamètre du Soleil : ${figures.sunInEarths} Terres côte à côte.`,
+        },
+        {
           label: "NASA, Planetary Fact Sheet",
           href: ABOUT_URLS.nasaFactSheet,
-          description: "Données physiques des planètes.",
+          description: "Données physiques des planètes, dont le diamètre de la Terre.",
+        },
+        {
+          label: "UAI, résolution B2 de 2012",
+          href: ABOUT_URLS.iauResolutions,
+          description: `L'unité astronomique, à peu près la distance moyenne de la Terre au Soleil : la lumière la parcourt en ${figures.sunlight}.`,
         },
         {
           label: "JPL, Approximate Positions of the Planets",
@@ -55,9 +68,14 @@ export const ABOUT_FR: AboutContent = {
         {
           label: "ESA, Gaia DR3",
           href: ABOUT_URLS.gaiaDr3,
-          description: "Distances des étoiles voisines, complétées par Hipparcos et RECONS.",
+          description: `Distances des étoiles voisines, dont Proxima du Centaure à ${figures.nearestStar} ; complétées par Hipparcos et RECONS.`,
         },
         { label: "CDS, SIMBAD", href: ABOUT_URLS.simbad, description: "Positions des étoiles dans le ciel." },
+        {
+          label: "Wittkowski et al., 2012",
+          href: ABOUT_URLS.wittkowski2012,
+          description: `Rayon de VY Canis Majoris, mesuré par interférométrie : ${figures.vyCanisMajoris}.`,
+        },
         {
           label: "GRAVITY Collaboration, 2022",
           href: ABOUT_URLS.gravity2022,
