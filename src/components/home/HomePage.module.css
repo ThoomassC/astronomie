@@ -1,0 +1,342 @@
+/* Accueil : le planétaire du jour, trois portes et quatre ordres de grandeur. Pas de scène 3D. Colonne de 76 rem
+   centrée ; deux colonnes dès 1 024 px (64 rem), une seule au-dessous. Espacements au pas de 4 px (design v2). */
+
+/* La règle globale `main` sert le voyage (contenu au-dessus de la scène, place réservée à la règle des distances) :
+   l'accueil n'a ni l'une ni l'autre. La barre, fixe, mesure 74,8 px : 4,75 rem la dégagent. */
+.page {
+  --bar-h: calc(env(safe-area-inset-top, 0px) + 4.75rem);
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding: calc(var(--bar-h) + 3rem) max(2rem, var(--gr)) 2rem max(2rem, var(--gl));
+  pointer-events: auto;
+}
+
+/* Pied de page : le plan du site (2 rem au-dessus de son filet), dans la colonne de la page. La règle globale
+   `footer` sert le voyage (place de la règle des distances et du dock) : l'accueil reprend ses marges. */
+.footer {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding: 0 max(2rem, var(--gr)) calc(3rem + env(safe-area-inset-bottom, 0px)) max(2rem, var(--gl));
+}
+
+.intro {
+  display: grid;
+  gap: 3rem;
+}
+
+.title {
+  margin: 0 0 1.5rem;
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: clamp(2.25rem, 4.4vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  font-optical-sizing: auto;
+}
+
+/* Texte long : la couleur de `.lede` (13,2:1 sur --nuit). */
+.text {
+  max-width: 34rem;
+  margin: 0 0 2rem;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: #d9d3c4;
+}
+
+.arrow {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  transition: transform 0.2s;
+}
+
+/* ---------- Cartes ---------- */
+.cards {
+  margin-top: 4rem;
+}
+
+.cardList {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Carte horizontale par défaut (tablette, téléphone) : pictogramme à gauche, texte à droite. */
+.card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  column-gap: 1rem;
+  align-items: start;
+  padding: 1.5rem;
+  background: var(--plaque-a);
+  border: 1px solid var(--filet);
+  border-radius: var(--r-lg);
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
+}
+
+.icon {
+  display: block;
+  width: 48px;
+  height: 48px;
+  color: var(--laiton);
+}
+
+.cardBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0 0 0.5rem;
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: 2rem;
+  line-height: 1.1;
+  font-optical-sizing: auto;
+}
+
+.cardTitle a {
+  color: var(--ivoire);
+  text-decoration: none;
+}
+
+/* Le lien du titre couvre toute la carte : son nom accessible reste le titre. */
+.cardTitle a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-lg);
+}
+
+.cardText {
+  margin: 0 0 1.5rem;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: #d9d3c4;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: auto 0 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ivoire);
+}
+
+/* Le contour de focus entoure la carte entière, à son arrondi ; sans :has(), le lien garde le sien. */
+@supports selector(:has(*)) {
+  .cardTitle a:focus-visible {
+    outline: none;
+  }
+
+  .card:has(a:focus-visible) {
+    outline: 2px solid var(--soleil);
+    outline-offset: 3px;
+  }
+}
+
+@media (hover: hover) {
+  .card:hover {
+    border-color: var(--filet-fort);
+    background: linear-gradient(rgba(236, 229, 211, 0.04), rgba(236, 229, 211, 0.04)), var(--plaque-a);
+  }
+
+  .card:hover .arrow {
+    transform: translateX(3px);
+  }
+}
+
+.card:active {
+  background: linear-gradient(rgba(236, 229, 211, 0.08), rgba(236, 229, 211, 0.08)), var(--plaque-a);
+}
+
+/* ---------- Chiffres clés ---------- */
+.figures {
+  margin-top: 4rem;
+}
+
+.heading {
+  margin: 0 0 2rem;
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: 2rem;
+  line-height: 1.1;
+  font-optical-sizing: auto;
+}
+
+/* Les chiffres pendent d'un réglet : chaque entrée porte le filet du haut, sans écart entre colonnes, si bien qu'une
+   rangée forme un filet continu ; l'espace entre colonnes est la marge droite de chaque entrée. */
+.figureList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: 2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.figure {
+  position: relative;
+  padding: 1.25rem 2rem 0 0;
+  border-top: 1px solid var(--filet-fort);
+}
+
+/* Repère de 1 × 8 px à la couleur de l'astre : le seul usage de la couleur, le sens est dans le texte. */
+.figure::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 8px;
+  background: var(--fc, var(--laiton));
+}
+
+.figure p {
+  margin: 0;
+}
+
+.value {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ivoire);
+  white-space: nowrap;
+}
+
+.unit {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.caption {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--brume);
+}
+
+.figuresNote {
+  margin: 1.5rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--brume);
+}
+
+.figuresNote a {
+  color: var(--ivoire);
+}
+
+/* ---------- Grand écran : deux colonnes, cartes côte à côte, quatre chiffres sur une rangée ---------- */
+@media (min-width: 64rem) {
+  .intro {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 4rem;
+    align-items: center;
+  }
+
+  .cards,
+  .figures {
+    margin-top: 6rem;
+  }
+
+  .cardList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+  }
+
+  .cardBody {
+    margin-top: 1rem;
+  }
+
+  .figureList {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ---------- Téléphone ---------- */
+@media (max-width: 640px) {
+  .page {
+    padding: calc(var(--bar-h) + 1.5rem) var(--gr) 1rem var(--gl);
+  }
+
+  .footer {
+    padding-inline: var(--gl) var(--gr);
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .intro {
+    gap: 2rem;
+  }
+
+  /* Le départ reste visible dès l'arrivée, en pleine largeur. */
+  .start {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cards,
+  .figures {
+    margin-top: 3rem;
+  }
+
+  .cardList {
+    gap: 0.75rem;
+  }
+
+  .card {
+    grid-template-columns: 40px minmax(0, 1fr);
+    padding: 1.25rem;
+  }
+
+  .icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .figureList {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 1.5rem;
+  }
+
+  .figure {
+    padding-right: 0;
+  }
+}
+
+/* Écran bas ou zoom à 400 % : la barre rejoint la page (globals.css), rien à dégager en haut. */
+@media (max-height: 30rem) {
+  .page {
+    padding-top: 1.5rem;
+  }
+}
+
+@media (forced-colors: active) {
+  .card {
+    border-color: CanvasText;
+  }
+
+  .figure::before {
+    display: none;
+  }
+}
