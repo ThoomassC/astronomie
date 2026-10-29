@@ -1,11 +1,16 @@
 "use client";
 
 import { useRef, useState, type PointerEvent } from "react";
+import { useLocale } from "@/i18n/LocaleProvider";
+import type { Locale } from "@/i18n/locales";
+import { bodyName } from "@/i18n/names";
 import { PLANET_BY_KEY, PLANETS, SUN, type Planet } from "@/lib/astro/planets";
 import { formatNumber } from "@/lib/format";
 import { useReducedMotion } from "@/lib/sim/reducedMotion";
+import { COMMON_STRINGS, type Count } from "./common.strings";
 import { ModuleCanvas } from "./ModuleCanvas";
 import { clamp, INK, lerp, smooth, TAU } from "./paint";
+import { PLANET_SIZES_STRINGS } from "./planetSizes.strings";
 import { StatusMessage } from "./StatusMessage";
 import { useAnnouncer } from "./useAnnouncer";
 import { useCanvasModule, type CanvasFrame, type CanvasSize } from "./useCanvasModule";
@@ -28,34 +33,36 @@ const HINT_ID = "sizes-planet-hint";
 const footprint = (planet: Planet) => (planet.key === "saturn" ? planet.diameterKm * 1.75 : planet.diameterKm);
 const TOTAL_FOOTPRINT = PLANETS.reduce((sum, planet) => sum + footprint(planet), 0);
 
-/** Rapport au diamètre de la Terre, avec deux décimales sous 1. */
-const earthRatio = (planet: Planet) => {
-  const ratio = planet.diameterKm / EARTH.diameterKm;
-  return formatNumber(ratio, ratio < 1 ? 2 : 1);
+/** Rapport au diamètre de la Terre, avec deux décimales sous 1 : sa valeur, pour l'accord, et son écriture. */
+const earthRatio = (planet: Planet, locale: Locale): Count => {
+  const value = planet.diameterKm / EARTH.diameterKm;
+  return { value, text: formatNumber(value, value < 1 ? 2 : 1, locale) };
 };
 
-const describe = (planet: Planet) =>
-  `${planet.name} : ${formatNumber(planet.diameterKm)} km, ${earthRatio(planet)} fois la Terre.`;
+const kmText = (km: number, locale: Locale) => formatNumber(km, 0, locale);
 
-const MODES = [
-  { value: 0, label: "Les planètes" },
-  { value: 1, label: "Avec le Soleil" },
-] as const;
-type Mode = (typeof MODES)[number]["value"];
+const describe = (planet: Planet, locale: Locale) =>
+  PLANET_SIZES_STRINGS[locale].describe(
+    bodyName(planet.key, locale),
+    kmText(planet.diameterKm, locale),
+    earthRatio(planet, locale).text,
+  );
 
-const EARTHS_READOUT = "11 Terres côte à côte couvrent presque le diamètre de Jupiter (11,2 exactement).";
+/** Cadrages : 0 = les planètes, 1 = avec le Soleil. */
+const MODES = [0, 1] as const;
+type Mode = (typeof MODES)[number];
 
 /** Équivalent textuel du canvas : les huit diamètres et leur rapport à la Terre. */
-function canvasLabel(mode: Mode, earthsShown: boolean): string {
-  const planets = PLANETS.map((planet) => {
-    const size = `${planet.name}, ${formatNumber(planet.diameterKm)} km`;
-    if (planet.key === EARTH.key) return size;
-    const many = planet.diameterKm / EARTH.diameterKm >= 2;
-    return `${size} (${earthRatio(planet)} ${many ? "Terres" : "Terre"})`;
-  }).join(" ; ");
-  const sun = mode === 1 ? ` Le Soleil est dessiné à côté : ${formatNumber(SUN.diameterKm)} km, 109 Terres.` : "";
-  const earths = earthsShown && mode === 0 ? " 11 Terres sont alignées sur le diamètre de Jupiter." : "";
-  return `Les huit planètes dessinées à la même échelle : ${planets}.${sun}${earths}`;
+function canvasLabel(mode: Mode, earthsShown: boolean, locale: Locale): string {
+  const t = PLANET_SIZES_STRINGS[locale];
+  const planets = PLANETS.map((planet) =>
+    t.planetEntry(
+      bodyName(planet.key, locale),
+      kmText(planet.diameterKm, locale),
+      planet.key === EARTH.key ? null : earthRatio(planet, locale),
+    ),
+  );
+  return t.canvasLabel(planets, mode === 1 ? kmText(SUN.diameterKm, locale) : null, earthsShown && mode === 0);
 }
 
 interface Spot {
@@ -75,6 +82,10 @@ interface SizesView {
 
 /** 6. Les tailles à l'échelle (Jupiter) : les huit planètes au même rapport, avec ou sans le Soleil. */
 export function PlanetSizes() {
+  const locale = useLocale();
+  const t = PLANET_SIZES_STRINGS[locale];
+  const common = COMMON_STRINGS[locale];
+  const modeLabel: Record<Mode, string> = { 0: t.planets, 1: t.withSun };
   const reduced = useReducedMotion();
   const [mode, setMode] = useState<Mode>(0);
   const [showEarths, setShowEarths] = useState(false);
@@ -82,7 +93,7 @@ export function PlanetSizes() {
   const [selected, setSelected] = useState(JUPITER_INDEX);
   /** Cadrage ou alignement des Terres en cours d'animation. */
   const [transitioning, setTransitioning] = useState(false);
-  const [readout, setReadout] = useState(() => describe(PLANETS[JUPITER_INDEX]));
+  const [readout, setReadout] = useState(() => describe(PLANETS[JUPITER_INDEX], locale));
   const { message, announce } = useAnnouncer();
   const view = useRef<SizesView>({ k: 0, earths: 0, spots: [] });
 
@@ -110,7 +121,7 @@ export function PlanetSizes() {
       c.beginPath();
       c.arc(sx, base - sr, sr, 0, TAU);
       c.fill();
-      p.text("Soleil", 14, 24, { weight: 700, size: 13, color: INK.nuit });
+      p.text(bodyName("sun", locale), 14, 24, { weight: 700, size: 13, color: INK.nuit });
       c.globalAlpha = 1;
     }
     c.strokeStyle = "rgba(194,163,107,.5)";
@@ -150,14 +161,14 @@ export function PlanetSizes() {
         c.stroke();
       }
       if (r >= 6 || highlighted) {
-        p.text(planet.name, cx, base + 18, {
+        p.text(bodyName(planet.key, locale), cx, base + 18, {
           align: "center",
           size: 11.5,
           color: highlighted ? INK.ivoire : INK.brume,
           weight: highlighted ? 700 : 400,
         });
       } else if (i === 0 && selected >= INNER_COUNT) {
-        p.text("Mercure à Mars", cx - 2, base + 18, { size: 11, color: INK.brume });
+        p.text(common.innerPlanets, cx - 2, base + 18, { size: 11, color: INK.brume });
       }
       spots.push({ x: cx, y: cy, r: Math.max(r, 7) });
       x += fw + GAP;
@@ -185,7 +196,7 @@ export function PlanetSizes() {
 
   const select = (index: number) => {
     setSelected(index);
-    show(describe(PLANETS[index]));
+    show(describe(PLANETS[index], locale));
   };
 
   // Survol et toucher du canvas choisissent aussi la planète (le bouton radio suit).
@@ -201,11 +212,7 @@ export function PlanetSizes() {
     if (next === mode) return;
     setMode(next);
     setTransitioning(true);
-    show(
-      next === 1
-        ? `Le Soleil mesure ${formatNumber(SUN.diameterKm)} km : 109 Terres, ou presque 10 Jupiter.`
-        : describe(PLANETS[selected]),
-    );
+    show(next === 1 ? t.sunReadout(kmText(SUN.diameterKm, locale)) : describe(PLANETS[selected], locale));
   };
 
   const toggleEarths = () => {
@@ -214,9 +221,9 @@ export function PlanetSizes() {
     setShowEarths(next);
     if (next) {
       setTransitioning(true);
-      show(EARTHS_READOUT);
+      show(t.lineUpReadout);
     } else {
-      show(describe(PLANETS[selected]));
+      show(describe(PLANETS[selected], locale));
     }
   };
 
@@ -224,14 +231,14 @@ export function PlanetSizes() {
     <>
       <ModuleCanvas
         {...canvas}
-        label={canvasLabel(mode, showEarths)}
+        label={canvasLabel(mode, showEarths, locale)}
         onPointerMove={pick}
         onPointerDown={pick}
       />
       <fieldset className={styles.picker} aria-describedby={HINT_ID}>
-        <legend className={styles.legend}>Planète détaillée</legend>
+        <legend className={styles.legend}>{t.legend}</legend>
         <p id={HINT_ID} className={styles.pickerHint}>
-          {"Ou choisissez-la ici ; au clavier, avec les flèches."}
+          {t.pickerHint}
         </p>
         <div className={styles.options}>
           {PLANETS.map((planet, i) => (
@@ -244,21 +251,16 @@ export function PlanetSizes() {
                 checked={selected === i}
                 onChange={() => select(i)}
               />
-              <span>{planet.name}</span>
+              <span>{bodyName(planet.key, locale)}</span>
             </label>
           ))}
         </div>
       </fieldset>
       <div className="ctrls">
-        <div className="seg" role="group" aria-label="Cadrage">
+        <div className="seg" role="group" aria-label={t.framing}>
           {MODES.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={mode === option.value}
-              onClick={() => chooseMode(option.value)}
-            >
-              {option.label}
+            <button key={option} type="button" aria-pressed={mode === option} onClick={() => chooseMode(option)}>
+              {modeLabel[option]}
             </button>
           ))}
         </div>
@@ -270,7 +272,7 @@ export function PlanetSizes() {
           disabled={mode === 1}
           onClick={toggleEarths}
         >
-          Aligner 11 Terres
+          {t.lineUp}
         </button>
       </div>
       <p className={`readout ${styles.reserve}`} id="sizes-readout" aria-live="off">
