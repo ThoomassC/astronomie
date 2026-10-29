@@ -1,0 +1,313 @@
+/* À propos : la notice gravée sous l'instrument (design-v2 § 3). Une colonne de lecture de 42 rem ; à partir de
+   64 rem de large, le sommaire collant à sa gauche (13 rem, écart de 4 rem), le tout centré. Aucun effet : la
+   typographie, l'espace et les filets de laiton font le rythme. Rien n'y bouge, sauf le chevron du sommaire replié. */
+
+/* Le `main` du voyage (globals.css) laisse passer les clics vers la scène et réserve la place de la règle des
+   distances : ici, ni scène ni règle. En haut, la place de la barre fixe (4,75 rem) plus 2 rem. */
+.page {
+  pointer-events: auto;
+  padding-block: calc(env(safe-area-inset-top, 0px) + 6.75rem) 6rem;
+  padding-inline: var(--gl) var(--gr);
+}
+
+.toc,
+.column {
+  max-width: 42rem;
+  margin-inline: auto;
+}
+
+/* ---------- Sommaire ---------- */
+
+.tocList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tocList a {
+  display: flex;
+  align-items: center;
+  min-height: 2.25rem;
+  color: var(--brume);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+.tocList a:hover {
+  color: var(--ivoire);
+}
+
+/* Téléphone et tablette : replié en tête, natif (s'ouvre sans JavaScript), lignes de 44 px. */
+.tocFolded {
+  margin-bottom: 2rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-md);
+}
+
+/* `display: block` retire le marqueur natif (Safari : -webkit-details-marker) ; le chevron le remplace. */
+.tocFolded summary {
+  position: relative;
+  display: block;
+  min-height: 2.75rem;
+  padding: 0.625rem 3rem 0.625rem 1rem;
+  border-radius: var(--r-md);
+  color: var(--ivoire);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.tocFolded summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Chevron dessiné en laiton : pointe en bas replié, en haut déplié. */
+.tocFolded summary::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 1.25rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 1.5px solid var(--laiton);
+  border-bottom: 1.5px solid var(--laiton);
+  transform: translateY(-70%) rotate(45deg);
+  transition: transform 200ms ease;
+}
+
+.tocFolded[open] summary::after {
+  transform: translateY(-30%) rotate(225deg);
+}
+
+.tocFolded .tocList {
+  padding: 0.25rem 0.5rem 0.5rem;
+  border-top: 1px solid var(--filet);
+}
+
+.tocFolded .tocList a {
+  min-height: 2.75rem;
+  padding-inline: 0.5rem;
+}
+
+/* Grand écran : toujours ouvert, lignes de 36 px (pointeur précis). Masqué ailleurs, donc hors de l'arbre
+   d'accessibilité. */
+.tocOpen {
+  display: none;
+}
+
+.tocTitle {
+  margin: 0 0 0.5rem;
+  color: var(--brume);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+/* ---------- Titre et accroche ---------- */
+
+.head h1 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: clamp(2.25rem, 1.5rem + 3.2vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  font-optical-sizing: auto;
+  text-wrap: balance;
+}
+
+.intro {
+  margin: 0.75rem 0 0;
+  color: var(--ivoire);
+  font-family: var(--f-display-italic);
+  font-style: italic;
+  font-size: clamp(1.1875rem, 1.0625rem + 0.5vw, 1.375rem);
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+/* ---------- Sections ---------- */
+
+/* Chaque section s'ouvre sur un filet, 3 rem sous la précédente ; l'ancre se pose sous la barre (scroll-padding). */
+.part {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--filet);
+}
+
+/* Cible de lecture du sommaire (focus programmatique), pas une commande : pas de contour. */
+.part:focus {
+  outline: none;
+}
+
+.part h2 {
+  margin: 0 0 1rem;
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: 2rem;
+  line-height: 1.1;
+  font-optical-sizing: auto;
+  text-wrap: balance;
+}
+
+.part > p {
+  margin: 0 0 1rem;
+  color: #d9d3c4;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.part > p:last-child {
+  margin-bottom: 0;
+}
+
+/* Encart de confidentialité : laiton, pas soleil (ce n'est pas une alerte). */
+.part > .note {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-md);
+  background: var(--plaque-a);
+  color: var(--ivoire);
+}
+
+/* Accessibilité : termes et définitions, filetés comme la fiche des plaques. */
+.entries {
+  margin: 0;
+}
+
+.entries div {
+  padding-block: 0.75rem;
+  border-top: 1px solid var(--filet);
+}
+
+.entries dt {
+  color: var(--ivoire);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.entries dd {
+  margin: 0.25rem 0 0;
+  color: #d9d3c4;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+/* Liens vers d'autres sites : liste filetée, le nom (le lien) puis ce que le site en tire. */
+.outbound {
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.outbound li {
+  padding-block: 0.75rem;
+  border-top: 1px solid var(--filet);
+}
+
+.outbound p {
+  margin: 0.25rem 0 0;
+  color: var(--brume);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* Cette page dans chaque langue, sur une ligne, séparées par un point dessiné (décor : rien à lire). */
+.languages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.languages li + li::before {
+  content: "";
+  display: inline-block;
+  width: 0.25rem;
+  height: 0.25rem;
+  margin-inline: 0.75rem;
+  border-radius: 50%;
+  background: var(--brume);
+  vertical-align: middle;
+}
+
+/* Liens de texte : ivoire, soulignés de laiton ; au survol, soulignement ivoire plus épais. */
+.outbound a,
+.languages a {
+  color: var(--ivoire);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--laiton);
+  text-underline-offset: 0.2em;
+}
+
+.outbound a:hover,
+.languages a:hover {
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--ivoire);
+}
+
+.outbound a {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.arrow {
+  font-weight: 400;
+}
+
+/* Cible de 44 px de haut ; la langue de la page, en gras et sans soulignement, ne se distingue pas que par la
+   couleur. */
+.languages a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  font-size: 1.0625rem;
+}
+
+.languages a[aria-current="true"] {
+  font-weight: 700;
+  text-decoration-line: none;
+}
+
+/* ---------- Grand écran : deux colonnes, sommaire collant ---------- */
+
+@media (min-width: 64rem) {
+  .page {
+    display: grid;
+    grid-template-columns: 13rem minmax(0, 42rem);
+    column-gap: 4rem;
+    justify-content: center;
+    align-items: start;
+  }
+
+  .toc,
+  .column {
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  .toc {
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 6.75rem);
+  }
+
+  .tocFolded {
+    display: none;
+  }
+
+  .tocOpen {
+    display: block;
+  }
+}
+
+/* Écran bas (zoom, téléphone en paysage) : le sommaire défile avec la page plutôt que de dépasser de la vue. */
+@media (min-width: 64rem) and (max-height: 30rem) {
+  .toc {
+    position: static;
+  }
+}
