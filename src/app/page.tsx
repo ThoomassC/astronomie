@@ -1,23 +1,19 @@
 import { anchorOf } from "@/components/journey/anchors";
-import { BeyondPlate } from "@/components/journey/BeyondPlate";
 import { ClockDriver } from "@/components/journey/ClockDriver";
-import { CosmicPlate } from "@/components/journey/CosmicPlate";
+import { CosmicStops } from "@/components/journey/CosmicStops";
 import { DistanceRail, type RailStop } from "@/components/journey/DistanceRail";
 import { ExploreMode } from "@/components/journey/ExploreMode";
-import { Hero } from "@/components/journey/Hero";
 import { MAIN_ID } from "@/components/journey/ids";
-import { Interlude } from "@/components/journey/Interlude";
 import { JourneyTracker } from "@/components/journey/JourneyTracker";
 import { ScaleNote } from "@/components/journey/ScaleNote";
 import { SiteFooter } from "@/components/journey/SiteFooter";
 import { SkipLinks } from "@/components/journey/SkipLinks";
-import { StopPlate } from "@/components/journey/StopPlate";
+import { SolarStops } from "@/components/journey/SolarStops";
 import { TimeDock } from "@/components/journey/TimeDock";
 import { TopBar } from "@/components/journey/TopBar";
 import { SceneErrorBoundary } from "@/components/scene/SceneErrorBoundary";
 import { SceneMount } from "@/components/scene/SceneMount";
-import { COSMIC_STOPS } from "@/content/cosmos";
-import { STOPS } from "@/content/stops";
+import { DEFAULT_LOCALE } from "@/i18n/locales";
 import { RAIL_STOPS } from "@/lib/journey/camera";
 
 /**
@@ -40,13 +36,8 @@ export default function Home() {
       <TopBar stops={railStops} />
       <DistanceRail stops={railStops} />
       <main id={MAIN_ID} tabIndex={-1} data-hide-on-explore>
-        <Hero sunHref={sunHref} />
-        {STOPS.map((stop) =>
-          stop.kind === "body" ? <StopPlate key={stop.key} stop={stop} /> : <Interlude key={stop.key} stop={stop} />,
-        )}
-        <BeyondPlate sunHref={sunHref} />
-        <CosmicPlate stop={COSMIC_STOPS.stars} sunHref={sunHref} starList />
-        <CosmicPlate stop={COSMIC_STOPS.galaxy} sunHref={sunHref} />
+        <SolarStops locale={DEFAULT_LOCALE} sunHref={sunHref} />
+        <CosmicStops locale={DEFAULT_LOCALE} sunHref={sunHref} />
       </main>
       <SiteFooter />
       <ScaleNote />
