@@ -1,4 +1,6 @@
 import type { ComponentPropsWithoutRef, CSSProperties } from "react";
+import { useLocale } from "@/i18n/LocaleProvider";
+import { COMMON_STRINGS } from "./common.strings";
 import type { CanvasModule } from "./useCanvasModule";
 import styles from "./modules.module.css";
 
@@ -18,8 +20,10 @@ interface ModuleCanvasProps extends CanvasModule, NativeCanvasProps {
  * Canvas d'un module, à alimenter avec le retour de `useCanvasModule`.
  * Le ratio (et le ratio étroit sous 420 px, par requête de conteneur) est fixé en CSS :
  * la hauteur est juste dès le rendu serveur, sans saut à l'hydratation.
+ * Le repli, dans la langue de la page, s'affiche quand le canvas ne peut pas être dessiné.
  */
 export function ModuleCanvas({ canvasRef, size, failed, label, ...canvasProps }: ModuleCanvasProps) {
+  const t = COMMON_STRINGS[useLocale()];
   const ratio = size.height / size.width;
   const stageStyle: StageStyle = {
     "--ratio": String(ratio),
@@ -36,7 +40,7 @@ export function ModuleCanvas({ canvasRef, size, failed, label, ...canvasProps }:
         aria-label={label}
         {...canvasProps}
       />
-      {failed ? <p className={styles.fallback}>Animation indisponible.</p> : null}
+      {failed ? <p className={styles.fallback}>{t.unavailable}</p> : null}
     </div>
   );
 }

@@ -35,6 +35,12 @@ export interface TextStyle {
   color?: string;
   align?: CanvasTextAlign;
   baseline?: CanvasTextBaseline;
+  /**
+   * Place disponible, en px CSS. Un texte plus long y est resserré par le navigateur (`fillText` et sa largeur
+   * maximale) au lieu de déborder du canvas ou de chevaucher son voisin ; un texte qui tient est dessiné tel quel.
+   * Sert aux libellés dont la longueur dépend de la langue.
+   */
+  maxWidth?: number;
 }
 
 /** Petits outils de dessin partagés par les modules (équivalents de `txt` et `dot` dans la maquette). */
@@ -44,6 +50,8 @@ export interface Painter {
   family: string;
   /** Applique graisse et taille au contexte (utile avant `measureText`). */
   setFont(weight: number, size: number): void;
+  /** Largeur du texte dessiné avec cette graisse (400 par défaut) et cette taille (12 px par défaut), en px CSS. */
+  measure(value: string, weight?: number, size?: number): number;
   text(value: string, x: number, y: number, style?: TextStyle): void;
   /** Disque plein. */
   dot(x: number, y: number, r: number, color: string): void;
@@ -56,12 +64,17 @@ export function createPainter(ctx: CanvasRenderingContext2D): Painter {
     setFont(weight, size) {
       ctx.font = `${weight} ${size}px ${painter.family}`;
     },
+    measure(value, weight = 400, size = 12) {
+      painter.setFont(weight, size);
+      return ctx.measureText(value).width;
+    },
     text(value, x, y, style = {}) {
       painter.setFont(style.weight ?? 400, style.size ?? 12);
       ctx.fillStyle = style.color ?? INK.ivoire;
       ctx.textAlign = style.align ?? "left";
       ctx.textBaseline = style.baseline ?? "alphabetic";
-      ctx.fillText(value, x, y);
+      if (style.maxWidth === undefined) ctx.fillText(value, x, y);
+      else ctx.fillText(value, x, y, style.maxWidth);
     },
     dot(x, y, r, color) {
       ctx.beginPath();

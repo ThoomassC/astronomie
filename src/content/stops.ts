@@ -1,15 +1,5 @@
+import type { ModuleKind } from "@/components/modules/moduleKind";
 import type { PlanetKey } from "@/lib/astro/planets";
-
-export type ModuleKind =
-  | "light-race"
-  | "kepler"
-  | "venus-race"
-  | "seasons-earth"
-  | "weight"
-  | "sizes"
-  | "saturn-rings"
-  | "seasons-uranus"
-  | "neptune-year";
 
 export interface Fact {
   label: string;
