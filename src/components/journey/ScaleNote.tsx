@@ -98,6 +98,7 @@ export function ScaleNote() {
     <div
       ref={noteRef}
       className="scale-note"
+      data-hide-on-explore
       data-visible={visible}
       data-suspended={suspended || undefined}
       data-open={expanded || undefined}

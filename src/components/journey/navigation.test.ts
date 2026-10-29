@@ -177,3 +177,53 @@ describe("scrollInstantly", () => {
     expect(takeSkipSmoothing()).toBe(false);
   });
 });
+
+describe("holdAt", () => {
+  it("devrait seulement couper le défilement en cours, sans sauter, quand la page est déjà au repos sur l'escale", async () => {
+    const { holdAt, takeSkipSmoothing } = await import("@/components/journey/navigation");
+    setSectionRanges(RANGES);
+    scrolledTo(1000);
+    holdAt("sun");
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: "instant" });
+    expect(takeSkipSmoothing()).toBe(false);
+  });
+
+  it("devrait sauter sans animation 2 px après l'arrivée quand la page est encore avant l'escale (vol en cours)", async () => {
+    const { holdAt, takeSkipSmoothing } = await import("@/components/journey/navigation");
+    setSectionRanges(RANGES);
+    scrolledTo(300);
+    holdAt("sun");
+    expect(scrollTo).toHaveBeenCalledWith({ top: SUN_TARGET, behavior: "instant" });
+    expect(takeSkipSmoothing()).toBe(true);
+  });
+
+  it("devrait revenir sans animation au départ de l'escale quand la page l'a dépassé", async () => {
+    const { holdAt } = await import("@/components/journey/navigation");
+    setSectionRanges(RANGES);
+    scrolledTo(1700);
+    holdAt("sun");
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1600, behavior: "instant" });
+  });
+
+  it("devrait annuler le recalage d'une navigation en cours : aucune correction après la sienne", async () => {
+    const { holdAt } = await import("@/components/journey/navigation");
+    setSectionRanges(RANGES);
+    goTo("sun");
+    scrolledTo(400);
+    holdAt("sun");
+    setSectionRanges(GROWN);
+    window.dispatchEvent(new Event("scrollend"));
+    vi.advanceTimersByTime(FALLBACK_MS * 5);
+    expect(scrollTo).toHaveBeenCalledTimes(2);
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: SUN_TARGET, behavior: "instant" });
+  });
+
+  it("devrait seulement couper le défilement, à la position actuelle, tant que les sections ne sont pas mesurées", async () => {
+    const { holdAt } = await import("@/components/journey/navigation");
+    scrolledTo(500);
+    holdAt("sun");
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 500, behavior: "instant" });
+  });
+});

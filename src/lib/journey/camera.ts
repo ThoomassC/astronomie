@@ -15,8 +15,11 @@ const WIDTH_FILL = 0.8;
 const ZONE_FILL = 0.9;
 /** Grand écran : une vue lointaine occupe au plus 80 % de la hauteur, entre la barre haute et le dock. */
 const ZONE_HEIGHT_FILL = 0.8;
-/** Rayon extérieur des anneaux visibles, en rayons de la planète. */
-const RING_EXTENT: Partial<Record<PlanetKey, number>> = { saturn: 2.337, uranus: 2.05 };
+/**
+ * Rayon extérieur des anneaux visibles, en rayons de la planète : cadrage des escales, et approche minimale
+ * quand on tourne autour (orbit.ts).
+ */
+export const RING_EXTENT: Partial<Record<PlanetKey, number>> = { saturn: 2.337, uranus: 2.05 };
 /** Air entre la bande libre et ce qui la borde (bandeaux du haut, plaque), en px. */
 const BAND_MARGIN_PX = 8;
 /**
@@ -376,6 +379,39 @@ export function blendCameras(a: CamState, b: CamState, t: number, out: CamState 
   out.tx = radius * Math.cos(theta);
   out.ty = ty;
   out.tz = radius * Math.sin(theta);
+  out.dist = dist;
+  out.azim = azim;
+  out.elev = elev;
+  out.offX = offX;
+  out.offY = offY;
+  out.planet = planet;
+  out.zoom = zoom;
+  return out;
+}
+
+/**
+ * Fondu entre deux caméras, sans recul ni arc : entrée et sortie de l'exploration (t déjà lissé par l'appelant).
+ * Contrairement au vol (blendCameras), la cible va en ligne droite et la caméra ne tourne pas autour du Soleil :
+ * - cible linéaire, en coordonnées cartésiennes ;
+ * - dist = exp(lerp(ln a.dist, ln b.dist, t)) : moyenne géométrique à mi-chemin, jamais au-delà des deux ;
+ * - azim par le plus court chemin ; elev, offX, offY et zoom linéaires ;
+ * - planet = t < 0,5 ? a.planet : b.planet.
+ * `out` peut être `a` ou `b` : tout est calculé avant d'y écrire.
+ */
+export function mixCameras(a: CamState, b: CamState, t: number, out: CamState = emptyCam()): CamState {
+  const tx = lerp(a.tx, b.tx, t);
+  const ty = lerp(a.ty, b.ty, t);
+  const tz = lerp(a.tz, b.tz, t);
+  const dist = Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), t));
+  const azim = a.azim + angleDiff(a.azim, b.azim) * t;
+  const elev = lerp(a.elev, b.elev, t);
+  const offX = lerp(a.offX, b.offX, t);
+  const offY = lerp(a.offY, b.offY, t);
+  const zoom = lerp(a.zoom, b.zoom, t);
+  const planet = t < 0.5 ? a.planet : b.planet;
+  out.tx = tx;
+  out.ty = ty;
+  out.tz = tz;
   out.dist = dist;
   out.azim = azim;
   out.elev = elev;

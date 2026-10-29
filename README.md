@@ -8,6 +8,8 @@ Site pédagogique sur le système solaire. On part du Soleil et on rejoint Neptu
 - **Machine à remonter le temps** : le temps défile de 1 jour à 1 an par seconde, avec retour à aujourd'hui.
 - **Distances réelles** : une bascule remet les distances à l'échelle, et montre à quel point le système solaire est vide.
 - **Jusqu'à la Voie lactée** : après l'au-delà de Neptune, un zoom cosmique continu réduit le système solaire à un point, le Soleil, et fait apparaître les 19 étoiles voisines à leur vraie place (distances à l'échelle), puis la Voie lactée vue de l'extérieur, avec « Vous êtes ici ». Chaque escale a sa plaque ; celle des étoiles liste les étoiles de la carte.
+- **Tourner autour** : à chaque escale (sauf la ceinture d'astéroïdes), le bouton « Tourner autour » de la barre haute fige le voyage, efface la page et laisse tourner librement autour de l'astre : glisser pour tourner, molette ou pincement pour la distance ; au clavier, flèches, plus et moins, 0 pour recentrer ; ou le pavé de boutons. Échap ou « Terminer » reprend le voyage là où il était. Le temps continue de tourner (la machine reste utilisable).
+- **Vu depuis la Terre** : en tournant autour d'une planète autre que la Terre, une bascule place la caméra dans la direction de la Terre, en géométrie réelle : on voit la phase du jour. Une lecture donne la fraction éclairée, le diamètre apparent, l'écart au Soleil et le moment où la chercher dans le ciel.
 - **Une animation par escale** :
   - la course de la lumière ;
   - la loi des aires de Kepler (Mercure) ;
@@ -52,11 +54,11 @@ src/
   content/          textes et données affichées des escales
   lib/
     astro/          éphémérides, échelles, saisons, lumière, conversions (testé)
-    journey/        caméra et suivi du défilement (testé)
+    journey/        caméra, suivi du défilement, exploration et ses gestes (testé)
     sim/            horloge simulée et boucle d'animation unique
 public/textures/    cartes des astres, en 2K, en 1K et communes aux deux
 docs/maquette/      maquette interactive d'origine (un seul fichier HTML)
-docs/adr/           décisions d'architecture (zoom cosmique)
+docs/adr/           décisions d'architecture (zoom cosmique, exploration)
 design-system/      direction artistique et jetons du projet
 ```
 
@@ -73,3 +75,5 @@ design-system/      direction artistique et jetons du projet
 - Les distances des étoiles sont à l'échelle, leurs tailles très exagérées : la taille d'un point suit la magnitude absolue de l'étoile, sa couleur sa classe spectrale. Les mouvements propres depuis 2000 sont négligés (0,075° pour l'étoile de Barnard, la plus rapide).
 - Voie lactée : modèle procédural stylisé, tiré d'une graine fixe (40 000 points, 16 000 sur écran tactile) ; bras d'après Reid et al. (2019), barre d'après Bland-Hawthorn et Gerhard (2016), Soleil à 27 000 années-lumière du centre (GRAVITY Collaboration, 2022), dimensions de la NASA. Couleurs indicatives : bras bleus (étoiles jeunes), régions HII rouges, bulbe orangé (étoiles vieilles) ; l'éclat est réglé à l'écran et s'atténue quand la galaxie rapetisse, pour ne pas saturer. Ce n'est pas une carte : nul ne peut photographier notre galaxie de l'extérieur.
 - Zoom cosmique : une seule scène, réduite autour du Soleil (10^−zoom), avec les étoiles et la galaxie en années-lumière ; voir [docs/adr/0001-zoom-cosmique.md](docs/adr/0001-zoom-cosmique.md).
+- Tourner autour : la caméra garde la cible de l'escale et ne s'en éloigne pas à plus de quatre fois sa distance de départ ; elle s'approche jusqu'à 1,8 rayon d'une planète (1,15 fois ses anneaux), jamais à moins de 2,5 rayons du Soleil, et jusqu'au quart (étoiles voisines) ou aux deux cinquièmes (Voie lactée) de la vue de départ ; voir [docs/adr/0002-mode-exploration.md](docs/adr/0002-mode-exploration.md).
+- Vu depuis la Terre : positions héliocentriques des éléments JPL, sans temps de lumière ni position de l'observateur (latitude, horizon). La caméra se place dans la vraie direction de la Terre ; les distances de la scène restant compressées, seule cette direction, donc la phase, est exacte. Fraction éclairée tirée de l'angle de phase, diamètre apparent équatorial (diamètres NASA). L'élongation est la séparation angulaire vraie Soleil–planète, latitudes comprises, comme dans les almanachs (et non la seule différence de longitudes : 8,4° au lieu de 0,1° pour Vénus le 23 mars 2025) ; le côté du Soleil (est : le soir, ouest : le matin) vient de la différence des longitudes. Quand regarder, même règle pour les sept planètes : à moins de 15° du Soleil, trop près pour être vue ; à 150° et plus, toute la nuit ; sinon, sous 60°, le soir à l'ouest après le coucher du Soleil (côté est) ou le matin à l'est avant son lever (côté ouest), et au-delà, en soirée ou en fin de nuit. Uranus se cherche aux jumelles, Neptune au télescope, les autres à l'œil nu.

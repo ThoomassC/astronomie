@@ -20,24 +20,21 @@ import {
   type Object3D,
 } from "three";
 import { J2000_JD } from "@/lib/astro/constants";
+import { isEarthViewTarget, viewFromEarth } from "@/lib/astro/earthView";
 import { elementsAt, heliocentric, julianDate, positionAt } from "@/lib/astro/ephemeris";
 import { GALACTIC_CENTER_DISTANCE_LY, GALACTIC_DISK_RADIUS_LY, sceneFromGalacticXYZ } from "@/lib/astro/galactic";
 import { galaxyPointBudget } from "@/lib/astro/milkyWay";
 import { ROTATION } from "@/lib/astro/orientation";
-import { PLANETS, PLANET_BY_KEY, SUN, type PlanetKey } from "@/lib/astro/planets";
-import {
-  REAL_SCALE_PLANET_SHRINK,
-  REAL_SCALE_SUN_SHRINK,
-  toScene,
-  unitsPerLightYear,
-  zoomScale,
-} from "@/lib/astro/scale";
+import { PLANETS, PLANET_BY_KEY, type PlanetKey } from "@/lib/astro/planets";
+import { REAL_SCALE_PLANET_SHRINK, toScene, unitsPerLightYear, zoomScale } from "@/lib/astro/scale";
 import { NEARBY_STARS } from "@/lib/astro/stars";
 import {
   STOP_ORDER,
   blendCameras,
   cameraFor,
   freeBand,
+  isCosmicStop,
+  mixCameras,
   smootherstep,
   type CamState,
   type ScreenBand,
@@ -45,6 +42,23 @@ import {
   type StopCameraContext,
   type StopKey,
 } from "@/lib/journey/camera";
+import { exploreStore, type ExploreState } from "@/lib/journey/explore";
+import {
+  EXPLORE_COSMIC_BAND,
+  EXPLORE_TRANSITION_S,
+  ORBIT_EASE_RATE,
+  ORBIT_MAX_ELEV,
+  applyOrbitInput,
+  directionToView,
+  easeOrbitView,
+  orbitCamera,
+  orbitFromCamera,
+  orbitLimits,
+  sunClearance,
+  type ExploreStop,
+  type OrbitInput,
+  type OrbitView,
+} from "@/lib/journey/orbit";
 import { journeyStore, type JourneyState } from "@/lib/journey/store";
 import { getClock, type ClockSnapshot } from "@/lib/sim/clock";
 import {
@@ -141,8 +155,6 @@ const RESIZE_DEBOUNCE_MS = 120;
 const MAX_PIXEL_RATIO = 1.5;
 /** Plafond de pixels rendus : un écran 4K externe en 1,5 en compterait 8 millions. */
 const MAX_PIXELS = 4_200_000;
-/** Distance minimale entre la caméra et le centre du Soleil, en rayons solaires (certains vols le frôlent). */
-const SUN_CLEARANCE = 2.5;
 /**
  * Seuils sous lesquels parallaxe et fondu des orbites sont considérés comme arrivés. La parallaxe (au plus 0,05 rad
  * d'azimut) s'arrête à un millième de sa course : le dernier dixième de pixel ne valait pas des secondes de rendu.
@@ -222,6 +234,15 @@ const emptyCamState = (): CamState => ({
   planet: false,
   zoom: 0,
 });
+
+const emptyOrbitView = (): OrbitView => ({ azim: 0, elev: 0, distanceLog: 0 });
+
+/** Aucun geste : la vue d'exploration est seulement bornée (ses limites suivent l'échelle et la taille de la vue). */
+const NO_ORBIT_INPUT: Readonly<OrbitInput> = { azim: 0, elev: 0, distanceLog: 0, recenter: false };
+
+/** La vue affichée s'est posée sur la vue demandée (easeOrbitView s'y pose exactement). */
+const sameView = (a: OrbitView, b: OrbitView) =>
+  a.azim === b.azim && a.elev === b.elev && a.distanceLog === b.distanceLog;
 
 /**
  * Étiquette à repère (ciel profond, et « Soleil » devenu point) : le repère se pose exactement sur l'astre et seul le
@@ -592,6 +613,40 @@ function setupScene(
     band: (key) => shownBands.get(key) ?? null,
     zone: () => zone,
   };
+
+  // Exploration (« Tourner autour ») : la caméra quitte le voyage et tourne autour de la cible de l'escale, au gré des
+  // gestes (exploreStore). Entrée et sortie se fondent depuis la dernière caméra affichée.
+  /**
+   * Cadrage de l'exploration : mêmes astres, sans la mise en page (le contenu est masqué). Les escales lointaines
+   * remplissent tout l'écran (EXPLORE_COSMIC_BAND) ; les astres, l'accueil et l'au-delà gardent leur distance de base.
+   * Échelle et taille de la vue recopiées de `cameraContext` à chaque image.
+   */
+  const exploreContext: StopCameraContext = {
+    planetPosition: cameraContext.planetPosition,
+    planetRadius: cameraContext.planetRadius,
+    realScale: 0,
+    portrait: false,
+    aspect: 1,
+    fov: 36,
+    band: (key) => (isCosmicStop(key) ? EXPLORE_COSMIC_BAND : null),
+  };
+  /** Escale explorée par la caméra ; null quand elle suit le voyage. */
+  let exploring: ExploreStop | null = null;
+  /** « Vu depuis la Terre » appliqué à la dernière image rendue. */
+  let fromEarthShown = false;
+  /** Caméra de la dernière image rendue, d'où partent les fondus ; aucune avant la première image. */
+  const shownCamera = emptyCamState();
+  let cameraShown = false;
+  /** Fondu d'entrée ou de sortie : caméra de départ et avancement, de 0 à 1 (1 : aucun fondu en cours). */
+  const transitionFrom = emptyCamState();
+  let transitionT = 1;
+  /** Vue demandée par les gestes, vue affichée (lissée vers elle), vue de départ de l'escale (recentrage). */
+  const orbitView = emptyOrbitView();
+  const orbitShown = emptyOrbitView();
+  const orbitHome = emptyOrbitView();
+  const exploreBase = emptyCamState();
+  const exploreCam = emptyCamState();
+  const camMixed = emptyCamState();
   /** Grand écran : zone libre entre la colonne des plaques et la règle, en fractions de la largeur. */
   let zone: ScreenZone | null = null;
   /** Plaque repliée de chaque escale, collée en bas : hauteur et écart au bas de l'écran, en px. */
@@ -853,9 +908,10 @@ function setupScene(
     const key = pick(event.clientX, event.clientY);
     if (key) onPick(key);
   };
-  // À la souris seulement : au doigt, chaque geste de défilement relançait plusieurs secondes de rendu.
+  // À la souris seulement : au doigt, chaque geste de défilement relançait plusieurs secondes de rendu. Pas pendant
+  // l'exploration : la caméra y obéit aux gestes, et chaque glisser de la souris la ferait dériver.
   const onWindowPointerMove = (event: PointerEvent) => {
-    if (event.pointerType !== "mouse") return;
+    if (event.pointerType !== "mouse" || exploreStore.get().stop !== null) return;
     parallax.targetX = (event.clientX / view.width) * 2 - 1;
     parallax.targetY = (event.clientY / view.height) * 2 - 1;
   };
@@ -984,15 +1040,65 @@ function setupScene(
     cosmos.galaxyGain.value = Math.min(1, (radiusPx / GALAXY_REFERENCE_RADIUS_PX) ** GALAXY_GAIN_EXPONENT);
   }
 
-  function updateCamera(dt: number, journey: JourneyState, reduced: boolean): void {
+  /**
+   * Suit le mode d'exploration. À chaque changement (entrée, sortie, autre escale), fondu depuis la caméra affichée,
+   * sauf en mouvement réduit ou avant la première image ; à l'entrée, la vue part des angles de la caméra de base, et
+   * la parallaxe de la souris s'efface (onWindowPointerMove l'ignore pendant le mode).
+   */
+  function syncExploration(stop: ExploreStop | null, reduced: boolean): void {
+    if (stop === exploring) return;
+    Object.assign(transitionFrom, shownCamera);
+    transitionT = reduced || !cameraShown ? 1 : 0;
+    exploring = stop;
+    if (stop === null) return;
+    orbitFromCamera(cameraFor(stop, exploreContext, exploreBase), orbitView);
+    Object.assign(orbitShown, orbitView);
+    parallax.targetX = 0;
+    parallax.targetY = 0;
+  }
+
+  /**
+   * Caméra d'exploration de l'image : base de l'escale (exploreContext), gestes appliqués à la vue demandée et bornés
+   * (les limites suivent l'échelle et la taille de la vue, même sans geste), direction de la Terre en « vu depuis la
+   * Terre », vue affichée lissée vers la demande, distance raccourcie avant la sphère de garde du Soleil.
+   */
+  function exploreCamera(stop: ExploreStop, fromEarth: boolean, dt: number, reduced: boolean): CamState {
+    const base = cameraFor(stop, exploreContext, exploreBase);
+    orbitFromCamera(base, orbitHome);
+    const input = exploreStore.takeInput() ?? NO_ORBIT_INPUT;
+    applyOrbitInput(orbitView, input, orbitHome, orbitLimits(stop, base, exploreContext), orbitView);
+    if (fromEarth && isEarthViewTarget(stop)) {
+      // Direction vraie (UA) de la Terre vue de la planète : la phase affichée est celle qu'on verrait ce jour-là,
+      // la lumière venant du Soleil dans la même direction qu'en distances compressées.
+      const { azim, elev } = directionToView(viewFromEarth(stop, bodiesJd).toEarth);
+      orbitView.azim = azim;
+      orbitView.elev = elev;
+    }
+    easeOrbitView(orbitShown, orbitView, reduced ? 1 : easeFactor(dt, ORBIT_EASE_RATE), orbitShown);
+    return orbitCamera(base, orbitShown, sunClearance(realScale, base.zoom), exploreCam);
+  }
+
+  function updateCamera(dt: number, journey: JourneyState, explore: ExploreState, reduced: boolean): void {
     settleBands(dt, reduced);
     cameraContext.realScale = realScale;
     cameraContext.portrait = view.width / view.height < PORTRAIT_ASPECT;
+    exploreContext.realScale = realScale;
+    exploreContext.portrait = cameraContext.portrait;
+    exploreContext.aspect = cameraContext.aspect;
+    exploreContext.fov = cameraContext.fov;
+    syncExploration(explore.stop, reduced);
     const from = cameraFor(journey.from, cameraContext, camFrom);
-    const state =
+    const travel =
       journey.t > 0
         ? blendCameras(from, cameraFor(journey.to, cameraContext, camTo), smootherstep(journey.t), camBlend)
         : from;
+    const live = exploring === null ? travel : exploreCamera(exploring, explore.fromEarth, dt, reduced);
+    // Entrée et sortie de l'exploration : la caméra glisse de l'image affichée à la caméra vivante (vol compris).
+    transitionT = reduced ? 1 : Math.min(1, transitionT + dt / EXPLORE_TRANSITION_S);
+    const state = transitionT < 1 ? mixCameras(transitionFrom, live, smootherstep(transitionT), camMixed) : live;
+    Object.assign(shownCamera, state);
+    cameraShown = true;
+    fromEarthShown = explore.fromEarth;
     applyZoom(state.zoom);
     const scale = solarRoot.scale.x;
 
@@ -1005,7 +1111,8 @@ function setupScene(
       parallax.y = approach(parallax.y, parallax.targetY, follow, PARALLAX_EPSILON);
     }
     const azimuth = state.azim + parallax.x * 0.05;
-    const elevation = clamp(state.elev + parallax.y * 0.03, -1.2, 1.45);
+    // Jamais à la verticale de la cible (le haut de l'écran y serait indéfini) : la borne de l'exploration.
+    const elevation = clamp(state.elev + parallax.y * 0.03, -ORBIT_MAX_ELEV, ORBIT_MAX_ELEV);
     const horizontal = state.dist * Math.cos(elevation);
     camera.position.set(
       state.tx + horizontal * Math.cos(azimuth),
@@ -1013,7 +1120,7 @@ function setupScene(
       state.tz + horizontal * Math.sin(azimuth),
     );
     // Certains vols entre le Soleil et Mercure passeraient dans le Soleil : on le contourne.
-    const clearance = SUN.displayRadius * SUN_CLEARANCE * lerp(1, REAL_SCALE_SUN_SHRINK, realScale) * scale;
+    const clearance = sunClearance(realScale, state.zoom);
     if (camera.position.lengthSq() < clearance * clearance) camera.position.setLength(clearance);
     camera.lookAt(state.tx, state.ty, state.tz);
     // Décale la cible à l'écran (offX, offY) pour laisser la place aux plaques.
@@ -1196,6 +1303,7 @@ function setupScene(
       const clock = getClock();
       const now = clock.now();
       const snapshot = clock.snapshot();
+      const explore = exploreStore.get();
       const moving =
         needsRender ||
         journey.from !== lastFrom ||
@@ -1204,7 +1312,13 @@ function setupScene(
         realScale !== (snapshot.realScale ? 1 : 0) ||
         (!reduced && (parallax.x !== parallax.targetX || parallax.y !== parallax.targetY)) ||
         !orbitsSettled ||
-        !bandsSettled;
+        !bandsSettled ||
+        // Exploration : entrée, sortie, bascule « vu depuis la Terre », fondu, gestes en attente, vue qui s'ajuste.
+        explore.stop !== exploring ||
+        explore.fromEarth !== fromEarthShown ||
+        transitionT < 1 ||
+        exploreStore.hasInput() ||
+        (exploring !== null && !sameView(orbitShown, orbitView));
       if (!moving) {
         // Rien n'a bougé (temps en pause, défilement et pointeur immobiles) : pas de nouvelle image.
         if (now === lastNow) return;
@@ -1225,7 +1339,7 @@ function setupScene(
       lastTo = journey.to;
       lastT = journey.t;
       updateBodies(step, now, snapshot, reduced);
-      updateCamera(step, journey, reduced);
+      updateCamera(step, journey, explore, reduced);
       updateBelts();
       renderer.render(scene, camera);
       updateLabels();

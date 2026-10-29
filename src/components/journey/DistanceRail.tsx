@@ -117,6 +117,7 @@ export function DistanceRail({ stops }: { stops: readonly RailStop[] }) {
       id={RAIL_ID}
       ref={railRef}
       className="rail"
+      data-hide-on-explore
       aria-label="Escales, du Soleil vers l'extérieur"
       data-tips={tipsDismissed ? "off" : undefined}
       onKeyDown={onKeyDown}

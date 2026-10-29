@@ -9,9 +9,11 @@ import {
   clampToRest,
   freeBand,
   isCosmicStop,
+  mixCameras,
   RAIL_BREAK,
   RAIL_STOPS,
   railPercent,
+  RING_EXTENT,
   restProgress,
   restRange,
   scrollState,
@@ -652,6 +654,79 @@ describe("blendCameras", () => {
     blendCameras(a, b, 0.4);
     expect(a).toEqual(cam({ tx: 34, dist: 8, planet: true }));
     expect(b).toEqual(cam({ tz: 50, dist: 18, planet: true }));
+  });
+});
+
+/*
+ * Entrée et sortie de l'exploration : un fondu court entre la dernière caméra affichée et la caméra vivante.
+ * Contrairement au vol (blendCameras), ni recul ni arc, et la cible va en ligne droite.
+ */
+describe("mixCameras", () => {
+  const cam = (over: Partial<CamState> = {}): CamState => ({
+    tx: 0, ty: 0, tz: 0, dist: 100, azim: 0, elev: 0.2, offX: 0, offY: 0, planet: false, zoom: 0, ...over,
+  });
+
+  /** Deux cibles de part et d'autre du Soleil : un vol y ferait reculer, monter et tourner autour du Soleil. */
+  const A = cam({ tx: 34, ty: 1, tz: 0, dist: 8, azim: 0.4, elev: 0.1, offX: 0.17, offY: 0, planet: true, zoom: 0 });
+  const B = cam({ tx: -50, ty: -3, tz: 20, dist: 18, azim: 2, elev: 0.5, offX: 0, offY: -0.21, planet: false, zoom: 4.6 });
+
+  it("devrait renvoyer la première caméra quand t = 0", () => {
+    expectCamera(mixCameras(A, B, 0), A);
+  });
+
+  it("devrait renvoyer la seconde caméra quand t = 1", () => {
+    expectCamera(mixCameras(A, B, 1), B);
+  });
+
+  it("devrait prendre la moyenne géométrique des distances à mi-chemin, sans aucun recul", () => {
+    expect(mixCameras(A, B, 0.5).dist).toBeCloseTo(Math.sqrt(8 * 18), 9);
+  });
+
+  it("devrait placer la cible au milieu du segment qui joint les deux cibles, sans tourner autour du Soleil", () => {
+    const mid = mixCameras(A, B, 0.5);
+    expect(mid.tx).toBeCloseTo(-8, 9);
+    expect(mid.ty).toBeCloseTo(-1, 9);
+    expect(mid.tz).toBeCloseTo(10, 9);
+  });
+
+  it("devrait faire tourner l'azimut par le plus court chemin (3,1 → −3,1 passe par π)", () => {
+    expectSameAngle(mixCameras(cam({ azim: 3.1 }), cam({ azim: -3.1 }), 0.5).azim, Math.PI, "azim");
+  });
+
+  it("devrait interpoler linéairement l'élévation, sans arc, les décalages d'écran et le zoom", () => {
+    const mid = mixCameras(A, B, 0.5);
+    expect(mid.elev).toBeCloseTo(0.3, 12);
+    expect(mid.offX).toBeCloseTo(0.085, 12);
+    expect(mid.offY).toBeCloseTo(-0.105, 12);
+    expect(mid.zoom).toBeCloseTo(2.3, 12);
+  });
+
+  it.each([
+    [0.49, true],
+    [0.5, false],
+  ])("devrait basculer le drapeau planet à mi-chemin (t = %f → %s)", (t, expected) => {
+    expect(mixCameras(cam({ planet: true }), cam({ planet: false }), t).planet).toBe(expected);
+  });
+
+  it("ne devrait modifier ni a ni b", () => {
+    const a = cam({ tx: 34, dist: 8, planet: true });
+    const b = cam({ tz: 50, dist: 18, zoom: 4.6 });
+    mixCameras(a, b, 0.4);
+    expect(a).toEqual(cam({ tx: 34, dist: 8, planet: true }));
+    expect(b).toEqual(cam({ tz: 50, dist: 18, zoom: 4.6 }));
+  });
+
+  it("devrait écrire dans out et le renvoyer quand out est fourni", () => {
+    const out = cam({ tx: 9, ty: 9, tz: 9, dist: 9, azim: 9, elev: 9, offX: 9, offY: 9, planet: true, zoom: 9 });
+    const result = mixCameras(A, B, 0.3, out);
+    expect(result).toBe(out);
+    expectCamera(out, mixCameras(A, B, 0.3));
+  });
+});
+
+describe("RING_EXTENT", () => {
+  it("devrait donner le rayon extérieur des anneaux visibles, en rayons de la planète : Saturne 2,337, Uranus 2,05", () => {
+    expect(RING_EXTENT).toEqual({ saturn: 2.337, uranus: 2.05 });
   });
 });
 

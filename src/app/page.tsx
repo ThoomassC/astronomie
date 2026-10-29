@@ -3,6 +3,7 @@ import { BeyondPlate } from "@/components/journey/BeyondPlate";
 import { ClockDriver } from "@/components/journey/ClockDriver";
 import { CosmicPlate } from "@/components/journey/CosmicPlate";
 import { DistanceRail, type RailStop } from "@/components/journey/DistanceRail";
+import { ExploreMode } from "@/components/journey/ExploreMode";
 import { Hero } from "@/components/journey/Hero";
 import { MAIN_ID } from "@/components/journey/ids";
 import { Interlude } from "@/components/journey/Interlude";
@@ -22,6 +23,8 @@ import { RAIL_STOPS } from "@/lib/journey/camera";
 /**
  * Le voyage : une section par escale, une scène 3D fixe derrière, la règle des distances
  * et la machine à remonter le temps. Statique ; tout ce qui bouge vit dans des feuilles client.
+ * Ce que marque `data-hide-on-explore` s'efface et devient inerte pendant l'exploration (« Tourner autour ») ;
+ * la scène et le dock du temps restent.
  */
 export default function Home() {
   const sunHref = anchorOf("sun");
@@ -36,7 +39,7 @@ export default function Home() {
       </SceneErrorBoundary>
       <TopBar stops={railStops} />
       <DistanceRail stops={railStops} />
-      <main id={MAIN_ID} tabIndex={-1}>
+      <main id={MAIN_ID} tabIndex={-1} data-hide-on-explore>
         <Hero sunHref={sunHref} />
         {STOPS.map((stop) =>
           stop.kind === "body" ? <StopPlate key={stop.key} stop={stop} /> : <Interlude key={stop.key} stop={stop} />,
@@ -47,6 +50,8 @@ export default function Home() {
       </main>
       <SiteFooter />
       <ScaleNote />
+      {/* Avant le dock, sous lui à l'écran (z-index) : au clavier, la barre et le pavé d'exploration, puis le dock. */}
+      <ExploreMode />
       <TimeDock />
       <ClockDriver />
       <JourneyTracker />

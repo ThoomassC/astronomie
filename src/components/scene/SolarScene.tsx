@@ -11,6 +11,7 @@ import { spectralColor } from "@/lib/astro/starMap";
 import { NEARBY_STARS } from "@/lib/astro/stars";
 import { formatNumber } from "@/lib/format";
 import type { StopKey } from "@/lib/journey/camera";
+import { exploreStore } from "@/lib/journey/explore";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { DISTANCE_RINGS_LY, isDeepLabelKey, ringLabelKey, starLabelKey, type DeepLabelKey } from "./cosmos";
 import { createSolarScene, type BodyKey, type SolarScene as SceneEngine } from "./engine";
@@ -51,6 +52,8 @@ const DEEP_LABELS: readonly DeepLabel[] = [
 /**
  * Scène 3D en fond fixe et étiquettes des astres. Chargée uniquement dans le navigateur
  * (voir SceneMount) ; le moteur Three vit hors de React et rend dans la boucle commune.
+ * Sans scène (pas de WebGL, erreur, contexte perdu, démontage), on ne tourne plus autour de rien :
+ * l'exploration prend fin et rend la page, sans quoi le contenu resterait masqué et inerte.
  */
 export default function SolarScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -89,11 +92,20 @@ export default function SolarScene() {
       deepLabels,
       onPick: goTo,
     });
-    if (engine) engineRef.current = engine;
-    else setSceneFallback("webgl", true);
+    if (engine) {
+      engineRef.current = engine;
+    } else {
+      setSceneFallback("webgl", true);
+      exploreStore.exit();
+    }
+    // Contexte WebGL perdu (GPU réinitialisé, onglet repris) : plus d'image jusqu'à sa restauration.
+    const leaveExploration = () => exploreStore.exit();
+    canvas.addEventListener("webglcontextlost", leaveExploration);
     return () => {
+      canvas.removeEventListener("webglcontextlost", leaveExploration);
       engineRef.current = null;
       engine?.dispose();
+      exploreStore.exit();
       setSceneFallback("webgl", false);
       setSceneFallback("runtime", false);
     };
@@ -109,6 +121,7 @@ export default function SolarScene() {
       engineRef.current = null;
       engine.dispose();
       setSceneFallback("runtime", true);
+      exploreStore.exit();
       console.error("Scène 3D arrêtée", error);
     }
   }, FRAME_ORDER.scene);

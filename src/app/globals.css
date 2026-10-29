@@ -1463,6 +1463,363 @@ footer a {
   display: none;
 }
 
+/* ---------- Exploration (« Tourner autour », « Vu depuis la Terre ») ---------- */
+/*
+ * Pendant l'exploration (`data-explore` sur <html>), la page ne défile plus et ce qui est marqué
+ * `data-hide-on-explore` (barre, règle, contenu, pied de page, note d'échelle, liens d'évitement) s'efface et
+ * devient inerte : opacité et visibilité, jamais `display: none`, sans quoi la page perdrait sa hauteur et son
+ * défilement serait tronqué. La scène et le dock du temps restent ; la couche d'exploration passe entre les deux.
+ */
+html {
+  /* La barre de défilement disparaît pendant le mode : la largeur de la page ne saute pas. */
+  scrollbar-gutter: stable;
+}
+
+/* Jamais `position: fixed` sur <body> : le défilement retomberait à 0 et le voyage repartirait de l'accueil. */
+html[data-explore] {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Le dock reste utilisable ; un balayage sur lui ne fait pas défiler la page (iOS ignore parfois overflow). */
+html[data-explore] .dock {
+  touch-action: none;
+}
+
+/*
+ * Fondu de 0,6 s, celui de la caméra. Ce qui apparaît devient visible aussitôt (visibilité sans transition) : le
+ * focus peut s'y poser dans la même image, ce qu'un élément encore `visibility: hidden` refuse en silence. Ce qui
+ * disparaît reste visible jusqu'à la fin du fondu. La note d'échelle garde son apparition franche (data-visible).
+ */
+[data-hide-on-explore]:not(.scale-note) {
+  transition:
+    opacity 0.6s,
+    visibility 0s;
+}
+
+html[data-explore] [data-hide-on-explore] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+html[data-explore] [data-hide-on-explore]:not(.scale-note) {
+  transition:
+    opacity 0.6s,
+    visibility 0.6s;
+}
+
+/* Couche plein écran, sous le dock : surface de gestes, puis les commandes par-dessus. */
+.explore {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  transition:
+    opacity 0.6s,
+    visibility 0s;
+}
+
+.explore:not([data-active]) {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.6s,
+    visibility 0.6s;
+}
+
+/* Le navigateur ne fait ni défiler, ni zoomer, ni sélectionner : chaque geste revient à la scène. */
+.explore-surface {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.explore-surface[data-dragging] {
+  cursor: grabbing;
+}
+
+/* Barre et lecture en haut, pavé en bas ; ailleurs, les gestes traversent le groupe jusqu'à la surface. */
+.explore-controls {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) var(--gr) 0 var(--gl);
+  pointer-events: none;
+}
+
+/* Cible du focus à l'entrée, comme les sections : un point de lecture, pas une commande. */
+.explore-controls:focus {
+  outline: none;
+}
+
+/* Barre et pavé : capsules, comme le dock. */
+.explore-bar,
+.explore-pad {
+  pointer-events: auto;
+  touch-action: none;
+  background: rgba(8, 14, 32, 0.92);
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-pill);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(236, 229, 211, 0.07);
+}
+
+.explore-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.35rem 0.35rem 0.35rem 1rem;
+}
+
+.explore-where {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0.4rem 0 0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.explore-where i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.explore-hint {
+  margin: 0 0.4rem 0 0;
+  padding-left: 0.8rem;
+  border-left: 1px solid var(--filet);
+  font-size: 0.8125rem;
+  color: var(--brume);
+  white-space: nowrap;
+}
+
+.explore-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.2rem 0.95rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-pill);
+  background: transparent;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.explore-bar button:hover {
+  border-color: var(--ivoire);
+  background: rgba(236, 229, 211, 0.06);
+}
+
+.explore-bar .check {
+  width: 14px;
+  height: 14px;
+}
+
+/* Bascule enfoncée, comme celle des distances réelles ; la case cochée dit l'état sans la couleur. */
+.explore-earth[aria-pressed="true"],
+.explore-earth[aria-pressed="true"]:hover {
+  background: var(--soleil);
+  border-color: var(--soleil);
+  color: var(--encre);
+  font-weight: 700;
+}
+
+/* Lecture du jour : encart sous la barre, sans commande ; les gestes le traversent. */
+.earth-reading {
+  max-width: min(34rem, 100%);
+  padding: 0.6rem 1.1rem 0.7rem;
+  background: rgba(8, 14, 32, 0.92);
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-md);
+  font-size: 0.9375rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.earth-reading p {
+  margin: 0;
+}
+
+.earth-reading .earth-reading-title {
+  margin-bottom: 0.15rem;
+  font-size: 0.8125rem;
+  color: var(--brume);
+}
+
+/* Pavé : centré au-dessus du dock (sa hauteur réservée, 82 px hors mise en page compacte), cibles de 44 px. */
+.explore-pad {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--dock-clear, calc(82px + env(safe-area-inset-bottom, 0px))) + 8px);
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem;
+}
+
+.explore-pad .ibtn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Bouton « Tourner autour » de la barre haute : pilule de 44 px, comme le menu des escales. */
+.explore-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.35rem 0.95rem 0.35rem 0.75rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-pill);
+  background: rgba(8, 14, 32, 0.6);
+  color: var(--ivoire);
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.explore-toggle:hover {
+  border-color: var(--ivoire);
+  background: rgba(236, 229, 211, 0.06);
+}
+
+.explore-toggle svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--laiton);
+}
+
+/* Ceinture d'astéroïdes : rien à faire tourner ; le bouton garde sa place, la barre ne saute pas. */
+.explore-toggle[data-unavailable] {
+  visibility: hidden;
+}
+
+/* Sans scène 3D (repli CSS) ni JavaScript, rien à faire tourner. */
+.no3d .explore-toggle {
+  display: none;
+}
+
+@media (scripting: none) {
+  .explore-toggle {
+    display: none;
+  }
+}
+
+/* Le rappel des gestes parle de molette et d'Échap : grand écran et pointeur précis seulement. */
+@media (max-width: 860px), (pointer: coarse) {
+  .explore-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Pictogramme seul, 44 × 44 ; le libellé, masqué à l'œil, reste le début du nom accessible. */
+  .explore-toggle {
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+  }
+
+  .explore-toggle .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* La bascule et « Terminer » tiennent sur une ligne : le nom de la planète cède (le groupe le porte). */
+  .explore-bar:has(.explore-earth) {
+    padding-left: 0.35rem;
+  }
+
+  .explore-bar:has(.explore-earth) .explore-where {
+    display: none;
+  }
+
+  /* Sept boutons sur une ligne dès 375 px. */
+  .explore-pad {
+    gap: 0.15rem;
+    padding: 0.3rem;
+  }
+}
+
+/* 320 px (zoom à 400 %) : le pavé passe sur deux lignes, quatre puis trois ; arrondi de plaque, comme le dock. */
+@media (max-width: 359px) {
+  .explore-pad {
+    max-width: 13rem;
+    border-radius: var(--r-lg);
+  }
+}
+
+/*
+ * Écran bas (téléphone en paysage, zoom à 400 %) : la barre suit la page et le bouton sortirait de l'écran ; il se
+ * fixe en haut à droite, la barre lui réserve sa place. Pendant le mode, le dock, qui a rejoint la page, redevient
+ * fixe pour rester utilisable.
+ */
+@media (max-height: 30rem) {
+  .bar {
+    padding-right: calc(var(--gr) + 52px);
+  }
+
+  .explore-toggle {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+    right: var(--gr);
+    z-index: 6;
+  }
+
+  html[data-explore] .dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    margin: 0 auto;
+  }
+}
+
+/* Couleurs forcées : les fonds disparaissent ; contours sur les capsules et la bascule enfoncée. */
+@media (forced-colors: active) {
+  .explore-bar,
+  .explore-pad,
+  .earth-reading {
+    border-color: CanvasText;
+  }
+
+  .explore-earth[aria-pressed="true"] {
+    border: 2px solid Highlight;
+  }
+}
+
 /* ---------- Petits écrans ---------- */
 @media (max-width: 860px) {
   :root {

@@ -4,7 +4,7 @@ import { FOOTER } from "@/content/site";
 export function SiteFooter() {
   const { textures } = FOOTER;
   return (
-    <footer>
+    <footer data-hide-on-explore>
       <p>{FOOTER.sources}</p>
       <p>{FOOTER.scale}</p>
       <p>

@@ -2,6 +2,7 @@ import { SITE } from "@/content/site";
 import { anchorOf } from "./anchors";
 import { CurrentStop } from "./CurrentStop";
 import type { RailStop } from "./DistanceRail";
+import { ExploreButton } from "./ExploreButton";
 import { GoToLink } from "./GoToLink";
 import { StopsMenu } from "./StopsMenu";
 
@@ -18,16 +19,20 @@ function BrandMark() {
   );
 }
 
-/** Barre haute : marque (retour à l'accueil) et escale en cours ; sur téléphone, celle-ci ouvre la liste des escales. */
+/**
+ * Barre haute : marque (retour à l'accueil), escale en cours (sur téléphone, elle ouvre la liste des escales) et
+ * « Tourner autour » de cette escale. Masquée et inerte pendant l'exploration, qui a sa propre barre.
+ */
 export function TopBar({ stops }: { stops: readonly RailStop[] }) {
   return (
-    <header className="bar">
+    <header className="bar" data-hide-on-explore>
       <GoToLink className="brand" href={anchorOf("hero")} stop="hero" aria-label={`${SITE.name}, retour à l'accueil`}>
         <BrandMark />
         <span className="brand-name">{SITE.name}</span>
       </GoToLink>
       <CurrentStop />
       <StopsMenu stops={stops} />
+      <ExploreButton />
     </header>
   );
 }

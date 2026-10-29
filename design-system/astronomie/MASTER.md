@@ -137,6 +137,27 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   réelles. ») ; un clic ne change rien et le choix revient au retour dans le système solaire. La note
   d'échelle s'y tait aussi, sans quitter sa place dans le cadrage ; si le focus y était, il rejoint la bascule
   du dock. À son retour, elle ne s'annonce pas de nouveau : seule l'activation des distances réelles l'annonce.
+- **Bouton « Tourner autour »** : un seul, dans la barre haute, après le nom de l'escale (ou le menu des escales).
+  Pilule de 44 px filetée `--filet-fort`, comme le menu des escales : pictogramme d'orbite en laiton, puis le
+  libellé ; à 640 px et moins, le pictogramme seul, 44 × 44 (le libellé, masqué à l'œil, reste le début du nom
+  accessible : « Tourner autour de Saturne »). Il suit l'escale affichée ; à la ceinture d'astéroïdes, il garde
+  sa place sans se montrer. Écran bas (téléphone en paysage, zoom à 400 %) : fixé en haut à droite, la barre lui
+  réserve 52 px. Absent sans JavaScript et sans scène 3D.
+- **Exploration** : la page (barre, règle, plaques, pied de page, note d'échelle) s'efface en 0,6 s et devient
+  inerte pendant que la caméra glisse vers la vue d'exploration ; tout est instantané en mouvement réduit. La page
+  ne défile plus ; la scène et le dock restent. En haut, une barre en capsule, comme le dock : pastille et nom de
+  l'escale, rappel des gestes sur grand écran au pointeur précis (0,8125 rem, `--brume`, séparé par un filet),
+  bascule « Vu depuis la Terre » pour les sept planètes autres que la Terre (case dessinée, fond `--soleil` quand
+  elle est enfoncée), puis « Terminer » ; boutons de 44 px. Sur téléphone, le nom de la planète cède sa place à la
+  bascule. En bas, au-dessus du dock, le pavé en capsule : sept boutons ronds de 44 px (tourner vers la gauche, le
+  haut, le bas, la droite ; s'éloigner, se rapprocher ; recentrer), sur une ligne dès 375 px, quatre puis trois
+  sous 360 px. Ailleurs, la surface de gestes : curseur main, l'astre suit le doigt. Échap ou « Terminer » rendent
+  la page et le focus au bouton.
+- **Lecture « Vu depuis la Terre »** : encart `--r-md` sous la barre, centré, sans commande : titre « Vu depuis la
+  Terre, ce jour » (0,8125 rem, `--brume`), puis « Éclairée à 49 % · 24″ de diamètre · 46° à l'est du Soleil » et
+  quand regarder (« Le soir, à l'ouest après le coucher du Soleil », suivi de l'instrument pour Uranus et Neptune),
+  chiffres tabulaires, recalculés avec la date simulée. Pas de région live : la lecture est annoncée une fois, à
+  l'activation, unités en toutes lettres.
 
 ## Règles
 

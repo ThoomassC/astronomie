@@ -3,7 +3,7 @@ import { DOCK_ID, MAIN_ID } from "./ids";
 /** Liens d'évitement, visibles au focus : vers le contenu et vers la machine à remonter le temps. */
 export function SkipLinks() {
   return (
-    <div className="skip-links">
+    <div className="skip-links" data-hide-on-explore>
       <a className="skip" href={`#${MAIN_ID}`}>
         Aller au contenu
       </a>

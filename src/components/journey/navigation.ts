@@ -125,3 +125,23 @@ export function goTo(key: StopKey): boolean {
   else cancelSettle?.();
   return true;
 }
+
+/**
+ * Pose la caméra au repos sur l'escale, sans animation, avant l'exploration : coupe le recalage d'une navigation et
+ * tout défilement doux en cours ; si le défilement est hors de [arrive, depart] de l'escale (vol en cours), saute à
+ * arrive + 2 (avant) ou à max(arrive + 2, ⌊depart⌋) (après), sans que le suivi ne lisse le saut. Sans plages mesurées :
+ * coupe seulement, à la position actuelle.
+ */
+export function holdAt(key: StopKey): void {
+  cancelSettle?.();
+  const y = window.scrollY;
+  const range = ranges.find((r) => r.key === key);
+  if (!range) {
+    scrollInstantly(y);
+    return;
+  }
+  const low = range.arrive + 2;
+  if (y < range.arrive) scrollInstantly(low);
+  else if (y > range.depart) scrollInstantly(Math.max(low, Math.floor(range.depart)));
+  else scrollInstantly(y);
+}
