@@ -42,3 +42,30 @@ export function orbitReached(radiusSolar: number): PlanetKey | null {
   }
   return reached;
 }
+
+/** Valeur arrondie à `digits` chiffres significatifs, pour les grandeurs dites « environ » : 405 224 → 410 000 à 2. */
+export function roundSignificant(value: number, digits: number): number {
+  return Number(value.toPrecision(digits));
+}
+
+/**
+ * Comparaison parlante d'une étoile, déjà arrondie comme elle s'affiche :
+ * - `orbit` : la plus lointaine des orbites qu'elle engloutirait à la place du Soleil ;
+ * - `earths` : nombre de Terres alignées sur son diamètre, à l'unité ;
+ * - `suns` : nombre de Soleils que contiendrait son volume, à deux chiffres significatifs.
+ */
+export type SizeComparison =
+  | { kind: "orbit"; planet: PlanetKey }
+  | { kind: "earths"; count: number }
+  | { kind: "suns"; count: number };
+
+/**
+ * Comparaison montrée pour une étoile : l'orbite engloutie si elle en atteint une ; sinon les Terres alignées sur son
+ * diamètre si elle n'est pas plus grande que le Soleil ; sinon les Soleils que contiendrait son volume.
+ */
+export function pickComparison(radiusSolar: number): SizeComparison {
+  const planet = orbitReached(radiusSolar);
+  if (planet) return { kind: "orbit", planet };
+  if (radiusSolar <= 1) return { kind: "earths", count: Math.round(earthDiameters(radiusSolar)) };
+  return { kind: "suns", count: roundSignificant(sunVolumes(radiusSolar), 2) };
+}

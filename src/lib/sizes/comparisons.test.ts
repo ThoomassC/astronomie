@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { AU_KM } from "@/lib/astro/constants";
 import { PLANET_BY_KEY } from "@/lib/astro/planets";
-import { earthDiameters, orbitReached, radiusAu, radiusKm, sunVolumes } from "@/lib/sizes/comparisons";
+import {
+  earthDiameters,
+  orbitReached,
+  pickComparison,
+  radiusAu,
+  radiusKm,
+  roundSignificant,
+  sunVolumes,
+} from "@/lib/sizes/comparisons";
 
 /** Rayon solaire nominal (UAI 2015, résolution B3), en km. */
 const SOLAR_RADIUS_KM = 695_700;
@@ -72,4 +80,50 @@ describe("orbitReached", () => {
   it("devrait atteindre Mercure dès que la surface dépasse son orbite", () => {
     expect(orbitReached(MERCURY_ORBIT_SOLAR_RADII * (1 + 1e-9))).toBe("mercury");
   });
+});
+
+describe("roundSignificant", () => {
+  it.each([
+    [405_224, 2, 410_000],
+    [721.734, 2, 720],
+    [5.009, 2, 5],
+    [531_514_800, 4, 531_500_000],
+    [695_700, 4, 695_700],
+    [107_137.8, 4, 107_100],
+  ])("devrait arrondir %f à %i chiffres significatifs (%f)", (value, digits, expected) => {
+    expect(roundSignificant(value, digits)).toBe(expected);
+  });
+});
+
+describe("pickComparison", () => {
+  it.each([
+    [1420, "jupiter"],
+    [764, "mars"],
+    [680, "mars"],
+  ] as const)("devrait citer l'orbite engloutie quand l'étoile en atteint une (%f R☉ : %s)", (radiusSolar, planet) => {
+    expect(pickComparison(radiusSolar)).toEqual({ kind: "orbit", planet });
+  });
+
+  it.each([
+    [74, 410_000],
+    [45.1, 92_000],
+    [25.4, 16_000],
+    [8.97, 720],
+    [1.711, 5],
+  ])(
+    "devrait compter, à deux chiffres significatifs, les Soleils que contiendrait le volume d'une étoile plus grande que le Soleil qui n'atteint pas Mercure (%f R☉ : %f)",
+    (radiusSolar, count) => {
+      expect(pickComparison(radiusSolar)).toEqual({ kind: "suns", count });
+    },
+  );
+
+  it.each([
+    [1, 109],
+    [0.154, 17],
+  ])(
+    "devrait compter, à l'unité, les Terres alignées sur le diamètre d'une étoile pas plus grande que le Soleil (%f R☉ : %f)",
+    (radiusSolar, count) => {
+      expect(pickComparison(radiusSolar)).toEqual({ kind: "earths", count });
+    },
+  );
 });
