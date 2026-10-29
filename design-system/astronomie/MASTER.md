@@ -29,6 +29,11 @@ Site pédagogique grand public (12 ans et plus), en français.
 
 Couleurs d'astres : Soleil `#FFB13B`, Mercure `#B5ADA3`, Vénus `#E6CB94`, Terre `#5B9BE6`,
 Mars `#DA6A43`, Jupiter `#D8A878`, Saturne `#E2C98F`, Uranus `#9ED9DE`, Neptune `#5878E8`.
+Escales sans astre : vue d'ensemble `#FFB547`, astéroïdes `#A89F94`, au-delà `#C2A36B`,
+étoiles voisines `#CFDCFF` (blanc bleuté), Voie lactée `#B3A4EE` (lavande).
+
+Couleurs des étoiles (scène, pastilles du tableau) : celles du corps noir de leur classe spectrale,
+O `#9BB0FF`, B `#AABFFF`, A `#CAD7FF`, F `#F8F7FF`, G `#FFF4EA`, K `#FFD2A1`, M `#FFB56C`.
 
 ## Typographie
 
@@ -77,7 +82,32 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 - **Fiche** : grille 2 colonnes `dt` / `dd`, une ligne « ce jour » recalculée avec la date simulée.
 - **Module** : une animation explicative par escale (Canvas 2D), boutons au clavier,
   texte équivalent en `aria-live`.
-- **Règle des distances** : sommaire vertical à échelle logarithmique (UA), curseur suivant la caméra.
+- **Plaques des escales lointaines** (étoiles voisines, Voie lactée) : même plaque que les astres, filet
+  de la couleur de l'escale. « Lire la fiche » : texte, fiche `dt` / `dd`, puis deux lignes discrètes
+  (0,8125 rem, `--brume`) : ce que la vue simplifie, puis les sources. Les étoiles voisines ont une
+  seconde section, « Les étoiles de la carte » : tableau légendé (`caption`), colonnes Étoile / Distance
+  (« 4,2 al », alignée à droite, chiffres tabulaires) / Type en mots simples (« naine rouge ») et sa
+  précision en petit ; pastille de la couleur du point de la carte devant chaque nom ; filets `--filet`,
+  cellules de 0,5 rem au moins. La Voie lactée est la dernière escale : sur téléphone, son filet reste plein.
+- **Étiquettes du ciel profond** : repère creux posé exactement sur l'astre (couleur de l'étoile), texte (nom et
+  distance) sur une pilule `--plaque-a` filetée `--filet` : lisible sur les points les plus clairs de la galaxie
+  (sur du blanc pur, ivoire 11,8:1, laiton 6,2:1). Placées après les astres, sans que leurs textes se
+  chevauchent ; non interactives (la plaque donne la liste). À la Voie lactée, « Vous êtes ici » se lit au-dessus
+  d'un anneau `--soleil` de 14 px autour du point-Soleil, et remplace « Soleil » (l'une s'efface avant que l'autre
+  n'apparaisse) ; « Centre de la Galaxie » se lit sous son repère : à la même hauteur à l'écran, les deux textes
+  ne se rencontrent jamais. Cercles de distance 5 et 10 al en laiton, étiquette 0,75 rem, posée au premier point
+  libre du cercle (côté opposé au Soleil d'abord, puis les côtés).
+- **Ciel profond (scène)** : étoiles voisines aux couleurs de leur classe ; Voie lactée en points additifs, bras
+  bleus (étoiles jeunes), régions HII rouge rosé le long des bras majeurs, bulbe et barre jaune orangé, disque
+  chaud et faible. L'éclat se règle à l'écran et s'atténue quand la galaxie rapetisse : jamais de blanc saturé.
+  Cadrage des escales lointaines : comme les astres, elles remplissent la bande libre en mise en page compacte
+  (80 % de la largeur, 90 % de la bande) et la zone libre sur grand écran (90 % de sa largeur, 80 % de la
+  hauteur), inclinaison et perspective comprises ; les étoiles jusqu'à 17 al, la galaxie jusqu'au bord de son disque.
+- **Règle des distances** : sommaire vertical à échelle logarithmique, en trois segments : UA jusqu'à 50
+  (les planètes), grand vide comprimé jusqu'à 1 al, puis années-lumière jusqu'à 100 000 (plafond 98 %).
+  Entre le système solaire et les étoiles, l'axe s'interrompt de 87 à 90 % : signe « ≈ » en laiton,
+  0,875 rem, centré sur l'axe. Graduations d'UA, puis une par puissance de dix d'années-lumière (majeure : 1 al).
+  Sous les repères lointains : « dès 4,2 al », « centre à 27 000 al ». Curseur suivant la caméra.
   Infobulles au survol (appareils qui survolent) et au focus clavier ; au doigt, le nom de l'escale
   en cours reste affiché. Là où elle n'a plus que des pastilles (860 px et moins) et en mise en page
   compacte, elle laisse sa place au menu **Escales** : le nom de l'escale en cours (« Escales » à
@@ -95,11 +125,17 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   sombre des libellés, découpée à la forme de la bulle, inverse le texte exactement là où elle passe
   (jamais de texte sombre sur fond sombre). Le dock ne passe jamais à la ligne au-dessus de 360 px :
   complet au-delà de 900 px, boutons de droite réduits à leur icône jusqu'à 761 px, compact en dessous
-  (un seul bouton de vitesse, date courte).
+  (un seul bouton de vitesse, date courte). Aux étoiles voisines et à la Voie lactée, où tout est déjà
+  à l'échelle, la bascule « Distances réelles » est indisponible : atténuée (opacité 0,45, sans survol),
+  toujours focalisable, `aria-disabled` avec sa raison en description (« Ici, les distances sont déjà
+  réelles. ») ; un clic ne change rien et le choix revient au retour dans le système solaire. La note
+  d'échelle s'y tait aussi.
 
 ## Règles
 
-- Données sourcées (NASA Planetary Fact Sheet, éléments orbitaux JPL 1800–2050).
+- Données sourcées (NASA Planetary Fact Sheet, éléments orbitaux JPL 1800–2050 ; étoiles : Gaia DR3 et
+  parallaxes publiées ; galaxie : modèle simplifié d'après Reid et al. 2019 et GRAVITY 2022). Ce que la
+  vue simplifie est dit sur la plaque (tailles des étoiles exagérées, bras dessinés d'après un modèle).
 - `prefers-reduced-motion` : temps en pause au chargement, pas d'animation automatique.
 - Animations Canvas actives seulement quand elles sont visibles (batterie).
 - Contraste texte ≥ 4.5:1, focus visible `--soleil`, cibles tactiles ≥ 44 px.
