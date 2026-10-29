@@ -1,4 +1,4 @@
-import type { ScreenBand, ScreenZone } from "@/lib/journey/camera";
+import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
 import type { PlacedStar } from "@/lib/sizes/layout";
 import type { SizeStopKey } from "@/lib/sizes/stops";
 
