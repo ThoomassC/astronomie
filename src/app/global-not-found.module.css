@@ -1,0 +1,47 @@
+/*
+ * Page introuvable : une colonne au milieu de la nuit, la même phrase dans les trois langues, chacune avec son chemin
+ * vers l'accueil. Jetons de globals.css ; titres et texte dans les polices de repli (pas de next/font sur cette page).
+ */
+/* `pointer-events` et marges : remplacent les règles de `main` propres au voyage (règle des distances, scène). */
+.page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: calc(34rem + var(--gl) + var(--gr));
+  min-height: 100vh;
+  min-height: 100svh;
+  margin-inline: auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 3rem) var(--gr) calc(env(safe-area-inset-bottom, 0px) + 3rem)
+    var(--gl);
+  pointer-events: auto;
+}
+
+/* Code de l'erreur, le même dans toutes les langues : en laiton, comme le rang des plaques. */
+.code {
+  margin: 0 0 0.75rem;
+  color: var(--laiton);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Une version par langue, séparées par un filet : aucune ne prend le pas sur les autres. */
+.version + .version {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--filet);
+}
+
+.title {
+  margin: 0 0 0.5rem;
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: 2rem;
+  line-height: 1.1;
+  text-wrap: balance;
+  font-optical-sizing: auto;
+}
+
+.text {
+  margin: 0 0 1.1rem;
+  font-size: 1.0625rem;
+}
