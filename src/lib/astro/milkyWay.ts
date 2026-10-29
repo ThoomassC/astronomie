@@ -142,7 +142,7 @@ const MINOR_ARM_STARS: Population = { display: shade(0.42, 0.6, 1, 0.2), minSize
 const DISK_STARS: Population = { display: shade(1, 0.74, 0.46, 0.06), minSize: 1, maxSize: 1.6 };
 
 /** Valeur linéaire d'une composante sRGB (IEC 61966-2-1). */
-function srgbToLinear(value: number): number {
+export function srgbToLinear(value: number): number {
   return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }
 
@@ -185,7 +185,7 @@ export interface PointCloud {
 }
 
 /** Tirage gaussien centré (Box–Muller) : chaque paire de tirages uniformes donne deux valeurs. */
-function gaussianSampler(random: () => number): (sigma: number) => number {
+export function gaussianSampler(random: () => number): (sigma: number) => number {
   let spare: number | null = null;
   return (sigma) => {
     if (spare !== null) {
@@ -202,7 +202,7 @@ function gaussianSampler(random: () => number): (sigma: number) => number {
 }
 
 /** Rayon tiré d'une loi exponentielle d'échelle `scale`, restreinte à [inner, outer[ (inversion de sa fonction de répartition). */
-function truncatedExponential(random: () => number, scale: number, inner: number, outer: number): number {
+export function truncatedExponential(random: () => number, scale: number, inner: number, outer: number): number {
   const atInner = Math.exp(-inner / scale);
   const atOuter = Math.exp(-outer / scale);
   return -scale * Math.log(atInner - random() * (atInner - atOuter));
