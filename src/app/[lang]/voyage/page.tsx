@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { anchorOf } from "@/components/journey/anchors";
 import { ClockDriver } from "@/components/journey/ClockDriver";
 import { CosmicStops } from "@/components/journey/CosmicStops";
@@ -13,16 +15,26 @@ import { TimeDock } from "@/components/journey/TimeDock";
 import { TopBar } from "@/components/journey/TopBar";
 import { SceneErrorBoundary } from "@/components/scene/SceneErrorBoundary";
 import { SceneMount } from "@/components/scene/SceneMount";
-import { DEFAULT_LOCALE } from "@/i18n/locales";
+import { isLocale } from "@/i18n/locales";
+import { pageMetadata } from "@/i18n/metadata";
 import { RAIL_STOPS } from "@/lib/journey/camera";
 
+/** Titre, description, adresse canonique et hreflang de la page Voyage, dans la langue de l'adresse. */
+export async function generateMetadata({ params }: PageProps<"/[lang]/voyage">): Promise<Metadata> {
+  const { lang } = await params;
+  if (!isLocale(lang)) notFound();
+  return pageMetadata("voyage", lang);
+}
+
 /**
- * Le voyage : une section par escale, une scène 3D fixe derrière, la règle des distances
- * et la machine à remonter le temps. Statique ; tout ce qui bouge vit dans des feuilles client.
- * Ce que marque `data-hide-on-explore` s'efface et devient inerte pendant l'exploration (« Tourner autour ») ;
- * la scène et le dock du temps restent.
+ * Le voyage, dans la langue de l'adresse (/fr/voyage, /en/voyage, /es/voyage) : une section par escale, une scène 3D
+ * fixe derrière, la règle des distances et la machine à remonter le temps. Statique ; tout ce qui bouge vit dans des
+ * feuilles client. Ce que marque `data-hide-on-explore` s'efface et devient inerte pendant l'exploration
+ * (« Tourner autour ») ; la scène et le dock du temps restent.
  */
-export default function Home() {
+export default async function VoyagePage({ params }: PageProps<"/[lang]/voyage">) {
+  const { lang } = await params;
+  if (!isLocale(lang)) notFound();
   const sunHref = anchorOf("sun");
   const railStops: RailStop[] = RAIL_STOPS.map(({ key, au }) => ({ key, au, href: anchorOf(key) }));
   return (
@@ -36,8 +48,8 @@ export default function Home() {
       <TopBar stops={railStops} />
       <DistanceRail stops={railStops} />
       <main id={MAIN_ID} tabIndex={-1} data-hide-on-explore>
-        <SolarStops locale={DEFAULT_LOCALE} sunHref={sunHref} />
-        <CosmicStops locale={DEFAULT_LOCALE} sunHref={sunHref} />
+        <SolarStops locale={lang} sunHref={sunHref} />
+        <CosmicStops locale={lang} sunHref={sunHref} />
       </main>
       <SiteFooter />
       <ScaleNote />
