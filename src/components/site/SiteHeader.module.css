@@ -1,0 +1,367 @@
+/*
+ * Barre commune (SiteHeader) : onglets, choix de la langue, menu replié et leurs replis sans JavaScript.
+ * Le reste de la barre (.bar, .brand, .where, commandes du voyage) vit dans globals.css, section « Barre haute ».
+ * Capsules et pilules au fond .92, celui du dock : du --brume sur un fond à .6 tomberait à 1,89:1 au-dessus d'un
+ * astre clair. Les marges de .bar, dont dépend la hauteur de la barre, ne changent pas.
+ * Aucune règle ne pose `display` sur un élément qui porte l'attribut `hidden` hors du repli sans JavaScript : la
+ * règle d'auteur l'emporterait sur `hidden`.
+ */
+
+/* Accueil et À propos : le texte défile sous la barre, sans scène ; voile plus dense que celui du voyage. */
+.header[data-page="home"],
+.header[data-page="about"] {
+  background: linear-gradient(rgba(6, 11, 24, 0.96) 62%, rgba(6, 11, 24, 0));
+}
+
+/* Commandes de la page : enfants directs de la ligne ; les règles existantes (.where, .stops-menu) s'appliquent. */
+.slot {
+  display: contents;
+}
+
+/* ---------- Onglets (plus de 860 px) ---------- */
+
+/* Seule marge automatique de la ligne : elle pousse les commandes et la langue vers la droite. */
+.tabs {
+  flex: none;
+  margin-right: auto;
+}
+
+/* Capsule : décor (filet --filet), la cible est l'onglet. Onglets de 44 px, bord compris : 46 px. */
+.tabs ul,
+.pills {
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--filet);
+  border-radius: var(--r-pill);
+  background-color: rgba(8, 14, 32, 0.92);
+}
+
+.tabs ul {
+  display: flex;
+}
+
+/*
+ * Onglet : pilule de 44 px, en bloc (pas d'interligne autour de lui). Libellé et copie grasse invisible empilés
+ * (procédé de .speed button) : chaque onglet garde la largeur de son gras, et rien ne bouge d'une page à l'autre.
+ */
+.tabs a,
+.pills a {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border-radius: var(--r-pill);
+  color: var(--brume);
+  font-size: 0.9375rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    color 0.2s,
+    background-color 0.2s;
+}
+
+.tabs a > span,
+.tabs a::before {
+  grid-area: 1 / 1;
+}
+
+.tabs a::before {
+  content: attr(data-label);
+  font-weight: 700;
+  visibility: hidden;
+}
+
+@media (hover: hover) {
+  .tabs a:hover,
+  .pills a:hover {
+    color: var(--ivoire);
+    background-color: rgba(236, 229, 211, 0.06);
+  }
+}
+
+.tabs a:active,
+.pills a:active {
+  background-color: rgba(236, 229, 211, 0.1);
+}
+
+.tabs a[aria-current="page"],
+.pills a[aria-current="true"] {
+  color: var(--ivoire);
+  font-weight: 700;
+}
+
+/* Repère « vous êtes ici », cousin du curseur de la règle : tracé en bordure, il survit aux couleurs forcées. */
+.tabs a[aria-current="page"]::after,
+.pills a[aria-current="true"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  width: 20px;
+  border-top: 2px solid var(--soleil);
+  transform: translateX(-50%);
+}
+
+/* ---------- Langue (plus de 860 px) ---------- */
+
+/* En flex, comme le menu replié : la pilule n'hérite pas de l'interligne d'une boîte en ligne (barre de 46 px). */
+.langMenu {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+/* Pilules de la barre (langue, menu) : 44 px, bord --filet-fort (3,54:1 sur la nuit), fond .92. */
+.langToggle,
+.menuToggle,
+.menuFallback {
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-pill);
+  background-color: rgba(8, 14, 32, 0.92);
+  color: var(--ivoire);
+  font-size: 0.9375rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
+}
+
+.langToggle,
+.menuToggle,
+.menuFallback {
+  display: inline-flex;
+}
+
+/* Sphère et menu en laiton, comme l'orbite de « Tourner autour ». */
+.icon {
+  flex: none;
+  color: var(--laiton);
+}
+
+.code {
+  font-weight: 600;
+}
+
+.chevron {
+  flex: none;
+  transition: transform 0.25s;
+}
+
+.langToggle[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+/* Le voile se pose sur le fond .92, qui reste dessous : la pilule ne devient jamais transparente. */
+@media (hover: hover) {
+  .langToggle:hover,
+  .menuToggle:hover,
+  .menuFallback:hover {
+    border-color: var(--ivoire);
+    background-image: linear-gradient(rgba(236, 229, 211, 0.06), rgba(236, 229, 211, 0.06));
+  }
+}
+
+.langToggle[aria-expanded="true"],
+.menuToggle[aria-expanded="true"] {
+  border-color: var(--ivoire);
+  background-image: linear-gradient(rgba(236, 229, 211, 0.08), rgba(236, 229, 211, 0.08));
+}
+
+/* ---------- Panneaux (langue, menu replié) ---------- */
+
+/* Apparition : fondu et glissement de 4 px ; fermeture immédiate ; rien en mouvement réduit (règle globale). */
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.panel {
+  z-index: 1;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-md);
+  background: #080e20;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  animation: panelIn 0.15s ease-out;
+}
+
+/* Sous son bouton, aligné à droite. */
+.langPanel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 12rem;
+}
+
+.lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Lignes de 44 px ; la marge gauche porte le triangle de la ligne courante. */
+.panel a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem 0.5rem 1.5rem;
+  border-radius: var(--r-sm);
+  color: var(--ivoire);
+  font-size: 1rem;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .panel a:hover {
+    background-color: rgba(236, 229, 211, 0.06);
+  }
+}
+
+.panel a:active {
+  background-color: rgba(236, 229, 211, 0.1);
+}
+
+.panel a[aria-current] {
+  background-color: rgba(236, 229, 211, 0.08);
+  font-weight: 700;
+}
+
+/* Tête du curseur de la règle, en --soleil : la ligne où l'on est, que la graisse dit aussi. */
+.panel a[aria-current]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.5rem;
+  border-block: 5px solid transparent;
+  border-left: 5px solid var(--soleil);
+  transform: translateY(-50%);
+}
+
+/* Titre de groupe : un repère de lecture, pas une commande. */
+.groupTitle {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  color: var(--brume);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+/* Filet entre les rubriques et les langues. */
+.group + .group {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--filet);
+}
+
+/* ---------- Menu replié (860 px et moins) ---------- */
+
+.siteMenu {
+  display: none;
+  flex: none;
+}
+
+/* Ancré comme la liste des escales : sous la barre, à droite ; il défile si l'écran est bas. */
+.menuPanel {
+  position: absolute;
+  top: 100%;
+  right: var(--gr);
+  width: min(20rem, calc(100% - var(--gl) - var(--gr)));
+  max-height: calc(100vh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
+  max-height: calc(100svh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 860px) {
+  .tabs,
+  .langMenu {
+    display: none;
+  }
+
+  .siteMenu {
+    display: flex;
+  }
+
+  /* Pages sans commandes : seule marge automatique de la ligne, elle pousse « Menu » à droite. */
+  .header:not([data-controls]) .siteMenu {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Avec des commandes, « Menu » se réduit à son pictogramme, 44 × 44 ; le libellé reste son nom accessible. */
+  .header[data-controls] .menuToggle,
+  .header[data-controls] .menuFallback {
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+  }
+
+  .header[data-controls] .menuLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+/* Écran bas (téléphone en paysage, zoom à 400 %) : la barre suit la page, le panneau défile sous elle. */
+@media (max-height: 30rem) {
+  .menuPanel {
+    max-height: calc(100vh - 6rem);
+    max-height: calc(100svh - 6rem);
+  }
+}
+
+/* Sans JavaScript, les boutons ne déplieraient rien : des liens directs prennent leur place. */
+@media (scripting: none) {
+  .langToggle,
+  .menuToggle {
+    display: none;
+  }
+
+  .pills {
+    display: flex;
+  }
+
+  /* Le lien « Menu » vers le plan du site devient l'élément de la ligne, à la place du bouton. */
+  .fallback {
+    display: contents;
+  }
+}
+
+/* Couleurs forcées : les fonds disparaissent ; contours sur les capsules, ligne courante en Highlight. */
+@media (forced-colors: active) {
+  .tabs ul,
+  .pills,
+  .langToggle,
+  .menuToggle,
+  .menuFallback {
+    border-color: CanvasText;
+  }
+
+  .panel a[aria-current] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  .panel a[aria-current]::before {
+    display: none;
+  }
+}
