@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AU_PER_LIGHT_YEAR } from "@/lib/astro/constants";
-import { RAIL_BREAK, railPercent, smootherstep, type StopKey } from "@/lib/journey/camera";
+import { RAIL_BREAK, railPercent, type StopKey } from "@/lib/journey/camera";
+import { smootherstep } from "@/lib/journey/sections";
 import { journeyStore, useCurrentStop } from "@/lib/journey/store";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { cssVars } from "./cssVars";

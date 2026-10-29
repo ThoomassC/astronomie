@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { restProgress, scrollState, type StopKey } from "@/lib/journey/camera";
+import type { StopKey } from "@/lib/journey/camera";
+import { restProgress, scrollState } from "@/lib/journey/sections";
 import { journeyStore } from "@/lib/journey/store";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { useReducedMotion } from "@/lib/sim/reducedMotion";
@@ -74,6 +75,8 @@ export function JourneyTracker(): null {
     const state = journeyStore.get();
     const fromKey = ranges[from].key;
     const toKey = ranges[to].key;
+    // Section étrangère au voyage : rien à publier.
+    if (!isStopKey(fromKey) || !isStopKey(toKey)) return;
     // En vol, la plaque quittée est pleine et celle qui arrive vide ; au repos, elle suit le défilement.
     setRest(plates.current, fromKey, from === to ? restProgress(ranges[from], next) : 1);
     if (to !== from) setRest(plates.current, toKey, 0);

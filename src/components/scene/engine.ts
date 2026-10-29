@@ -35,7 +35,6 @@ import {
   freeBand,
   isCosmicStop,
   mixCameras,
-  smootherstep,
   type CamState,
   type ScreenBand,
   type ScreenZone,
@@ -59,6 +58,7 @@ import {
   type OrbitInput,
   type OrbitView,
 } from "@/lib/journey/orbit";
+import { smootherstep } from "@/lib/journey/sections";
 import { journeyStore, type JourneyState } from "@/lib/journey/store";
 import { getClock, type ClockSnapshot } from "@/lib/sim/clock";
 import {

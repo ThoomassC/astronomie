@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as NavigationModule from "@/components/journey/navigation";
-import type { SectionRange } from "@/lib/journey/camera";
+import type { SectionRange } from "@/lib/journey/sections";
 
 const RANGES: readonly SectionRange[] = [
   { key: "hero", arrive: 0, depart: 100 },
@@ -66,6 +66,20 @@ describe("goTo", () => {
     document.body.append(section);
     setSectionRanges(RANGES);
     goTo("sun");
+    expect(document.activeElement).toBe(section);
+  });
+
+  it("devrait mener à l'escale d'une autre page, quelle que soit sa clé (« intro » de la page Tailles)", () => {
+    const section = document.createElement("section");
+    section.dataset.stop = "intro";
+    section.tabIndex = -1;
+    document.body.append(section);
+    setSectionRanges([
+      { key: "intro", arrive: 0, depart: 100 },
+      { key: "sun", arrive: 804, depart: 1600 },
+    ]);
+    expect(goTo("intro")).toBe(true);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 2, behavior: "smooth" });
     expect(document.activeElement).toBe(section);
   });
 
@@ -151,6 +165,32 @@ describe("goTo", () => {
       expect(scrollTo).toHaveBeenCalledTimes(1);
       expect(scrollTo).toHaveBeenCalledWith({ top: SUN_TARGET, behavior: "auto" });
     });
+  });
+});
+
+describe("measureSections", () => {
+  /** Section `[data-stop]` du document, de hauteur `height` px, dont le haut est à `top` px du haut de la vue. */
+  function section(stop: string, top: number, height: number): HTMLElement {
+    const element = document.createElement("section");
+    element.dataset.stop = stop;
+    // Frontière navigateur : jsdom ne calcule aucune boîte.
+    vi.spyOn(element, "getBoundingClientRect").mockReturnValue(new DOMRect(0, top, 1024, height));
+    document.body.append(element);
+    return element;
+  }
+
+  it("devrait mesurer toutes les sections non vides de la page, quelles que soient leurs clés, dans l'ordre du document", async () => {
+    const { getSectionRanges, measureSections } = await import("@/components/journey/navigation");
+    vi.stubGlobal("innerHeight", 800);
+    scrolledTo(200);
+    section("intro", -200, 900);
+    section("", 700, 300);
+    section("proxima-centauri", 700, 1500);
+    measureSections();
+    expect(getSectionRanges()).toEqual([
+      { key: "intro", arrive: 0, depart: 100 },
+      { key: "proxima-centauri", arrive: expect.closeTo(804, 9), depart: 1600 },
+    ]);
   });
 });
 
