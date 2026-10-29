@@ -4,8 +4,6 @@ import {
   cameraFor,
   type CamState,
   type CosmicStopKey,
-  type ScreenBand,
-  type ScreenZone,
   type StopCameraContext,
 } from "@/lib/journey/camera";
 import {
@@ -29,6 +27,7 @@ import {
   type OrbitLimits,
   type OrbitView,
 } from "@/lib/journey/orbit";
+import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
 
 const DEG = Math.PI / 180;
 /** Élévation maximale de l'orbite : 85°. */

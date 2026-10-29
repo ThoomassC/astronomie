@@ -1,7 +1,8 @@
 import type { Vec3 } from "@/lib/astro/constants";
 import { SUN, type PlanetKey } from "@/lib/astro/planets";
 import { REAL_SCALE_PLANET_SHRINK, REAL_SCALE_SUN_SHRINK, zoomScale } from "@/lib/astro/scale";
-import { angleDiff, RING_EXTENT, type CamState, type ScreenBand, type StopKey } from "@/lib/journey/camera";
+import { angleDiff, RING_EXTENT, type CamState, type StopKey } from "@/lib/journey/camera";
+import type { ScreenBand } from "@/lib/journey/screen";
 
 /*
  * Géométrie du mode « Tourner autour » : la caméra tourne autour de la cible de l'escale, sous le contrôle des gestes,

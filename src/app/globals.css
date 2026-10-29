@@ -2001,12 +2001,15 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     pointer-events: none;
   }
 
-  /* Dernière escale (la Voie lactée) : aucun départ ne suit, le filet reste plein et ne mesure rien. */
-  [data-stop="galaxy"] > .plate::before {
+  /*
+   * Dernière escale de la page (fin du voyage, plus grande étoile des Tailles) : aucun départ ne suit, le filet
+   * reste plein et ne mesure rien.
+   */
+  main > .stop:last-of-type > .plate::before {
     opacity: 0.9;
   }
 
-  [data-stop="galaxy"] > .plate::after {
+  main > .stop:last-of-type > .plate::after {
     display: none;
   }
 

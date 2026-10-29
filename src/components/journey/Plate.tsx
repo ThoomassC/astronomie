@@ -2,7 +2,7 @@
 
 import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { PLATE_MORE } from "@/content/site";
-import { clampToRest, restRange } from "@/lib/journey/camera";
+import { clampToRest, restRange } from "@/lib/journey/sections";
 import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
 import { cssVars } from "./cssVars";
 import { measureSections, scrollInstantly } from "./navigation";
