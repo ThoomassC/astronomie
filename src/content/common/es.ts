@@ -1,0 +1,34 @@
+import type { CommonContent } from "./types";
+
+/** Textes communs en espagnol (d'Espagne, tutoiement). */
+export const COMMON_ES: CommonContent = {
+  description:
+    "El sistema solar en movimiento, y luego las estrellas, las galaxias y el universo: los planetas en su sitio real, con tamaños y distancias por fin comparables.",
+  pages: {
+    home: {
+      title: "Astronomie · El sistema solar y más allá",
+      description:
+        "El sistema solar tal como está hoy y tres caminos: un viaje hasta el multiverso, el tamaño de las estrellas y cómo se hizo este sitio.",
+    },
+    voyage: {
+      title: "Viaje del Sol al multiverso",
+      description:
+        "Un viaje en 3D al bajar por la página: el Sol y los planetas donde están hoy, las estrellas vecinas, la Vía Láctea, las galaxias y la hipótesis del multiverso.",
+    },
+    sizes: {
+      title: "Tamaños de las estrellas",
+      description:
+        "De Próxima Centauri a VY Canis Majoris, diez estrellas una junto a otra y a la misma escala, el Sol incluido: de la enana roja a la hipergigante.",
+    },
+    about: {
+      title: "Acerca de este sitio",
+      description:
+        "Por qué existe este sitio, para quién es, de dónde salen sus datos, qué simplifican sus vistas, sus créditos, su accesibilidad y su privacidad.",
+    },
+  },
+  notFound: {
+    title: "Página no encontrada",
+    text: "No hay nada en esta dirección, salvo mucho vacío.",
+    back: "Volver al inicio",
+  },
+};
