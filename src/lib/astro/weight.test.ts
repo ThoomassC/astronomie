@@ -32,12 +32,17 @@ describe("parseMassKg", () => {
     ["   ", "que des espaces"],
     ["abc", "non numérique"],
     ["12abc", "nombre suivi de lettres"],
+    ["-5", "négatif"],
+  ])("devrait refuser %j (%s) comme illisible", (raw) => {
+    expect(parseMassKg(raw)).toEqual({ ok: false, error: { kind: "format" } });
+  });
+
+  it.each([
     ["0", "sous le minimum"],
     ["0,99", "juste sous le minimum"],
     ["301", "au-dessus du maximum"],
     ["300,5", "juste au-dessus du maximum"],
-    ["-5", "négatif"],
-  ])("devrait refuser %j (%s) avec un message d'erreur", (raw) => {
-    expect(parseMassKg(raw)).toEqual({ ok: false, error: expect.stringMatching(/\S/) });
+  ])("devrait refuser %j (%s) en donnant les bornes 1 et 300 kg", (raw) => {
+    expect(parseMassKg(raw)).toEqual({ ok: false, error: { kind: "range", min: 1, max: 300 } });
   });
 });

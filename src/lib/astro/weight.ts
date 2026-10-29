@@ -1,7 +1,9 @@
+import type { NamedBody } from "@/i18n/names";
 import { EARTH_G, type ParseResult } from "@/lib/astro/constants";
 
 export interface GravityEntry {
-  key: string;
+  /** Astre, nommé dans chaque langue par `bodyName`. */
+  key: NamedBody;
   name: string;
   /** Gravité de surface (sommet des nuages pour les géantes), en m/s². */
   g: number;
@@ -23,22 +25,22 @@ export const SURFACE_GRAVITY: readonly GravityEntry[] = [
 export const MASS_MIN_KG = 1;
 export const MASS_MAX_KG = 300;
 
-const RANGE_ERROR = `Indiquez une masse entre ${MASS_MIN_KG} et ${MASS_MAX_KG} kg, par exemple 40 ou 62,5.`;
-
 /** Valeur qu'afficherait une balance réglée sur Terre : masse × g / 9,81. */
 export function scaleReadingKg(massKg: number, g: number): number {
   return (massKg * g) / EARTH_G;
 }
 
 /**
- * Lit une masse saisie au clavier : espaces ignorés, virgule ou point décimal,
+ * Lit une masse saisie au clavier : espaces ignorés, virgule ou point décimal (quelle que soit la langue),
  * bornes incluses MASS_MIN_KG..MASS_MAX_KG.
- * Erreur (en français, dit quoi saisir) si vide, non numérique ou hors bornes.
+ * Erreur `format` si vide ou non numérique (signe moins compris), `range` (1 à 300) si hors bornes.
  */
 export function parseMassKg(raw: string): ParseResult {
   const text = raw.replace(/\s+/g, "").replace(",", ".");
-  if (!/^\d+(\.\d+)?$/.test(text)) return { ok: false, error: RANGE_ERROR };
+  if (!/^\d+(\.\d+)?$/.test(text)) return { ok: false, error: { kind: "format" } };
   const value = Number(text);
-  if (value < MASS_MIN_KG || value > MASS_MAX_KG) return { ok: false, error: RANGE_ERROR };
+  if (value < MASS_MIN_KG || value > MASS_MAX_KG) {
+    return { ok: false, error: { kind: "range", min: MASS_MIN_KG, max: MASS_MAX_KG } };
+  }
   return { ok: true, value };
 }

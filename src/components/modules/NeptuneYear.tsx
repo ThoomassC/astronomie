@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "@/i18n/LocaleProvider";
+import type { Locale } from "@/i18n/locales";
+import { withUnit } from "@/i18n/units";
 import {
   decimalYear,
   MARS_YEAR_YEARS,
@@ -12,7 +15,9 @@ import {
 import { PLANET_BY_KEY, SUN } from "@/lib/astro/planets";
 import { formatNumber } from "@/lib/format";
 import { getClock } from "@/lib/sim/clock";
+import { COMMON_STRINGS, type Count } from "./common.strings";
 import { ModuleCanvas } from "./ModuleCanvas";
+import { NEPTUNE_YEAR_STRINGS } from "./neptuneYear.strings";
 import { INK, TAU } from "./paint";
 import { StatusMessage } from "./StatusMessage";
 import { useAnnouncer } from "./useAnnouncer";
@@ -27,9 +32,10 @@ const DEFAULT_BIRTH_YEAR = 2012;
 const INPUT_ID = "neptune-year-birth";
 const HINT_ID = "neptune-year-birth-hint";
 const ERROR_ID = "neptune-year-birth-error";
-const CANVAS_LABEL = "Cadran de l'orbite de Neptune de 1846 à 2011";
 /** Retrait de la piste intérieure qui montre ce qui dépasse un tour complet, en px. */
 const EXTRA_TURN_INSET = 12;
+/** Marge gardée au bord droit du canvas par les textes, en px. */
+const EDGE = 8;
 
 /** Année réelle (pas la date simulée du site) : borne de l'année de naissance. */
 const currentYear = () => new Date().getFullYear();
@@ -40,37 +46,41 @@ function dialAngle(year: number): number {
   return -Math.PI / 2 + TAU * (((turns % 1) + 1) % 1);
 }
 
-/** « 1,07 tour », « 2,03 tours » : singulier en dessous de 2. */
-function count(value: number, singular: string, plural: string): string {
-  return `${formatNumber(value, 2)} ${value >= 2 ? plural : singular}`;
-}
+/** Nombre à accorder, écrit avec `digits` décimales dans la langue. */
+const countOf = (value: number, digits: number, locale: Locale): Count => ({
+  value,
+  text: formatNumber(value, digits, locale),
+});
+
+/** Part en pour cent, une décimale : « 9,0 % », « 9.0% ». */
+const percentOf = (fraction: number, locale: Locale) => withUnit(formatNumber(fraction * 100, 1, locale), "percent", locale);
 
 /** Tours de Neptune depuis sa découverte (0 si la date du site la précède). */
 const turnsSinceDiscovery = (now: number) =>
   Math.max(0, orbitFraction(NEPTUNE_DISCOVERY_YEAR, now, NEPTUNE_YEAR_YEARS));
 
 /** Ligne de lecture pour une naissance en `birthYear`, à la date du site `now` (année décimale). */
-function lifeReadout(birthYear: number, now: number): string {
-  if (birthYear > now) return "La date du site est antérieure à votre naissance.";
+function lifeReadout(birthYear: number, now: number, locale: Locale): string {
+  const t = NEPTUNE_YEAR_STRINGS[locale];
+  if (birthYear > now) return t.notBorn;
   const life = orbitFraction(birthYear, now, NEPTUNE_YEAR_YEARS);
-  const mars = formatNumber(orbitFraction(birthYear, now, MARS_YEAR_YEARS), 1);
-  if (life < 1) {
-    return `Depuis ${birthYear}, Neptune a parcouru ${formatNumber(life * 100, 1)} % de son orbite. Sur Neptune, vous n'auriez pas encore un an : ${formatNumber(life, 2)} année neptunienne. Sur Mars, vous auriez ${mars} ans.`;
-  }
-  return `Depuis ${birthYear}, Neptune a fait plus d'un tour du Soleil. Sur Neptune, vous auriez ${count(life, "année neptunienne", "années neptuniennes")}. Sur Mars, vous auriez ${mars} ans.`;
+  const mars = countOf(orbitFraction(birthYear, now, MARS_YEAR_YEARS), 1, locale);
+  if (life < 1) return t.beforeOneOrbit(birthYear, percentOf(life, locale), countOf(life, 2, locale), mars);
+  return t.afterOneOrbit(birthYear, countOf(life, 2, locale), mars);
 }
 
 /** 9. Une seule année neptunienne : le cadran d'une orbite depuis 1846, et la part d'une vie. */
 export function NeptuneYear() {
+  const locale = useLocale();
+  const t = NEPTUNE_YEAR_STRINGS[locale];
   /** Dernière année valide : l'affichage la garde pendant une saisie invalide. */
   const [birthYear, setBirthYear] = useState(DEFAULT_BIRTH_YEAR);
   const maxYear = useRef<number | null>(null);
   const { message, announce } = useAnnouncer();
   // La date du site peut défiler : lecture et texte du cadran suivent l'horloge, sans annonce.
-  const readout = useClockValue((snapshot) => lifeReadout(birthYear, decimalYear(snapshot.ms)), null);
+  const readout = useClockValue((snapshot) => lifeReadout(birthYear, decimalYear(snapshot.ms), locale), null);
   const discovery = useClockValue(
-    (snapshot) =>
-      `Depuis sa découverte, Neptune a fait ${count(turnsSinceDiscovery(decimalYear(snapshot.ms)), "tour", "tours")} du Soleil.`,
+    (snapshot) => t.discovery(countOf(turnsSinceDiscovery(decimalYear(snapshot.ms)), 2, locale)),
     null,
   );
 
@@ -82,7 +92,12 @@ export function NeptuneYear() {
     (raw) => parseBirthYear(raw, maxYear.current ?? currentYear()),
     (value) => {
       setBirthYear(value);
-      announce(() => lifeReadout(value, decimalYear(getClock().now())));
+      announce(() => lifeReadout(value, decimalYear(getClock().now()), locale));
+    },
+    // Une saisie illisible reçoit la même phrase que hors bornes : elle dit quelle année saisir.
+    (error) => {
+      if (error.kind === "range") return t.error(error.min, error.max);
+      return t.error(NEPTUNE_DISCOVERY_YEAR, maxYear.current ?? currentYear());
     },
   );
 
@@ -142,28 +157,31 @@ export function NeptuneYear() {
     c.moveTo(cx, cy - R);
     c.lineTo(cx + R * 0.7, cy - R - 2);
     c.stroke();
-    p.text("1846, découverte", cx + R * 0.7 + 6, cy - R + 2, { size: 11.5, weight: 700 });
-    p.text("2011, un tour complet", cx + R * 0.7 + 6, cy - R + 16, { size: 11, color: INK.brume });
+    // Les textes s'arrêtent avant le bord droit, quelle que soit leur longueur dans la langue.
+    const markX = cx + R * 0.7 + 6;
+    p.text(t.discovered, markX, cy - R + 2, { size: 11.5, weight: 700, maxWidth: w - markX - EDGE });
+    p.text(t.fullOrbit, markX, cy - R + 16, { size: 11, color: INK.brume, maxWidth: w - markX - EDGE });
 
     const tx = w * 0.62;
+    const column = w - tx - EDGE;
     const lifeText = !born
       ? "–"
       : life < 1
-        ? `${formatNumber(life * 100, 1)} % d'une orbite`
-        : count(life, "orbite", "orbites");
-    p.text("Votre vie", tx, h * 0.5, { size: 12, color: INK.soleil, weight: 700 });
-    p.text(lifeText, tx, h * 0.5 + 19, { size: 14, weight: 700 });
-    p.text("Depuis la découverte", tx, h * 0.78, { size: 12, color: "#7D97FF", weight: 700 });
-    p.text(count(sinceDiscovery, "tour", "tours"), tx, h * 0.78 + 19, { size: 14, weight: 700 });
+        ? t.orbitShare(percentOf(life, locale))
+        : t.orbits(countOf(life, 2, locale));
+    p.text(t.yourLife, tx, h * 0.5, { size: 12, color: INK.soleil, weight: 700, maxWidth: column });
+    p.text(lifeText, tx, h * 0.5 + 19, { size: 14, weight: 700, maxWidth: column });
+    p.text(t.sinceDiscovery, tx, h * 0.78, { size: 12, color: "#7D97FF", weight: 700, maxWidth: column });
+    p.text(t.turns(countOf(sinceDiscovery, 2, locale)), tx, h * 0.78 + 19, { size: 14, weight: 700, maxWidth: column });
   };
   const { canvas } = useCanvasModule(SIZE, draw, { animating: false, redrawOnClock: true });
 
   return (
     <>
-      <ModuleCanvas {...canvas} label={discovery ? `${CANVAS_LABEL}. ${discovery}` : CANVAS_LABEL} />
+      <ModuleCanvas {...canvas} label={discovery ? `${t.canvasLabel}. ${discovery}` : t.canvasLabel} />
       <div className="ctrls">
         <label htmlFor={INPUT_ID}>
-          {"Année de naissance "}
+          {`${t.birthYear} `}
           <input
             id={INPUT_ID}
             className={styles.field}
@@ -178,7 +196,7 @@ export function NeptuneYear() {
           />
         </label>
         <span id={HINT_ID} className={styles.hint}>
-          {`exemple, modifiable (de ${NEPTUNE_DISCOVERY_YEAR} à aujourd'hui)`}
+          {COMMON_STRINGS[locale].example(String(NEPTUNE_DISCOVERY_YEAR), t.today)}
         </span>
       </div>
       <div id={ERROR_ID} className={styles.error} aria-live="polite">

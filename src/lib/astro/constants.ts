@@ -19,4 +19,10 @@ export interface Vec3 {
   z: number;
 }
 
-export type ParseResult = { ok: true; value: number } | { ok: false; error: string };
+/**
+ * Saisie refusée, décrite par sa forme et non par une phrase : texte illisible, ou nombre hors des bornes incluses
+ * `min`..`max`. Le module qui affiche le champ en écrit le message, dans sa langue.
+ */
+export type ParseError = { kind: "format" } | { kind: "range"; min: number; max: number };
+
+export type ParseResult = { ok: true; value: number } | { ok: false; error: ParseError };

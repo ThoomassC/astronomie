@@ -43,21 +43,20 @@ describe("parseBirthYear", () => {
   it.each([
     ["1845", "avant la découverte de Neptune"],
     ["2027", "après l'année maximale"],
+  ])("devrait refuser %j (%s) en donnant la plage 1846–2026", (raw) => {
+    expect(parseBirthYear(raw, 2026)).toEqual({ ok: false, error: { kind: "range", min: 1846, max: 2026 } });
+  });
+
+  it.each([
     ["20a2", "non numérique"],
     ["2012.5", "décimale avec point"],
     ["2012,5", "décimale avec virgule"],
     ["", "vide"],
-  ])("devrait refuser %j (%s) avec un message qui donne la plage 1846–2026", (raw) => {
-    const result = parseBirthYear(raw, 2026);
-    expect(result).toMatchObject({ ok: false });
-    expect(result).toHaveProperty("error", expect.stringContaining("1846"));
-    expect(result).toHaveProperty("error", expect.stringContaining("2026"));
+  ])("devrait refuser %j (%s) comme illisible", (raw) => {
+    expect(parseBirthYear(raw, 2026)).toEqual({ ok: false, error: { kind: "format" } });
   });
 
-  it("devrait annoncer l'année maximale reçue en paramètre dans le message d'erreur", () => {
-    expect(parseBirthYear("2031", 2030)).toEqual({
-      ok: false,
-      error: expect.stringContaining("2030"),
-    });
+  it("devrait prendre l'année maximale reçue en paramètre comme borne haute de l'erreur", () => {
+    expect(parseBirthYear("2031", 2030)).toEqual({ ok: false, error: { kind: "range", min: 1846, max: 2030 } });
   });
 });
