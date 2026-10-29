@@ -23,14 +23,24 @@ const LABELS: readonly { key: BodyKey; name: string; color: string }[] = [
 
 const isBodyKey = (value: string | undefined): value is BodyKey => LABELS.some((label) => label.key === value);
 
+interface DeepLabel {
+  key: DeepLabelKey;
+  text: string;
+  /** Précision qui suit le nom (« · 4,2 al ») ; la scène la retire quand le nom seul tient. */
+  detail?: string;
+  variant?: "here" | "center" | "ring";
+  color?: string;
+}
+
 /**
- * Étiquettes du ciel profond : étoiles voisines (nom et distance, pastille de la couleur du point), « Vous êtes
+ * Étiquettes du ciel profond : étoiles voisines (nom et distance, repère de la couleur du point), « Vous êtes
  * ici », centre galactique, cercles de distance. Non interactives : la plaque des étoiles en donne la liste.
  */
-const DEEP_LABELS: readonly { key: DeepLabelKey; text: string; variant?: "here" | "center" | "ring"; color?: string }[] = [
+const DEEP_LABELS: readonly DeepLabel[] = [
   ...NEARBY_STARS.map((star) => ({
     key: starLabelKey(star.key),
-    text: `${star.name} · ${formatNumber(star.distanceLy, 1)} al`,
+    text: star.name,
+    detail: ` · ${formatNumber(star.distanceLy, 1)} al`,
     color: spectralColor(star.spectralType),
   })),
   { key: "here", text: DEEP_SKY_LABELS.here, variant: "here" },
@@ -127,7 +137,7 @@ export default function SolarScene() {
             <span>{name}</span>
           </button>
         ))}
-        {DEEP_LABELS.map(({ key, text, variant, color }) => (
+        {DEEP_LABELS.map(({ key, text, detail, variant, color }) => (
           <span
             key={key}
             className={variant ? `lbl deep ${variant}` : "lbl deep"}
@@ -135,7 +145,10 @@ export default function SolarScene() {
             style={color ? cssVars({ "--lc": color }) : undefined}
           >
             <i />
-            <span>{text}</span>
+            <span>
+              {text}
+              {detail ? <span className="dist">{detail}</span> : null}
+            </span>
           </span>
         ))}
       </div>

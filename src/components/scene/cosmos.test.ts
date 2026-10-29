@@ -1,8 +1,17 @@
 import { Matrix4, Vector3, type BufferGeometry, type Object3D } from "three";
 import { describe, expect, it } from "vitest";
-import { DISTANCE_RINGS_LY, buildGalaxy, createCosmos, weighCosmos, type CosmosBody } from "@/components/scene/cosmos";
+import {
+  DISTANCE_RINGS_LY,
+  GALAXY_BOUNDING_RADIUS_LY,
+  SUN_POINT_SIZE_PX,
+  buildGalaxy,
+  createCosmos,
+  weighCosmos,
+  type CosmosBody,
+} from "@/components/scene/cosmos";
 import type { LayerWeights } from "@/components/scene/layers";
 import type { Vec3 } from "@/lib/astro/constants";
+import { GALACTIC_CENTER_DISTANCE_LY, sceneFromGalacticXYZ } from "@/lib/astro/galactic";
 import { absoluteMagnitude, starPointSize, starPositionLy } from "@/lib/astro/starMap";
 import type { NearbyStar } from "@/lib/astro/stars";
 
@@ -63,6 +72,18 @@ describe("createCosmos", () => {
     expect(Array.from({ length: sizes.count }, (_, i) => sizes.getX(i))).toEqual(expected);
   });
 
+  it("devrait indexer la taille du point de chaque étoile par sa clé (boîtes que les étiquettes évitent)", () => {
+    const cosmos = createCosmos(STARS);
+    expect([...cosmos.starSizes]).toEqual(
+      STARS.map((star) => [star.key, expect.closeTo(starPointSize(absoluteMagnitude(star.apparentMag, star.distanceLy)), 5)]),
+    );
+  });
+
+  it("devrait donner au point-Soleil la taille annoncée, en px CSS", () => {
+    const size = createCosmos(STARS).sunPoint.geometry.getAttribute("size");
+    expect(size.getX(0)).toBe(SUN_POINT_SIZE_PX);
+  });
+
   it("devrait indexer la position de chaque étoile par sa clé (ancres des étiquettes)", () => {
     const cosmos = createCosmos(STARS);
     expect([...cosmos.starPositions.keys()]).toEqual(["proxima-centauri", "sirius", "altair"]);
@@ -117,6 +138,31 @@ describe("buildGalaxy", () => {
     buildGalaxy(cosmos, 1000);
     expect(cosmos.galaxy).toBe(first);
     expect(countObjects(cosmos.group)).toBe(objects);
+  });
+
+  it("devrait poser une sphère englobante analytique : centrée sur le centre galactique, de 60 000 al de rayon", () => {
+    const cosmos = createCosmos(STARS);
+    buildGalaxy(cosmos, 1000);
+    const sphere = galaxyOf(cosmos).geometry.boundingSphere;
+    const center = sceneFromGalacticXYZ(GALACTIC_CENTER_DISTANCE_LY, 0, 0);
+    expect(GALAXY_BOUNDING_RADIUS_LY).toBe(60_000);
+    expect(sphere?.radius).toBe(GALAXY_BOUNDING_RADIUS_LY);
+    expect(sphere && { x: sphere.center.x, y: sphere.center.y, z: sphere.center.z }).toEqual(closeTo(center, 6));
+  });
+
+  it.each([16_000, 40_000])("devrait contenir tous les points de la galaxie dans sa sphère englobante (%i points)", (count) => {
+    const cosmos = createCosmos(STARS);
+    buildGalaxy(cosmos, count);
+    const { geometry } = galaxyOf(cosmos);
+    const sphere = geometry.boundingSphere;
+    if (!sphere) throw new Error("Sphère englobante absente");
+    const position = geometry.getAttribute("position");
+    const point = new Vector3();
+    let farthest = 0;
+    for (let i = 0; i < position.count; i++) {
+      farthest = Math.max(farthest, point.fromBufferAttribute(position, i).distanceTo(sphere.center));
+    }
+    expect(farthest).toBeLessThanOrEqual(sphere.radius);
   });
 });
 

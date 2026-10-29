@@ -1,9 +1,11 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Profiler } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DOCK_SCALE_TOGGLE_ID } from "@/components/journey/ids";
 import { ScaleNote } from "@/components/journey/ScaleNote";
 import { setRealScale } from "@/components/journey/realScale";
+import { SCALE_TOGGLE } from "@/content/site";
 import { journeyStore } from "@/lib/journey/store";
 
 beforeEach(() => {
@@ -114,5 +116,97 @@ describe("ScaleNote aux escales cosmiques", () => {
 
     act(() => journeyStore.update("beyond", "beyond", 0));
     expect(screen.getByRole("button", { name: "Masquer la note" })).toBeInTheDocument();
+  });
+});
+
+describe("ScaleNote au fil du voyage", () => {
+  beforeEach(() => {
+    act(() => journeyStore.update("beyond", "beyond", 0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    act(() => journeyStore.update("hero", "hero", 0));
+  });
+
+  const note = (container: HTMLElement) => container.querySelector(".scale-note");
+
+  it("devrait rendre le focus à la bascule du dock quand elle se tait aux étoiles voisines alors qu'il y était", () => {
+    renderWithDock();
+    act(() => setRealScale(true));
+    screen.getByRole("button", { name: "Lire toute la note" }).focus();
+    act(() => journeyStore.update("beyond", "stars", 0.6));
+    expect(screen.queryByRole("button", { name: "Lire toute la note" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Distances réelles" })).toHaveFocus();
+  });
+
+  it("ne devrait pas déplacer le focus quand il est ailleurs que dans la note", () => {
+    render(
+      <>
+        <ScaleNote />
+        <button type="button" id={DOCK_SCALE_TOGGLE_ID}>
+          Distances réelles
+        </button>
+        <button type="button">Plaque</button>
+      </>,
+    );
+    act(() => setRealScale(true));
+    screen.getByRole("button", { name: "Plaque" }).focus();
+    act(() => journeyStore.update("beyond", "stars", 0.6));
+    expect(screen.getByRole("button", { name: "Plaque" })).toHaveFocus();
+  });
+
+  it("ne devrait pas ré-annoncer la note quand elle revient d'elle-même à l'au-delà", () => {
+    render(<ScaleNote />);
+    act(() => setRealScale(true));
+    act(() => journeyStore.update("beyond", "stars", 0.6));
+    act(() => journeyStore.update("stars", "beyond", 0.6));
+    // Le texte est bien de retour à l'écran, mais la région d'annonce reste muette.
+    expect(screen.getByText(SCALE_TOGGLE.note)).toBeVisible();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("devrait retirer l'annonce après quelques secondes, pour ne pas doubler le texte visible en lecture linéaire", () => {
+    vi.useFakeTimers();
+    render(<ScaleNote />);
+    act(() => setRealScale(true));
+    expect(screen.getByRole("status")).toHaveTextContent(SCALE_TOGGLE.note);
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    expect(screen.getByText(SCALE_TOGGLE.note)).toBeVisible();
+  });
+
+  it("devrait se dire suspendue aux escales cosmiques tant que les distances réelles restent actives", () => {
+    const { container } = render(<ScaleNote />);
+    act(() => setRealScale(true));
+    expect(note(container)).not.toHaveAttribute("data-suspended");
+    act(() => journeyStore.update("beyond", "stars", 0.6));
+    expect(note(container)).toHaveAttribute("data-visible", "false");
+    expect(note(container)).toHaveAttribute("data-suspended");
+    act(() => setRealScale(false));
+    expect(note(container)).not.toHaveAttribute("data-suspended");
+  });
+
+  it("ne devrait pas se dire suspendue une fois masquée par la personne", async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithDock();
+    act(() => setRealScale(true));
+    await user.click(screen.getByRole("button", { name: "Masquer la note" }));
+    act(() => journeyStore.update("beyond", "stars", 0.6));
+    expect(note(container)).not.toHaveAttribute("data-suspended");
+  });
+
+  it("ne devrait pas se re-rendre quand l'escale change sans quitter le système solaire", () => {
+    const onRender = vi.fn();
+    render(
+      <Profiler id="note" onRender={onRender}>
+        <ScaleNote />
+      </Profiler>,
+    );
+    act(() => setRealScale(true));
+    onRender.mockClear();
+    act(() => journeyStore.update("beyond", "neptune", 0.6));
+    act(() => journeyStore.update("neptune", "uranus", 0.6));
+    expect(onRender).not.toHaveBeenCalled();
   });
 });

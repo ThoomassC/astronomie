@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { StopKey } from "@/lib/journey/camera";
+import { isCosmicStop, type StopKey } from "@/lib/journey/camera";
 
 /** Où en est le voyage : escales de départ et d'arrivée, avancement brut, escale affichée. */
 export interface JourneyState {
@@ -36,8 +36,18 @@ export const journeyStore = {
 
 const currentSnapshot = () => state.current;
 const serverSnapshot = (): StopKey => "hero";
+const cosmicSnapshot = () => isCosmicStop(state.current);
+const serverCosmicSnapshot = () => false;
 
 /** Escale affichée (en-tête, règle). */
 export function useCurrentStop(): StopKey {
   return useSyncExternalStore(journeyStore.subscribe, currentSnapshot, serverSnapshot);
+}
+
+/**
+ * L'escale affichée est au-delà du système solaire (étoiles voisines, Voie lactée), où tout est déjà à l'échelle.
+ * Le composant ne se re-rend qu'au passage de cette frontière, pas à chaque escale.
+ */
+export function useIsCosmicStop(): boolean {
+  return useSyncExternalStore(journeyStore.subscribe, cosmicSnapshot, serverCosmicSnapshot);
 }

@@ -161,14 +161,19 @@ main > section:focus {
     border-width 0.4s;
 }
 
-.lbl span {
+.lbl > span {
   opacity: 0.85;
 }
 
-.lbl:hover span {
+.lbl:hover > span {
   opacity: 1;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* Texte à gauche du repère : la scène retourne l'étiquette quand le texte ne tient pas à droite. */
+.lbl[data-mirrored] {
+  flex-direction: row-reverse;
 }
 
 .real .lbl:not(.deep) i {
@@ -180,7 +185,8 @@ main > section:focus {
  * Ciel profond (étoiles voisines, « Vous êtes ici », centre galactique, cercles) : repères à lire, pas à toucher.
  * Le texte est posé sur une pastille de plaque presque opaque : lisible sur les points les plus clairs de la
  * galaxie (sur du blanc pur, ivoire 11,8:1 et laiton 6,2:1). Le moteur mesure le repère et le pose exactement
- * sur l'astre ; seul le texte occupe la place face aux autres étiquettes.
+ * sur l'astre ; seul le texte occupe la place face aux autres étiquettes, jamais hors de l'écran ni sur le point
+ * d'une étoile : à droite du repère, sinon à gauche, sinon le nom seul (la distance est dans la plaque).
  */
 .lbl.deep {
   gap: 0.3rem;
@@ -188,7 +194,11 @@ main > section:focus {
   pointer-events: none;
 }
 
-.lbl.deep span {
+.lbl[data-short] .dist {
+  display: none;
+}
+
+.lbl.deep > span {
   padding: 0 0.45rem;
   border: 1px solid var(--filet);
   border-radius: var(--r-pill);
@@ -223,6 +233,15 @@ main > section:focus {
 .lbl.deep.ring {
   color: var(--laiton);
   font-size: 0.75rem;
+}
+
+/* Sur le cercle, une graduation de laiton et non un anneau : on n'y croit pas voir une étoile de plus. */
+.lbl.deep.ring i {
+  width: 2px;
+  height: 9px;
+  border: 0;
+  border-radius: 1px;
+  background: var(--laiton);
 }
 
 /* Repli sans scène 3D : le canvas (qui garderait sa dernière image) disparaît, un Soleil CSS le remplace. */

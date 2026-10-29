@@ -30,9 +30,11 @@ puis la galaxie vue de l'extérieur, sans rien changer aux escales existantes.
 - Ce que les shaders lisent en coordonnées monde, hors des matrices (centre et rayon des planètes pour l'ombre
   des anneaux et les atmosphères, taille de la couronne en espace vue), est multiplié par `zoomScale`. La lumière
   vient toujours de l'origine : l'échelle se fait autour du Soleil, elle reste juste.
-- La galaxie (40 000 points, 16 000 sur écran tactile, graine fixe) est construite une fois, au repos
-  (`requestIdleCallback`, repli `setTimeout` pour Safari), ou aussitôt si l'on arrive directement sur
-  `#voie-lactee` ; un échec laisse la scène tourner sans elle.
+- La galaxie (40 000 points, 16 000 sur écran tactile, graine fixe) est construite une fois, et seulement pour
+  qui s'approche des étoiles : sa construction se planifie quand l'escale affichée atteint l'au-delà de Neptune
+  (`requestIdleCallback`, délai maximal de 3 s ; repli `setTimeout` de 1,5 s pour Safari), ou se fait aussitôt
+  quand le zoom affiché dépasse 5,5 (lien direct vers `#voie-lactee`). Sa sphère englobante est posée d'emblée
+  (centre galactique, 60 000 al) : rien à mesurer sur ses points. Un échec laisse la scène tourner sans elle.
 - Le mélange additif cumule les points après leur encodage sRGB : l'éclat de la galaxie se règle donc en valeurs
   affichées (points faibles et saturés, qui se cumulent en couleurs franches), et un gain sur ces valeurs
   l'atténue quand elle rapetisse à l'écran ((rayon / 290 px)^1,5), sans quoi sa lumière concentrée saturerait.
@@ -57,6 +59,9 @@ puis la galaxie vue de l'extérieur, sans rien changer aux escales existantes.
   coordonnées monde doit suivre `zoomScale`, sans quoi elle se tromperait pendant les vols vers les étoiles.
 - La galaxie est stylisée (modèle de Reid et al. 2019, barre de Bland-Hawthorn et Gerhard 2016, Soleil à
   27 000 al selon GRAVITY 2022) : la plaque le dit ; les tailles des étoiles sont exagérées, leurs distances non.
-- Coût : une génération de 10 à 30 ms, une fois, au repos ; un peu plus d'un mégaoctet de mémoire graphique ;
-  aucune image quand rien ne bouge. Le réglage visuel (taille des points, intensité de la galaxie, fondus) se
-  vérifie à l'œil, sur ordinateur et sur téléphone.
+- Coût : une génération de 10 à 30 ms, une fois, pour qui atteint l'au-delà de Neptune, et un peu plus d'un
+  mégaoctet de mémoire graphique ; aucune image quand rien ne bouge. « Au repos » n'est pas garanti :
+  `requestIdleCallback` s'exécute de force à l'échéance de 3 s, même pendant un défilement, et le délai de Safari
+  tombe n'importe quand ; sur un téléphone lent, la génération peut coûter une image pendant la descente vers les
+  étoiles. Le réglage visuel (taille des points, intensité de la galaxie, fondus) se vérifie à l'œil, sur
+  ordinateur et sur téléphone.

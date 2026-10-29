@@ -8,10 +8,11 @@ import type * as StoreModule from "@/lib/journey/store";
  */
 let journeyStore: typeof StoreModule.journeyStore;
 let useCurrentStop: typeof StoreModule.useCurrentStop;
+let useIsCosmicStop: typeof StoreModule.useIsCosmicStop;
 
 beforeEach(async () => {
   vi.resetModules();
-  ({ journeyStore, useCurrentStop } = await import("@/lib/journey/store"));
+  ({ journeyStore, useCurrentStop, useIsCosmicStop } = await import("@/lib/journey/store"));
 });
 
 describe("journeyStore", () => {
@@ -85,5 +86,35 @@ describe("useCurrentStop", () => {
     expect(result.current).toBe("hero");
     act(() => journeyStore.update("hero", "sun", 0.8));
     expect(result.current).toBe("sun");
+  });
+});
+
+describe("useIsCosmicStop", () => {
+  afterEach(cleanup);
+
+  it("devrait dire si l'escale affichée est au-delà du système solaire (étoiles voisines, Voie lactée)", () => {
+    const { result } = renderHook(() => useIsCosmicStop());
+    expect(result.current).toBe(false);
+    act(() => journeyStore.update("beyond", "stars", 0.6));
+    expect(result.current).toBe(true);
+    act(() => journeyStore.update("stars", "galaxy", 0.6));
+    expect(result.current).toBe(true);
+    act(() => journeyStore.update("galaxy", "beyond", 0.6));
+    expect(result.current).toBe(false);
+  });
+
+  it("ne devrait re-rendre qu'au passage de la frontière du système solaire, pas à chaque escale", () => {
+    let renders = 0;
+    renderHook(() => {
+      renders += 1;
+      return useIsCosmicStop();
+    });
+    const initial = renders;
+    act(() => journeyStore.update("hero", "sun", 0.6));
+    act(() => journeyStore.update("sun", "mars", 0.6));
+    expect(renders).toBe(initial);
+    act(() => journeyStore.update("neptune", "stars", 0.6));
+    act(() => journeyStore.update("stars", "galaxy", 0.6));
+    expect(renders).toBe(initial + 1);
   });
 });

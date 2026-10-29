@@ -1,5 +1,16 @@
-import { BufferAttribute, BufferGeometry, Group, Line, LineBasicMaterial, Points, type ShaderMaterial } from "three";
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Group,
+  Line,
+  LineBasicMaterial,
+  Points,
+  Sphere,
+  Vector3,
+  type ShaderMaterial,
+} from "three";
 import type { Vec3 } from "@/lib/astro/constants";
+import { GALACTIC_CENTER_DISTANCE_LY, sceneFromGalacticXYZ } from "@/lib/astro/galactic";
 import { GALAXY_SEED, milkyWayCloud } from "@/lib/astro/milkyWay";
 import { SUN } from "@/lib/astro/planets";
 import { absoluteMagnitude, spectralColor, starPointSize, starPositionLy } from "@/lib/astro/starMap";
@@ -38,8 +49,13 @@ export function isDeepLabelKey(value: string | undefined): value is DeepLabelKey
   return value === "here" || value === "center" || RING_LABEL_KEYS.includes(value) || value.startsWith("star:");
 }
 
-/** Le Soleil vu de loin : un point de 6 px, de sa couleur. */
-const SUN_POINT_SIZE_PX = 6;
+/** Le Soleil vu de loin : un point de 6 px (CSS), de sa couleur. */
+export const SUN_POINT_SIZE_PX = 6;
+/**
+ * Rayon de la sphère englobante de la galaxie, en années-lumière, autour du centre galactique : le disque (50 000 al)
+ * et les bras, qui débordent de quelques écarts types, y tiennent. Posée telle quelle : rien à calculer sur 40 000 points.
+ */
+export const GALAXY_BOUNDING_RADIUS_LY = 60_000;
 /** Segments d'un cercle de distance. */
 const RING_SEGMENTS = 128;
 /** Opacité des cercles de distance, poids des étoiles à 1 (traits d'instrument, discrets). */
@@ -56,6 +72,8 @@ export interface CosmosBody {
   galaxy: Points<BufferGeometry, ShaderMaterial> | null;
   /** Position de chaque étoile (al), par clé : ancres des étiquettes. */
   starPositions: ReadonlyMap<string, Vec3>;
+  /** Taille du point de chaque étoile (px CSS), par clé : les étiquettes évitent ces points. */
+  starSizes: ReadonlyMap<string, number>;
   /** Rapport de pixels du rendu, partagé par les trois nuages (mis à jour par le moteur à chaque redimensionnement). */
   pixelRatio: Uniform<number>;
   /**
@@ -65,20 +83,24 @@ export interface CosmosBody {
   galaxyGain: Uniform<number>;
 }
 
-/** Nuage de points : positions (al), couleurs linéaires, tailles (px CSS), matériau commun aux trois nuages. */
+/**
+ * Nuage de points : positions (al), couleurs linéaires, tailles (px CSS), matériau commun aux trois nuages. Sa sphère
+ * englobante est posée d'emblée (`bounds`), ou calculée tout de suite : jamais à la première image où il paraît.
+ */
 function pointCloud(
   positions: Float32Array,
   colors: Float32Array,
   sizes: Float32Array,
   pixelRatio: Uniform<number>,
   gain?: Uniform<number>,
+  bounds?: Sphere,
 ): Points<BufferGeometry, ShaderMaterial> {
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new BufferAttribute(positions, 3));
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
   geometry.setAttribute("size", new BufferAttribute(sizes, 1));
-  // Sphère englobante calculée tout de suite (au repos, pour la galaxie), pas à la première image où elle paraît.
-  geometry.computeBoundingSphere();
+  if (bounds) geometry.boundingSphere = bounds;
+  else geometry.computeBoundingSphere();
   const points = new Points(geometry, createPointCloudMaterial(pixelRatio, gain).material);
   // Rien n'est dessiné avant que le moteur ne pèse la couche.
   points.visible = false;
@@ -120,6 +142,7 @@ export function createCosmos(stars: readonly NearbyStar[]): CosmosBody {
   const colors = new Float32Array(stars.length * 3);
   const sizes = new Float32Array(stars.length);
   const starPositions = new Map<string, Vec3>();
+  const starSizes = new Map<string, number>();
   stars.forEach((star, i) => {
     const position = starPositionLy(star);
     starPositions.set(star.key, position);
@@ -127,6 +150,7 @@ export function createCosmos(stars: readonly NearbyStar[]): CosmosBody {
     const color = rawColor(spectralColor(star.spectralType));
     colors.set([color.r, color.g, color.b], i * 3);
     sizes[i] = starPointSize(absoluteMagnitude(star.apparentMag, star.distanceLy));
+    starSizes.set(star.key, sizes[i]);
   });
   const sunColor = rawColor(SUN.color);
 
@@ -143,6 +167,7 @@ export function createCosmos(stars: readonly NearbyStar[]): CosmosBody {
     rings: DISTANCE_RINGS_LY.map(distanceRing),
     galaxy: null,
     starPositions,
+    starSizes,
     pixelRatio,
     galaxyGain: { value: 1 },
   };
@@ -152,12 +177,15 @@ export function createCosmos(stars: readonly NearbyStar[]): CosmosBody {
 
 /**
  * Crée la galaxie (milkyWayCloud(count, GALAXY_SEED), même nuage à chaque visite) et l'ajoute au groupe ;
- * sans effet si elle existe déjà. Invisible jusqu'à la prochaine pesée.
+ * sans effet si elle existe déjà. Invisible jusqu'à la prochaine pesée. Sa sphère englobante entoure le centre
+ * galactique (GALAXY_BOUNDING_RADIUS_LY) : le découpage par le champ de la caméra n'a rien à mesurer.
  */
 export function buildGalaxy(cosmos: CosmosBody, count: number): void {
   if (cosmos.galaxy) return;
   const cloud = milkyWayCloud(count, GALAXY_SEED);
-  const galaxy = pointCloud(cloud.positions, cloud.colors, cloud.sizes, cosmos.pixelRatio, cosmos.galaxyGain);
+  const center = sceneFromGalacticXYZ(GALACTIC_CENTER_DISTANCE_LY, 0, 0);
+  const bounds = new Sphere(new Vector3(center.x, center.y, center.z), GALAXY_BOUNDING_RADIUS_LY);
+  const galaxy = pointCloud(cloud.positions, cloud.colors, cloud.sizes, cosmos.pixelRatio, cosmos.galaxyGain, bounds);
   cosmos.group.add(galaxy);
   cosmos.galaxy = galaxy;
 }

@@ -1,4 +1,5 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
+import { Profiler } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setRealScale } from "@/components/journey/realScale";
@@ -76,5 +77,21 @@ describe("TimeDock, bascule « Distances réelles »", () => {
       expect(getClock().snapshot().realScale).toBe(true);
       expect(scaleToggle()).toHaveAttribute("aria-pressed", "true");
     });
+  });
+});
+
+describe("TimeDock et le voyage", () => {
+  it("ne devrait pas se re-rendre quand l'escale change sans quitter le système solaire", () => {
+    act(() => journeyStore.update("mars", "mars", 0));
+    const onRender = vi.fn();
+    render(
+      <Profiler id="dock" onRender={onRender}>
+        <TimeDock />
+      </Profiler>,
+    );
+    onRender.mockClear();
+    act(() => journeyStore.update("mars", "jupiter", 0.6));
+    act(() => journeyStore.update("jupiter", "saturn", 0.6));
+    expect(onRender).not.toHaveBeenCalled();
   });
 });

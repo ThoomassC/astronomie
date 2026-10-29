@@ -34,6 +34,7 @@ import {
 } from "@/lib/astro/scale";
 import { NEARBY_STARS } from "@/lib/astro/stars";
 import {
+  STOP_ORDER,
   blendCameras,
   cameraFor,
   freeBand,
@@ -65,6 +66,7 @@ import { orientAxis, primeMeridianAngle } from "./axes";
 import { rawColor } from "./color";
 import {
   DISTANCE_RINGS_LY,
+  SUN_POINT_SIZE_PX,
   buildGalaxy,
   createCosmos,
   ringLabelKey,
@@ -72,7 +74,15 @@ import {
   weighCosmos,
   type DeepLabelKey,
 } from "./cosmos";
-import { LABEL_OFFSET_X, LABEL_OFFSET_Y, placeLabel, type LabelBox } from "./labels";
+import {
+  anchoredBox,
+  markerLayouts,
+  placeLabel,
+  placeMarkedLabel,
+  pointBox,
+  type LabelBox,
+  type MarkerLayout,
+} from "./labels";
 import { SOLAR_HIDDEN_ZOOM, layerWeights } from "./layers";
 import { createPlaceholderTexture, type SurfaceUniforms, type Uniform } from "./materials";
 import { DEG, TAU, clamp, easeFactor, lerp, smoothstep } from "./math";
@@ -93,11 +103,15 @@ export interface SolarSceneOptions {
   bar: Element | null;
   /** Règle des distances : sur grand écran, la zone libre s'arrête avant elle. */
   rail: Element | null;
-  /** Note d'échelle : visible sur téléphone, elle borde aussi la bande libre par le haut. */
+  /**
+   * Note d'échelle : visible sur téléphone, elle borde aussi la bande libre par le haut. Suspendue aux escales
+   * cosmiques (`data-suspended`), elle y garde sa place.
+   */
   note: HTMLElement | null;
   /**
-   * Étiquettes du ciel profond (étoiles voisines, « Vous êtes ici », centre galactique, cercles de distance),
-   * placées comme celles des astres, après elles, et seulement aux zooms où leur couche est dessinée.
+   * Étiquettes du ciel profond (étoiles voisines, « Vous êtes ici », centre galactique, cercles de distance), placées
+   * après celles des astres et seulement aux zooms où leur couche est dessinée : repère exactement sur l'astre, texte
+   * à droite ou à gauche, jamais hors de la vue ni sur le point d'une étoile.
    */
   deepLabels: ReadonlyMap<DeepLabelKey, HTMLElement>;
   /** Clic sur un astre de la scène. */
@@ -129,13 +143,16 @@ const MAX_PIXEL_RATIO = 1.5;
 const MAX_PIXELS = 4_200_000;
 /** Distance minimale entre la caméra et le centre du Soleil, en rayons solaires (certains vols le frôlent). */
 const SUN_CLEARANCE = 2.5;
-/** Seuils sous lesquels parallaxe et fondu des orbites sont considérés comme arrivés. */
-const PARALLAX_EPSILON = 1e-4;
+/**
+ * Seuils sous lesquels parallaxe et fondu des orbites sont considérés comme arrivés. La parallaxe (au plus 0,05 rad
+ * d'azimut) s'arrête à un millième de sa course : le dernier dixième de pixel ne valait pas des secondes de rendu.
+ */
+const PARALLAX_EPSILON = 1e-3;
 const ORBIT_FADE_EPSILON = 1e-3;
 /**
- * Ordre de placement des étiquettes des astres : les premières gagnent en cas de chevauchement. Celles du ciel
- * profond viennent après : « Vous êtes ici », le centre galactique, les étoiles de la plus proche à la plus
- * lointaine, puis les cercles de distance.
+ * Ordre de placement des étiquettes des astres : les premières gagnent en cas de chevauchement. Viennent ensuite les
+ * points visibles (point-Soleil, étoiles), que nulle étiquette du ciel profond ne recouvre, puis le ciel profond :
+ * « Vous êtes ici », le centre galactique, les étoiles de la plus proche à la plus lointaine, les cercles de distance.
  */
 const LABEL_PRIORITY: readonly BodyKey[] = ["sun", "earth", "jupiter", "saturn", "neptune", "uranus", "mars", "venus", "mercury"];
 /** Sous cette opacité, une étiquette est masquée. */
@@ -150,7 +167,12 @@ const SOLAR_FAR = 7000;
 const DEEP_FAR = 100_000;
 /** Au-delà de ce zoom affiché, la galaxie manquante est construite tout de suite (lien direct vers la Voie lactée). */
 const GALAXY_EAGER_ZOOM = 5.5;
-/** Construction de la galaxie au repos : délai maximal de requestIdleCallback, et attente du repli sans lui (Safari). */
+/**
+ * Escales d'où la galaxie se prépare : l'au-delà de Neptune et après. Qui ne quitte pas le système solaire ne paie
+ * ni sa génération ni sa mémoire.
+ */
+const GALAXY_PREPARE_STOPS: ReadonlySet<StopKey> = new Set(STOP_ORDER.slice(STOP_ORDER.indexOf("beyond")));
+/** Construction de la galaxie planifiée : délai maximal de requestIdleCallback, et attente du repli sans lui (Safari). */
 const GALAXY_IDLE_TIMEOUT_MS = 3000;
 const GALAXY_FALLBACK_DELAY_MS = 1500;
 /**
@@ -201,21 +223,105 @@ const emptyCamState = (): CamState => ({
   zoom: 0,
 });
 
-/** Étiquette DOM placée par le moteur : taille mesurée, visibilité écrite (le DOM n'est touché qu'au changement). */
+/**
+ * Étiquette à repère (ciel profond, et « Soleil » devenu point) : le repère se pose exactement sur l'astre et seul le
+ * texte occupe la place. Dispositions du texte mesurées dans la forme normale (texte complet à droite du repère, ou
+ * centré au-dessus ou en dessous de lui), à essayer dans l'ordre ; taille du repère, réservée une fois posé.
+ */
+interface LabelMarker {
+  layouts: MarkerLayout[];
+  dotY: number;
+  dotWidth: number;
+  dotHeight: number;
+}
+
+/** Étiquette DOM placée par le moteur : taille mesurée, et dernières valeurs écrites (le DOM n'est touché qu'au changement). */
 interface LabelSlot {
   element: HTMLElement;
   width: number;
   height: number;
   shown: boolean | null;
-  /**
-   * Ciel profond seulement : centre de la pastille de repère et boîte du texte, mesurés dans l'étiquette (px).
-   * Le repère se pose exactement sur l'astre et seul le texte occupe la place, quelle que soit la disposition
-   * (texte à droite, au-dessus, en dessous). `null` pour les astres, placés comme avant (décalage fixe).
-   */
-  layout: { dotX: number; dotY: number; textX: number; textY: number; textWidth: number; textHeight: number } | null;
+  transform: string;
+  opacity: string;
+  /** Texte à gauche du repère (`data-mirrored`), nom seul (`data-short`). */
+  mirrored: boolean;
+  short: boolean;
+  /** Étiquettes à repère seulement ; `null` pour les planètes, placées par leur bouton entier (décalage fixe). */
+  marker: LabelMarker | null;
 }
 
-const labelSlot = (element: HTMLElement): LabelSlot => ({ element, width: 0, height: 0, shown: null, layout: null });
+/** Mémoire d'une étiquette, partie de l'état du DOM (un moteur précédent a pu y écrire). */
+const labelSlot = (element: HTMLElement): LabelSlot => ({
+  element,
+  width: 0,
+  height: 0,
+  shown: null,
+  transform: element.style.transform,
+  opacity: element.style.opacity,
+  mirrored: element.hasAttribute("data-mirrored"),
+  short: element.hasAttribute("data-short"),
+  marker: null,
+});
+
+function setLabelShown(slot: LabelSlot, shown: boolean): void {
+  if (slot.shown === shown) return;
+  slot.shown = shown;
+  slot.element.style.visibility = shown ? "visible" : "hidden";
+}
+
+/** Disposition écrite dans l'étiquette : texte à gauche du repère (`data-mirrored`), nom seul (`data-short`). */
+function setLabelForm(slot: LabelSlot, mirrored: boolean, short: boolean): void {
+  if (slot.mirrored !== mirrored) {
+    slot.mirrored = mirrored;
+    slot.element.toggleAttribute("data-mirrored", mirrored);
+  }
+  if (slot.short !== short) {
+    slot.short = short;
+    slot.element.toggleAttribute("data-short", short);
+  }
+}
+
+/**
+ * Montre l'étiquette, coin haut gauche en (left, top) px, à l'opacité `alpha`. Seules les valeurs qui changent sont
+ * écrites : au repos ou quand seul le temps avance, le style des étiquettes n'est plus invalidé à chaque image.
+ */
+function showLabel(slot: LabelSlot, left: number, top: number, alpha: number): void {
+  const transform = `translate3d(${left.toFixed(1)}px,${top.toFixed(1)}px,0)`;
+  if (transform !== slot.transform) {
+    slot.transform = transform;
+    slot.element.style.transform = transform;
+  }
+  const opacity = alpha.toFixed(3);
+  if (opacity !== slot.opacity) {
+    slot.opacity = opacity;
+    slot.element.style.opacity = opacity;
+  }
+  setLabelShown(slot, true);
+}
+
+/** Repère et texte d'une étiquette, mesurés dans sa forme normale ; `null` s'il lui manque l'un ou l'autre. */
+function measureMarker(element: HTMLElement): LabelMarker | null {
+  // L'étiquette est positionnée : les décalages de ses enfants lui sont relatifs.
+  const dot = element.querySelector<HTMLElement>(":scope > i");
+  const text = element.querySelector<HTMLElement>(":scope > span");
+  if (!dot || !text) return null;
+  const dotY = dot.offsetTop + dot.offsetHeight / 2;
+  return {
+    layouts: markerLayouts({
+      dotX: dot.offsetLeft + dot.offsetWidth / 2,
+      dotY,
+      dotWidth: dot.offsetWidth,
+      textX: text.offsetLeft,
+      textY: text.offsetTop,
+      textWidth: text.offsetWidth,
+      textHeight: text.offsetHeight,
+      detailWidth: text.querySelector<HTMLElement>(".dist")?.offsetWidth ?? 0,
+    }),
+    dotY,
+    dotWidth: dot.offsetWidth,
+    dotHeight: dot.offsetHeight,
+  };
+}
 
 /** Rapproche `value` de `target` et s'y pose quand l'écart devient négligeable. */
 function approach(value: number, target: number, factor: number, epsilon: number): number {
@@ -410,12 +516,15 @@ function setupScene(
         const slot = slots[arrived.key];
         for (const target of slot.textures) target.value = arrived.texture;
         renderer.initTexture(arrived.texture);
+        // Carte d'un objet caché (système solaire réduit au point-Soleil, ciel éteint) : pas de fondu à regarder,
+        // ni d'image à rendre. La carte est déjà sur le GPU quand l'objet réapparaît.
+        const hidden = arrived.key === "milkyWay" ? !sky.group.visible : !solarRoot.visible;
         for (const mix of slot.mixes) {
-          if (reduced) mix.value = 1;
+          if (reduced || hidden) mix.value = 1;
           else fading.add(mix);
         }
         installCooldown = tier === "2k" ? 4 : 2;
-        needsRender = true;
+        if (!hidden) needsRender = true;
       }
     }
     if (fading.size === 0) return;
@@ -502,14 +611,20 @@ function setupScene(
   const bodySlots = new Map<BodyKey, LabelSlot>([...labels].map(([key, element]) => [key, labelSlot(element)]));
   const deepSlots = new Map<DeepLabelKey, LabelSlot>([...deepLabels].map(([key, element]) => [key, labelSlot(element)]));
   const labelSlots = [...bodySlots.values(), ...deepSlots.values()];
-  /** Étiquettes des étoiles, dans l'ordre des données (distance croissante), et des cercles de distance. */
-  const starLabels = [...cosmos.starPositions].map(([key, position]) => ({
+  /** Étiquettes à repère : tout le ciel profond, et « Soleil », qui en prend la disposition quand le Soleil devient un point. */
+  const sunSlot = bodySlots.get("sun");
+  const markedSlots = [...(sunSlot ? [sunSlot] : []), ...deepSlots.values()];
+  /** Étoiles, dans l'ordre des données (distance croissante) : étiquette, position (al), taille du point (px). */
+  const stars = [...cosmos.starPositions].map(([key, position]) => ({
     slot: deepSlots.get(starLabelKey(key)),
     position,
+    size: cosmos.starSizes.get(key) ?? 0,
   }));
   const ringLabels = DISTANCE_RINGS_LY.map((radius) => ({ slot: deepSlots.get(ringLabelKey(radius)), radius }));
   let obstacleBoxes: LabelBox[] = [];
   const occupied: LabelBox[] = [];
+  /** Position projetée de la dernière ancre, en px (la profondeur reste dans `projected.z`). */
+  const onScreen = { x: 0, y: 0 };
 
   // ---------- Taille de la vue, mesures du DOM ----------
   function resize(): void {
@@ -532,6 +647,8 @@ function setupScene(
    * Mise en page compacte : bande libre entre la barre du haut (ou la note d'échelle visible) et la
    * plaque repliée de chaque escale. Une plaque ou une note dépliée garde la mesure de sa forme
    * repliée, pour que la caméra ne bouge pas ; la mesure des plaques se perd si la largeur change.
+   * La note suspendue aux escales cosmiques (distances réelles toujours actives) garde sa place :
+   * le cadrage ne saute ni quand elle se tait, ni quand elle revient.
    * Sans barre fixe ni plaque collée en bas (écran bas), pas de bande.
    */
   function measureBands(): void {
@@ -548,6 +665,8 @@ function setupScene(
     let top = bar.getBoundingClientRect().bottom;
     if (note?.dataset.visible === "true") {
       if (!note.hasAttribute("data-open")) noteBottom = note.getBoundingClientRect().bottom;
+      top = Math.max(top, noteBottom);
+    } else if (note?.hasAttribute("data-suspended")) {
       top = Math.max(top, noteBottom);
     } else {
       noteBottom = 0;
@@ -603,34 +722,26 @@ function setupScene(
     if (right - left >= MIN_ZONE_SHARE * view.width) zone = { left: left / view.width, right: right / view.width };
   }
 
-  /** Une seule passe de lecture : taille des étiquettes (astres et ciel profond), zones à éviter, bandes et zone libres. */
+  /**
+   * Une seule passe de lecture : taille des étiquettes (astres et ciel profond), zones à éviter, bandes et zone
+   * libres. Les étiquettes à repère sont mesurées dans leur forme normale, puis reprennent la leur après toutes les
+   * lectures : sur un écran à 120 Hz, la boucle saute une image sur deux, et la suivante pourrait être peinte sans elle.
+   */
   function measureLayout(): void {
+    const forms = markedSlots.map(({ mirrored, short }) => ({ mirrored, short }));
+    for (const slot of markedSlots) setLabelForm(slot, false, false);
     for (const slot of labelSlots) {
       slot.width = slot.element.offsetWidth;
       slot.height = slot.element.offsetHeight;
     }
-    // L'étiquette est positionnée : les décalages de ses enfants lui sont relatifs.
-    for (const slot of deepSlots.values()) {
-      const dot = slot.element.querySelector<HTMLElement>("i");
-      const text = slot.element.querySelector<HTMLElement>("span");
-      slot.layout =
-        dot && text
-          ? {
-              dotX: dot.offsetLeft + dot.offsetWidth / 2,
-              dotY: dot.offsetTop + dot.offsetHeight / 2,
-              textX: text.offsetLeft,
-              textY: text.offsetTop,
-              textWidth: text.offsetWidth,
-              textHeight: text.offsetHeight,
-            }
-          : null;
-    }
+    for (const slot of markedSlots) slot.marker = measureMarker(slot.element);
     obstacleBoxes = obstacles.map((element) => {
       const rect = element.getBoundingClientRect();
       return [rect.left, rect.top, rect.right, rect.bottom] as const;
     });
     measureBands();
     measureZone();
+    markedSlots.forEach((slot, i) => setLabelForm(slot, forms[i].mirrored, forms[i].short));
     needsRender = true;
   }
 
@@ -659,7 +770,7 @@ function setupScene(
     if (!disposed) measureLayout();
   });
 
-  // ---------- Galaxie : construite une fois, au repos, ou tout de suite si l'on y arrive directement ----------
+  // ---------- Galaxie : construite une fois, quand on approche des étoiles, ou tout de suite si l'on y arrive directement ----------
   /**
    * Construit la galaxie (≈ 10 à 30 ms, une fois) et la pèse aussitôt. Un échec laisse la scène tourner
    * sans galaxie, sans nouvel essai.
@@ -680,8 +791,9 @@ function setupScene(
   }
 
   /**
-   * Planifie la construction quand le fil principal est libre, après la compilation des shaders (le programme
-   * des points, partagé avec les étoiles, est déjà prêt). Safari n'a pas requestIdleCallback : simple délai.
+   * Planifie la construction quand le fil principal est libre (au plus tard GALAXY_IDLE_TIMEOUT_MS après), une fois
+   * les shaders compilés (le programme des points, partagé avec les étoiles, est déjà prêt) et l'au-delà de Neptune
+   * atteint. Safari n'a pas requestIdleCallback : simple délai, qui peut tomber pendant un défilement.
    */
   function scheduleGalaxy(): void {
     if (disposed || cosmos.galaxy || galaxyFailed || cancelGalaxyTask) return;
@@ -698,7 +810,6 @@ function setupScene(
   const onCompiled = () => {
     compiled = true;
     needsRender = true;
-    scheduleGalaxy();
   };
   renderer.compileAsync(scene, camera).then(onCompiled, onCompiled);
 
@@ -742,7 +853,9 @@ function setupScene(
     const key = pick(event.clientX, event.clientY);
     if (key) onPick(key);
   };
+  // À la souris seulement : au doigt, chaque geste de défilement relançait plusieurs secondes de rendu.
   const onWindowPointerMove = (event: PointerEvent) => {
+    if (event.pointerType !== "mouse") return;
     parallax.targetX = (event.clientX / view.width) * 2 - 1;
     parallax.targetY = (event.clientY / view.height) * 2 - 1;
   };
@@ -760,8 +873,8 @@ function setupScene(
     if (snapshot.playing) moonDays += dt * Math.min(snapshot.speedDays, 1.5);
     const jd = julianDate(now);
 
-    // Positions, tailles et ceintures ne dépendent que de l'instant simulé et de l'échelle. Positions dans le
-    // repère du système solaire (`solarRoot`) ; leurs reports en coordonnées monde suivent le zoom (syncSolarWorld).
+    // Positions et tailles ne dépendent que de l'instant simulé et de l'échelle. Positions dans le repère du
+    // système solaire (`solarRoot`) ; leurs reports en coordonnées monde suivent le zoom (syncSolarWorld).
     if (jd !== bodiesJd || s !== bodiesScale) {
       bodiesJd = jd;
       bodiesScale = s;
@@ -772,8 +885,6 @@ function setupScene(
         body.group.position.copy(body.position);
         body.group.scale.setScalar(shrink);
       }
-      const days = jd - J2000_JD;
-      for (const belt of belts) updateBelt(belt, days, s);
       worldDirty = true;
     }
 
@@ -806,6 +917,17 @@ function setupScene(
 
     // La surface du Soleil ne bouille que si le temps tourne, et jamais en mouvement réduit.
     if (snapshot.playing && !reduced) sun.time.value += dt;
+  }
+
+  /**
+   * Ceintures, seulement quand elles sont dessinées (poids du système solaire non nul, connu une fois le zoom
+   * appliqué) : des milliers de points recalculés pour rien aux escales lointaines. `updateBelt` rattrape l'instant
+   * et l'échelle à leur retour, et ne refait rien tant qu'ils n'ont pas changé.
+   */
+  function updateBelts(): void {
+    if (weights.solar === 0) return;
+    const days = bodiesJd - J2000_JD;
+    for (const belt of belts) updateBelt(belt, days, bodiesScale);
   }
 
   /**
@@ -934,50 +1056,68 @@ function setupScene(
     });
   }
 
-  function setLabelShown(slot: LabelSlot, shown: boolean): void {
-    if (slot.shown === shown) return;
-    slot.shown = shown;
-    slot.element.style.visibility = shown ? "visible" : "hidden";
+  /** Projette `at` (coordonnées monde) : position à l'écran dans `onScreen` (px), profondeur dans `projected.z`. */
+  function project(at: Vector3): void {
+    projected.copy(at).project(camera);
+    onScreen.x = ((projected.x + 1) / 2) * view.width;
+    onScreen.y = ((1 - projected.y) / 2) * view.height;
   }
 
   /**
-   * Pose l'étiquette sur son ancre (coordonnées monde) avec l'opacité `alpha`, si elle y tient sans recouvrir
-   * une étiquette plus prioritaire ; renvoie faux sinon, sans rien changer.
+   * Pose le bouton d'étiquette entier sur son ancre (coordonnées monde) avec l'opacité `alpha`, s'il y tient sans
+   * recouvrir une étiquette plus prioritaire ; renvoie faux sinon, sans rien changer.
    */
   function fitSlot(slot: LabelSlot, at: Vector3, alpha: number): boolean {
-    projected.copy(at).project(camera);
-    const x = ((projected.x + 1) / 2) * view.width;
-    const y = ((1 - projected.y) / 2) * view.height;
-    const { layout } = slot;
-    // Ciel profond : la boîte testée est celle du texte (placeLabel la décale de LABEL_OFFSET_X/Y : on compense).
-    const box = layout
-      ? placeLabel(
-          {
-            x: x - layout.dotX + layout.textX + LABEL_OFFSET_X,
-            y: y - layout.dotY + layout.textY + LABEL_OFFSET_Y,
-            depth: projected.z,
-            width: layout.textWidth,
-            height: layout.textHeight,
-          },
-          view.width,
-          view.height,
-          occupied,
-        )
-      : placeLabel({ x, y, depth: projected.z, width: slot.width, height: slot.height }, view.width, view.height, occupied);
+    project(at);
+    const box = placeLabel(
+      { x: onScreen.x, y: onScreen.y, depth: projected.z, width: slot.width, height: slot.height },
+      view.width,
+      view.height,
+      occupied,
+    );
     if (!box) return false;
     occupied.push(box);
-    const left = layout ? x - layout.dotX : box[0];
-    const top = layout ? y - layout.dotY : box[1];
-    slot.element.style.transform = `translate3d(${left.toFixed(1)}px,${top.toFixed(1)}px,0)`;
-    slot.element.style.opacity = alpha.toFixed(3);
-    setLabelShown(slot, true);
+    setLabelForm(slot, false, false);
+    showLabel(slot, box[0], box[1], alpha);
     return true;
   }
 
-  /** Place l'étiquette sur son ancre si elle y tient ; sinon, ou sous LABEL_MIN_ALPHA, la masque. */
+  /**
+   * Pose une étiquette à repère : repère exactement sur l'astre, texte dans la première disposition qui tient
+   * (placeMarkedLabel) ; texte et repère sont alors réservés. Renvoie faux sinon, sans rien changer.
+   */
+  function fitMarkedSlot(slot: LabelSlot, at: Vector3, alpha: number): boolean {
+    const { marker } = slot;
+    if (!marker) return false;
+    project(at);
+    const { x, y } = onScreen;
+    const index = placeMarkedLabel({ x, y, depth: projected.z }, marker.layouts, view.width, view.height, occupied);
+    if (index === null) return false;
+    const layout = marker.layouts[index];
+    const halfWidth = marker.dotWidth / 2;
+    const halfHeight = marker.dotHeight / 2;
+    occupied.push(anchoredBox(layout.box, x, y), [x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight]);
+    setLabelForm(slot, layout.mirrored, layout.short);
+    showLabel(slot, x - layout.dotX, y - marker.dotY, alpha);
+    return true;
+  }
+
+  /** Place le bouton d'étiquette sur son ancre s'il y tient ; sinon, ou sous LABEL_MIN_ALPHA, le masque. */
   function placeSlot(slot: LabelSlot | undefined, at: Vector3, alpha: number): void {
     if (!slot) return;
     if (alpha < LABEL_MIN_ALPHA || !fitSlot(slot, at, alpha)) setLabelShown(slot, false);
+  }
+
+  /** Place l'étiquette à repère sur son ancre si elle y tient ; sinon, ou sous LABEL_MIN_ALPHA, la masque. */
+  function placeMarkedSlot(slot: LabelSlot | undefined, at: Vector3, alpha: number): void {
+    if (!slot) return;
+    if (alpha < LABEL_MIN_ALPHA || !fitMarkedSlot(slot, at, alpha)) setLabelShown(slot, false);
+  }
+
+  /** Réserve le point de `size` px posé en `at` (coordonnées monde) : nulle étiquette du ciel profond ne le recouvre. */
+  function reservePoint(at: Vector3, size: number): void {
+    project(at);
+    if (projected.z <= 1) occupied.push(pointBox(onScreen.x, onScreen.y, size));
   }
 
   /**
@@ -989,7 +1129,7 @@ function setupScene(
     if (alpha >= LABEL_MIN_ALPHA) {
       for (const angle of RING_LABEL_ANGLES) {
         const around = towardCamera + angle;
-        if (fitSlot(slot, anchor.set(radius * Math.cos(around), 0, radius * Math.sin(around)), alpha)) return;
+        if (fitMarkedSlot(slot, anchor.set(radius * Math.cos(around), 0, radius * Math.sin(around)), alpha)) return;
       }
     }
     setLabelShown(slot, false);
@@ -1009,14 +1149,32 @@ function setupScene(
     occupied.length = 0;
     occupied.push(...obstacleBoxes);
     for (const key of LABEL_PRIORITY) {
-      if (key === "sun") placeSlot(bodySlots.get(key), anchor.set(0, 0, 0), alpha * sunFade);
-      else placeSlot(bodySlots.get(key), anchor.copy(bodyOf(key).position).multiplyScalar(solarScale), alpha * weights.planetLabels);
+      if (key !== "sun") {
+        placeSlot(bodySlots.get(key), anchor.copy(bodyOf(key).position).multiplyScalar(solarScale), alpha * weights.planetLabels);
+      } else if (weights.sunPoint > 0) {
+        // Le Soleil devenu un point parmi les étoiles : « Soleil » prend la disposition du ciel profond (seul son
+        // texte occupe la place, à droite ou à gauche du point). Son bouton entier chasserait Proxima du Centaure.
+        placeMarkedSlot(sunSlot, anchor.set(0, 0, 0), alpha * sunFade);
+      } else {
+        placeSlot(sunSlot, anchor.set(0, 0, 0), alpha * sunFade);
+      }
+    }
+    /*
+     * Points visibles : nulle pastille du ciel profond ne les recouvre. « Soleil », texte sans pastille opaque qui ne
+     * masque aucun point, est placé avant eux : sur téléphone, les points qui serrent le Soleil (Lacaille 9352,
+     * Lalande 21185, Epsilon Indi, Luyten 726-8) ne lui laisseraient aucune place.
+     */
+    if (weights.sunPoint > 0) reservePoint(anchor.set(0, 0, 0), SUN_POINT_SIZE_PX);
+    if (weights.stars > 0) {
+      for (const { position, size } of stars) {
+        reservePoint(anchor.set(position.x, position.y, position.z).multiplyScalar(lightYear), size);
+      }
     }
     // Ciel profond : non interactif, placé après les astres.
-    placeSlot(deepSlots.get("here"), anchor.set(0, 0, 0), hereFade);
-    placeSlot(deepSlots.get("center"), anchor.copy(galacticCenterLy).multiplyScalar(lightYear), weights.galaxy);
-    for (const { slot, position } of starLabels) {
-      placeSlot(slot, anchor.set(position.x, position.y, position.z).multiplyScalar(lightYear), weights.stars);
+    placeMarkedSlot(deepSlots.get("here"), anchor.set(0, 0, 0), hereFade);
+    placeMarkedSlot(deepSlots.get("center"), anchor.copy(galacticCenterLy).multiplyScalar(lightYear), weights.galaxy);
+    for (const { slot, position } of stars) {
+      placeMarkedSlot(slot, anchor.set(position.x, position.y, position.z).multiplyScalar(lightYear), weights.stars);
     }
     // Les cercles, en dernier : chacun est nommé là où son étiquette trouve une place libre le long du cercle.
     const towardCamera = Math.atan2(camera.position.z, camera.position.x);
@@ -1032,8 +1190,9 @@ function setupScene(
       if (!compiled) {
         if (++compileWaitFrames < MAX_COMPILE_WAIT_FRAMES) return;
         compiled = true;
-        scheduleGalaxy();
       }
+      // La galaxie se prépare dès l'au-delà de Neptune (scheduleGalaxy ne planifie qu'une fois).
+      if (GALAXY_PREPARE_STOPS.has(journey.current)) scheduleGalaxy();
       const clock = getClock();
       const now = clock.now();
       const snapshot = clock.snapshot();
@@ -1067,6 +1226,7 @@ function setupScene(
       lastT = journey.t;
       updateBodies(step, now, snapshot, reduced);
       updateCamera(step, journey, reduced);
+      updateBelts();
       renderer.render(scene, camera);
       updateLabels();
     },

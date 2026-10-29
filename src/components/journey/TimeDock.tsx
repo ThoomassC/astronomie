@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SCALE_TOGGLE } from "@/content/site";
-import { isCosmicStop } from "@/lib/journey/camera";
-import { useCurrentStop } from "@/lib/journey/store";
+import { useIsCosmicStop } from "@/lib/journey/store";
 import { SPEEDS, getClock, type ClockSnapshot } from "@/lib/sim/clock";
 import { DOCK_ID, DOCK_SCALE_TOGGLE_ID } from "./ids";
 import { toggleRealScale, useRealScale } from "./realScale";
@@ -44,7 +43,7 @@ export function TimeDock() {
   const playing = useClockValue(selectPlaying, DEFAULT_PLAYING);
   const speedDays = useClockValue(selectSpeedDays, DEFAULT_SPEED_DAYS);
   const realScale = useRealScale();
-  const scaleLocked = isCosmicStop(useCurrentStop());
+  const scaleLocked = useIsCosmicStop();
   const speedIndex = Math.max(0, SPEEDS.findIndex((speed) => speed.days === speedDays));
   const nextSpeed = SPEEDS[(speedIndex + 1) % SPEEDS.length];
 

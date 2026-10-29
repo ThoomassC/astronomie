@@ -92,11 +92,17 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 - **Étiquettes du ciel profond** : repère creux posé exactement sur l'astre (couleur de l'étoile), texte (nom et
   distance) sur une pilule `--plaque-a` filetée `--filet` : lisible sur les points les plus clairs de la galaxie
   (sur du blanc pur, ivoire 11,8:1, laiton 6,2:1). Placées après les astres, sans que leurs textes se
-  chevauchent ; non interactives (la plaque donne la liste). À la Voie lactée, « Vous êtes ici » se lit au-dessus
+  chevauchent ni recouvrent le point d'une étoile (point ± demi-taille + 2 px), jamais hors de l'écran (texte à
+  4 px des bords au moins, astre dans la vue) : texte à droite du repère, sinon à gauche, sinon le nom seul (la
+  distance reste dans la plaque), sinon rien. Non interactives (la plaque donne la liste). Dès que le Soleil
+  n'est plus qu'un point, « Soleil » se pose de même : seul son texte occupe la place, à droite ou à gauche du
+  point ; aux étoiles voisines, sur téléphone comme sur grand écran, « Soleil » et « Proxima du Centaure » sont
+  nommés (Alpha du Centaure, collée à Proxima, cède). À la Voie lactée, « Vous êtes ici » se lit au-dessus
   d'un anneau `--soleil` de 14 px autour du point-Soleil, et remplace « Soleil » (l'une s'efface avant que l'autre
   n'apparaisse) ; « Centre de la Galaxie » se lit sous son repère : à la même hauteur à l'écran, les deux textes
   ne se rencontrent jamais. Cercles de distance 5 et 10 al en laiton, étiquette 0,75 rem, posée au premier point
-  libre du cercle (côté opposé au Soleil d'abord, puis les côtés).
+  libre du cercle (côté opposé au Soleil d'abord, puis les côtés), sur une graduation de laiton de 2 × 9 px :
+  jamais l'anneau d'une étoile.
 - **Ciel profond (scène)** : étoiles voisines aux couleurs de leur classe ; Voie lactée en points additifs, bras
   bleus (étoiles jeunes), régions HII rouge rosé le long des bras majeurs, bulbe et barre jaune orangé, disque
   chaud et faible. L'éclat se règle à l'écran et s'atténue quand la galaxie rapetisse : jamais de blanc saturé.
@@ -129,7 +135,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   à l'échelle, la bascule « Distances réelles » est indisponible : atténuée (opacité 0,45, sans survol),
   toujours focalisable, `aria-disabled` avec sa raison en description (« Ici, les distances sont déjà
   réelles. ») ; un clic ne change rien et le choix revient au retour dans le système solaire. La note
-  d'échelle s'y tait aussi.
+  d'échelle s'y tait aussi, sans quitter sa place dans le cadrage ; si le focus y était, il rejoint la bascule
+  du dock. À son retour, elle ne s'annonce pas de nouveau : seule l'activation des distances réelles l'annonce.
 
 ## Règles
 

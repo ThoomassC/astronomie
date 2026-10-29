@@ -23,8 +23,9 @@ export interface NearbyStar {
 }
 
 /**
- * Tous les systèmes stellaires connus à moins de 12 années-lumière, plus Altaïr, repère brillant
- * du ciel d'été, triés par distance croissante (c'est aussi la priorité des étiquettes).
+ * Une sélection des systèmes stellaires les plus connus à moins de 12 années-lumière (il en manque, comme
+ * EZ Aquarii, DX Cancri ou GJ 1061), plus Altaïr, repère brillant du ciel d'été, triés par distance
+ * croissante (c'est aussi la priorité des étiquettes).
  * Une entrée par point affiché : un couple serré n'en fait qu'une, avec le type de la composante
  * la plus brillante, et la magnitude combinée quand elle est publiée (Alpha du Centaure).
  * Les naines brunes (Luhman 16 à 6,5 al, WISE 0855−0714 à 7,4 al) ne sont pas des étoiles : absentes.
