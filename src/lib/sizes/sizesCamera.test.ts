@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { PlacedStar } from "@/lib/sizes/layout";
+import { COMPARED_STARS } from "@/lib/astro/starSizes";
+import { placeStars, type PlacedStar } from "@/lib/sizes/layout";
 import {
   haloOpacity,
   sizesFlightCamera,
@@ -12,8 +13,8 @@ import {
 const DEG = Math.PI / 180;
 
 /**
- * Trois étoiles fictives (rayons 1, 2 et 8 R☉) aux positions que leur donne un écart de 2,4 rayons de la plus
- * petite : x = 0 ; −5,4 ; −20,2. Positions figées ici : les attentes de caméra ne dépendent pas du réglage de
+ * Trois étoiles fictives (rayons 1, 2 et 8 R☉) aux positions du plan, calculées avec un écart de 2,4 rayons de la
+ * plus petite : x = 0 ; −5,4 ; −20,2. Positions figées ici : les attentes de caméra ne dépendent pas du réglage de
  * SIZE_GAP_RATIO.
  */
 const PLACED: readonly PlacedStar[] = [
@@ -151,6 +152,48 @@ describe("sizesRestCamera", () => {
 
   it("devrait lever une erreur à l'introduction quand aucune étoile n'est posée", () => {
     expect(() => sizesRestCamera([], "intro", PLAIN)).toThrow(/intro/);
+  });
+});
+
+/**
+ * Bord droit de la silhouette d'une étoile à l'écran, en fraction de la largeur (0 à gauche), vue par la caméra au
+ * repos `cam` : la cible est à 0,5 + offX (décalage d'écran de setViewOffset). Le regard est perpendiculaire à l'axe x,
+ * quelle que soit l'élévation : les centres sont dans le plan horizontal de la caméra, à la profondeur cam.dist, et le
+ * rayon tangent droit à la sphère fait avec l'axe de visée l'angle atan2(x − tx, dist) + asin(r / √((x − tx)² + dist²)).
+ * Plafonné à 90° : une sphère qui déborde sur le côté de la caméra a son bord à l'infini, à droite.
+ */
+function rightEdgeOnScreen(star: PlacedStar, cam: SizesCam, ctx: SizesFrameContext): number {
+  const dx = star.x - cam.tx;
+  const angle = Math.atan2(dx, cam.dist) + Math.asin(star.radius / Math.hypot(dx, cam.dist));
+  return 0.5 + cam.offX + Math.tan(Math.min(angle, Math.PI / 2)) / (2 * ctx.aspect * tanHalf(ctx));
+}
+
+/*
+ * Invariant de non-apparition : au repos sur l'étoile i, l'étoile i + 1, qui sera dessinée dès que le vol
+ * commence, est entièrement à gauche du bord gauche de la zone libre (sous la plaque), ou de l'écran sans zone.
+ * Le bord est celui de la silhouette projetée, pas du point (x + r, 0, 0) : une grande sphère proche de la caméra
+ * déborde nettement de ce point. En cas d'échec, élargir SIZE_GAP_RATIO, ne pas affaiblir le test.
+ */
+describe("invariant de non-apparition, sur les dix étoiles du comparateur", () => {
+  const STARS = placeStars(COMPARED_STARS);
+  /**
+   * Vues de référence, champ réglé comme au voyage (50° sous un rapport largeur / hauteur de 0,9, 36° au-dessus) :
+   * grand écran avec zone libre ; téléphone et tablette en portrait, bande libre entre la barre haute et la plaque
+   * repliée ; téléphone en paysage, sans bande ni zone (écran bas). `hiddenLeftOf` : bord gauche de ce qui est visible.
+   */
+  const VIEWS = [
+    { name: "1 440 × 900, zone 0,45–0,85", hiddenLeftOf: 0.45, ctx: { aspect: 1440 / 900, fovDeg: 36, band: null, zone: { left: 0.45, right: 0.85 } } },
+    { name: "375 × 812, bande 0,09–0,62", hiddenLeftOf: 0, ctx: { aspect: 375 / 812, fovDeg: 50, band: { top: 0.09, bottom: 0.62 }, zone: null } },
+    { name: "820 × 1 180, bande 0,06–0,70", hiddenLeftOf: 0, ctx: { aspect: 820 / 1180, fovDeg: 50, band: { top: 0.06, bottom: 0.7 }, zone: null } },
+    { name: "844 × 390, sans bande ni zone", hiddenLeftOf: 0, ctx: { aspect: 844 / 390, fovDeg: 36, band: null, zone: null } },
+  ] as const satisfies readonly { name: string; hiddenLeftOf: number; ctx: SizesFrameContext }[];
+  const CASES = VIEWS.flatMap((view) =>
+    STARS.slice(0, -1).map((star, i) => [view.name, star.key, STARS[i + 1].key, view, i] as const),
+  );
+
+  it.each(CASES)("devrait garder l'étoile suivante hors champ (%s, repos sur %s : %s cachée)", (_name, stop, _next, view, i) => {
+    const cam = sizesRestCamera(STARS, stop, view.ctx);
+    expect(rightEdgeOnScreen(STARS[i + 1], cam, view.ctx)).toBeLessThan(view.hiddenLeftOf);
   });
 });
 

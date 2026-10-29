@@ -3,9 +3,13 @@ import type { SizeStarKey } from "@/lib/astro/starSizes";
 /**
  * Écart bord à bord entre deux étoiles voisines, en rayons de la plus petite des deux : assez large pour que
  * l'étoile suivante reste hors champ quand la caméra est au repos sur la précédente (invariant de
- * non-apparition).
+ * non-apparition, testé sur les vues de référence dans `sizesCamera.test.ts`).
+ * La vue la plus exigeante est le téléphone en paysage (844 × 390, sans bande ni zone) : la plus petite étoile,
+ * cadrée seule par la hauteur, laisse beaucoup de largeur, et la silhouette d'une voisine bien plus grande et
+ * proche de la caméra déborde de son bord. Il y faut au moins 3,62 rayons (Proxima du Centaure, puis le Soleil) ;
+ * 4 garde l'étoile suivante à plus de 3 % de la largeur hors de l'écran.
  */
-export const SIZE_GAP_RATIO = 2.4;
+export const SIZE_GAP_RATIO = 4;
 
 /** Étoile posée dans la scène des tailles, dont l'unité de longueur est le rayon solaire (R☉). */
 export interface PlacedStar {

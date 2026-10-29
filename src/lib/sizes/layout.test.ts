@@ -14,11 +14,11 @@ const FIXTURE = [
 ] as const satisfies readonly { key: SizeStarKey; radiusSolar: number }[];
 
 describe("placeStars", () => {
-  it("devrait poser la plus petite à l'origine et les suivantes vers les x négatifs (fixture 1, 2, 8 → x = 0 ; −5,4 ; −20,2)", () => {
+  it("devrait poser la plus petite à l'origine et les suivantes vers les x négatifs (fixture 1, 2, 8 → x = 0 ; −7 ; −25)", () => {
     expect(placeStars(FIXTURE)).toEqual([
       { key: "proxima-centauri", radius: 1, x: 0 },
-      { key: "sun", radius: 2, x: expect.closeTo(-5.4, 12) },
-      { key: "sirius-a", radius: 8, x: expect.closeTo(-20.2, 12) },
+      { key: "sun", radius: 2, x: expect.closeTo(-7, 12) },
+      { key: "sirius-a", radius: 8, x: expect.closeTo(-25, 12) },
     ]);
   });
 
