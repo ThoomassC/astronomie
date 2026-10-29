@@ -35,7 +35,7 @@ describe("SIZES_STRINGS.radius", () => {
   it.each([
     ["fr", 0.154, "0,154 R☉"],
     ["fr", 1, "1 R☉"],
-    ["fr", 1420, "1 420 R☉"],
+    ["fr", 1420, "1\u202f420 R☉"],
     ["en", 0.154, "0.154 R☉"],
     ["en", 25.4, "25.4 R☉"],
     ["en", 1420, "1,420 R☉"],
@@ -48,7 +48,7 @@ describe("SIZES_STRINGS.radius", () => {
 
 describe("SIZES_STRINGS.radiusRange", () => {
   it.each([
-    ["fr", "de 640 à 1 010 R☉ selon les études"],
+    ["fr", "de 640 à 1\u202f010 R☉ selon les études"],
     ["en", "640–1,010 R☉, depending on the study"],
     ["es", "entre 640 y 1010 R☉ según los estudios"],
   ] as const)("devrait écrire la fourchette publiée d'un rayon débattu, celle de Bételgeuse (%s)", (locale, expected) => {
@@ -64,7 +64,7 @@ describe("SIZES_STRINGS.comparison", () => {
     ["fr", "sun", "Il faudrait environ 109 Terres côte à côte pour égaler son diamètre."],
     ["en", "proxima-centauri", "It would take about 17 Earths side by side to span its diameter."],
     ["es", "sun", "Harían falta unas 109 Tierras en fila para igualar su diámetro."],
-    ["fr", "arcturus", "Son volume contiendrait environ 16 000 Soleils."],
+    ["fr", "arcturus", "Son volume contiendrait environ 16\u202f000 Soleils."],
     ["en", "rigel", "Its volume could hold about 410,000 Suns."],
     ["es", "aldebaran", "Su volumen podría contener unos 92.000 Soles."],
     ["es", "sirius-a", "Su volumen podría contener unos 5 Soles."],
