@@ -18,17 +18,21 @@ import {
   Vector3,
   type Texture,
 } from "three";
+import { J2000_JD } from "@/lib/astro/constants";
+import { julianDate } from "@/lib/astro/ephemeris";
 import { sceneFromGalactic } from "@/lib/astro/galactic";
 import { ROTATION } from "@/lib/astro/orientation";
 import { SUN, type Planet, type PlanetKey } from "@/lib/astro/planets";
 import { REAL_SCALE_SUN_SHRINK, sceneRadius } from "@/lib/astro/scale";
+import { SUN_ROTATION, solarActivity, solarRotationRate, sunspotLatitude } from "@/lib/astro/solarCycle";
+import { getClock } from "@/lib/sim/clock";
+import { orientAxis } from "./axes";
 import { rawColor } from "./color";
 import {
   createAtmosphereMaterial,
   createCoronaMaterial,
   createRingMaterial,
   createSkyMaterial,
-  createSunMaterial,
   createSurfaceMaterial,
   type AtmosphereUniforms,
   type CoronaUniforms,
@@ -37,7 +41,14 @@ import {
   type SurfaceUniforms,
   type Uniform,
 } from "./materials";
-import { TAU, clamp, lerp } from "./math";
+import { DEG, TAU, clamp, lerp } from "./math";
+import {
+  SUN_SURFACE,
+  createStarSurfaceMaterial,
+  placeStarspots,
+  type StarSurfaceUniforms,
+  type StarspotField,
+} from "./starSurface";
 import { SATURN_RING } from "./textureSet";
 import { uranusRingTexture } from "./textures";
 
@@ -161,26 +172,76 @@ export function fadeSky(sky: SkyBody, weight: number): void {
 const CORONA_SIZE = [95, 30] as const;
 
 export interface SunBody {
+  /** Surface, axe y local sur le pôle de rotation du Soleil. */
   mesh: Mesh<SphereGeometry, ShaderMaterial>;
   /** Uniforme du temps, partagé par la surface et la couronne. */
   time: Uniform<number>;
+  /** Uniformes de la surface : activité et taches, tenues à jour avant chaque image où le Soleil paraît. */
+  surface: StarSurfaceUniforms;
   corona: Mesh<RingGeometry, ShaderMaterial>;
   coronaUniforms: CoronaUniforms;
+  /** Règle activité et taches sur la date simulée et le temps affiché ; appelée d'elle-même avant chaque image. */
+  update: () => void;
 }
 
-export function createSun(): SunBody {
+/** Écran tactile (téléphone, tablette) : variante allégée de la surface, qui peut remplir l'écran. */
+function coarsePointer(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+}
+
+/**
+ * Rotation affichée du Soleil à une latitude (rad), en rad/s : celle de l'équateur (SUN_SURFACE.spin), ralentie vers
+ * les pôles dans le rapport de la vraie rotation différentielle (24,5 jours à l'équateur, 34 jours aux pôles).
+ */
+function sunSpin(latitude: number): number {
+  return (SUN_SURFACE.spin * solarRotationRate(latitude / DEG)) / solarRotationRate(0);
+}
+
+/**
+ * Soleil : surface d'étoile (préréglage SUN_SURFACE), pôle de rotation à sa place (UAI, 7,25° de l'écliptique),
+ * couronne. Juste avant chaque image où il paraît, l'activité et la latitude des taches suivent la date simulée
+ * (`date`, en ms Unix : l'horloge de la page par défaut) et les taches le temps affiché ; rien n'est recalculé si
+ * ni l'une ni l'autre n'a bougé.
+ */
+export function createSun(date: () => number = () => getClock().now()): SunBody {
   const time = { value: 0 };
-  const { material, uniforms } = createCoronaMaterial(time, CORONA_SIZE[0], SUN.displayRadius);
-  // Disque plutôt que carré : les coins, invisibles, ne coûtent plus rien. 256 secteurs pour les jets.
-  const corona = new Mesh(new RingGeometry(0.01, 1, 256, 1), material);
+  const lite = coarsePointer();
+  const { material, uniforms: surface } = createStarSurfaceMaterial({
+    ...SUN_SURFACE,
+    spotGroups: lite ? 8 : SUN_SURFACE.spotGroups,
+    time,
+    lite,
+  });
+  // 96 × 64 : silhouette lisse jusqu'à 2,5 rayons (moins d'un demi-pixel d'écart), pointage à la souris resté léger.
+  const mesh = new Mesh(new SphereGeometry(SUN.displayRadius, 96, 64), material);
+  orientAxis(mesh, SUN_ROTATION, J2000_JD, new Vector3());
+
+  const { material: coronaMaterial, uniforms } = createCoronaMaterial(surface, CORONA_SIZE[0], SUN.displayRadius);
+  // Du monde au repère du Soleil : la transposée (l'inverse) de l'orientation du maillage, fixe.
+  uniforms.uStarFrame.value.setFromMatrix4(new Matrix4().makeRotationFromQuaternion(mesh.quaternion)).transpose();
+  // Disque plutôt que carré : les coins, invisibles, ne coûtent plus rien. Les jets se calculent par pixel.
+  const corona = new Mesh(new RingGeometry(0.01, 1, 96, 1), coronaMaterial);
   // Disque orienté dans le shader : sa sphère englobante ne dit rien de sa taille réelle.
   corona.frustumCulled = false;
-  return {
-    mesh: new Mesh(new SphereGeometry(SUN.displayRadius, 64, 40), createSunMaterial(time)),
-    time,
-    corona,
-    coronaUniforms: uniforms,
+
+  let shownDate = Number.NaN;
+  const field: StarspotField = { time: Number.NaN, activity: 0, latitude: 0, spin: sunSpin };
+  const update = () => {
+    const ms = date();
+    if (ms === shownDate && time.value === field.time) return;
+    if (ms !== shownDate) {
+      const jd = julianDate(ms);
+      field.activity = surface.uActivity.value = solarActivity(jd);
+      field.latitude = sunspotLatitude(jd) * DEG;
+      shownDate = ms;
+    }
+    field.time = time.value;
+    placeStarspots(surface, field);
   };
+  // Avant le dessin de la surface ; la couronne aussi, pour le cas où le disque sort du champ.
+  mesh.onBeforeRender = update;
+  corona.onBeforeRender = update;
+  return { mesh, time, surface, corona, coronaUniforms: uniforms, update };
 }
 
 /**

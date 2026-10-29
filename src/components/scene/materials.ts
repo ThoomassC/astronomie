@@ -4,6 +4,7 @@ import {
   Color,
   DataTexture,
   DoubleSide,
+  Matrix3,
   ShaderMaterial,
   Vector2,
   Vector3,
@@ -20,8 +21,6 @@ import {
   RING_VERTEX,
   SKY_FRAGMENT,
   SKY_VERTEX,
-  SUN_FRAGMENT,
-  SUN_VERTEX,
   SURFACE_FRAGMENT,
   SURFACE_VERTEX,
 } from "./shaders";
@@ -219,26 +218,38 @@ export function createSkyMaterial(
   return { material, uniforms };
 }
 
-export function createSunMaterial(time: Uniform<number>): ShaderMaterial {
-  return new ShaderMaterial({ uniforms: { uTime: time }, vertexShader: SUN_VERTEX, fragmentShader: SUN_FRAGMENT });
-}
-
 export interface CoronaUniforms {
   /** Demi-côté du panneau, en unités de scène. */
   uSize: Uniform<number>;
   uSunRadius: Uniform<number>;
   /** Intensité de l'éblouissement autour du disque. */
   uGlare: Uniform<number>;
+  /** Passage du repère du monde à celui du Soleil (pôle sur y), rotation propre exclue : orientation de son maillage. */
+  uStarFrame: Uniform<Matrix3>;
+}
+
+/** Uniformes que la couronne partage avec la surface du Soleil (voir starSurface.ts). */
+export interface CoronaStar {
+  uTime: Uniform<number>;
+  /** Activité, de 0 à 1 : forme des jets et nombre de protubérances. */
+  uActivity: Uniform<number>;
+  /** Vitesse de rotation affichée à l'équateur, en rad/s : jets et protubérances tournent avec la surface. */
+  uSpinRate: Uniform<number>;
 }
 
 export function createCoronaMaterial(
-  time: Uniform<number>,
+  star: CoronaStar,
   size: number,
   sunRadius: number,
 ): { material: ShaderMaterial; uniforms: CoronaUniforms } {
-  const uniforms: CoronaUniforms = { uSize: { value: size }, uSunRadius: { value: sunRadius }, uGlare: { value: 0.1 } };
+  const uniforms: CoronaUniforms = {
+    uSize: { value: size },
+    uSunRadius: { value: sunRadius },
+    uGlare: { value: 0.1 },
+    uStarFrame: { value: new Matrix3() },
+  };
   const material = new ShaderMaterial({
-    uniforms: { ...uniforms, uTime: time },
+    uniforms: { ...uniforms, uTime: star.uTime, uActivity: star.uActivity, uSpinRate: star.uSpinRate },
     vertexShader: CORONA_VERTEX,
     fragmentShader: CORONA_FRAGMENT,
     blending: AdditiveBlending,
