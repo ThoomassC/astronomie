@@ -3,6 +3,7 @@ import { GALACTIC_CENTER_DISTANCE_LY, GALACTIC_DISK_RADIUS_LY, sceneFromGalactic
 import { SUN, type PlanetKey } from "@/lib/astro/planets";
 import { sceneRadius, unitsPerLightYear } from "@/lib/astro/scale";
 import { NEARBY_STARS } from "@/lib/astro/stars";
+import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
 
 const D2R = Math.PI / 180;
 const TAU = Math.PI * 2;
@@ -20,13 +21,6 @@ const ZONE_HEIGHT_FILL = 0.8;
  * quand on tourne autour (orbit.ts).
  */
 export const RING_EXTENT: Partial<Record<PlanetKey, number>> = { saturn: 2.337, uranus: 2.05 };
-/** Air entre la bande libre et ce qui la borde (bandeaux du haut, plaque), en px. */
-const BAND_MARGIN_PX = 8;
-/**
- * Sous cette part de l'écran (texte très agrandi), pas de bande : cadrage portrait habituel.
- * Au-dessus, même un petit astre visible vaut mieux qu'un grand caché derrière la plaque.
- */
-const MIN_BAND_SHARE = 0.08;
 
 interface StopCameraConfig {
   dist?: number;
@@ -84,18 +78,6 @@ export interface CamState {
    * 0 aux escales du système solaire, 4,6 aux étoiles voisines, 8 à la Voie lactée.
    */
   zoom: number;
-}
-
-/** Bande horizontale de l'écran, en fractions de sa hauteur (0 en haut, 1 en bas). */
-export interface ScreenBand {
-  top: number;
-  bottom: number;
-}
-
-/** Bande verticale de l'écran, en fractions de sa largeur (0 à gauche, 1 à droite). */
-export interface ScreenZone {
-  left: number;
-  right: number;
 }
 
 export interface StopCameraContext {
@@ -187,17 +169,6 @@ const COSMIC_FRAME_RADIUS: Readonly<Record<CosmicStopKey, number>> = {
 function diskDistance(radius: number, elev: number, tanWidth: number, tanHeight: number): number {
   const depth = radius * Math.cos(elev);
   return Math.max(Math.hypot(radius / tanWidth, depth), (radius * Math.sin(elev)) / tanHeight + depth);
-}
-
-/**
- * Bande libre de la mise en page mobile, en fractions de la hauteur de la vue : du bas des bandeaux
- * fixés en haut de l'écran (`top`, en px) au haut de la plaque repliée collée en bas (hauteur et écart
- * au bas de l'écran, en px), 8 px d'air de chaque côté. `null` si elle fait moins de 8 % de la vue.
- */
-export function freeBand(viewHeight: number, top: number, plate: { height: number; bottom: number }): ScreenBand | null {
-  const upper = top + BAND_MARGIN_PX;
-  const lower = viewHeight - plate.bottom - plate.height - BAND_MARGIN_PX;
-  return lower - upper >= MIN_BAND_SHARE * viewHeight ? { top: upper / viewHeight, bottom: lower / viewHeight } : null;
 }
 
 /** Rayon affiché du Soleil ou d'une planète, et rayon de ses anneaux visibles s'il en a. */

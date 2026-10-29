@@ -32,12 +32,9 @@ import {
   STOP_ORDER,
   blendCameras,
   cameraFor,
-  freeBand,
   isCosmicStop,
   mixCameras,
   type CamState,
-  type ScreenBand,
-  type ScreenZone,
   type StopCameraContext,
   type StopKey,
 } from "@/lib/journey/camera";
@@ -58,6 +55,7 @@ import {
   type OrbitInput,
   type OrbitView,
 } from "@/lib/journey/orbit";
+import { freeBand, type ScreenBand, type ScreenZone } from "@/lib/journey/screen";
 import { smootherstep } from "@/lib/journey/sections";
 import { journeyStore, type JourneyState } from "@/lib/journey/store";
 import { getClock, type ClockSnapshot } from "@/lib/sim/clock";

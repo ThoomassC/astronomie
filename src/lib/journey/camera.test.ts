@@ -6,7 +6,6 @@ import {
   angleDiff,
   blendCameras,
   cameraFor,
-  freeBand,
   isCosmicStop,
   mixCameras,
   RAIL_BREAK,
@@ -15,11 +14,10 @@ import {
   RING_EXTENT,
   STOP_ORDER,
   type CamState,
-  type ScreenBand,
-  type ScreenZone,
   type StopCameraContext,
   type StopKey,
 } from "@/lib/journey/camera";
+import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
 
 const DEG = Math.PI / 180;
 /** Unités astronomiques par année-lumière (UAI : 1 al = 9 460 730 472 580,8 km, 1 UA = 149 597 870,7 km). */
@@ -813,16 +811,6 @@ describe("cameraFor en mise en page mobile (bande libre mesurée)", () => {
   it("ne devrait pas toucher à l'accueil ni à la ceinture (aucune plaque collée en bas)", () => {
     expect(cameraFor("hero", context({ portrait: true, ...PHONE })).offY).toBe(-0.29);
     expect(cameraFor("belt", context({ portrait: true, ...PHONE })).offY).toBe(-0.21);
-  });
-});
-
-describe("freeBand", () => {
-  it("devrait aller du bas des bandeaux du haut au haut de la plaque repliée, 8 px d'air de chaque côté", () => {
-    expect(freeBand(800, 80, { height: 280, bottom: 82 })).toEqual({ top: 88 / 800, bottom: 430 / 800 });
-  });
-
-  it("devrait renoncer quand la bande tombe sous 8 % de l'écran (texte très agrandi)", () => {
-    expect(freeBand(800, 80, { height: 560, bottom: 82 })).toBeNull();
   });
 });
 
