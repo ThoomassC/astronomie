@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SCALE_TOGGLE } from "@/content/site";
+import { isCosmicStop } from "@/lib/journey/camera";
+import { useCurrentStop } from "@/lib/journey/store";
 import { SPEEDS, getClock, type ClockSnapshot } from "@/lib/sim/clock";
 import { DOCK_ID, DOCK_SCALE_TOGGLE_ID } from "./ids";
 import { toggleRealScale, useRealScale } from "./realScale";
@@ -18,6 +21,8 @@ const DEFAULT_SPEED_DAYS = 7;
 /** Durée de l'annonce « Retour au … », effacée ensuite pour pouvoir être répétée. */
 const STATUS_DURATION_MS = 5000;
 const TODAY_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+/** Description de la bascule « Distances réelles » quand elle est indisponible. */
+const SCALE_LOCKED_HINT_ID = "scaleLockedHint";
 
 const selectPlaying = (snapshot: ClockSnapshot) => snapshot.playing;
 const selectSpeedDays = (snapshot: ClockSnapshot) => snapshot.speedDays;
@@ -27,13 +32,19 @@ function togglePlaying(): void {
   clock.setPlaying(!clock.snapshot().playing);
 }
 
-/** Machine à remonter le temps : lecture, vitesse, date simulée, retour à aujourd'hui, distances réelles. */
+/**
+ * Machine à remonter le temps : lecture, vitesse, date simulée, retour à aujourd'hui, distances réelles.
+ * Aux étoiles voisines et à la Voie lactée, tout est déjà à l'échelle : la bascule des distances se dit
+ * indisponible (`aria-disabled`, raison en description) et un clic ne change rien ; le choix est gardé
+ * pour le retour dans le système solaire.
+ */
 export function TimeDock() {
   // Sélecteurs plutôt que `useClock()` : la date avance hors de React (SimDate), le dock
   // ne se re-rend qu'aux changements de réglage.
   const playing = useClockValue(selectPlaying, DEFAULT_PLAYING);
   const speedDays = useClockValue(selectSpeedDays, DEFAULT_SPEED_DAYS);
   const realScale = useRealScale();
+  const scaleLocked = isCosmicStop(useCurrentStop());
   const speedIndex = Math.max(0, SPEEDS.findIndex((speed) => speed.days === speedDays));
   const nextSpeed = SPEEDS[(speedIndex + 1) % SPEEDS.length];
 
@@ -115,7 +126,9 @@ export function TimeDock() {
         type="button"
         aria-pressed={realScale}
         aria-label="Distances réelles"
-        onClick={toggleRealScale}
+        aria-disabled={scaleLocked || undefined}
+        aria-describedby={scaleLocked ? SCALE_LOCKED_HINT_ID : undefined}
+        onClick={scaleLocked ? undefined : toggleRealScale}
       >
         <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
           <path
@@ -129,6 +142,9 @@ export function TimeDock() {
         <span className="label">Distances réelles</span>
         {realScale ? <CheckIcon checked /> : null}
       </button>
+      <span id={SCALE_LOCKED_HINT_ID} hidden>
+        {SCALE_TOGGLE.locked}
+      </span>
 
       <p className="sr" role="status">
         {status}

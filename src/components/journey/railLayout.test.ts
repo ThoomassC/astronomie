@@ -48,7 +48,7 @@ describe("spreadPositions", () => {
     expect(ideal).toEqual([10, 15, 100]);
   });
 
-  describe("sur la règle réelle des onze escales", () => {
+  describe("sur la règle réelle des treize escales", () => {
     it("devrait garder les positions vraies quand la règle est assez haute pour tout espacer", () => {
       const ideal = railIdeal(2000);
       expect(spreadPositions(ideal, MIN_GAP_PX, 2000)).toEqual(ideal);

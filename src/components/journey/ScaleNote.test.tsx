@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DOCK_SCALE_TOGGLE_ID } from "@/components/journey/ids";
 import { ScaleNote } from "@/components/journey/ScaleNote";
 import { setRealScale } from "@/components/journey/realScale";
+import { journeyStore } from "@/lib/journey/store";
 
 beforeEach(() => {
   // La note publie sa hauteur pour les marges de défilement (jsdom n'a pas de ResizeObserver).
@@ -96,5 +97,22 @@ describe("ScaleNote", () => {
     act(() => setRealScale(false));
     act(() => setRealScale(true));
     expect(screen.getByRole("button", { name: "Lire toute la note" })).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+describe("ScaleNote aux escales cosmiques", () => {
+  afterEach(() => {
+    act(() => journeyStore.update("hero", "hero", 0));
+  });
+
+  it("devrait se taire à la Voie lactée, où les distances sont déjà réelles, puis revenir à l'au-delà", () => {
+    render(<ScaleNote />);
+    act(() => journeyStore.update("galaxy", "galaxy", 0));
+    act(() => setRealScale(true));
+    expect(screen.queryByRole("button", { name: "Masquer la note" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+
+    act(() => journeyStore.update("beyond", "beyond", 0));
+    expect(screen.getByRole("button", { name: "Masquer la note" })).toBeInTheDocument();
   });
 });

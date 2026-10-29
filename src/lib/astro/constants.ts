@@ -1,5 +1,7 @@
 /** Unité astronomique, en kilomètres. */
 export const AU_KM = 149_597_870.7;
+/** Unités astronomiques par année-lumière (UAI : 1 al = 9 460 730 472 580,8 km). */
+export const AU_PER_LIGHT_YEAR = 63_241.077;
 /** Temps mis par la lumière pour parcourir 1 UA, en secondes. */
 export const LIGHT_SECONDS_PER_AU = 499.004784;
 export const DAY_MS = 86_400_000;

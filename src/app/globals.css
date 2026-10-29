@@ -171,9 +171,58 @@ main > section:focus {
   text-underline-offset: 3px;
 }
 
-.real .lbl i {
+.real .lbl:not(.deep) i {
   transform: scale(1.6);
   border-width: 1.5px;
+}
+
+/*
+ * Ciel profond (étoiles voisines, « Vous êtes ici », centre galactique, cercles) : repères à lire, pas à toucher.
+ * Le texte est posé sur une pastille de plaque presque opaque : lisible sur les points les plus clairs de la
+ * galaxie (sur du blanc pur, ivoire 11,8:1 et laiton 6,2:1). Le moteur mesure le repère et le pose exactement
+ * sur l'astre ; seul le texte occupe la place face aux autres étiquettes.
+ */
+.lbl.deep {
+  gap: 0.3rem;
+  padding-right: 0.1rem;
+  pointer-events: none;
+}
+
+.lbl.deep span {
+  padding: 0 0.45rem;
+  border: 1px solid var(--filet);
+  border-radius: var(--r-pill);
+  background: var(--plaque-a);
+  line-height: 1.4;
+  opacity: 1;
+  text-shadow: none;
+}
+
+/*
+ * Voie lactée : « Vous êtes ici » au-dessus de son repère, « Centre de la Galaxie » en dessous du sien. Le Soleil et
+ * le centre sont presque à la même hauteur à l'écran : les deux textes ne se rencontrent jamais, même serrés.
+ */
+.lbl.deep.here,
+.lbl.deep.center {
+  flex-direction: column-reverse;
+  gap: 0.2rem;
+  padding: 0;
+}
+
+.lbl.deep.center {
+  flex-direction: column;
+}
+
+/* Le Soleil, devenu un point parmi les étoiles : un anneau de 14 px autour de lui, qui paraît avec la galaxie. */
+.lbl.deep.here i {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--soleil);
+}
+
+.lbl.deep.ring {
+  color: var(--laiton);
+  font-size: 0.75rem;
 }
 
 /* Repli sans scène 3D : le canvas (qui garderait sa dernière image) disparaît, un Soleil CSS le remplace. */
@@ -293,6 +342,17 @@ body::before {
 
 .rail .tick.maj {
   opacity: 0.9;
+}
+
+/* Rupture de l'axe entre le système solaire et les étoiles : l'échelle passe des UA aux années-lumière. */
+.rail .rail-break {
+  position: absolute;
+  right: 0;
+  transform: translate(50%, -50%);
+  color: var(--laiton);
+  font-size: 0.875rem;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .rail a {
@@ -652,6 +712,85 @@ main > section > * {
   border-radius: 50%;
   background: var(--soleil);
   vertical-align: 0.12em;
+}
+
+/* Sous la fiche des escales lointaines : ce que la vue simplifie, puis les sources. */
+.fact-caveat,
+.fact-source,
+.star-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--brume);
+}
+
+.fact-source {
+  margin-top: 0.25rem;
+}
+
+/* Étoiles de la carte : le texte équivalent des points de la scène, de la plus proche à la plus lointaine. */
+.star-table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.star-table caption {
+  margin-bottom: 0.4rem;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.star-table th,
+.star-table td {
+  padding: 0.45rem 0.5rem;
+  border-top: 1px solid var(--filet);
+  text-align: left;
+  vertical-align: top;
+}
+
+.star-table :is(th, td):first-child {
+  padding-left: 0;
+}
+
+.star-table :is(th, td):last-child {
+  padding-right: 0;
+}
+
+.star-table thead th {
+  border-top: 0;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--brume);
+}
+
+.star-table tbody th {
+  font-weight: 600;
+}
+
+/* Distances à une décimale, chiffres tabulaires : alignées à droite, elles s'alignent sur la virgule. */
+.star-table :is(th, td):nth-child(2) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Pastille de la couleur du point de l'étoile sur la carte. */
+.star-table i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--lc);
+  vertical-align: 0.05em;
+}
+
+.star-table small {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--brume);
 }
 
 /* ---------- Modules explicatifs (classes partagées avec src/components/modules) ---------- */
@@ -1221,6 +1360,20 @@ footer a {
   font-weight: 700;
 }
 
+/*
+ * Bascule indisponible (étoiles voisines, Voie lactée : tout y est déjà à l'échelle). Atténuée, sans effet
+ * de survol ; la case dessinée reste visible. Toujours focalisable : sa description dit pourquoi.
+ */
+.dock [aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dock .today[aria-disabled="true"]:not([aria-pressed="true"]):hover {
+  border-color: var(--filet-fort);
+  background: transparent;
+}
+
 .cycle {
   display: none;
 }
@@ -1472,12 +1625,12 @@ footer a {
     pointer-events: none;
   }
 
-  /* Dernière escale : aucun départ ne suit, le filet reste plein et ne mesure rien. */
-  [data-stop="beyond"] > .plate::before {
+  /* Dernière escale (la Voie lactée) : aucun départ ne suit, le filet reste plein et ne mesure rien. */
+  [data-stop="galaxy"] > .plate::before {
     opacity: 0.9;
   }
 
-  [data-stop="beyond"] > .plate::after {
+  [data-stop="galaxy"] > .plate::after {
     display: none;
   }
 

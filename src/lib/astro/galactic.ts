@@ -28,6 +28,38 @@ function multiply(a: readonly number[], b: readonly number[]): number[] {
 /** Rotation des coordonnées de scène vers les coordonnées galactiques, ligne par ligne. */
 export const SCENE_TO_GALACTIC: readonly number[] = multiply(EQUATORIAL_TO_GALACTIC, SCENE_TO_EQUATORIAL);
 
+/**
+ * Distance du Soleil au centre galactique, en années-lumière : 27 000 (GRAVITY Collaboration 2021-2022 :
+ * 8 275 à 8 277 pc, soit 26 990 à 27 000 al ; ESO : « environ 27 000 al »).
+ */
+export const GALACTIC_CENTER_DISTANCE_LY = 27_000;
+
+/** Rayon du disque d'étoiles de la Voie lactée, en années-lumière (NASA, ESA : environ 100 000 al de diamètre). */
+export const GALACTIC_DISK_RADIUS_LY = 50_000;
+
+/** Applique la transposée (l'inverse) d'une rotation donnée ligne par ligne. */
+function rotateBack(m: readonly number[], x: number, y: number, z: number, out: Vec3): Vec3 {
+  out.x = m[0] * x + m[3] * y + m[6] * z;
+  out.y = m[1] * x + m[4] * y + m[7] * z;
+  out.z = m[2] * x + m[5] * y + m[8] * z;
+  return out;
+}
+
+/** Direction unitaire de la scène pour des coordonnées équatoriales J2000 (ascension droite, déclinaison, en degrés). */
+export function sceneFromEquatorial(raDeg: number, decDeg: number, out: Vec3 = { x: 0, y: 0, z: 0 }): Vec3 {
+  const ra = (raDeg * Math.PI) / 180;
+  const dec = (decDeg * Math.PI) / 180;
+  return rotateBack(SCENE_TO_EQUATORIAL, Math.cos(dec) * Math.cos(ra), Math.cos(dec) * Math.sin(ra), Math.sin(dec), out);
+}
+
+/**
+ * Vecteur galactique cartésien (x vers l = 0°, y vers l = 90°, z vers le pôle nord galactique), rangé dans
+ * les axes de scène sans changer sa norme : une position en années-lumière le reste.
+ */
+export function sceneFromGalacticXYZ(x: number, y: number, z: number, out: Vec3 = { x: 0, y: 0, z: 0 }): Vec3 {
+  return rotateBack(SCENE_TO_GALACTIC, x, y, z, out);
+}
+
 /** Longitude l dans [0, 360[ et latitude b galactiques (degrés) d'une direction de la scène. */
 export function galacticFromScene(v: Vec3): { lDeg: number; bDeg: number } {
   const m = SCENE_TO_GALACTIC;
@@ -45,13 +77,5 @@ export function galacticFromScene(v: Vec3): { lDeg: number; bDeg: number } {
 export function sceneFromGalactic(lDeg: number, bDeg: number, out: Vec3 = { x: 0, y: 0, z: 0 }): Vec3 {
   const l = (lDeg * Math.PI) / 180;
   const b = (bDeg * Math.PI) / 180;
-  const gx = Math.cos(b) * Math.cos(l);
-  const gy = Math.cos(b) * Math.sin(l);
-  const gz = Math.sin(b);
-  // Rotation inverse : la transposée.
-  const m = SCENE_TO_GALACTIC;
-  out.x = m[0] * gx + m[3] * gy + m[6] * gz;
-  out.y = m[1] * gx + m[4] * gy + m[7] * gz;
-  out.z = m[2] * gx + m[5] * gy + m[8] * gz;
-  return out;
+  return sceneFromGalacticXYZ(Math.cos(b) * Math.cos(l), Math.cos(b) * Math.sin(l), Math.sin(b), out);
 }

@@ -390,3 +390,40 @@ void main() {
   ${OUTPUT}
 }
 `;
+
+// ---------- Nuages de points : étoiles voisines, Soleil vu de loin, galaxie ----------
+
+/**
+ * Taille fixe à l'écran (px CSS × rapport de pixels, sans perspective) ; la couleur (attribut `color`,
+ * linéaire, éclat compris) est déclarée par Three quand `vertexColors` est actif.
+ */
+export const POINT_CLOUD_VERTEX = /* glsl */ `
+attribute float size;
+uniform float uPixelRatio;
+varying vec3 vColor;
+void main() {
+  vColor = color;
+  gl_PointSize = size * uPixelRatio;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+/**
+ * Point rond à bord doux : plein au cœur, il s'éteint sur la moitié extérieure du disque. Mélange additif,
+ * sans tone mapping : les points se cumulent comme la lumière des étoiles ; uOpacity porte le fondu de la couche.
+ * uGain multiplie la valeur affichée, après l'encodage sRGB, c'est-à-dire ce que le mélange additif cumule :
+ * la galaxie l'abaisse quand elle rapetisse à l'écran, pour que ses points serrés ne partent pas au blanc.
+ */
+export const POINT_CLOUD_FRAGMENT = /* glsl */ `
+uniform float uOpacity;
+uniform float uGain;
+varying vec3 vColor;
+void main() {
+  float d = length(gl_PointCoord * 2.0 - 1.0);
+  if (d > 1.0) discard;
+  float falloff = 1.0 - smoothstep(0.45, 1.0, d);
+  gl_FragColor = vec4(vColor * falloff * uOpacity, 1.0);
+  #include <colorspace_fragment>
+  gl_FragColor.rgb *= uGain;
+}
+`;

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { railPercent, smootherstep, type StopKey } from "@/lib/journey/camera";
+import { AU_PER_LIGHT_YEAR } from "@/lib/astro/constants";
+import { RAIL_BREAK, railPercent, smootherstep, type StopKey } from "@/lib/journey/camera";
 import { journeyStore, useCurrentStop } from "@/lib/journey/store";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { cssVars } from "./cssVars";
@@ -23,12 +24,25 @@ const MIN_GAP_PX = 26;
 /** Petits écrans : le nom d'un repère devient une infobulle au survol et au focus (globals.css). */
 const TIPS_QUERY = "(max-width: 860px)";
 
-/** Graduations logarithmiques : dixièmes d'UA jusqu'à 1, unités jusqu'à 10, dizaines jusqu'à 50. */
+/**
+ * Graduations logarithmiques : dixièmes d'UA jusqu'à 1, unités jusqu'à 10, dizaines jusqu'à 50 ; après la
+ * rupture, une par puissance de dix d'années-lumière, de 1 à 100 000 al (majeure : 1 al).
+ */
 const TICKS: readonly { au: number; major: boolean }[] = [
   ...[3, 4, 5, 6, 7, 8, 9].map((n) => ({ au: n / 10, major: false })),
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({ au: n, major: n === 1 })),
   ...[10, 20, 30, 40, 50].map((n) => ({ au: n, major: n === 10 })),
+  ...[1, 10, 100, 1_000, 10_000, 100_000].map((ly) => ({ au: ly * AU_PER_LIGHT_YEAR, major: ly === 1 })),
 ];
+
+/** Milieu de la rupture de l'axe, où se pose le signe « ≈ ». */
+const RAIL_BREAK_MIDDLE = (RAIL_BREAK.from + RAIL_BREAK.to) / 2;
+
+/**
+ * Position en pourcentage, au millième : `Math.log` peut différer d'un bit entre Node et le navigateur,
+ * et un style écrit au chiffre près ferait échouer l'hydratation.
+ */
+const percent = (value: number) => `${value.toFixed(3)}%`;
 
 interface RailMetrics {
   /** Hauteur de la règle, en px. */
@@ -40,8 +54,9 @@ interface RailMetrics {
 /**
  * Règle des distances : sommaire des escales (liens) et repère du vol. Les graduations
  * restent à leur position logarithmique ; les repères trop proches (Vénus et la Terre)
- * s'écartent et un trait fin les relie à leur vraie position. Le curseur suit la caméra
- * par `transform`, hors de React.
+ * s'écartent et un trait fin les relie à leur vraie position. Entre le système solaire et
+ * les étoiles, l'axe s'interrompt (« ≈ ») : l'échelle change d'unité, des UA aux années-lumière.
+ * Le curseur suit la caméra par `transform`, hors de React.
  */
 export function DistanceRail({ stops }: { stops: readonly RailStop[] }) {
   const current = useCurrentStop();
@@ -108,7 +123,11 @@ export function DistanceRail({ stops }: { stops: readonly RailStop[] }) {
       onFocus={() => setTipsDismissed(false)}
       onPointerLeave={() => setTipsDismissed(false)}
     >
-      <div className="axis" />
+      <div className="axis" style={{ bottom: `${100 - RAIL_BREAK.from}%` }} />
+      <div className="axis" style={{ top: `${RAIL_BREAK.to}%` }} />
+      <span className="rail-break" aria-hidden="true" style={{ top: `${RAIL_BREAK_MIDDLE}%` }}>
+        ≈
+      </span>
       <div className="cursor-track" ref={cursorTrackRef} style={{ transform: `translateY(${railPercent(0)}%)` }}>
         <div className="cursor" />
       </div>
@@ -116,7 +135,7 @@ export function DistanceRail({ stops }: { stops: readonly RailStop[] }) {
         <div
           key={au}
           className={major ? "tick maj" : "tick"}
-          style={{ top: `${railPercent(au)}%`, width: major ? 12 : 6 }}
+          style={{ top: percent(railPercent(au)), width: major ? 12 : 6 }}
         />
       ))}
       {placedPx && idealPx
@@ -147,7 +166,7 @@ export function DistanceRail({ stops }: { stops: readonly RailStop[] }) {
             href={stop.href}
             style={cssVars(
               { "--pc": stopColor(stop.key) },
-              { top: placedPx ? `${placedPx[i]}px` : `${idealPercent[i]}%` },
+              { top: placedPx ? `${placedPx[i]}px` : percent(idealPercent[i]) },
             )}
             aria-label={`${name}, ${distanceLabel}`}
             aria-current={stop.key === current ? "step" : undefined}

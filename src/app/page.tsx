@@ -1,6 +1,7 @@
 import { anchorOf } from "@/components/journey/anchors";
 import { BeyondPlate } from "@/components/journey/BeyondPlate";
 import { ClockDriver } from "@/components/journey/ClockDriver";
+import { CosmicPlate } from "@/components/journey/CosmicPlate";
 import { DistanceRail, type RailStop } from "@/components/journey/DistanceRail";
 import { Hero } from "@/components/journey/Hero";
 import { MAIN_ID } from "@/components/journey/ids";
@@ -14,6 +15,7 @@ import { TimeDock } from "@/components/journey/TimeDock";
 import { TopBar } from "@/components/journey/TopBar";
 import { SceneErrorBoundary } from "@/components/scene/SceneErrorBoundary";
 import { SceneMount } from "@/components/scene/SceneMount";
+import { COSMIC_STOPS } from "@/content/cosmos";
 import { STOPS } from "@/content/stops";
 import { RAIL_STOPS } from "@/lib/journey/camera";
 
@@ -40,6 +42,8 @@ export default function Home() {
           stop.kind === "body" ? <StopPlate key={stop.key} stop={stop} /> : <Interlude key={stop.key} stop={stop} />,
         )}
         <BeyondPlate sunHref={sunHref} />
+        <CosmicPlate stop={COSMIC_STOPS.stars} sunHref={sunHref} starList />
+        <CosmicPlate stop={COSMIC_STOPS.galaxy} sunHref={sunHref} />
       </main>
       <SiteFooter />
       <ScaleNote />

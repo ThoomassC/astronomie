@@ -3,6 +3,9 @@ import { railDistanceLabel, stopColor, stopName } from "@/components/journey/sto
 import { PLANET_BY_KEY } from "@/lib/astro/planets";
 import { STOP_ORDER } from "@/lib/journey/camera";
 
+/** Unités astronomiques par année-lumière (UAI). */
+const AU_PER_LY = 63_241.077;
+
 describe("stopName", () => {
   it.each(STOP_ORDER)("devrait donner un nom affichable à l'escale %s", (key) => {
     expect(stopName(key).trim()).not.toBe("");
@@ -22,6 +25,8 @@ describe("stopName", () => {
       "Uranus",
       "Neptune",
       "Au-delà",
+      "Étoiles voisines",
+      "Voie lactée",
     ]);
   });
 
@@ -69,5 +74,14 @@ describe("railDistanceLabel", () => {
 
   it("devrait écrire une distance entière sans décimales, comme la fiche (la Terre à 1 UA)", () => {
     expect(railDistanceLabel("earth", 1)).toBe("1 UA");
+  });
+
+  it("devrait situer les étoiles voisines à partir de Proxima du Centaure, en années-lumière à une décimale", () => {
+    expect(railDistanceLabel("stars", 4.2465 * AU_PER_LY)).toBe("dès 4,2 al");
+  });
+
+  it("devrait situer la Voie lactée par la distance de son centre, en années-lumière entières", () => {
+    // formatNumber sépare les milliers par une espace fine insécable (U+202F).
+    expect(railDistanceLabel("galaxy", 27_000 * AU_PER_LY)).toBe("centre à 27\u202f000 al");
   });
 });

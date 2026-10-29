@@ -21,7 +21,7 @@ import {
 import { sceneFromGalactic } from "@/lib/astro/galactic";
 import { ROTATION } from "@/lib/astro/orientation";
 import { SUN, type Planet, type PlanetKey } from "@/lib/astro/planets";
-import { sceneRadius } from "@/lib/astro/scale";
+import { REAL_SCALE_SUN_SHRINK, sceneRadius } from "@/lib/astro/scale";
 import { rawColor } from "./color";
 import {
   createAtmosphereMaterial,
@@ -108,7 +108,12 @@ export interface SkyBody {
   /** Sphère de la Voie lactée, orientée en coordonnées galactiques. */
   milkyWay: Mesh<SphereGeometry, ShaderMaterial>;
   uniforms: SkyUniforms;
+  /** Couches d'étoiles de fond, atténuées avec le ciel. */
+  layers: readonly Points<BufferGeometry, PointsMaterial>[];
 }
+
+/** Intensité de la Voie lactée photographiée, ciel entier. */
+export const SKY_INTENSITY = 1.1;
 
 /**
  * Oriente la sphère pour que ses UV lisent la carte galactique telle quelle (u = 0,5 − l/360°,
@@ -128,14 +133,26 @@ function orientMilkyWay(sphere: Mesh): void {
 /** Ciel : la Voie lactée photographiée (lueur diffuse) sous des étoiles ponctuelles, nettes à tout grossissement. */
 export function createSky(placeholder: Texture): SkyBody {
   // Carte de 256 × 128 lue presque à son plein niveau : les étoiles s'y fondent, la bande reste.
-  const { material, uniforms } = createSkyMaterial(placeholder, 0.2, 1.1);
+  const { material, uniforms } = createSkyMaterial(placeholder, 0.2, SKY_INTENSITY);
   const milkyWay = new Mesh(new SphereGeometry(STAR_SPHERE_RADIUS * 1.05, 64, 32), material);
   orientMilkyWay(milkyWay);
   // Dessinée après les astres opaques : la profondeur écarte les pixels qu'ils cachent.
   milkyWay.renderOrder = 1;
+  const layers = [starLayer(2600, 1.25, false), starLayer(1800, 1.05, true), starLayer(160, 2.4, false)];
   const group = new Group();
-  group.add(milkyWay, starLayer(2600, 1.25, false), starLayer(1800, 1.05, true), starLayer(160, 2.4, false));
-  return { group, milkyWay, uniforms };
+  group.add(milkyWay, ...layers);
+  return { group, milkyWay, uniforms, layers };
+}
+
+/**
+ * Atténue le ciel vu depuis le système solaire (poids de 0 à 1) : intensité de la Voie lactée photographiée
+ * = SKY_INTENSITY × poids, opacité des étoiles de fond = poids. À poids nul, plus rien n'est dessiné ; le fond
+ * reste la couleur de la page (celle du rendu).
+ */
+export function fadeSky(sky: SkyBody, weight: number): void {
+  sky.uniforms.uIntensity.value = SKY_INTENSITY * weight;
+  for (const layer of sky.layers) layer.material.opacity = weight;
+  sky.group.visible = weight > 0;
 }
 
 // ---------- Soleil ----------
@@ -166,12 +183,16 @@ export function createSun(): SunBody {
   };
 }
 
-/** Taille du Soleil et de sa couronne pour une échelle donnée (0 compressée, 1 réelle). */
-export function scaleSun(sun: SunBody, realScale: number): void {
-  const shrink = lerp(1, 0.05, realScale);
+/**
+ * Taille du Soleil et de sa couronne pour une échelle donnée (0 compressée, 1 réelle). La couronne est tracée
+ * en espace vue, hors de la matrice de son groupe : la réduction du zoom cosmique (`zoomScale`, 10^−zoom) s'y
+ * applique ici ; le maillage, lui, la reçoit du groupe du système solaire. Sans zoom (1) : tailles d'avant.
+ */
+export function scaleSun(sun: SunBody, realScale: number, zoomScale = 1): void {
+  const shrink = lerp(1, REAL_SCALE_SUN_SHRINK, realScale);
   sun.mesh.scale.setScalar(shrink);
-  sun.coronaUniforms.uSunRadius.value = SUN.displayRadius * shrink;
-  sun.coronaUniforms.uSize.value = lerp(CORONA_SIZE[0], CORONA_SIZE[1], realScale);
+  sun.coronaUniforms.uSunRadius.value = SUN.displayRadius * shrink * zoomScale;
+  sun.coronaUniforms.uSize.value = lerp(CORONA_SIZE[0], CORONA_SIZE[1], realScale) * zoomScale;
 }
 
 // ---------- Planètes ----------

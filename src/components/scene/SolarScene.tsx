@@ -5,9 +5,14 @@ import { cssVars } from "@/components/journey/cssVars";
 import { RAIL_ID } from "@/components/journey/ids";
 import { goTo, isStopKey } from "@/components/journey/navigation";
 import { useRealScale } from "@/components/journey/realScale";
+import { DEEP_SKY_LABELS } from "@/content/site";
 import { PLANETS, SUN } from "@/lib/astro/planets";
+import { spectralColor } from "@/lib/astro/starMap";
+import { NEARBY_STARS } from "@/lib/astro/stars";
+import { formatNumber } from "@/lib/format";
 import type { StopKey } from "@/lib/journey/camera";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
+import { DISTANCE_RINGS_LY, isDeepLabelKey, ringLabelKey, starLabelKey, type DeepLabelKey } from "./cosmos";
 import { createSolarScene, type BodyKey, type SolarScene as SceneEngine } from "./engine";
 import { setSceneFallback } from "./fallback";
 
@@ -17,6 +22,21 @@ const LABELS: readonly { key: BodyKey; name: string; color: string }[] = [
 ];
 
 const isBodyKey = (value: string | undefined): value is BodyKey => LABELS.some((label) => label.key === value);
+
+/**
+ * Étiquettes du ciel profond : étoiles voisines (nom et distance, pastille de la couleur du point), « Vous êtes
+ * ici », centre galactique, cercles de distance. Non interactives : la plaque des étoiles en donne la liste.
+ */
+const DEEP_LABELS: readonly { key: DeepLabelKey; text: string; variant?: "here" | "center" | "ring"; color?: string }[] = [
+  ...NEARBY_STARS.map((star) => ({
+    key: starLabelKey(star.key),
+    text: `${star.name} · ${formatNumber(star.distanceLy, 1)} al`,
+    color: spectralColor(star.spectralType),
+  })),
+  { key: "here", text: DEEP_SKY_LABELS.here, variant: "here" },
+  { key: "center", text: DEEP_SKY_LABELS.center, variant: "center" },
+  ...DISTANCE_RINGS_LY.map((radius) => ({ key: ringLabelKey(radius), text: `${radius} al`, variant: "ring" as const })),
+];
 
 /**
  * Scène 3D en fond fixe et étiquettes des astres. Chargée uniquement dans le navigateur
@@ -37,6 +57,11 @@ export default function SolarScene() {
       const key = element.dataset.body;
       if (isBodyKey(key)) labels.set(key, element);
     }
+    const deepLabels = new Map<DeepLabelKey, HTMLElement>();
+    for (const element of labelLayer.querySelectorAll<HTMLElement>("[data-deep]")) {
+      const key = element.dataset.deep;
+      if (isDeepLabelKey(key)) deepLabels.set(key, element);
+    }
     const plates = new Map<StopKey, HTMLElement>();
     for (const plate of document.querySelectorAll<HTMLElement>("[data-stop] > .plate")) {
       const key = plate.parentElement?.dataset.stop;
@@ -51,6 +76,7 @@ export default function SolarScene() {
       bar: document.querySelector(".bar"),
       rail,
       note: document.querySelector<HTMLElement>(".scale-note"),
+      deepLabels,
       onPick: goTo,
     });
     if (engine) engineRef.current = engine;
@@ -82,7 +108,8 @@ export default function SolarScene() {
       <canvas id="sky" ref={canvasRef} aria-hidden="true" />
       {/*
         Raccourcis pour la souris et le doigt, hors de l'ordre de tabulation et du lecteur
-        d'écran : la règle des distances offre la même navigation au clavier.
+        d'écran : la règle des distances offre la même navigation au clavier. Les étiquettes
+        du ciel profond ne sont que des repères : la plaque des étoiles en donne la liste.
         Masquées (visibility) jusqu'à leur premier placement par le moteur.
       */}
       <div id="labels" ref={labelsRef} className={realScale ? "real" : undefined} aria-hidden="true">
@@ -99,6 +126,17 @@ export default function SolarScene() {
             <i />
             <span>{name}</span>
           </button>
+        ))}
+        {DEEP_LABELS.map(({ key, text, variant, color }) => (
+          <span
+            key={key}
+            className={variant ? `lbl deep ${variant}` : "lbl deep"}
+            data-deep={key}
+            style={color ? cssVars({ "--lc": color }) : undefined}
+          >
+            <i />
+            <span>{text}</span>
+          </span>
         ))}
       </div>
     </>

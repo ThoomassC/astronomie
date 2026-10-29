@@ -14,6 +14,8 @@ import {
   ATMOSPHERE_VERTEX,
   CORONA_FRAGMENT,
   CORONA_VERTEX,
+  POINT_CLOUD_FRAGMENT,
+  POINT_CLOUD_VERTEX,
   RING_FRAGMENT,
   RING_VERTEX,
   SKY_FRAGMENT,
@@ -242,6 +244,41 @@ export function createCoronaMaterial(
     blending: AdditiveBlending,
     transparent: true,
     depthWrite: false,
+  });
+  return { material, uniforms };
+}
+
+export interface PointCloudUniforms {
+  /** Poids de la couche, de 0 à 1 : il éteint les points en fondu. */
+  uOpacity: Uniform<number>;
+  /** Rapport de pixels du rendu, partagé par tous les nuages : gl_PointSize = size × uPixelRatio. */
+  uPixelRatio: Uniform<number>;
+  /** Gain sur la valeur affichée, après encodage (1 : aucun) ; la galaxie l'abaisse quand elle rapetisse à l'écran. */
+  uGain: Uniform<number>;
+}
+
+/**
+ * Nuage de points ronds à bord doux, de taille fixe à l'écran (étoiles voisines, Soleil vu de loin, galaxie).
+ * Attributs de la géométrie : position, color (linéaire, éclat compris), size (px CSS). Additif, sans écriture
+ * de profondeur ni tone mapping. Les trois nuages partagent ce programme GPU, compilé avec la scène.
+ */
+export function createPointCloudMaterial(
+  pixelRatio: Uniform<number>,
+  gain: Uniform<number> = { value: 1 },
+): {
+  material: ShaderMaterial;
+  uniforms: PointCloudUniforms;
+} {
+  const uniforms: PointCloudUniforms = { uOpacity: { value: 1 }, uPixelRatio: pixelRatio, uGain: gain };
+  const material = new ShaderMaterial({
+    uniforms: { ...uniforms },
+    vertexShader: POINT_CLOUD_VERTEX,
+    fragmentShader: POINT_CLOUD_FRAGMENT,
+    vertexColors: true,
+    blending: AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    toneMapped: false,
   });
   return { material, uniforms };
 }

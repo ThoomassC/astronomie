@@ -1,12 +1,14 @@
+import { NEARBY_STARS_SOURCE } from "@/lib/astro/stars";
+
 export const SITE = {
   name: "Astronomie",
   description:
-    "Le système solaire en mouvement : voyage du Soleil à Neptune, positions réelles des planètes et animations pour comprendre les saisons, les orbites et les distances.",
+    "Le système solaire en mouvement : voyage du Soleil à Neptune, puis jusqu'aux étoiles voisines et à la Voie lactée, positions réelles des planètes et animations pour comprendre les saisons, les orbites et les distances.",
 };
 
 export const HERO = {
   title: "Huit planètes, une étoile, et beaucoup de vide.",
-  text: "Chaque planète part de sa vraie place du jour. Faites défiler pour quitter le Soleil et rejoindre Neptune, à quatre heures-lumière de là.",
+  text: "Chaque planète part de sa vraie place du jour. Faites défiler pour quitter le Soleil, rejoindre Neptune, à quatre heures-lumière de là, puis les étoiles voisines et la Voie lactée.",
   stampPrefix: "Positions réelles au départ :",
   start: "Partir du Soleil",
 };
@@ -22,7 +24,12 @@ export const SCALE_TOGGLE = {
   off: "Voir les distances réelles",
   on: "Revenir aux distances compressées",
   note: "Distances réelles : chaque planète serait plus petite qu'un pixel, un cercle la signale. La Terre est à 1 UA du Soleil, Neptune à 30.",
+  /** Description de la bascule du dock, indisponible aux escales des étoiles voisines et de la Voie lactée. */
+  locked: "Ici, les distances sont déjà réelles.",
 };
+
+/** Étiquettes du ciel profond, posées dans la scène (les étoiles portent leur nom). */
+export const DEEP_SKY_LABELS = { here: "Vous êtes ici", center: "Centre de la Galaxie" } as const;
 
 export const BEYOND = {
   id: "au-dela",
@@ -43,8 +50,7 @@ export const BEYOND = {
 };
 
 export const FOOTER = {
-  sources:
-    "Sources : NASA, Planetary Fact Sheet ; JPL, éléments orbitaux approchés des planètes (valables de 1800 à 2050) ; nombres de lunes : NASA et UAI, 2025.",
+  sources: `Sources : NASA, Planetary Fact Sheet ; JPL, éléments orbitaux approchés des planètes (valables de 1800 à 2050) ; nombres de lunes : NASA et UAI, 2025. Étoiles voisines : ${NEARBY_STARS_SOURCE}. Voie lactée : modèle simplifié d'après Reid et al. (2019), GRAVITY Collaboration (2022) et la NASA.`,
   scale:
     "Sauf en mode « distances réelles », les tailles sont agrandies et les distances compressées pour que tout tienne à l'écran.",
   /** Crédit des cartes photographiques, comme le demande la licence CC BY 4.0 : auteur, licence, modifications. */
