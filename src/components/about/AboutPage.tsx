@@ -1,9 +1,10 @@
 import { MAIN_ID } from "@/components/journey/ids";
+import { LanguageLinks } from "@/components/site/LanguageLinks";
+import { SiteNavFooter } from "@/components/site/SiteNavFooter";
 import { getAboutContent } from "@/content/about/content";
 import { LANGUAGES_SECTION_ID } from "@/content/about/structure";
 import type { AboutLink, AboutSection } from "@/content/about/types";
-import { LOCALE_NAMES, LOCALES, type Locale } from "@/i18n/locales";
-import { pathFor } from "@/i18n/routes";
+import type { Locale } from "@/i18n/locales";
 import styles from "./AboutPage.module.css";
 
 /** Identifiant du titre qui nomme une section : « accessibilite-titre », comme les escales du voyage. */
@@ -51,29 +52,6 @@ function OutboundLinks({ links, external }: { links: readonly AboutLink[]; exter
   );
 }
 
-/**
- * Cette page dans chaque langue, chaque nom écrit et annoncé dans sa langue, la langue de la page marquée. Le lien
- * ramène à la section des langues : on reste au même endroit, comme avec le menu des langues (ADR 0003).
- */
-function LanguageLinks({ locale }: { locale: Locale }) {
-  return (
-    <ul role="list" className={styles.languages}>
-      {LOCALES.map((other) => (
-        <li key={other}>
-          <a
-            href={`${pathFor("about", other)}#${LANGUAGES_SECTION_ID}`}
-            lang={other}
-            hrefLang={other}
-            aria-current={other === locale ? "true" : undefined}
-          >
-            {LOCALE_NAMES[other]}
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 /** Une section sous son h2, dans l'ordre du contenu : encart, paragraphes, définitions, liens. */
 function AboutPart({ section, locale, external }: { section: AboutSection; locale: Locale; external: string }) {
   const { id, heading, note, paragraphs, entries, links } = section;
@@ -94,7 +72,10 @@ function AboutPart({ section, locale, external }: { section: AboutSection; local
           ))}
         </dl>
       ) : null}
-      {id === LANGUAGES_SECTION_ID ? <LanguageLinks locale={locale} /> : null}
+      {/* Les liens de langue de la barre et du plan du site : même choix retenu (cookie), même position gardée. */}
+      {id === LANGUAGES_SECTION_ID ? (
+        <LanguageLinks locale={locale} page="about" role="list" className={styles.languages} />
+      ) : null}
       {links ? <OutboundLinks links={links} external={external} /> : null}
     </section>
   );
@@ -127,14 +108,24 @@ export function AboutPage({ locale }: { locale: Locale }) {
         </div>
       </nav>
       <div className={styles.column}>
-        <header className={styles.head}>
+        {/* Un div, pas un <header> : dans <main>, il ne nommerait rien, et certains outils y voient une bannière. */}
+        <div className={styles.head}>
           <h1>{title}</h1>
           <p className={styles.intro}>{intro}</p>
-        </header>
+        </div>
         {sections.map((section) => (
           <AboutPart key={section.id} section={section} locale={locale} external={external} />
         ))}
       </div>
     </main>
+  );
+}
+
+/** Pied de la page : le plan du site (rubriques et langues), aligné sur la grille de la page. */
+export function AboutFooter({ locale }: { locale: Locale }) {
+  return (
+    <footer className={styles.footer}>
+      <SiteNavFooter locale={locale} page="about" />
+    </footer>
   );
 }

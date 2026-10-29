@@ -1,16 +1,26 @@
 import { cleanup, getDefaultNormalizer, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
-import { AboutPage } from "@/components/about/AboutPage";
+import { AboutFooter, AboutPage } from "@/components/about/AboutPage";
 import { MAIN_ID } from "@/components/journey/ids";
+import { SITE_STRINGS } from "@/components/site/site.strings";
 import { getAboutContent } from "@/content/about/content";
 import { LANGUAGES_SECTION_ID, type AboutSectionId } from "@/content/about/structure";
-import { LOCALE_NAMES, LOCALES } from "@/i18n/locales";
+import { LOCALE_COOKIE, LOCALE_NAMES, LOCALES } from "@/i18n/locales";
 import { pathFor } from "@/i18n/routes";
 
 afterEach(() => {
   cleanup();
+  document.cookie = `${LOCALE_COOKIE}=; Path=/; Max-Age=0`;
 });
+
+/**
+ * jsdom ne suit pas un lien vers une autre page : après les écouteurs de React, le test annule le suivi des liens.
+ */
+function interceptLinks(event: MouseEvent) {
+  if (event.target instanceof Element && event.target.closest("a") !== null) event.preventDefault();
+}
 
 /** Noms de liens qui ne disent pas où ils mènent. */
 const VAGUE_LINK_NAMES =
@@ -130,13 +140,24 @@ describe.each(LOCALES)("AboutPage en %s", (locale) => {
     const languages = region(LANGUAGES_SECTION_ID);
     for (const other of LOCALES) {
       const link = within(languages).getByRole("link", { name: LOCALE_NAMES[other] });
-      // Même section dans l'autre langue : on reste au même endroit.
-      expect(link).toHaveAttribute("href", `${pathFor("about", other)}#${LANGUAGES_SECTION_ID}`);
+      expect(link).toHaveAttribute("href", pathFor("about", other));
       expect(link).toHaveAttribute("lang", other);
       expect(link).toHaveAttribute("hreflang", other);
       if (other === locale) expect(link).toHaveAttribute("aria-current", "true");
       else expect(link).not.toHaveAttribute("aria-current");
     }
+  });
+
+  it("devrait retenir la langue choisie dans la section des langues, comme partout sur le site", async () => {
+    renderPage();
+    const other = LOCALES.find((candidate) => candidate !== locale) ?? locale;
+    document.addEventListener("click", interceptLinks);
+    try {
+      await userEvent.click(within(region(LANGUAGES_SECTION_ID)).getByRole("link", { name: LOCALE_NAMES[other] }));
+    } finally {
+      document.removeEventListener("click", interceptLinks);
+    }
+    expect(document.cookie).toContain(`${LOCALE_COOKIE}=${other}`);
   });
 
   it("devrait être lisible sans JavaScript : tout le texte est dans le HTML du serveur, sans script", () => {
@@ -148,5 +169,17 @@ describe.each(LOCALES)("AboutPage en %s", (locale) => {
         expect(text).toContain(expected);
       }
     }
+  });
+});
+
+describe.each(LOCALES)("AboutFooter en %s", (locale) => {
+  it("devrait poser le plan du site en pied de page, hors du contenu principal", () => {
+    render(<AboutFooter locale={locale} />);
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByRole("navigation", { name: SITE_STRINGS[locale].siteMap })).toBeInTheDocument();
+    expect(within(footer).getByRole("link", { name: SITE_STRINGS[locale].tabs.about })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });

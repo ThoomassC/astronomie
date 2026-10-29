@@ -149,7 +149,7 @@ export const ABOUT_FR: AboutContent = {
       heading: "Confidentialité",
       note: "Aucun traceur, aucune publicité. Un seul cookie : la langue que vous choisissez, gardée un an.",
       paragraphs: [
-        "Le cookie « lang » n'est posé que si vous choisissez une langue dans le menu, et il ne contient rien d'autre. Le site ne mesure pas son audience.",
+        "Le cookie « lang » n'est posé que si vous choisissez une langue, et il ne contient rien d'autre. Le site ne mesure pas son audience.",
         "Ce que vous saisissez, comme votre poids ou votre année de naissance, est calculé dans votre navigateur et n'est envoyé nulle part. Les polices et les images viennent du site lui-même.",
       ],
     },

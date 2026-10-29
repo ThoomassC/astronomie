@@ -149,7 +149,7 @@ export const ABOUT_ES: AboutContent = {
       heading: "Privacidad",
       note: "Sin rastreadores ni publicidad. Una sola cookie: el idioma que elijas, guardado un año.",
       paragraphs: [
-        "La cookie «lang» solo se guarda si eliges un idioma en el menú, y no contiene nada más. El sitio no mide su audiencia.",
+        "La cookie «lang» solo se guarda si eliges un idioma, y no contiene nada más. El sitio no mide su audiencia.",
         "Lo que escribes, como tu peso o tu año de nacimiento, se calcula en tu navegador y no se envía a ningún sitio. Las tipografías y las imágenes vienen del propio sitio.",
       ],
     },

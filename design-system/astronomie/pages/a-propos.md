@@ -57,15 +57,20 @@ Textes : `src/content/about/` (`fr.ts`, `en.ts`, `es.ts` ; ancres et adresses da
   équivalents, limites connues), filetés comme la fiche des plaques ; puis le lien de signalement.
 - **Encart de confidentialité** : premier élément de sa section, `--r-md`, bord 1 px `--filet-fort` (le laiton,
   pas le soleil : ce n'est pas une alerte), fond `--plaque-a`, marge 1 rem × 1,25 rem, texte ivoire.
-- **Langues** : cette page dans les trois langues, sur une ligne (« Français · English · Español »), chaque lien
-  avec `lang` et `hreflang`, cible de 44 px de haut ; le point qui les sépare est dessiné (rien à lire). La langue
-  de la page porte `aria-current="true"`, en gras et sans soulignement : elle ne se distingue pas que par la couleur.
-  Liens simples vers la même section (`#langues`) dans l'autre langue : changer de langue recharge la page et
-  l'on reste au même endroit ; seul le menu des langues de la barre pose le cookie.
+- **Langues** : cette page dans les trois langues, sur une ligne (« Français · English · Español »), avec les liens
+  de langue de la barre (`LanguageLinks`, lot S1) : `lang` et `hreflang` sur chaque lien, choix retenu par le cookie
+  au clic, comme partout sur le site. Cible de 44 px de haut ; le point qui les sépare est dessiné (rien à lire). La
+  langue de la page porte `aria-current="true"`, en gras et sans soulignement : elle ne se distingue pas que par la
+  couleur.
+- **Pied de page** : le plan du site (`SiteNavFooter`, lot S1) dans un `footer` de la largeur de la colonne, ou de
+  toute la grille (59 rem) sur grand écran ; la classe de la page écarte les marges du `footer` global, faites pour
+  la règle et le dock du voyage.
 
 ## Accessibilité
 
-- Ordre du DOM = ordre de lecture : sommaire, h1, accroche, neuf sections. Un seul h1, un h2 par section.
+- Ordre du DOM = ordre de lecture : lien d'évitement, barre, puis dans `main#contenu` le sommaire, le h1, l'accroche
+  et les neuf sections, enfin le plan du site. Un seul h1, un h2 par section. Le titre et l'accroche sont dans un
+  `div`, pas un `header` : dans `main`, il ne nommerait rien.
 - Sans JavaScript : tout se lit ; le sommaire replié s'ouvre nativement. Aucun script sur la page.
 - Mouvement réduit : seul le chevron bouge, et la règle globale coupe sa transition.
 - Couleurs forcées : les filets et bords passent en `CanvasText` d'eux-mêmes ; le point entre les langues (un fond)
