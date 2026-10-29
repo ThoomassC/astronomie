@@ -43,6 +43,18 @@ describe("COMPARED_STARS", () => {
     it("devrait avoir une distance positive, nulle seulement pour le Soleil", () => {
       expect(star.distanceLy > 0).toBe(star.key !== "sun");
     });
+
+    it("devrait avoir une couleur d'affichage en hexadécimal (#rrggbb, minuscules)", () => {
+      expect(star.color).toMatch(/^#[0-9a-f]{6}$/);
+    });
+  });
+
+  it("devrait teinter les étoiles chaudes de bleu et les froides d'orange (corps noir) : Rigel bleutée, Bételgeuse orangée", () => {
+    const channels = (hex: string) => [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
+    const [rigelRed, , rigelBlue] = channels(COMPARED_STARS.find((star) => star.key === "rigel")?.color ?? "#000000");
+    const [betelgeuseRed, , betelgeuseBlue] = channels(COMPARED_STARS.find((star) => star.key === "betelgeuse")?.color ?? "#000000");
+    expect(rigelBlue).toBeGreaterThan(rigelRed);
+    expect(betelgeuseRed).toBeGreaterThan(betelgeuseBlue);
   });
 
   describe.each(COMPARED_STARS.filter((star) => star.radiusRange))("fourchette publiée de $key", (star) => {
