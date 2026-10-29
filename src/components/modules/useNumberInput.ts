@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import type { ParseResult } from "@/lib/astro/constants";
+import type { ParseError, ParseResult } from "@/lib/astro/constants";
 
 /** Inactivité après laquelle une saisie invalide est signalée, en ms. */
 const ERROR_DELAY_MS = 600;
@@ -7,7 +7,7 @@ const ERROR_DELAY_MS = 600;
 interface Pending {
   timer: number | undefined;
   /** Erreur de la dernière saisie, pas encore forcément affichée. */
-  error: string | null;
+  error: ParseError | null;
 }
 
 /**
@@ -15,10 +15,17 @@ interface Pending {
  * invalide n'est signalée qu'à la sortie du champ ou après un temps d'inactivité, pour laisser
  * passer les états intermédiaires de la frappe (« 62, », « 199 »).
  * Rien n'est transmis tant que la saisie est invalide : l'affichage garde la dernière valeur valide.
+ *
+ * Le parseur décrit l'erreur par sa forme (`ParseError`) ; `describe` en écrit le message, dans la langue du
+ * module, au rendu : `error` est ce message, ou `null`.
  */
-export function useNumberInput(parse: (raw: string) => ParseResult, onValid: (value: number) => void) {
+export function useNumberInput(
+  parse: (raw: string) => ParseResult,
+  onValid: (value: number) => void,
+  describe: (error: ParseError) => string,
+) {
   /** Erreur affichée (et `aria-invalid`), ou `null`. */
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ParseError | null>(null);
   const pending = useRef<Pending>({ timer: undefined, error: null });
 
   useEffect(() => {
@@ -46,5 +53,5 @@ export function useNumberInput(parse: (raw: string) => ParseResult, onValid: (va
     setError(current.error);
   };
 
-  return { error, onChange, onBlur };
+  return { error: error === null ? null : describe(error), onChange, onBlur };
 }

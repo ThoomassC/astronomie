@@ -1,7 +1,9 @@
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { pad2 } from "@/lib/format";
 
 const D2R = Math.PI / 180;
-const SEASONS = ["printemps", "été", "automne", "hiver"] as const;
+/** Saisons de l'hémisphère nord, depuis l'équinoxe de printemps ; leurs noms vivent avec le module qui les affiche. */
+const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
 
 export type Season = (typeof SEASONS)[number];
 
@@ -34,7 +36,7 @@ export function daylightFraction(latitudeDeg: number, declinationRad: number, ho
   return Math.acos(cosH) / Math.PI;
 }
 
-/** Saison de l'hémisphère nord selon λ (degrés, normalisé modulo 360) : [0,90[ printemps, [90,180[ été, [180,270[ automne, [270,360[ hiver. */
+/** Saison de l'hémisphère nord selon λ (degrés, normalisé modulo 360) : [0,90[ spring, [90,180[ summer, [180,270[ autumn, [270,360[ winter. */
 export function northernSeason(longitudeSinceEquinoxDeg: number): Season {
   const lon = ((longitudeSinceEquinoxDeg % 360) + 360) % 360;
   return SEASONS[Math.min(3, Math.floor(lon / 90))];
@@ -45,8 +47,14 @@ export function noonAltitudeDeg(latitudeDeg: number, declinationRad: number): nu
   return 90 - Math.abs(latitudeDeg - declinationRad / D2R);
 }
 
-/** Durée du jour terrestre au format "16 h 05" à partir d'une fraction de 24 h (arrondie à la minute). */
-export function formatDayLength(fraction: number): string {
+/** Après les minutes de la durée du jour : rien en français (« 16 h 05 »), le symbole en anglais et en espagnol. */
+const MINUTES_SUFFIX: Readonly<Record<Locale, string>> = { fr: "", en: " min", es: " min" };
+
+/**
+ * Durée du jour terrestre à partir d'une fraction de 24 h (arrondie à la minute), minutes sur deux chiffres :
+ * « 16 h 05 » en français, « 16 h 05 min » en anglais et en espagnol. Langue facultative pendant la migration.
+ */
+export function formatDayLength(fraction: number, locale: Locale = DEFAULT_LOCALE): string {
   const minutes = Math.round(Math.min(1, Math.max(0, fraction)) * 1440);
-  return `${Math.floor(minutes / 60)} h ${pad2(minutes % 60)}`;
+  return `${Math.floor(minutes / 60)} h ${pad2(minutes % 60)}${MINUTES_SUFFIX[locale]}`;
 }

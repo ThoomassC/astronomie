@@ -1,10 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useLocale } from "@/i18n/LocaleProvider";
+import { bodyName } from "@/i18n/names";
 import { LIGHT_SECONDS_PER_AU } from "@/lib/astro/constants";
 import { formatDuration, lightSeconds } from "@/lib/astro/light";
 import { PLANETS, SUN } from "@/lib/astro/planets";
 import { formatNumber } from "@/lib/format";
+import { COMMON_STRINGS } from "./common.strings";
+import { LIGHT_RACE_STRINGS } from "./lightRace.strings";
 import { ModuleCanvas } from "./ModuleCanvas";
 import { INK, TAU } from "./paint";
 import { StatusMessage } from "./StatusMessage";
@@ -15,31 +19,33 @@ import styles from "./modules.module.css";
 const SIZE: CanvasSize = { width: 560, height: 236, narrow: 0.78 };
 
 /** Planètes sur la piste, à leur demi-grand axe (UA). */
-const TRACK = PLANETS.map((planet) => ({ name: planet.name, au: planet.elements[0], color: planet.color }));
+const TRACK = PLANETS.map((planet) => ({ key: planet.key, au: planet.elements[0], color: planet.color }));
 const NEPTUNE_AU = TRACK[TRACK.length - 1].au;
 /** Étendue de la piste zoomée, en UA (de Mercure à Mars). */
 const ZOOM_AU = 1.6;
+
+/** Écart entre le temps écoulé et l'échelle quand ils partagent la première ligne, en px. */
+const HEADER_GAP = 12;
 
 const SPEEDS = [100, 1000, 10000] as const;
 type Speed = (typeof SPEEDS)[number];
 
 type Phase = "idle" | "running" | "paused" | "done";
-const PLAY_LABEL: Record<Phase, string> = {
-  idle: "Lancer l'éclair",
-  running: "Pause",
-  paused: "Reprendre",
-  done: "Relancer",
-};
-
-const INITIAL_READOUT = "Prêt. À ×1 000, l'éclair atteint Neptune en 15 secondes.";
-const ARRIVAL_READOUT =
-  "Neptune atteinte après 4 h 10 min. Les quatre premières planètes tiennent dans les 5 premiers pour cent du trajet.";
 
 /** 1. La course de la lumière (Soleil) : un éclair parcourt une piste à l'échelle, avec une loupe sur les planètes intérieures. */
 export function LightRace() {
+  const locale = useLocale();
+  const t = LIGHT_RACE_STRINGS[locale];
+  const common = COMMON_STRINGS[locale];
+  const playLabel: Record<Phase, string> = {
+    idle: t.start,
+    running: common.pause,
+    paused: common.resume,
+    done: common.restart,
+  };
   const [speed, setSpeed] = useState<Speed>(1000);
   const [phase, setPhase] = useState<Phase>("idle");
-  const [readout, setReadout] = useState(INITIAL_READOUT);
+  const [readout, setReadout] = useState(t.initialReadout);
   const { message, announce } = useAnnouncer();
   /** Temps de trajet écoulé (s), course en cours, nombre de planètes atteintes. */
   const race = useRef({ t: 0, run: false, reached: 0 });
@@ -54,13 +60,13 @@ export function LightRace() {
       if (reached !== s.reached && reached > 0) {
         s.reached = reached;
         const last = TRACK[reached - 1];
-        setReadout(`${last.name} atteinte après ${formatDuration(lightSeconds(last.au))} de trajet.`);
+        setReadout(t.reached(bodyName(last.key, locale), formatDuration(lightSeconds(last.au))));
       }
       if (s.t >= end) {
         s.run = false;
         setPhase("done");
-        setReadout(ARRIVAL_READOUT);
-        announce(ARRIVAL_READOUT);
+        setReadout(t.arrival);
+        announce(t.arrival);
       }
     }
 
@@ -68,10 +74,18 @@ export function LightRace() {
     const R = w - 22;
     const au = s.t / LIGHT_SECONDS_PER_AU;
     c.clearRect(0, 0, w, h);
-    p.text(`Temps écoulé : ${formatDuration(s.t)}`, L, 22, { weight: 700, size: 13 });
-    p.text("0 à 30 UA, à l'échelle", narrow ? L : R, narrow ? 40 : 22, {
+    // Sur une seule ligne (canvas large), l'échelle garde sa place à droite et le temps écoulé prend le reste ;
+    // en largeur étroite, chacun a sa ligne.
+    const scaleWidth = narrow ? R - L : Math.min(p.measure(t.scale), (R - L) / 2);
+    p.text(t.elapsed(formatDuration(s.t)), L, 22, {
+      weight: 700,
+      size: 13,
+      maxWidth: narrow ? R - L : R - L - scaleWidth - HEADER_GAP,
+    });
+    p.text(t.scale, narrow ? L : R, narrow ? 40 : 22, {
       align: narrow ? "left" : "right",
       color: INK.brume,
+      maxWidth: scaleWidth,
     });
     const y1 = h * (narrow ? 0.44 : 0.4);
     const y2 = h * (narrow ? 0.84 : 0.82);
@@ -87,10 +101,11 @@ export function LightRace() {
     c.lineTo(L, y2 - 14);
     c.closePath();
     c.fill();
-    p.text("Zoom sur les 1,6 premières UA", (L + R) / 2, (y1 + y2) / 2 + 4, {
+    p.text(t.zoom, (L + R) / 2, (y1 + y2) / 2 + 4, {
       align: "center",
       color: INK.brume,
       size: 11,
+      maxWidth: R - L,
     });
 
     const tracks = [
@@ -120,14 +135,14 @@ export function LightRace() {
         // Sur la piste entière, les planètes intérieures sont regroupées sous une seule étiquette.
         if (max > 2 && planet.au < 2) return;
         const up = max > 2 ? true : i % 2 === 0;
-        p.text(planet.name, x, up ? y - 12 : y + 20, {
+        p.text(bodyName(planet.key, locale), x, up ? y - 12 : y + 20, {
           align: "center",
           size: 11.5,
           color: hit ? INK.ivoire : INK.brume,
           weight: hit ? 700 : 400,
         });
       });
-      if (max > 2) p.text("Mercure à Mars", L - 4, y1 + 22, { size: 11, color: INK.brume });
+      if (max > 2) p.text(common.innerPlanets, L - 4, y1 + 22, { size: 11, color: INK.brume });
       // L'éclair et sa traîne.
       if (au > 0 && au <= max) {
         const x = toX(au);
@@ -157,7 +172,7 @@ export function LightRace() {
     setSpeed(next);
     const s = race.current;
     if (!s.run && s.t === 0) {
-      const text = `Prêt. À ×${formatNumber(next)}, l'éclair atteint Neptune en ${formatDuration(lightSeconds(NEPTUNE_AU) / next)}.`;
+      const text = t.ready(formatNumber(next, 0, locale), formatDuration(lightSeconds(NEPTUNE_AU) / next));
       setReadout(text);
       announce(text);
     }
@@ -165,19 +180,16 @@ export function LightRace() {
 
   return (
     <>
-      <ModuleCanvas
-        {...canvas}
-        label="Piste à l'échelle du Soleil à Neptune, avec un zoom sur les planètes intérieures"
-      />
+      <ModuleCanvas {...canvas} label={t.canvasLabel} />
       <div className="ctrls">
         <button className="chip" type="button" id="light-race-play" onClick={togglePlay}>
-          {PLAY_LABEL[phase]}
+          {playLabel[phase]}
         </button>
         <span className="grow" />
-        <div className="seg" role="group" aria-label="Accélération">
+        <div className="seg" role="group" aria-label={t.speedGroup}>
           {SPEEDS.map((value) => (
             <button key={value} type="button" aria-pressed={value === speed} onClick={() => chooseSpeed(value)}>
-              {`×${formatNumber(value)}`}
+              {`×${formatNumber(value, 0, locale)}`}
             </button>
           ))}
         </div>

@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useNumberInput } from "@/components/modules/useNumberInput";
-import type { ParseResult } from "@/lib/astro/constants";
+import type { ParseError, ParseResult } from "@/lib/astro/constants";
 import { parseBirthYear } from "@/lib/astro/neptune";
 import { parseMassKg } from "@/lib/astro/weight";
 
@@ -16,27 +16,28 @@ import { parseMassKg } from "@/lib/astro/weight";
 /** Inactivité après laquelle une saisie invalide est signalée. */
 const ERROR_DELAY_MS = 600;
 
-/** Message renvoyé par un parseur pour une saisie refusée. */
-function errorOf(result: ParseResult): string {
-  if (result.ok) throw new Error("saisie valide inattendue dans la préparation du test");
-  return result.error;
-}
-
 const parseYear = (raw: string) => parseBirthYear(raw, 2026);
-const MASS_ERROR = errorOf(parseMassKg("0"));
-const YEAR_ERROR = errorOf(parseYear("199"));
+
+/** Message que le module écrirait dans sa langue ; ici, une phrase qui reprend la forme de l'erreur. */
+const describeError = (error: ParseError) =>
+  error.kind === "range" ? `Hors bornes : de ${error.min} à ${error.max}.` : "Saisie illisible.";
+const UNREADABLE = "Saisie illisible.";
+const MASS_OUT_OF_RANGE = "Hors bornes : de 1 à 300.";
+const YEAR_OUT_OF_RANGE = "Hors bornes : de 1846 à 2026.";
 
 /** Champ minimal branché sur le hook comme dans les modules : message relié par aria-describedby. */
 function NumberField({
   parse,
   onValid,
+  describe,
   initial,
 }: {
   parse: (raw: string) => ParseResult;
   onValid: (value: number) => void;
+  describe: (error: ParseError) => string;
   initial: string;
 }) {
-  const field = useNumberInput(parse, onValid);
+  const field = useNumberInput(parse, onValid, describe);
   return (
     <>
       <label htmlFor="field">Valeur</label>
@@ -56,8 +57,9 @@ function NumberField({
 
 function setup({ parse = parseMassKg, initial = "40" }: { parse?: (raw: string) => ParseResult; initial?: string } = {}) {
   const onValid = vi.fn<(value: number) => void>();
-  render(<NumberField parse={parse} onValid={onValid} initial={initial} />);
-  return { onValid, input: screen.getByRole<HTMLInputElement>("textbox", { name: "Valeur" }) };
+  const describe = vi.fn(describeError);
+  render(<NumberField parse={parse} onValid={onValid} describe={describe} initial={initial} />);
+  return { onValid, describe, input: screen.getByRole<HTMLInputElement>("textbox", { name: "Valeur" }) };
 }
 
 /** Vide le champ. */
@@ -143,7 +145,7 @@ describe("useNumberInput", () => {
       expect(input).toHaveAttribute("aria-invalid", "false");
       idle(1);
       expect(input).toHaveAttribute("aria-invalid", "true");
-      expect(input).toHaveAccessibleDescription(MASS_ERROR);
+      expect(input).toHaveAccessibleDescription(UNREADABLE);
     });
 
     it("devrait relancer le délai de 600 ms à chaque frappe", () => {
@@ -164,7 +166,7 @@ describe("useNumberInput", () => {
       type(input, "199");
       idle(ERROR_DELAY_MS);
       expect(input).toHaveAttribute("aria-invalid", "true");
-      expect(input).toHaveAccessibleDescription(YEAR_ERROR);
+      expect(input).toHaveAccessibleDescription(YEAR_OUT_OF_RANGE);
     });
 
     it("devrait signaler l'erreur dès la sortie du champ, sans attendre", () => {
@@ -173,7 +175,28 @@ describe("useNumberInput", () => {
       type(input, "0");
       leave(input);
       expect(input).toHaveAttribute("aria-invalid", "true");
-      expect(input).toHaveAccessibleDescription(MASS_ERROR);
+      expect(input).toHaveAccessibleDescription(MASS_OUT_OF_RANGE);
+    });
+
+    it("devrait demander le message au module avec l'erreur du parseur, bornes comprises", () => {
+      const { describe, input } = setup();
+      clear(input);
+      type(input, "0");
+      leave(input);
+      expect(describe).toHaveBeenCalledWith({ kind: "range", min: 1, max: 300 });
+      clear(input);
+      type(input, "abc");
+      leave(input);
+      expect(describe).toHaveBeenLastCalledWith({ kind: "format" });
+      expect(input).toHaveAccessibleDescription(UNREADABLE);
+    });
+
+    it("ne devrait pas demander de message tant que la saisie est valide", () => {
+      const { describe, input } = setup();
+      clear(input);
+      type(input, "62,5");
+      leave(input);
+      expect(describe).not.toHaveBeenCalled();
     });
 
     it("ne devrait rien signaler à la sortie du champ quand la valeur est valide", () => {

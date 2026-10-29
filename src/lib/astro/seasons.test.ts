@@ -80,20 +80,20 @@ describe("daylightFraction", () => {
 
 describe("northernSeason", () => {
   it.each([
-    [0, "printemps"],
-    [89.999, "printemps"],
-    [90, "été"],
-    [180, "automne"],
-    [270, "hiver"],
-    [359.9, "hiver"],
+    [0, "spring"],
+    [89.999, "spring"],
+    [90, "summer"],
+    [180, "autumn"],
+    [270, "winter"],
+    [359.9, "winter"],
   ] as const)("devrait donner la saison boréale quand λ = %f° (%s)", (longitude, season) => {
     expect(northernSeason(longitude)).toBe(season);
   });
 
   it.each([
-    [-10, "hiver"],
-    [360, "printemps"],
-    [450, "été"],
+    [-10, "winter"],
+    [360, "spring"],
+    [450, "summer"],
   ] as const)("devrait normaliser λ modulo 360 quand λ = %f° (%s)", (longitude, season) => {
     expect(northernSeason(longitude)).toBe(season);
   });
@@ -136,5 +136,13 @@ describe("formatDayLength", () => {
 
   it("devrait reporter la retenue sur l'heure quand les minutes arrondies atteignent 60", () => {
     expect(formatDayLength(dayFraction(7, 59.6))).toBe("8 h 00");
+  });
+
+  it.each([
+    ["fr", "16 h 05"],
+    ["en", "16 h 05 min"],
+    ["es", "16 h 05 min"],
+  ] as const)("devrait écrire les minutes à la manière de la langue (%s : %s)", (locale, expected) => {
+    expect(formatDayLength(dayFraction(16, 5), locale)).toBe(expected);
   });
 });

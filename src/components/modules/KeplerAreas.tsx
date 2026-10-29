@@ -1,11 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useLocale } from "@/i18n/LocaleProvider";
+import type { Locale } from "@/i18n/locales";
 import { AU_KM } from "@/lib/astro/constants";
 import { solveKepler } from "@/lib/astro/ephemeris";
 import { PLANET_BY_KEY, SUN } from "@/lib/astro/planets";
 import { formatNumber } from "@/lib/format";
 import { useReducedMotion } from "@/lib/sim/reducedMotion";
+import { KEPLER_STRINGS } from "./kepler.strings";
 import { ModuleCanvas } from "./ModuleCanvas";
 import { INK, TAU } from "./paint";
 import { useCanvasModule, type CanvasFrame, type CanvasSize } from "./useCanvasModule";
@@ -27,9 +30,9 @@ const ARC_STEPS = 24;
 const ORBIT_S = 8.8;
 /** Rafraîchissement de la ligne de lecture (non annoncée) pendant l'animation, en secondes. */
 const READOUT_EVERY_S = 0.3;
-
-const CANVAS_LABEL =
-  "Orbite de Mercure découpée en 11 secteurs de même aire, parcourus chacun en 8 jours. Au périhélie, à 46 millions de km du Soleil, Mercure file à 59 km/s ; à l'aphélie, à 70 millions de km, elle ne va plus qu'à 39 km/s.";
+/** Marge des textes au bord du canvas, et écart entre les repères du périhélie et de l'aphélie, en px. */
+const EDGE = 14;
+const LABEL_GAP = 8;
 
 /** Anomalie excentrique, distance au Soleil (km) et vitesse (km/s, vis-viva) de Mercure. */
 function orbitAt(meanAnomaly: number) {
@@ -39,13 +42,16 @@ function orbitAt(meanAnomaly: number) {
   return { ea, r, v };
 }
 
-const speedText = (v: number) => `${formatNumber(v, 1)} km/s`;
-const distanceText = (r: number) => formatNumber(r / 1e6, 1);
-const readoutText = (v: number, r: number) =>
-  `Vitesse : ${speedText(v)}. Distance au Soleil : ${distanceText(r)} millions de km.`;
+const speedText = (v: number, locale: Locale) => `${formatNumber(v, 1, locale)} km/s`;
+/** Distance en millions de km, une décimale. */
+const distanceText = (r: number, locale: Locale) => formatNumber(r / 1e6, 1, locale);
+const readoutText = (v: number, r: number, locale: Locale) =>
+  KEPLER_STRINGS[locale].readout(speedText(v, locale), distanceText(r, locale));
 
 /** 2. La loi des aires (Mercure) : secteurs balayés en des temps égaux, vitesse sur l'orbite. */
 export function KeplerAreas() {
+  const locale = useLocale();
+  const t = KEPLER_STRINGS[locale];
   const reduced = useReducedMotion();
   /** Choix explicite de la personne ; sans choix, l'animation tourne sauf si elle demande moins de mouvement. */
   const [playChoice, setPlayChoice] = useState<boolean | null>(null);
@@ -54,7 +60,7 @@ export function KeplerAreas() {
   // Mercure part du périhélie : la lecture initiale est connue dès le rendu.
   const [readout, setReadout] = useState(() => {
     const { r, v } = orbitAt(0);
-    return readoutText(v, r);
+    return readoutText(v, r, locale);
   });
   /** Anomalie moyenne (rad), temps écoulé depuis la dernière lecture, dernière lecture transmise. */
   const orbit = useRef({ meanAnomaly: 0, acc: 0, text: "" });
@@ -140,23 +146,27 @@ export function KeplerAreas() {
     c.lineTo(cx - A, cy);
     c.stroke();
     c.setLineDash([]);
-    p.text("Périhélie", w - 14, 18, { size: 11.5, weight: 700, align: "right" });
-    p.text("46 millions de km, 59 km/s", w - 14, 33, { size: 11, color: INK.brume, align: "right" });
-    p.text("Aphélie", 14, 18, { size: 11.5, weight: 700 });
-    p.text("70 millions de km, 39 km/s", 14, 33, { size: 11, color: INK.brume });
+    // Périhélie à droite, aphélie à gauche, sur les mêmes lignes : chacun garde sa moitié du canvas.
+    const half = w / 2 - EDGE - LABEL_GAP / 2;
+    p.text(t.perihelion, w - EDGE, 18, { size: 11.5, weight: 700, align: "right", maxWidth: half });
+    p.text(t.perihelionValues, w - EDGE, 33, { size: 11, color: INK.brume, align: "right", maxWidth: half });
+    p.text(t.aphelion, EDGE, 18, { size: 11.5, weight: 700, maxWidth: half });
+    p.text(t.aphelionValues, EDGE, 33, { size: 11, color: INK.brume, maxWidth: half });
 
-    const speed = speedText(v);
-    p.text(speed, 14, h - 14, { weight: 700, size: 14, color: INK.soleil });
+    const speed = speedText(v, locale);
+    p.text(speed, EDGE, h - 14, { weight: 700, size: 14, color: INK.soleil });
     // La police du texte précédent est encore appliquée : la mesure est juste.
-    p.text(`à ${distanceText(r)} millions de km du Soleil`, 14 + c.measureText(speed).width + 26, h - 14, {
+    const distanceX = EDGE + c.measureText(speed).width + 26;
+    p.text(t.distance(distanceText(r, locale)), distanceX, h - 14, {
       size: 12,
       color: INK.brume,
+      maxWidth: w - EDGE - distanceX,
     });
 
     s.acc += dt;
     if (dt === 0 || s.acc > READOUT_EVERY_S) {
       s.acc = 0;
-      const next = readoutText(v, r);
+      const next = readoutText(v, r, locale);
       if (next !== s.text) {
         s.text = next;
         setReadout(next);
@@ -167,10 +177,10 @@ export function KeplerAreas() {
 
   return (
     <>
-      <ModuleCanvas {...canvas} label={CANVAS_LABEL} />
+      <ModuleCanvas {...canvas} label={t.canvasLabel} />
       <div className="ctrls">
         <button className="chip" type="button" id="kepler-play" onClick={() => setPlayChoice(!playing)}>
-          {playing ? "Mettre en pause" : "Lancer l'animation"}
+          {playing ? t.pause : t.play}
         </button>
         <button
           className="chip"
@@ -179,7 +189,7 @@ export function KeplerAreas() {
           aria-pressed={areas}
           onClick={() => setAreas((shown) => !shown)}
         >
-          Afficher les aires
+          {t.areas}
         </button>
       </div>
       <p className={`readout ${styles.reserve}`} id="kepler-readout" aria-live="off">
