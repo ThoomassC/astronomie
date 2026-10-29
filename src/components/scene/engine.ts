@@ -55,7 +55,6 @@ import {
   type OrbitInput,
   type OrbitView,
 } from "@/lib/journey/orbit";
-import { freeBand, type ScreenBand, type ScreenZone } from "@/lib/journey/screen";
 import { smootherstep } from "@/lib/journey/sections";
 import { journeyStore, type JourneyState } from "@/lib/journey/store";
 import { getClock, type ClockSnapshot } from "@/lib/sim/clock";
@@ -98,6 +97,7 @@ import {
 import { SOLAR_HIDDEN_ZOOM, layerWeights } from "./layers";
 import { createPlaceholderTexture, type SurfaceUniforms, type Uniform } from "./materials";
 import { DEG, TAU, clamp, easeFactor, lerp, smoothstep } from "./math";
+import { createScreenLayout } from "./screenLayout";
 import { createTextureStream } from "./textureLoader";
 import { pickTextureTier, textureLoadOrder, type TextureKey } from "./textureSet";
 
@@ -139,15 +139,6 @@ export interface SolarScene {
 
 /** En dessous de ce rapport largeur / hauteur, l'écran est traité en portrait. */
 const PORTRAIT_ASPECT = 0.9;
-/** Mise en page compacte (globals.css) : plaques repliées collées au bas de l'écran (téléphone, tablette en portrait). */
-const MOBILE_LAYOUT = "(max-width: 640px), (max-width: 1100px) and (orientation: portrait)";
-/** Grand écran : air entre la zone libre et ce qui la borde (plaque, règle), en px. */
-const ZONE_MARGIN_PX = 24;
-/** Zone plus étroite que cette part de l'écran (fenêtre très étroite) : cadrage habituel. */
-const MIN_ZONE_SHARE = 0.2;
-/** Vitesse à laquelle le cadrage rejoint une bande libre qui change (barre d'outils, note), par seconde. */
-const BAND_FOLLOW_RATE = 6;
-const BAND_EPSILON = 1e-4;
 const RESIZE_DEBOUNCE_MS = 120;
 /** Au-delà, le coût par pixel l'emporte sur le gain de netteté. */
 const MAX_PIXEL_RATIO = 1.5;
@@ -557,7 +548,10 @@ function setupScene(
   // ---------- État ----------
   const view = { width: 1, height: 1 };
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const mobileLayout = window.matchMedia(MOBILE_LAYOUT);
+  /** Bandes libres (téléphone) et zone libre (grand écran) autour de la scène, mesurées dans la page. */
+  const screenLayout = createScreenLayout({ bar, rail, note, plates });
+  /** Bandes du cadrage posées sur leur mesure : aucune image à rendre pour elles. */
+  let layoutSettled = true;
   const brass = rawColor(BRASS_HEX);
   /** Échelle affichée : 0 compressée, 1 réelle, lissée vers la demande de l'horloge. */
   let realScale = 0;
@@ -608,8 +602,8 @@ function setupScene(
     portrait: false,
     aspect: 1,
     fov: 36,
-    band: (key) => shownBands.get(key) ?? null,
-    zone: () => zone,
+    band: (key) => screenLayout.band(key),
+    zone: () => screenLayout.zone(),
   };
 
   // Exploration (« Tourner autour ») : la caméra quitte le voyage et tourne autour de la cible de l'escale, au gré des
@@ -645,19 +639,6 @@ function setupScene(
   const exploreBase = emptyCamState();
   const exploreCam = emptyCamState();
   const camMixed = emptyCamState();
-  /** Grand écran : zone libre entre la colonne des plaques et la règle, en fractions de la largeur. */
-  let zone: ScreenZone | null = null;
-  /** Plaque repliée de chaque escale, collée en bas : hauteur et écart au bas de l'écran, en px. */
-  const compactPlates = new Map<StopKey, { height: number; bottom: number }>();
-  /** Largeur de vue des mesures repliées : une plaque change de hauteur avec elle. */
-  let compactWidth = 0;
-  /** Bas de la note d'échelle repliée : la déplier ne déplace pas la caméra. */
-  let noteBottom = 0;
-  /** Bande libre mesurée au-dessus de chaque plaque, en fractions de la hauteur de la vue (téléphone seulement). */
-  const bands = new Map<StopKey, ScreenBand>();
-  /** Bandes du cadrage : elles rejoignent en douceur les bandes mesurées. */
-  const shownBands = new Map<StopKey, ScreenBand>();
-  let bandsSettled = true;
   const orbitPoint = new Vector3();
   const projected = new Vector3();
   const anchor = new Vector3();
@@ -697,85 +678,6 @@ function setupScene(
   }
 
   /**
-   * Mise en page compacte : bande libre entre la barre du haut (ou la note d'échelle visible) et la
-   * plaque repliée de chaque escale. Une plaque ou une note dépliée garde la mesure de sa forme
-   * repliée, pour que la caméra ne bouge pas ; la mesure des plaques se perd si la largeur change.
-   * La note suspendue aux escales cosmiques (distances réelles toujours actives) garde sa place :
-   * le cadrage ne saute ni quand elle se tait, ni quand elle revient.
-   * Sans barre fixe ni plaque collée en bas (écran bas), pas de bande.
-   */
-  function measureBands(): void {
-    bands.clear();
-    bandsSettled = false;
-    if (view.width !== compactWidth) {
-      compactPlates.clear();
-      compactWidth = view.width;
-    }
-    if (!mobileLayout.matches || !bar || getComputedStyle(bar).position !== "fixed") {
-      compactPlates.clear();
-      return;
-    }
-    let top = bar.getBoundingClientRect().bottom;
-    if (note?.dataset.visible === "true") {
-      if (!note.hasAttribute("data-open")) noteBottom = note.getBoundingClientRect().bottom;
-      top = Math.max(top, noteBottom);
-    } else if (note?.hasAttribute("data-suspended")) {
-      top = Math.max(top, noteBottom);
-    } else {
-      noteBottom = 0;
-    }
-    for (const [key, plate] of plates) {
-      if (!plate.hasAttribute("data-expanded")) {
-        const style = getComputedStyle(plate);
-        if (style.position === "sticky") {
-          compactPlates.set(key, { height: plate.offsetHeight, bottom: parseFloat(style.bottom) || 0 });
-        } else {
-          compactPlates.delete(key);
-        }
-      }
-      const compact = compactPlates.get(key);
-      const band = compact ? freeBand(view.height, top, compact) : null;
-      if (band) bands.set(key, band);
-    }
-  }
-
-  /**
-   * Le cadrage rejoint les bandes mesurées en douceur : la barre d'outils du navigateur qui se replie
-   * ou la note qui apparaît ne font pas sauter l'astre. Une bande qui apparaît ou disparaît s'applique
-   * aussitôt (pas de forme intermédiaire), comme tout changement en mouvement réduit.
-   */
-  function settleBands(dt: number, reduced: boolean): void {
-    if (bandsSettled) return;
-    const follow = reduced ? 1 : easeFactor(dt, BAND_FOLLOW_RATE);
-    let settled = true;
-    for (const key of shownBands.keys()) if (!bands.has(key)) shownBands.delete(key);
-    for (const [key, target] of bands) {
-      const shown = shownBands.get(key);
-      if (!shown) {
-        shownBands.set(key, { ...target });
-        continue;
-      }
-      shown.top = approach(shown.top, target.top, follow, BAND_EPSILON);
-      shown.bottom = approach(shown.bottom, target.bottom, follow, BAND_EPSILON);
-      if (shown.top !== target.top || shown.bottom !== target.bottom) settled = false;
-    }
-    bandsSettled = settled;
-  }
-
-  /** Grand écran : zone libre entre la colonne des plaques (toutes alignées) et la règle des distances. */
-  function measureZone(): void {
-    zone = null;
-    if (mobileLayout.matches || !rail) return;
-    const plate = plates.values().next().value;
-    if (!plate) return;
-    const left = plate.getBoundingClientRect().right + ZONE_MARGIN_PX;
-    // Règle masquée (liste des escales à sa place) : la zone va jusqu'au bord de l'écran.
-    const railBox = rail.getBoundingClientRect();
-    const right = (railBox.width > 0 ? railBox.left : view.width) - ZONE_MARGIN_PX;
-    if (right - left >= MIN_ZONE_SHARE * view.width) zone = { left: left / view.width, right: right / view.width };
-  }
-
-  /**
    * Une seule passe de lecture : taille des étiquettes (astres et ciel profond), zones à éviter, bandes et zone
    * libres. Les étiquettes à repère sont mesurées dans leur forme normale, puis reprennent la leur après toutes les
    * lectures : sur un écran à 120 Hz, la boucle saute une image sur deux, et la suivante pourrait être peinte sans elle.
@@ -792,8 +694,8 @@ function setupScene(
       const rect = element.getBoundingClientRect();
       return [rect.left, rect.top, rect.right, rect.bottom] as const;
     });
-    measureBands();
-    measureZone();
+    screenLayout.measure(view);
+    layoutSettled = false;
     markedSlots.forEach((slot, i) => setLabelForm(slot, forms[i].mirrored, forms[i].short));
     needsRender = true;
   }
@@ -1077,7 +979,7 @@ function setupScene(
   }
 
   function updateCamera(dt: number, journey: JourneyState, explore: ExploreState, reduced: boolean): void {
-    settleBands(dt, reduced);
+    layoutSettled = screenLayout.settle(dt, reduced);
     cameraContext.realScale = realScale;
     cameraContext.portrait = view.width / view.height < PORTRAIT_ASPECT;
     exploreContext.realScale = realScale;
@@ -1310,7 +1212,7 @@ function setupScene(
         realScale !== (snapshot.realScale ? 1 : 0) ||
         (!reduced && (parallax.x !== parallax.targetX || parallax.y !== parallax.targetY)) ||
         !orbitsSettled ||
-        !bandsSettled ||
+        !layoutSettled ||
         // Exploration : entrée, sortie, bascule « vu depuis la Terre », fondu, gestes en attente, vue qui s'ajuste.
         explore.stop !== exploring ||
         explore.fromEarth !== fromEarthShown ||
