@@ -24,6 +24,7 @@ import type { PointCloud } from "@/lib/astro/milkyWay";
 import { MULTIVERSE_SEED, multiverseBubbles, type Bubble } from "@/lib/astro/multiverse";
 import { OBSERVABLE_UNIVERSE_RADIUS_GLY } from "@/lib/astro/universe";
 import { createBubbleMaterial, createCmbMaterial } from "./extragalacticMaterials";
+import type { LayerWeights } from "./layers";
 import { createPointCloudMaterial, type Uniform } from "./materials";
 
 /**
@@ -46,17 +47,8 @@ export interface ExtragalacticAnchor {
   position: Vec3;
 }
 
-/** Poids des couches extragalactiques (voir layers.ts), de 0 à 1. */
-export interface ExtragalacticWeights {
-  /** Galaxies du Groupe local. */
-  localGroup: number;
-  /** Toile cosmique. */
-  web: number;
-  /** Fond diffus cosmologique. */
-  cmb: number;
-  /** Autres bulles du multivers. */
-  multiverse: number;
-}
+/** Poids des couches extragalactiques, de 0 à 1 : galaxies du Groupe local, toile, fond diffus, autres bulles. */
+export type ExtragalacticWeights = Pick<LayerWeights, "localGroup" | "web" | "cmb" | "multiverse">;
 
 export interface ExtragalacticBody {
   /** Galaxies du Groupe local, en kly ; échelle = unitsPerLightYear(zoom) × 1e3, posée par le moteur. */
