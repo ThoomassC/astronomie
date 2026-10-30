@@ -1,0 +1,13 @@
+/*
+ * Plan du site au pied du voyage : aligné sur les paragraphes du pied de page (`footer p` de globals.css), décalés
+ * comme eux sur grand écran et ramenés au bord à 640 px et moins.
+ */
+.siteMap {
+  margin-left: clamp(0rem, 4vw, 4rem);
+}
+
+@media (max-width: 640px) {
+  .siteMap {
+    margin-left: 0;
+  }
+}

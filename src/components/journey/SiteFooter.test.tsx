@@ -53,6 +53,18 @@ describe("SiteFooter", () => {
     expect(within(footer).getByRole("link", { name: "CC BY 4.0" })).toHaveAttribute("href", deed);
   });
 
+  it.each([
+    ["fr", "Plan du site", "À propos", "Voyage"],
+    ["en", "Site map", "About", "Journey"],
+    ["es", "Mapa del sitio", "Acerca de", "Viaje"],
+  ] as const)("devrait finir par le plan du site, qui mène à À propos dans la langue (%s)", (locale, name, about, voyage) => {
+    render(<SiteFooter locale={locale} />);
+    const siteMap = within(screen.getByRole("contentinfo")).getByRole("navigation", { name });
+    expect(siteMap).toHaveAttribute("id", "plan-du-site");
+    expect(within(siteMap).getByRole("link", { name: about })).toHaveAttribute("href", `/${locale}/a-propos`);
+    expect(within(siteMap).getByRole("link", { name: voyage })).toHaveAttribute("aria-current", "page");
+  });
+
   it.each(LOCALES)("devrait s'effacer pendant l'exploration, comme le reste de la page (%s)", (locale) => {
     render(<SiteFooter locale={locale} />);
     expect(screen.getByRole("contentinfo")).toHaveAttribute("data-hide-on-explore");
