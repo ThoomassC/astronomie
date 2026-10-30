@@ -82,15 +82,15 @@ afterEach(() => {
 });
 
 describe("DistanceRail", () => {
-  it("devrait lister les treize escales, du Soleil à la Voie lactée, chacune avec son ancre", () => {
+  it("devrait lister les seize escales, du Soleil au multivers, chacune avec son ancre", () => {
     render(<DistanceRail stops={STOPS} />);
     expect(rail()).toHaveAttribute("id", "rail");
     expect(rail()).toHaveAttribute("data-hide-on-explore");
     const links = within(rail()).getAllByRole("link");
-    expect(links).toHaveLength(13);
+    expect(links).toHaveLength(16);
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "#soleil", "#mercure", "#venus", "#terre", "#mars", "#ceinture", "#jupiter", "#saturne", "#uranus", "#neptune",
-      "#au-dela", "#etoiles-voisines", "#voie-lactee",
+      "#au-dela", "#etoiles-voisines", "#voie-lactee", "#groupe-local", "#univers-observable", "#multivers",
     ]);
   });
 
@@ -110,6 +110,9 @@ describe("DistanceRail", () => {
       "Au-delà, plus de 30 UA",
       "Étoiles voisines, dès 4,2 al",
       "Voie lactée, centre à 27\u202f000 al",
+      "Groupe local, Andromède à 2,5 millions d'al",
+      "Univers observable, rayon de 46 milliards d'al",
+      "Multivers, hypothèse",
     ]);
     // Le nom visible et la distance en petit, sous lui.
     expect(marker("Mars, 1,52 UA")).toHaveTextContent("Mars1,52 UA");
@@ -126,7 +129,7 @@ describe("DistanceRail", () => {
     expect(marker("Étoiles voisines, dès 4,2 al")).toHaveAttribute("aria-current", "step");
   });
 
-  it("devrait tracer 21 graduations dans le système solaire et 6 en années-lumière, majeures à 1 UA, 10 UA et 1 al", () => {
+  it("devrait tracer 21 graduations dans le système solaire et 12 en années-lumière, majeures à 1 UA, 10 UA, 1 al, 1 Mal et 1 Gal", () => {
     const { container } = render(<DistanceRail stops={STOPS} />);
     const ticks = [...container.querySelectorAll<HTMLElement>(".tick")];
     // Positions relues dans le style, que jsdom écrit sans zéros inutiles (« 6.000% » devient « 6% »).
@@ -134,22 +137,31 @@ describe("DistanceRail", () => {
       "6%", "10.499%", "13.988%", "16.839%", "19.249%", "21.337%", "23.179%",
       "24.827%", "35.666%", "42.006%", "46.505%", "49.994%", "52.845%", "55.255%", "57.344%", "59.185%",
       "60.833%", "71.672%", "78.012%", "82.511%", "86%",
-      "91%", "92.4%", "93.8%", "95.2%", "96.6%", "98%",
+      "89%", "89.818%", "90.636%", "91.455%", "92.273%", "93.091%", "93.909%", "94.727%", "95.545%", "96.364%",
+      "97.182%", "98%",
     ]);
     const majors = ticks.filter((tick) => tick.classList.contains("maj"));
-    expect(majors.map((tick) => tick.style.top)).toEqual(["24.827%", "60.833%", "91%"]);
-    expect(majors.map((tick) => tick.style.width)).toEqual(["12px", "12px", "12px"]);
-    expect(ticks.filter((tick) => tick.style.width === "6px")).toHaveLength(24);
+    expect(majors.map((tick) => tick.style.top)).toEqual(["24.827%", "60.833%", "89%", "93.909%", "96.364%"]);
+    expect(majors.map((tick) => tick.style.width)).toEqual(["12px", "12px", "12px", "12px", "12px"]);
+    expect(ticks.filter((tick) => tick.style.width === "6px")).toHaveLength(28);
   });
 
   it("devrait interrompre l'axe entre le système solaire et les étoiles, signe « ≈ » au milieu, ignoré des lecteurs d'écran", () => {
     const { container } = render(<DistanceRail stops={STOPS} />);
     const axes = [...container.querySelectorAll<HTMLElement>(".axis")];
-    expect(axes.map((axis) => axis.getAttribute("style"))).toEqual(["bottom: 13%;", "top: 90%;"]);
+    expect(axes.map((axis) => axis.getAttribute("style"))).toEqual(["bottom: 13%;", "top: 88.5%; bottom: 2%;"]);
     const breakMark = container.querySelector<HTMLElement>(".rail-break");
     expect(breakMark).toHaveTextContent("≈");
     expect(breakMark).toHaveAttribute("aria-hidden", "true");
-    expect(breakMark?.getAttribute("style")).toBe("top: 88.5%;");
+    expect(breakMark?.getAttribute("style")).toBe("top: 87.75%;");
+  });
+
+  it("devrait arrêter l'axe à 10¹¹ al (98 %) et poser le multivers après lui, hors échelle", () => {
+    const { container } = render(<DistanceRail stops={STOPS} />);
+    const axisEnd = 100 - parseFloat(container.querySelectorAll<HTMLElement>(".axis")[1].style.bottom);
+    expect(axisEnd).toBe(98);
+    expect(parseFloat(marker("Univers observable, rayon de 46 milliards d'al").style.top)).toBeLessThan(axisEnd);
+    expect(parseFloat(marker("Multivers, hypothèse").style.top)).toBeGreaterThan(axisEnd);
   });
 
   it("devrait poser chaque repère à sa position vraie, dans sa couleur, tant que la règle n'est pas mesurée", () => {
@@ -157,11 +169,11 @@ describe("DistanceRail", () => {
     const links = within(rail()).getAllByRole("link");
     expect(links.map((link) => link.style.top)).toEqual([
       "2%", "9.982%", "19.755%", "24.827%", "31.415%", "40.359%", "50.607%", "60.096%", "71.025%", "78.049%",
-      "84.352%", "91.879%", "97.204%",
+      "84.352%", "89.514%", "92.626%", "94.232%", "97.724%", "99.4%",
     ]);
     expect(links.map((link) => link.style.getPropertyValue("--pc"))).toEqual([
       "#FFB13B", "#B5ADA3", "#E6CB94", "#5B9BE6", "#DA6A43", "#A89F94", "#D8A878", "#E2C98F", "#9ED9DE", "#5878E8",
-      "#C2A36B", "#CFDCFF", "#B3A4EE",
+      "#C2A36B", "#CFDCFF", "#B3A4EE", "#A9B8E8", "#E7A6C1", "#7FD8C8",
     ]);
     // Pastille du repère, après le nom.
     expect(links.every((link) => link.lastElementChild?.tagName === "I")).toBe(true);
@@ -169,22 +181,25 @@ describe("DistanceRail", () => {
   });
 
   it("devrait écarter les repères trop proches sur une règle courte, et les relier à leur vraie position par une équerre", () => {
-    stubRailHeight(400);
+    stubRailHeight(600);
     const { container } = render(<DistanceRail stops={STOPS} />);
     const top = (name: string) => parseFloat(marker(name).style.top);
-    // 400 px, écart de 26 px : la Terre et Mars descendent sous Vénus, la Voie lactée sous les étoiles voisines.
+    // 600 px, écart de 26 px : les planètes intérieures gardent leur place ; d'Uranus au multivers, les repères
+    // lointains, serrés au bas de la règle, remontent un à un.
     expect(marker("Vénus, 0,72 UA").style.top).toMatch(/px$/);
-    expect(top("Vénus, 0,72 UA")).toBeCloseTo(79.0197, 3);
-    expect(top("Terre, 1 UA")).toBeCloseTo(105.0197, 3);
-    expect(top("Mars, 1,52 UA")).toBeCloseTo(131.0197, 3);
-    expect(top("Voie lactée, centre à 27\u202f000 al")).toBeCloseTo(393.517, 3);
+    expect(top("Vénus, 0,72 UA")).toBeCloseTo(118.5296, 3);
+    expect(top("Uranus, 19,2 UA")).toBeCloseTo(418, 9);
+    expect(top("Voie lactée, centre à 27\u202f000 al")).toBeCloseTo(522, 9);
+    expect(top("Multivers, hypothèse")).toBeCloseTo(600, 9);
     const leaders = [...container.querySelectorAll<HTMLElement>(".leader")];
-    expect(leaders.map((leader) => leader.className)).toEqual(["leader down", "leader down", "leader down"]);
-    expect(leaders.map((leader) => leader.style.getPropertyValue("--pc"))).toEqual(["#5B9BE6", "#DA6A43", "#B3A4EE"]);
-    expect(parseFloat(leaders[0].style.top)).toBeCloseTo(99.3072, 3);
-    expect(parseFloat(leaders[0].style.height)).toBeCloseTo(5.7125, 3);
-    expect(parseFloat(leaders[2].style.top)).toBeCloseTo(388.8156, 3);
-    expect(parseFloat(leaders[2].style.height)).toBeCloseTo(4.7013, 3);
+    expect(leaders.map((leader) => leader.className)).toEqual([...Array(7).fill("leader up"), "leader down"]);
+    expect(leaders.map((leader) => leader.style.getPropertyValue("--pc"))).toEqual([
+      "#9ED9DE", "#5878E8", "#C2A36B", "#CFDCFF", "#B3A4EE", "#A9B8E8", "#E7A6C1", "#7FD8C8",
+    ]);
+    expect(parseFloat(leaders[0].style.top)).toBeCloseTo(418, 3);
+    expect(parseFloat(leaders[0].style.height)).toBeCloseTo(8.1516, 3);
+    expect(parseFloat(leaders[7].style.top)).toBeCloseTo(596.4, 3);
+    expect(parseFloat(leaders[7].style.height)).toBeCloseTo(3.6, 3);
   });
 
   it("devrait faire glisser le curseur avec la caméra, au rythme de smootherstep, l'accueil étant placé comme le Soleil", () => {
@@ -242,6 +257,9 @@ describe("DistanceRail en anglais et en espagnol", () => {
         "Beyond, over 30 AU",
         "Nearby stars, from 4.2 ly",
         "Milky Way, centre at 27,000 ly",
+        "Local Group, Andromeda at 2.5 million ly",
+        "Observable Universe, 46 billion ly in radius",
+        "Multiverse, hypothesis",
       ],
     },
     {
@@ -261,6 +279,9 @@ describe("DistanceRail en anglais et en espagnol", () => {
         "Más allá, más de 30 UA",
         "Estrellas vecinas, desde 4,2 al",
         "Vía Láctea, centro a 27.000 al",
+        "Grupo Local, Andrómeda a 2,5 millones de al",
+        "Universo observable, radio de 46 mil millones de al",
+        "Multiverso, hipótesis",
       ],
     },
   ] as const)(

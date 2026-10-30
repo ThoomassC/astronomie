@@ -62,6 +62,7 @@ function expectView(actual: OrbitView, expected: OrbitView) {
 describe("isExploreStop", () => {
   it.each([
     "hero", "sun", "mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune", "beyond", "stars", "galaxy",
+    "localGroup", "universe", "multiverse",
   ] as const)("devrait permettre de tourner autour de l'escale %s", (key) => {
     expect(isExploreStop(key)).toBe(true);
   });
@@ -105,6 +106,9 @@ describe("orbitLimits", () => {
     ["l'au-delà : la sphère de garde du Soleil", "beyond", cam({ dist: 640 }), context(0, 1), -3.599267],
     ["les étoiles voisines : 0,25 × la base", "stars", cam({ dist: 640, zoom: 4.6 }), context(0, 1), Math.log(0.25)],
     ["la Voie lactée : 0,4 × la base", "galaxy", cam({ tx: -4.13, ty: -7.26, tz: 74.84, dist: 640, zoom: 8 }), context(0, 1), Math.log(0.4)],
+    ["le Groupe local : 0,4 × la base", "localGroup", cam({ tx: 50.96, ty: 37.93, tz: -26.93, dist: 433, zoom: 9.7 }), context(0, 1), Math.log(0.4)],
+    ["l'Univers observable : 0,4 × la base", "universe", cam({ dist: 622.7, zoom: 14 }), context(0, 1), Math.log(0.4)],
+    ["le multivers : 0,4 × la base", "multiverse", cam({ dist: 564.3, zoom: 15 }), context(0, 1), Math.log(0.4)],
   ])("devrait laisser approcher %s, et reculer jusqu'à 4 fois la base", (_label, stop, base, ctx, minDistanceLog) => {
     const limits = orbitLimits(stop, base, ctx);
     expect(limits.minDistanceLog).toBeCloseTo(minDistanceLog, 6);
@@ -334,6 +338,12 @@ describe("EXPLORE_COSMIC_BAND", () => {
     ["stars", "grand écran", 1440 / 900, 36, { zone: { left: 0.41, right: 0.86 } }],
     ["galaxy", "téléphone", 375 / 812, 50, { band: { top: 0.08, bottom: 0.53 } }],
     ["galaxy", "grand écran", 1440 / 900, 36, { zone: { left: 0.41, right: 0.86 } }],
+    ["localGroup", "téléphone", 375 / 812, 50, { band: { top: 0.08, bottom: 0.53 } }],
+    ["localGroup", "grand écran", 1440 / 900, 36, { zone: { left: 0.41, right: 0.86 } }],
+    ["universe", "téléphone", 375 / 812, 50, { band: { top: 0.08, bottom: 0.53 } }],
+    ["universe", "grand écran", 1440 / 900, 36, { zone: { left: 0.41, right: 0.86 } }],
+    ["multiverse", "téléphone", 375 / 812, 50, { band: { top: 0.08, bottom: 0.53 } }],
+    ["multiverse", "grand écran", 1440 / 900, 36, { zone: { left: 0.41, right: 0.86 } }],
   ];
 
   it.each(CASES)(
