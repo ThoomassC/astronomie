@@ -24,6 +24,7 @@ import {
   SURFACE_FRAGMENT,
   SURFACE_VERTEX,
 } from "./shaders";
+import { createCoronaFieldTexture } from "./coronaField";
 import { SATURN_RING } from "./textureSet";
 
 /** Matériaux de la scène : shaders de shaders.ts et uniformes typés, modifiés en place par le moteur. */
@@ -226,6 +227,8 @@ export interface CoronaUniforms {
   uGlare: Uniform<number>;
   /** Passage du repère du monde à celui du Soleil (pôle sur y), rotation propre exclue : orientation de son maillage. */
   uStarFrame: Uniform<Matrix3>;
+  /** Carte cuite des jets et des sites des protubérances (coronaField.ts) ; à libérer avec la scène. */
+  uField: Uniform<DataTexture>;
 }
 
 /** Uniformes que la couronne partage avec la surface du Soleil (voir starSurface.ts). */
@@ -237,19 +240,26 @@ export interface CoronaStar {
   uSpinRate: Uniform<number>;
 }
 
+/**
+ * Couronne, chromosphère et protubérances du Soleil (CORONA_FRAGMENT), sur un disque additif tourné vers la caméra.
+ * `lite` (écrans tactiles) : variante CORONA_LITE, sans spicules ni fibres.
+ */
 export function createCoronaMaterial(
   star: CoronaStar,
   size: number,
   sunRadius: number,
+  lite = false,
 ): { material: ShaderMaterial; uniforms: CoronaUniforms } {
   const uniforms: CoronaUniforms = {
     uSize: { value: size },
     uSunRadius: { value: sunRadius },
     uGlare: { value: 0.1 },
     uStarFrame: { value: new Matrix3() },
+    uField: { value: createCoronaFieldTexture() },
   };
   const material = new ShaderMaterial({
     uniforms: { ...uniforms, uTime: star.uTime, uActivity: star.uActivity, uSpinRate: star.uSpinRate },
+    defines: lite ? { CORONA_LITE: "" } : {},
     vertexShader: CORONA_VERTEX,
     fragmentShader: CORONA_FRAGMENT,
     blending: AdditiveBlending,

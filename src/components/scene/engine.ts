@@ -1504,6 +1504,7 @@ function setupScene(
       textures.dispose();
       scene.traverse(disposeObject);
       placeholder.dispose();
+      sun.coronaUniforms.uField.value.dispose();
       releaseRenderer(renderer);
     },
   };
