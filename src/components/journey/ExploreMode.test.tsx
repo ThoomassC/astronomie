@@ -96,7 +96,7 @@ afterEach(() => {
 
 /**
  * La page réduite à ce que le mode touche : le bouton d'entrée dans la barre, le contenu et le pied de page,
- * tous marqués `data-hide-on-explore`, puis la couche d'exploration.
+ * tous marqués `data-hide-on-explore`, puis la couche d'exploration et le dock du temps, qui reste actif.
  */
 function renderPage() {
   return render(
@@ -111,9 +111,15 @@ function renderPage() {
       </main>
       <footer data-hide-on-explore>Sources</footer>
       <ExploreMode />
+      <section aria-label="Machine à remonter le temps">
+        <button type="button">Mettre en pause</button>
+      </section>
     </>,
   );
 }
+
+/** Bouton du dock du temps : hors de la couche d'exploration, il peut garder le focus pendant le mode. */
+const dockButton = () => screen.getByRole("button", { name: "Mettre en pause" });
 
 /** Compare les gestes transmis au moteur, champ par champ. */
 function expectInput(actual: OrbitInput | null, expected: OrbitInput) {
@@ -173,11 +179,51 @@ describe("ExploreMode", () => {
   });
 
   describe("clavier", () => {
+    it("devrait rappeler les flèches à côté des gestes, sur la barre d'exploration", () => {
+      renderPage();
+      enter("saturn");
+      const group = screen.getByRole("group", { name: SATURN_GROUP });
+      expect(
+        within(group).getByText("Glisser ou flèches pour tourner · molette pour la distance · Échap pour terminer"),
+      ).toBeInTheDocument();
+    });
+
     it.each([
       ["{ArrowLeft}", TURN_LEFT],
+      ["{Home}", RECENTER],
+    ] as const)("devrait transmettre la touche %s au moteur où que soit le focus, dock du temps compris", async (keys, expected) => {
+      const user = userEvent.setup();
+      renderPage();
+      enter("saturn");
+      act(() => dockButton().focus());
+      await user.keyboard(keys);
+      expectInput(exploreStore.takeInput(), expected);
+    });
+
+    it("devrait quitter le mode avec Échap, même depuis le dock du temps", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      enter("saturn");
+      act(() => dockButton().focus());
+      await user.keyboard("{Escape}");
+      expect(exploreStore.get().stop).toBeNull();
+    });
+
+    it.each([
       ["+", CLOSER],
       ["0", RECENTER],
-    ] as const)("devrait transmettre la touche %s au moteur, où que soit le focus", async (keys, expected) => {
+    ] as const)("devrait transmettre la touche %s depuis les commandes d'exploration", async (keys, expected) => {
+      const user = userEvent.setup();
+      renderPage();
+      enter("saturn");
+      await user.keyboard(keys);
+      expectInput(exploreStore.takeInput(), expected);
+    });
+
+    it.each([
+      ["+", CLOSER],
+      ["0", RECENTER],
+    ] as const)("devrait transmettre la touche %s quand aucun élément n'a le focus", async (keys, expected) => {
       const user = userEvent.setup();
       renderPage();
       enter("saturn");
@@ -185,6 +231,18 @@ describe("ExploreMode", () => {
       await user.keyboard(keys);
       expectInput(exploreStore.takeInput(), expected);
     });
+
+    // Raccourcis d'une seule touche (critère 2.1.4) : actifs là où l'on explore, jamais pris à un autre élément.
+    it.each(["+", "=", "-", "0"])(
+      "devrait laisser la touche « %s » à l'élément qui a le focus hors de la couche d'exploration (dock du temps)",
+      (key) => {
+        renderPage();
+        enter("saturn");
+        act(() => dockButton().focus());
+        expect(fireEvent.keyDown(dockButton(), { key })).toBe(true);
+        expect(exploreStore.takeInput()).toBeNull();
+      },
+    );
   });
 
   describe("sortie par Échap", () => {
@@ -407,7 +465,7 @@ describe("ExploreMode en anglais et en espagnol", () => {
       announce:
         "Orbiting Saturn. Drag to turn, pinch or use the scroll wheel to change the distance. With the keyboard: arrow keys to turn, plus and minus for distance, 0 to recentre, Escape to finish.",
       where: "Saturn",
-      hint: "Drag to turn · scroll for distance · Esc to finish",
+      hint: "Drag or arrow keys to turn · scroll for distance · Esc to finish",
       fromEarth: "Seen from Earth",
       done: "Done",
       pad: ["Turn left", "Tilt up", "Tilt down", "Turn right", "Move away", "Move closer", "Recentre"],
@@ -421,7 +479,7 @@ describe("ExploreMode en anglais et en espagnol", () => {
       announce:
         "Girando alrededor de Saturno. Arrastra para girar, pellizca o usa la rueda del ratón para cambiar la distancia. Con el teclado: flechas para girar, más y menos para la distancia, 0 para volver a centrar, Escape para terminar.",
       where: "Saturno",
-      hint: "Arrastra para girar · rueda para la distancia · Esc para terminar",
+      hint: "Arrastra o usa las flechas para girar · rueda para la distancia · Esc para terminar",
       fromEarth: "Visto desde la Tierra",
       done: "Terminar",
       pad: [

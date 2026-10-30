@@ -342,7 +342,10 @@
   flex: none;
 }
 
-/* Ancré comme la liste des escales : sous la barre, à droite ; il défile si l'écran est bas. */
+/*
+ * Ancré comme la liste des escales : sous la barre, à droite ; il défile entre la barre fixe et la réserve du dock
+ * quand il ne tient pas (sur écran bas, il s'ouvre en entier, plus bas).
+ */
 .menuPanel {
   position: absolute;
   top: 100%;
@@ -388,11 +391,14 @@
   }
 }
 
-/* Écran bas (téléphone en paysage, zoom à 400 %) : la barre suit la page, le panneau défile sous elle. */
+/*
+ * Écran bas (téléphone en paysage, zoom à 400 %) : la barre suit la page, le panneau s'ouvre en entier sous elle et la
+ * page défile pour le parcourir. Une hauteur mesurée sur la vue (100svh − 6 rem) le réduisait à 79 px à 400 % (175 px
+ * de haut), moins de deux lignes. Même règle pour la liste des escales (globals.css).
+ */
 @media (max-height: 30rem) {
   .menuPanel {
-    max-height: calc(100vh - 6rem);
-    max-height: calc(100svh - 6rem);
+    max-height: none;
   }
 }
 
@@ -437,8 +443,9 @@
 }
 
 /*
- * Couleurs forcées : les fonds disparaissent ; contours sur les capsules, ligne courante en Highlight. Les drapeaux
- * s'effacent : leurs couleurs ne passeraient pas, et le code ou le nom de la langue suffit.
+ * Couleurs forcées : les fonds disparaissent ; contours sur les capsules, ligne courante en Highlight, sauf au focus :
+ * ce contour masquerait celui du focus (la graisse signale encore la ligne courante). Les drapeaux s'effacent : leurs
+ * couleurs ne passeraient pas, et le code ou le nom de la langue suffit.
  */
 @media (forced-colors: active) {
   .flag {
@@ -452,7 +459,7 @@
     border-color: CanvasText;
   }
 
-  .panel a[aria-current] {
+  .panel a[aria-current]:not(:focus-visible) {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }

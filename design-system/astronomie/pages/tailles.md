@@ -66,7 +66,8 @@ rouge veut dire froid.
   de 4 à 24 px, sinon un point dans un anneau de 10 px `--soleil`), puis un trait `--laiton` terminé par deux traits
   de 8 px. Ligne 2 : « {n} Soleils côte à côte », 0,75 rem `--brume`. n parmi 2, 5, 10 … 2 000, le plus grand qui
   tient en 160 px (112 px en compact). Elle paraît, en fondu de 200 ms, quand le Soleil fait 24 px ou moins. Grand
-  écran : en bas à droite, à gauche de la règle ; compact : en haut à droite, sous la barre.
+  écran : en bas à droite, à gauche de la règle ; compact : en haut à droite, sous la barre. Toujours sous le contenu
+  (une fiche dépliée passe devant), au-dessus de la scène et de ses étiquettes.
 
 ## Règle des tailles
 
@@ -83,7 +84,8 @@ rouge veut dire froid.
   réduit. La règle globale de mouvement réduit coupe les transitions (échelle graphique, dépliage des plaques).
 - Sans WebGL ou en rendu logiciel : pas de scène, fond `--nuit` (`no3d`) ; plaques, règle et menu restent.
   Sans JavaScript : l'introduction et les dix plaques entières, la règle.
-- Couleurs forcées : réglette et échelle graphique masquées (décoratives).
+- Couleurs forcées : réglette masquée (décorative, faite de dégradés) ; échelle graphique gardée, son texte, son trait
+  et le Soleil à l'échelle redessinés en bordures (`CanvasText`).
 
 ## Non vérifié dans un navigateur
 

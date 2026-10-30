@@ -98,9 +98,13 @@
 }
 
 /* ---------- Échelle graphique de la scène (décorative) ---------- */
+/*
+ * Au rang des étiquettes de la scène (#labels, 1), après elles dans le DOM, donc au-dessus ; sous le contenu (main,
+ * 2) : en mise en page compacte, où elle se pose sous la barre, une fiche dépliée qui passe dessous reste lisible.
+ */
 .scaleBar {
   position: fixed;
-  z-index: 3;
+  z-index: 1;
   right: calc(var(--gr) + var(--rail-w) + 1.5rem);
   bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   padding: 0.5rem 0.75rem;
@@ -216,9 +220,35 @@
   display: none;
 }
 
+/*
+ * Couleurs forcées : les fonds disparaissent. La réglette des températures, décorative et faite de dégradés,
+ * s'efface ; l'échelle graphique garde son texte, et son trait et son Soleil, faits de fonds, sont redessinés en
+ * bordures, que les couleurs forcées respectent.
+ */
 @media (forced-colors: active) {
-  .thermo,
-  .scaleBar {
+  .thermo {
     display: none;
+  }
+
+  .scaleBar {
+    border-color: CanvasText;
+  }
+
+  /* Le trait : un filet de bordure à mi-hauteur, entre les deux traits d'extrémité (déjà des bordures). */
+  .scaleLine {
+    position: relative;
+    background: none;
+  }
+
+  .scaleLine::before {
+    content: "";
+    position: absolute;
+    inset: calc(50% - 0.5px) 0 auto;
+    border-top: 1px solid CanvasText;
+  }
+
+  /* Le Soleil à l'échelle : un disque plein, fait de sa seule bordure (la moitié de son diamètre). */
+  .scaleSun[data-mode="disc"] {
+    border: calc(var(--sun-size, 4px) / 2) solid CanvasText;
   }
 }

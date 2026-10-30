@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { Children, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import RootLayout, { generateMetadata, generateStaticParams } from "@/app/[lang]/layout";
+import { FocusOnNavigation } from "@/components/site/FocusOnNavigation";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { rootMetadata } from "@/i18n/metadata";
 
@@ -22,6 +23,15 @@ function LocaleProbe() {
   return <span>{useLocale()}</span>;
 }
 
+/** L'arbre rendu par le layout contient un élément de ce composant, à n'importe quelle profondeur. */
+function containsComponent(node: ReactNode, component: unknown): boolean {
+  return Children.toArray(node).some(
+    (child) =>
+      isValidElement<{ children?: ReactNode }>(child) &&
+      (child.type === component || containsComponent(child.props.children, component)),
+  );
+}
+
 describe("layout racine /[lang]", () => {
   it("devrait produire au build les pages des trois langues, et elles seules", () => {
     expect(generateStaticParams()).toEqual([{ lang: "fr" }, { lang: "en" }, { lang: "es" }]);
@@ -35,6 +45,10 @@ describe("layout racine /[lang]", () => {
     expect(renderToStaticMarkup(await RootLayout(props("en", <LocaleProbe />)))).toContain(
       "<body><span>en</span></body>",
     );
+  });
+
+  it("devrait placer le focus sur le contenu après chaque navigation entre les pages (FocusOnNavigation)", async () => {
+    expect(containsComponent(await RootLayout(props("fr")), FocusOnNavigation)).toBe(true);
   });
 
   it("devrait poser sur <html> les variables des trois polices et le défilement doux", async () => {

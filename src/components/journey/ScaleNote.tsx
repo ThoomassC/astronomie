@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { isCosmicStop } from "@/lib/journey/camera";
 import { journeyStore } from "@/lib/journey/store";
@@ -10,6 +10,8 @@ import { SCALE_STRINGS } from "./scale.strings";
 
 /** L'annonce est ensuite retirée, pour ne pas doubler la note visible en lecture linéaire (comme `useAnnouncer`). */
 const ANNOUNCE_CLEAR_MS = 7000;
+/** Marque posée sur <html> tant que la note est à l'écran : les marges de défilement lui font place (globals.css). */
+const NOTE_ATTRIBUTE = "data-scale-note";
 
 /**
  * Note d'échelle, visible tant que les distances réelles sont actives. Son texte est une ligne de lecture
@@ -82,6 +84,18 @@ export function ScaleNote() {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [visible, hide]);
+
+  /*
+   * Note visible : la page le dit sur <html>, dont les marges de défilement lui font place (globals.css). Posée et
+   * retirée par la note elle-même, avant la peinture : la page quittée, que Next garde masquée sous <Activity> avec sa
+   * note (toujours `data-visible`), nettoie ses effets et n'impose plus sa marge à la page affichée.
+   */
+  useLayoutEffect(() => {
+    if (!visible) return;
+    const root = document.documentElement;
+    root.toggleAttribute(NOTE_ATTRIBUTE, true);
+    return () => root.removeAttribute(NOTE_ATTRIBUTE);
+  }, [visible]);
 
   // Hauteur publiée sur la page : le focus et les plaques qu'on déplie passent sous la note (globals.css).
   useEffect(() => {

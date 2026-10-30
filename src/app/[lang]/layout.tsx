@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Next, Bodoni_Moda } from "next/font/google";
 import { notFound } from "next/navigation";
+import { FocusOnNavigation } from "@/components/site/FocusOnNavigation";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { isLocale, LOCALES, type Locale } from "@/i18n/locales";
 import { rootMetadata } from "@/i18n/metadata";
@@ -58,7 +59,9 @@ export const viewport: Viewport = SITE_VIEWPORT;
 
 /**
  * Layout racine, sous le segment de la langue (/fr, /en, /es) : la langue du document et celle que lisent les
- * composants client (`useLocale`). Les pages restent des composants serveur, qui reçoivent la langue en prop.
+ * composants client (`useLocale`). Les pages restent des composants serveur, qui reçoivent la langue en prop. Après
+ * chaque navigation entre les pages, le focus rejoint le contenu de la page affichée (`FocusOnNavigation`, sans rendu,
+ * après les pages : une page qui pose elle-même le focus en garde la main).
  */
 export default async function RootLayout({ children, params }: LayoutProps<"/[lang]">) {
   const { lang } = await params;
@@ -71,6 +74,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
     >
       <body>
         <LocaleProvider locale={lang}>{children}</LocaleProvider>
+        <FocusOnNavigation />
       </body>
     </html>
   );

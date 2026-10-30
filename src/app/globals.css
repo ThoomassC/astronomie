@@ -712,6 +712,17 @@ main > section > * {
   pointer-events: none;
 }
 
+/*
+ * Avancement du repos de la caméra, de 0 à 1, écrit sur la plaque de l'escale à chaque image (suivi du défilement) et
+ * lu par son seul filet (::after, mise en page compacte). Non héritée : sinon chaque écriture invaliderait le style de
+ * tout le contenu de la plaque ; le filet la reprend explicitement (`inherit`).
+ */
+@property --rest {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 .rank {
   margin: 0 0 0.25rem;
   font-size: 0.875rem;
@@ -1191,10 +1202,17 @@ main > section > * {
 }
 
 /* ---------- Pied de page ---------- */
+/*
+ * Fond de nuit, plein dès 3 rem sous le haut du pied de page, avant son premier texte (4 rem) : la scène 3D, toujours
+ * dessous (VY Canis Majoris au bas de Tailles, le multivers au bas du voyage), s'y efface en fondu, et le texte garde
+ * son contraste quoi qu'elle montre (--brume sur --nuit : 7,3:1). L'Accueil et À propos, sans scène, sont déjà sur la
+ * nuit : rien n'y change.
+ */
 footer {
   position: relative;
   z-index: 2;
   padding: 4rem calc(var(--gr) + var(--rail-w) + 1rem) 9rem var(--gl);
+  background: linear-gradient(rgba(6, 11, 24, 0), var(--nuit) 3rem);
   color: var(--brume);
   font-size: 0.875rem;
 }
@@ -1407,9 +1425,12 @@ footer a {
   font-weight: 400;
 }
 
-/* Couleurs forcées : les fonds disparaissent, un contour garde la bulle visible. */
+/*
+ * Couleurs forcées : les fonds disparaissent, un contour garde visibles la bulle et l'escale en cours de la liste. Au
+ * focus, l'escale en cours prend le contour du focus : le sien le masquerait (la graisse la signale encore).
+ */
 @media (forced-colors: active) {
-  .stops-list a[aria-current="location"] {
+  .stops-list a[aria-current="location"]:not(:focus-visible) {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }
@@ -1703,13 +1724,18 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   border-radius: 50%;
 }
 
+/*
+ * Rappel des gestes : le seul élément de la barre qui cède la place. Sur une ligne quand il tient, sinon sur deux
+ * lignes équilibrées, à la hauteur des boutons : la barre ne déborde jamais de l'écran et ses boutons restent entiers.
+ */
 .explore-hint {
   margin: 0 0.4rem 0 0;
   padding-left: 0.8rem;
   border-left: 1px solid var(--filet);
   font-size: 0.8125rem;
+  line-height: 1.35;
   color: var(--brume);
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .explore-bar button {
@@ -1914,6 +1940,30 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     margin: 0 auto;
   }
+
+  /*
+   * Les commandes forment une colonne qui s'arrête au-dessus du dock fixé (sa réserve, --dock-clear : deux lignes sous
+   * 360 px) et défile quand elle ne tient pas (zoom à 400 %, 320 × 175 px). Le pavé y suit la barre et la lecture du
+   * jour, dans le flux : collé au-dessus du dock, il sortait par le haut de l'écran en recouvrant la barre, et le dock
+   * recouvrait la lecture. La colonne laisse passer les gestes vers la scène ailleurs que sur ses capsules ; la molette
+   * au-dessus d'elles, comme le focus qui avance, la fait défiler.
+   */
+  .explore-controls {
+    bottom: var(--dock-clear, calc(82px + env(safe-area-inset-bottom, 0px)));
+    padding-bottom: 0.5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .explore-bar,
+  .earth-reading,
+  .explore-pad {
+    flex: none;
+  }
+
+  .explore-pad {
+    position: static;
+  }
 }
 
 /* Couleurs forcées : les fonds disparaissent ; contours sur les capsules et la bascule enfoncée. */
@@ -2094,6 +2144,11 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   }
 
   .plate::after {
+    /*
+     * --rest n'est pas héritée (@property, plus haut) : le filet la prend de sa plaque. Le repli 0 sert aux navigateurs
+     * sans @property, tant que la plaque n'en a pas reçu.
+     */
+    --rest: inherit;
     content: "";
     position: absolute;
     top: -1px;
@@ -2196,8 +2251,12 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     min-height: 44px;
   }
 
-  /* Ce qui reçoit le focus, ou le bouton d'une plaque qu'on déplie, passe sous la note (hauteur mesurée). */
-  html:has(.scale-note[data-visible="true"]) {
+  /*
+   * Ce qui reçoit le focus, ou le bouton d'une plaque qu'on déplie, passe sous la note visible (hauteur mesurée). La
+   * marque vient de la note (ScaleNote) : un sélecteur `:has()` sur la note serait encore satisfait par celle d'une
+   * page quittée, que Next garde masquée.
+   */
+  html[data-scale-note] {
     scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 5.25rem + var(--note-h, 11rem) + 0.75rem);
   }
 }
@@ -2410,7 +2469,10 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     margin: 0;
     padding: 0.35rem;
     list-style: none;
-    /* Hors mise en page compacte (écran bas, paysage), pas de dock fixe à dégager. */
+    /*
+     * Elle défile entre la barre fixe et la réserve du dock (hors mise en page compacte, rien à dégager) ; sur écran
+     * bas, où la barre et le dock suivent la page, elle s'ouvre en entier (plus bas, « Écran bas ou zoom à 400 % »).
+     */
     max-height: calc(100vh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
     max-height: calc(100svh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
     overflow-y: auto;
@@ -2571,8 +2633,12 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 
 /* Écran bas ou zoom à 400 % : la barre et le dock reprennent leur place dans la page. */
 @media (max-height: 30rem) {
+  /*
+   * Seul le bouton « Tourner autour » du voyage reste fixé en haut (44 px, à 0,5 rem du bord) : ce qui reçoit le focus
+   * s'arrête 0,5 rem sous lui. En bas, rien de fixe, hors de la note d'échelle (plus bas).
+   */
   html {
-    scroll-padding-block: 1rem;
+    scroll-padding-block: calc(env(safe-area-inset-top, 0px) + 3.75rem) 1rem;
   }
 
   /* Le dock rejoint la page : la plaque n'a plus à rester collée au-dessus de lui, ni à montrer le repos. */
@@ -2594,6 +2660,15 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     top: auto;
   }
 
+  /*
+   * La barre suit la page : la liste des escales (voyage) ou des étoiles (Tailles) s'ouvre en entier sous elle, et la
+   * page défile pour la parcourir. Mesurée sur la vue, sa hauteur tomberait à 0 à 400 % (175 px de haut, moins la
+   * barre et une réserve du dock qui n'a plus lieu d'être). Même règle pour « Menu » (SiteHeader.module.css).
+   */
+  .stops-list {
+    max-height: none;
+  }
+
   .dock {
     position: relative;
     left: auto;
@@ -2608,9 +2683,9 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* La barre suit la page : rien à dégager en haut ; en bas, la note visible (hauteur mesurée). */
-  html:has(.scale-note[data-visible="true"]) {
-    scroll-padding-top: 1rem;
+  /* La barre suit la page : en haut, seulement le bouton fixé ; en bas, la note visible (hauteur mesurée). */
+  html[data-scale-note] {
+    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 3.75rem);
     scroll-padding-bottom: calc(14px + var(--note-h, 11rem) + 0.75rem + env(safe-area-inset-bottom, 0px));
   }
 

@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, cleanup, fireEvent, getDefaultNormalizer, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Profiler } from "react";
+import { Activity, Profiler } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DOCK_SCALE_TOGGLE_ID } from "@/components/journey/ids";
 import { ScaleNote } from "@/components/journey/ScaleNote";
@@ -239,5 +241,60 @@ describe("ScaleNote au fil du voyage", () => {
     act(() => journeyStore.update("beyond", "neptune", 0.6));
     act(() => journeyStore.update("neptune", "uranus", 0.6));
     expect(onRender).not.toHaveBeenCalled();
+  });
+});
+
+/*
+ * Note visible : le focus et les plaques qu'on déplie passent sous elle (marges de défilement de globals.css, qui
+ * suivent une marque posée sur <html>). Next 16, avec `cacheComponents`, garde la page quittée dans le DOM, masquée
+ * sous <Activity>, sa note comprise, `data-visible` compris : la marge ne doit valoir que tant que la page est affichée.
+ */
+describe("ScaleNote et les marges de défilement de la page", () => {
+  /** La page du voyage, affichée ou masquée par le routeur. */
+  const page = (mode: "visible" | "hidden") => (
+    <Activity mode={mode}>
+      <ScaleNote />
+    </Activity>
+  );
+  const html = () => document.documentElement;
+
+  it("devrait marquer <html> tant que la note est visible", () => {
+    render(page("visible"));
+    expect(html()).not.toHaveAttribute("data-scale-note");
+    act(() => setRealScale(true));
+    expect(html()).toHaveAttribute("data-scale-note");
+    act(() => setRealScale(false));
+    expect(html()).not.toHaveAttribute("data-scale-note");
+  });
+
+  it("devrait retirer la marque quand la personne masque la note", () => {
+    render(page("visible"));
+    act(() => setRealScale(true));
+    fireEvent.click(screen.getByRole("button", { name: "Masquer la note" }));
+    expect(html()).not.toHaveAttribute("data-scale-note");
+  });
+
+  it("devrait retirer la marque quand sa page est masquée (autre onglet), puis la reposer à son retour", () => {
+    const { container, rerender } = render(page("visible"));
+    act(() => setRealScale(true));
+    rerender(page("hidden"));
+    // La note de la page masquée se dit toujours visible : seule la marque de <html> compte pour les autres pages.
+    expect(container.querySelector(".scale-note")).toHaveAttribute("data-visible", "true");
+    expect(html()).not.toHaveAttribute("data-scale-note");
+    rerender(page("visible"));
+    expect(html()).toHaveAttribute("data-scale-note");
+  });
+
+  it("devrait retirer la marque quand la note est démontée", () => {
+    const { unmount } = render(page("visible"));
+    act(() => setRealScale(true));
+    unmount();
+    expect(html()).not.toHaveAttribute("data-scale-note");
+  });
+
+  it("ne devrait laisser dans globals.css aucune règle qui lise la note par :has(), même masquée", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+    expect(css).not.toMatch(/:has\([^)]*scale-note/);
+    expect(css).toMatch(/\bhtml\[data-scale-note\]/);
   });
 });

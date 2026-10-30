@@ -1,3 +1,4 @@
+import type { Locale } from "@/i18n/locales";
 import type { AboutSectionId } from "./structure";
 
 /** Lien vers la page d'un autre site (une source) : en https, ouvert dans le même onglet. */
@@ -5,6 +6,13 @@ export interface AboutLink {
   /** Nom de la page liée, compréhensible hors de son contexte (liste des liens d'un lecteur d'écran). */
   label: string;
   href: `https://${string}`;
+  /**
+   * Langue du nom quand c'est le titre original de la source, laissé tel quel dans les trois langues (« NASA, Sun Fact
+   * Sheet ») ; c'est aussi celle de la page liée. Propriété de la source, la même dans chaque langue : la page marque
+   * le titre (`lang`) quand il n'est pas dans sa langue, pour qu'il soit lu avec la bonne prononciation (critère
+   * 3.1.2), et dit la langue de la page liée (`hrefLang`).
+   */
+  lang?: Locale;
   /** Ce que le site en tire, écrit sous le nom. */
   description: string;
 }

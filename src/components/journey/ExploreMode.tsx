@@ -26,14 +26,28 @@ function isTextField(target: EventTarget | null): boolean {
 }
 
 /**
- * Transmet au store la commande d'une touche, où que soit le focus (flèches, plus et moins, 0, Échap) ; les
- * raccourcis du navigateur (Ctrl, Méta, Alt) et les champs de saisie gardent les leurs. Une commande reconnue est
- * consommée : Échap ne ferme qu'une couche (pas la note d'échelle), les flèches ne font rien d'autre.
+ * Touche de caractère (« + », « = », « - », « 0 ») : un raccourci d'une seule touche au sens du critère 2.1.4. Les
+ * flèches, Origine et Échap n'en sont pas : leur `key` est un nom (« ArrowLeft »), pas un caractère.
  */
-function onExploreKey(event: KeyboardEvent): void {
+const isCharacterKey = (key: string) => key.length === 1;
+
+/** L'appui vient de la couche d'exploration, ou de la page quand rien n'a le focus (<body>). */
+function fromExploreLayer(target: EventTarget | null, layer: HTMLElement | null): boolean {
+  return target === document.body || (target instanceof Node && (layer?.contains(target) ?? false));
+}
+
+/**
+ * Transmet au store la commande d'une touche : flèches, Origine et Échap où que soit le focus ; plus, moins et 0
+ * depuis la couche d'exploration, ou quand rien n'a le focus. Ailleurs (le dock du temps reste actif), une touche de
+ * caractère reste à l'élément qui a le focus (critère 2.1.4). Les raccourcis du navigateur (Ctrl, Méta, Alt) et les
+ * champs de saisie gardent les leurs. Une commande reconnue est consommée : Échap ne ferme qu'une couche (pas la note
+ * d'échelle), les flèches ne font rien d'autre.
+ */
+function onExploreKey(event: KeyboardEvent, layer: HTMLElement | null): void {
   if (event.ctrlKey || event.metaKey || event.altKey || isTextField(event.target)) return;
   const command = orbitKeyCommand(event.key);
   if (command === null) return;
+  if (isCharacterKey(event.key) && !fromExploreLayer(event.target, layer)) return;
   event.preventDefault();
   if (command.kind === "rotate") exploreStore.rotate(command.azim, command.elev);
   else if (command.kind === "zoom") exploreStore.zoom(command.distanceLog);
@@ -105,12 +119,13 @@ export function ExploreMode() {
     const unsubscribe = journeyStore.subscribe(() => {
       if (journeyStore.get().current !== stop) exploreStore.exit();
     });
-    document.addEventListener("keydown", onExploreKey, true);
+    const onKeyDown = (event: KeyboardEvent) => onExploreKey(event, layer);
+    document.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
 
     return () => {
-      document.removeEventListener("keydown", onExploreKey, true);
+      document.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       unsubscribe();

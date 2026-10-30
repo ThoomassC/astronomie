@@ -38,6 +38,15 @@ describe("getHomeContent", () => {
     expect(Object.keys(getHomeContent(locale).cards.items)).toEqual(["voyage", "sizes", "about"]);
   });
 
+  /** La page À propos : pourquoi ce site, puis ses sources. Mot qui nomme la seconde section, dans chaque langue. */
+  const SOURCES_WORD: Readonly<Record<Locale, RegExp>> = { fr: /\bsources\b/, en: /\bsources\b/, es: /\bfuentes\b/ };
+
+  it.each(LOCALES)("devrait annoncer sur la carte À propos ce que la page contient, sans promettre d'aide au clavier (%s)", (locale) => {
+    const { text } = getHomeContent(locale).cards.items.about;
+    expect(text).toMatch(SOURCES_WORD[locale]);
+    expect(text).not.toMatch(/clavier|lecteur d'écran|keyboard|screen reader|teclado|lector de pantalla/i);
+  });
+
   it.each(LOCALES)("devrait légender chacun des quatre chiffres clés (%s)", (locale) => {
     expect(Object.keys(getHomeContent(locale).figures.items)).toEqual([...KEY_FIGURES]);
   });

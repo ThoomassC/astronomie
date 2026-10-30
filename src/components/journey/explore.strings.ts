@@ -188,7 +188,7 @@ export const EXPLORE_STRINGS: Readonly<Record<Locale, ExploreStrings>> = {
     group: (target) => `Exploration autour ${target}`,
     announce: (target) =>
       `Exploration autour ${target}. Faites glisser pour tourner, pincez ou utilisez la molette pour changer la distance. Au clavier : flèches pour tourner, plus et moins pour la distance, 0 pour recentrer, Échap pour terminer.`,
-    hint: "Glisser pour tourner · molette pour la distance · Échap pour terminer",
+    hint: "Glisser ou flèches pour tourner · molette pour la distance · Échap pour terminer",
     done: "Terminer",
     rotateLeft: "Tourner vers la gauche",
     rotateRight: "Tourner vers la droite",
@@ -231,7 +231,7 @@ export const EXPLORE_STRINGS: Readonly<Record<Locale, ExploreStrings>> = {
     group: (target) => `Orbiting ${target}`,
     announce: (target) =>
       `Orbiting ${target}. Drag to turn, pinch or use the scroll wheel to change the distance. With the keyboard: arrow keys to turn, plus and minus for distance, 0 to recentre, Escape to finish.`,
-    hint: "Drag to turn · scroll for distance · Esc to finish",
+    hint: "Drag or arrow keys to turn · scroll for distance · Esc to finish",
     done: "Done",
     rotateLeft: "Turn left",
     rotateRight: "Turn right",
@@ -274,7 +274,7 @@ export const EXPLORE_STRINGS: Readonly<Record<Locale, ExploreStrings>> = {
     group: (target) => `Girando alrededor ${target}`,
     announce: (target) =>
       `Girando alrededor ${target}. Arrastra para girar, pellizca o usa la rueda del ratón para cambiar la distancia. Con el teclado: flechas para girar, más y menos para la distancia, 0 para volver a centrar, Escape para terminar.`,
-    hint: "Arrastra para girar · rueda para la distancia · Esc para terminar",
+    hint: "Arrastra o usa las flechas para girar · rueda para la distancia · Esc para terminar",
     done: "Terminar",
     rotateLeft: "Girar a la izquierda",
     rotateRight: "Girar a la derecha",

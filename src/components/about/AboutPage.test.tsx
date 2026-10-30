@@ -109,6 +109,36 @@ describe.each(LOCALES)("AboutPage en %s", (locale) => {
   });
 });
 
+/** Titres originaux des sources anglaises, laissés tels quels dans les trois langues. */
+const ENGLISH_TITLES = [
+  "NASA, Sun Fact Sheet",
+  "NASA, Planetary Fact Sheet",
+  "JPL, Approximate Positions of the Planets",
+] as const;
+
+/** Lien d'une source, par son titre, sur la page rendue dans cette langue. */
+const sourceLink = (locale: (typeof LOCALES)[number], title: string) =>
+  screen.getByRole("link", { name: `${title}, ${getAboutContent(locale).external}` });
+
+describe.each(["fr", "es"] as const)("AboutPage en %s : titres anglais des sources (critère 3.1.2)", (locale) => {
+  it.each(ENGLISH_TITLES)("devrait faire lire « %s » en anglais, et seulement ce titre", (title) => {
+    render(<AboutPage locale={locale} />);
+    const link = sourceLink(locale, title);
+    // La précision lue (« , site externe ») reste dans la langue de la page.
+    expect(link.querySelector('[lang="en"]')?.textContent).toBe(title);
+    expect(link).toHaveAttribute("hreflang", "en");
+  });
+});
+
+describe("AboutPage en en : titres anglais des sources", () => {
+  it.each(ENGLISH_TITLES)("devrait dire la langue de la page liée « %s », sans redire celle du titre", (title) => {
+    render(<AboutPage locale="en" />);
+    const link = sourceLink("en", title);
+    expect(link).toHaveAttribute("hreflang", "en");
+    expect(link.querySelector("[lang]")).toBeNull();
+  });
+});
+
 describe.each(LOCALES)("AboutFooter en %s", (locale) => {
   it("devrait poser le pied de page commun, aux contacts de l'auteur, hors du contenu principal", () => {
     render(<AboutFooter locale={locale} />);

@@ -31,11 +31,13 @@ export const ABOUT_EN: AboutContent = {
         {
           label: "NASA, Sun Fact Sheet",
           href: ABOUT_URLS.nasaSunFactSheet,
+          lang: "en",
           description: `Diameter of the Sun: ${figures.sunInEarths} Earths side by side.`,
         },
         {
           label: "NASA, Planetary Fact Sheet",
           href: ABOUT_URLS.nasaFactSheet,
+          lang: "en",
           description: "Physical data on the planets, including the Earth's diameter.",
         },
         {
@@ -46,6 +48,7 @@ export const ABOUT_EN: AboutContent = {
         {
           label: "JPL, Approximate Positions of the Planets",
           href: ABOUT_URLS.jplApproximatePositions,
+          lang: "en",
           description: "Orbital elements of the planets, valid from 1800 to 2050: their positions on any given day.",
         },
         {
