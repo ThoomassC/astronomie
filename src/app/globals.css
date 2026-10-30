@@ -1739,7 +1739,10 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   min-height: 44px;
 }
 
-/* Bouton « Tourner autour » de la barre haute : pilule de 44 px, comme le menu des escales. */
+/*
+ * Bouton « Tourner autour » de la barre haute : pilule de 44 px, comme le menu des escales, au fond .92 des pilules de
+ * la barre (sur un fond à .6, l'ivoire tomberait à 4:1 devant un astre clair). Le voile du survol se pose dessus.
+ */
 .explore-toggle {
   flex: none;
   display: inline-flex;
@@ -1749,7 +1752,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   padding: 0.35rem 0.95rem 0.35rem 0.75rem;
   border: 1px solid var(--filet-fort);
   border-radius: var(--r-pill);
-  background: rgba(8, 14, 32, 0.6);
+  background: rgba(8, 14, 32, 0.92);
   color: var(--ivoire);
   font-size: 0.9375rem;
   white-space: nowrap;
@@ -1760,7 +1763,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 
 .explore-toggle:hover {
   border-color: var(--ivoire);
-  background: rgba(236, 229, 211, 0.06);
+  background-image: linear-gradient(rgba(236, 229, 211, 0.06), rgba(236, 229, 211, 0.06));
 }
 
 .explore-toggle svg {
@@ -2316,7 +2319,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     padding: 0.35rem 0.85rem;
     border: 1px solid var(--filet-fort);
     border-radius: var(--r-pill);
-    background: rgba(8, 14, 32, 0.6);
+    background: rgba(8, 14, 32, 0.92);
     color: var(--ivoire);
     font-size: 0.9375rem;
     white-space: nowrap;
