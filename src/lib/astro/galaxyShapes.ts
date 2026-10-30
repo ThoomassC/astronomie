@@ -322,6 +322,33 @@ export function ellipticalGalaxyCloud(galaxy: LocalGroupGalaxy, count: number, s
   return writer.cloud();
 }
 
+/**
+ * Mêle les points d'un nuage, en place (Fisher–Yates, tirages de `seededRandom(seed)`) : chaque point garde sa
+ * position, sa couleur et sa taille, et tout début du nuage devient un échantillon fidèle. Pour les nuages tirés
+ * composante par composante (la Voie lactée : bulbe, puis bras, puis disque), dont le moteur ne dessine qu'une part
+ * quand ils rapetissent à l'écran.
+ */
+export function shufflePointCloud(cloud: PointCloud, seed: number): PointCloud {
+  const random = seededRandom(seed);
+  const { positions, colors, sizes } = cloud;
+  const swap3 = (array: Float32Array, a: number, b: number) => {
+    for (let k = 0; k < 3; k++) {
+      const value = array[a * 3 + k];
+      array[a * 3 + k] = array[b * 3 + k];
+      array[b * 3 + k] = value;
+    }
+  };
+  for (let i = cloud.count - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    swap3(positions, i, j);
+    swap3(colors, i, j);
+    const size = sizes[i];
+    sizes[i] = sizes[j];
+    sizes[j] = size;
+  }
+  return cloud;
+}
+
 /** Nuage d'une galaxie selon sa forme (spiralGalaxyCloud, irregularGalaxyCloud ou ellipticalGalaxyCloud). */
 export function galaxyCloud(galaxy: LocalGroupGalaxy, count: number, seed: number, glow = 1): PointCloud {
   switch (galaxy.shape) {

@@ -11,6 +11,7 @@ import {
 } from "three";
 import type { Vec3 } from "@/lib/astro/constants";
 import { GALACTIC_CENTER_DISTANCE_LY, sceneFromGalacticXYZ } from "@/lib/astro/galactic";
+import { shufflePointCloud } from "@/lib/astro/galaxyShapes";
 import { GALAXY_SEED, milkyWayCloud } from "@/lib/astro/milkyWay";
 import { SUN } from "@/lib/astro/planets";
 import { absoluteMagnitude, spectralColor, starPointSize, starPositionLy } from "@/lib/astro/starMap";
@@ -182,7 +183,8 @@ export function createCosmos(stars: readonly NearbyStar[]): CosmosBody {
  */
 export function buildGalaxy(cosmos: CosmosBody, count: number): void {
   if (cosmos.galaxy) return;
-  const cloud = milkyWayCloud(count, GALAXY_SEED);
+  // Points mêlés : quand la galaxie rapetisse à l'écran, le moteur n'en dessine qu'un début, fidèle au tout.
+  const cloud = shufflePointCloud(milkyWayCloud(count, GALAXY_SEED), GALAXY_SEED);
   const center = sceneFromGalacticXYZ(GALACTIC_CENTER_DISTANCE_LY, 0, 0);
   const bounds = new Sphere(new Vector3(center.x, center.y, center.z), GALAXY_BOUNDING_RADIUS_LY);
   const galaxy = pointCloud(cloud.positions, cloud.colors, cloud.sizes, cosmos.pixelRatio, cosmos.galaxyGain, bounds);

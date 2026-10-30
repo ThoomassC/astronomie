@@ -106,6 +106,27 @@ const SHELL_SEGMENTS = { width: 64, height: 32 } as const;
 /** Étiquette de la galaxie de clé `key`. */
 export const galaxyLabelKey = (key: LocalGroupGalaxyKey): ExtragalacticLabelKey => `lg:${key}`;
 
+/**
+ * Galaxies nommées dans la scène, par ordre de priorité : les cinq que cadre l'escale du Groupe local. Les naines,
+ * d'un pixel ou deux, se serreraient contre Andromède ou la Voie lactée ; le tableau de la plaque les nomme toutes.
+ */
+export const LABELLED_GALAXIES: readonly LocalGroupGalaxyKey[] = [
+  "andromeda",
+  "milky-way",
+  "triangulum",
+  "large-magellanic-cloud",
+  "small-magellanic-cloud",
+];
+
+/** Étiquettes extragalactiques, dans l'ordre où le moteur les place (les premières gagnent en cas de chevauchement). */
+export const EXTRAGALACTIC_LABEL_ORDER: readonly ExtragalacticLabelKey[] = [
+  ...LABELLED_GALAXIES.map(galaxyLabelKey),
+  "web",
+  "cmb",
+  "our-universe",
+  "other-universes",
+];
+
 const OTHER_LABELS: readonly string[] = ["web", "cmb", "our-universe", "other-universes"];
 
 /** Clé d'étiquette extragalactique lue dans le DOM (`data-deep`). */
@@ -259,6 +280,17 @@ export function buildUniverse(body: ExtragalacticBody, webBudget: number): void 
 export function detailFraction(radiusPx: number, fullDetailPx: number): number {
   if (!(radiusPx > 0)) return 0;
   return Math.min(1, (radiusPx / fullDetailPx) ** 1.5);
+}
+
+/**
+ * Partage d'une lumière (de 0 à 1, rapportée à celle de pleine finesse) entre gain et part des points dessinés : le
+ * gain la porte seul tant qu'il reste au-dessus de `minGain` (tous les points dessinés, comme avant) ; en dessous, il
+ * s'arrête à `minGain` et la part des points dessinés fait le reste (gain × part = lumière). Chaque point reste ainsi
+ * au-dessus du demi-niveau que le tampon 8 bits efface. Lumière nulle ou indéfinie : rien de dessiné.
+ */
+export function splitLight(light: number, minGain: number): { gain: number; fraction: number } {
+  if (!(light > 0)) return { gain: minGain, fraction: 0 };
+  return light >= minGain ? { gain: light, fraction: 1 } : { gain: minGain, fraction: light / minGain };
 }
 
 /** Dessine les `count` premiers points du nuage (tous au-delà de son effectif). */

@@ -1,6 +1,8 @@
 import { Matrix4, Vector3, type BufferGeometry, type Object3D, type Points, type ShaderMaterial } from "three";
 import { describe, expect, it } from "vitest";
 import {
+  EXTRAGALACTIC_LABEL_ORDER,
+  LABELLED_GALAXIES,
   LOCAL_GROUP_FULL_DETAIL_PX,
   LOCAL_GROUP_MIN_DRAWN,
   LOCAL_GROUP_MIN_POINTS,
@@ -15,6 +17,7 @@ import {
   fitWeb,
   galaxyLabelKey,
   isExtragalacticLabelKey,
+  splitLight,
   weighExtragalactic,
   type ExtragalacticBody,
   type ExtragalacticLabelKey,
@@ -466,6 +469,45 @@ describe("fitWeb", () => {
     const body = built();
     fitWeb(body, WEB_FULL_DETAIL_PX / 4);
     expect(universeOf(body).web.geometry.drawRange.count).toBe(Math.round(WEB_BUDGET / 8));
+  });
+});
+
+describe("splitLight", () => {
+  it("devrait tout régler par le gain tant qu'il reste au-dessus de son plancher (tous les points dessinés)", () => {
+    expect(splitLight(0.6, 0.25)).toEqual({ gain: 0.6, fraction: 1 });
+    expect(splitLight(1, 0.25)).toEqual({ gain: 1, fraction: 1 });
+  });
+
+  it("devrait, sous le plancher, garder le gain au plancher et dessiner une part des points (gain × part = lumière)", () => {
+    const { gain, fraction } = splitLight(0.05, 0.25);
+    expect(gain).toBe(0.25);
+    expect(fraction).toBeCloseTo(0.2, 12);
+    expect(gain * fraction).toBeCloseTo(0.05, 12);
+  });
+
+  it("ne devrait rien dessiner pour une lumière nulle ou indéfinie", () => {
+    expect(splitLight(0, 0.25)).toEqual({ gain: 0.25, fraction: 0 });
+    expect(splitLight(Number.NaN, 0.25)).toEqual({ gain: 0.25, fraction: 0 });
+  });
+});
+
+describe("étiquettes nommées dans la scène", () => {
+  it("devrait nommer les cinq galaxies principales, Andromède en premier", () => {
+    expect(LABELLED_GALAXIES).toEqual(["andromeda", "milky-way", "triangulum", "large-magellanic-cloud", "small-magellanic-cloud"]);
+  });
+
+  it("devrait placer les galaxies, puis la toile, le fond diffus, notre univers et les autres (ordre de priorité)", () => {
+    expect(EXTRAGALACTIC_LABEL_ORDER).toEqual([
+      "lg:andromeda",
+      "lg:milky-way",
+      "lg:triangulum",
+      "lg:large-magellanic-cloud",
+      "lg:small-magellanic-cloud",
+      "web",
+      "cmb",
+      "our-universe",
+      "other-universes",
+    ]);
   });
 });
 

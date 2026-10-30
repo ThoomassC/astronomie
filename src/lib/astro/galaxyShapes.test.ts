@@ -7,10 +7,11 @@ import {
   galaxyCloud,
   galaxySeed,
   irregularGalaxyCloud,
+  shufflePointCloud,
   spiralGalaxyCloud,
 } from "@/lib/astro/galaxyShapes";
 import { LOCAL_GROUP_KEYS, diskFrame, galaxyRadiusKly, type LocalGroupGalaxy } from "@/lib/astro/localGroup";
-import type { PointCloud } from "@/lib/astro/milkyWay";
+import { GALAXY_SEED, milkyWayCloud, type PointCloud } from "@/lib/astro/milkyWay";
 
 /** Spirale fictive, indépendante du fichier de données : disque de 60 kly de rayon, incliné de 60°. */
 const SPIRAL: LocalGroupGalaxy = {
@@ -265,5 +266,43 @@ describe("galaxySeed", () => {
       expect(seed).toBeLessThan(2 ** 32);
     }
     expect(LOCAL_GROUP_KEYS.map(galaxySeed)).toEqual(seeds);
+  });
+});
+
+describe("shufflePointCloud", () => {
+  /** Points du nuage, chacun avec sa couleur et sa taille, triés : le même ensemble quel que soit l'ordre. */
+  const sortedPoints = (cloud: PointCloud) =>
+    Array.from({ length: cloud.count }, (_, i) =>
+      [...cloud.positions.subarray(i * 3, i * 3 + 3), ...cloud.colors.subarray(i * 3, i * 3 + 3), cloud.sizes[i]].join(" "),
+    ).sort();
+
+  it("devrait garder exactement les mêmes points, couleurs et tailles", () => {
+    const original = milkyWayCloud(2000, GALAXY_SEED);
+    const before = sortedPoints(original);
+    expect(sortedPoints(shufflePointCloud(original, 1))).toEqual(before);
+  });
+
+  it("devrait mêler le nuage en place et le renvoyer", () => {
+    const cloud = milkyWayCloud(500, GALAXY_SEED);
+    const firstBefore = Array.from(cloud.positions.subarray(0, 30));
+    expect(shufflePointCloud(cloud, 1)).toBe(cloud);
+    expect(Array.from(cloud.positions.subarray(0, 30))).not.toEqual(firstBefore);
+  });
+
+  it("devrait redonner le même ordre pour la même graine", () => {
+    const a = shufflePointCloud(milkyWayCloud(1000, GALAXY_SEED), 42);
+    const b = shufflePointCloud(milkyWayCloud(1000, GALAXY_SEED), 42);
+    expect(a.positions).toEqual(b.positions);
+  });
+
+  it("devrait faire d'un nuage tiré par composantes (bulbe, bras, disque) un nuage dont tout début est fidèle", () => {
+    const cloud = shufflePointCloud(milkyWayCloud(6000, GALAXY_SEED), GALAXY_SEED);
+    const points = pointsOf(cloud);
+    const center = barycenter(points);
+    const spread = (sample: readonly Vec3[]) =>
+      Math.sqrt(sample.reduce((sum, p) => sum + (p.x - center.x) ** 2 + (p.y - center.y) ** 2 + (p.z - center.z) ** 2, 0) / sample.length);
+    // Sans mélange, les 600 premiers points seraient tous dans le bulbe, cinq fois plus serré que la galaxie.
+    expect(spread(points.slice(0, 600)) / spread(points)).toBeGreaterThan(0.9);
+    expect(spread(points.slice(0, 600)) / spread(points)).toBeLessThan(1.1);
   });
 });

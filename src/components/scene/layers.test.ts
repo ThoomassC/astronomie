@@ -13,6 +13,7 @@ const LAYERS: readonly (keyof LayerWeights)[] = [
   "galaxy",
   "galaxyLabels",
   "here",
+  "sunLabel",
   "localGroup",
   "web",
   "cmb",
@@ -30,25 +31,35 @@ const formerHere = (zoom: number) => {
   const t = Math.min(1, Math.max(0, (smoothGalaxy - 0.5) / 0.5));
   return t * t * (3 - 2 * t);
 };
+/** « Soleil » tel que le moteur le calculait avant le Groupe local : 1 − smoothstep(0 ; 0,5 ; poids de la galaxie). */
+const formerSunLabel = (zoom: number) => {
+  const galaxy = Math.min(1, Math.max(0, (zoom - 6) / 1.2));
+  const smoothGalaxy = galaxy * galaxy * (3 - 2 * galaxy);
+  const t = Math.min(1, Math.max(0, smoothGalaxy / 0.5));
+  return 1 - t * t * (3 - 2 * t);
+};
 /** Variation du poids d'un zoom au suivant. */
 const stepsOf = (values: readonly number[]) => values.slice(1).map((value, i) => value - values[i]);
 
 describe("layerWeights", () => {
   it("devrait ne dessiner que le système solaire et son ciel au zoom 0 (aucune couche nouvelle à l'écran)", () => {
     expect(layerWeights(0)).toEqual({
-      solar: 1, planetLabels: 1, sunPoint: 0, sky: 1, stars: 0, galaxy: 0, galaxyLabels: 0, here: 0, ...EXTRAGALACTIC,
+      solar: 1, planetLabels: 1, sunPoint: 0, sky: 1, stars: 0, galaxy: 0, galaxyLabels: 0, here: 0, sunLabel: 1,
+      ...EXTRAGALACTIC,
     });
   });
 
   it("devrait montrer les étoiles voisines et le Soleil devenu point, sous le ciel, au zoom 4,6", () => {
     expect(layerWeights(4.6)).toEqual({
-      solar: 0, planetLabels: 0, sunPoint: 1, sky: 1, stars: 1, galaxy: 0, galaxyLabels: 0, here: 0, ...EXTRAGALACTIC,
+      solar: 0, planetLabels: 0, sunPoint: 1, sky: 1, stars: 1, galaxy: 0, galaxyLabels: 0, here: 0, sunLabel: 1,
+      ...EXTRAGALACTIC,
     });
   });
 
   it("devrait ne montrer que la galaxie, ses étiquettes et le Soleil devenu point au zoom 8", () => {
     expect(layerWeights(8)).toEqual({
-      solar: 0, planetLabels: 0, sunPoint: 1, sky: 0, stars: 0, galaxy: 1, galaxyLabels: 1, here: 1, ...EXTRAGALACTIC,
+      solar: 0, planetLabels: 0, sunPoint: 1, sky: 0, stars: 0, galaxy: 1, galaxyLabels: 1, here: 1, sunLabel: 0,
+      ...EXTRAGALACTIC,
     });
   });
 
@@ -79,6 +90,21 @@ describe("layerWeights", () => {
     expect(Math.max(...stepsOf(series(layer)))).toBeLessThanOrEqual(0);
   });
 
+  it("devrait ne jamais faire revenir « Soleil » quand on s'éloigne, même quand la galaxie s'efface (jusqu'au zoom 17)", () => {
+    expect(Math.max(...stepsOf(series("sunLabel", ALL_ZOOMS)))).toBeLessThanOrEqual(0);
+  });
+
+  it("devrait calculer « Soleil » comme avant jusqu'à la Voie lactée (zoom ≤ 8, à 1e−12)", () => {
+    for (const zoom of ALL_ZOOMS.filter((z) => z <= 8)) expect(layerWeights(zoom).sunLabel).toBeCloseTo(formerSunLabel(zoom), 12);
+  });
+
+  it("devrait ne jamais montrer « Soleil » et « Vous êtes ici » ensemble sur l'ancre du Soleil", () => {
+    for (const zoom of ALL_ZOOMS) {
+      const { sunLabel, here } = layerWeights(zoom);
+      expect(Math.min(sunLabel, here)).toBe(0);
+    }
+  });
+
   it.each(["sunPoint", "galaxy"] as const)("devrait ne jamais faire disparaître la couche %s quand on s'éloigne jusqu'au zoom 10", (layer) => {
     expect(Math.min(...stepsOf(series(layer)))).toBeGreaterThanOrEqual(0);
   });
@@ -94,7 +120,7 @@ describe("layerWeights", () => {
   describe("du Groupe local au multivers", () => {
     it("devrait montrer la Voie lactée parmi les galaxies du Groupe local, sans « Centre de la Galaxie », au zoom 9,7", () => {
       expect(layerWeights(9.7)).toEqual({
-        solar: 0, planetLabels: 0, sunPoint: 1, sky: 0, stars: 0, galaxy: 1, galaxyLabels: 0, here: 1,
+        solar: 0, planetLabels: 0, sunPoint: 1, sky: 0, stars: 0, galaxy: 1, galaxyLabels: 0, here: 1, sunLabel: 0,
         localGroup: 1, web: 0, cmb: 0, multiverse: 0,
       });
     });
@@ -115,7 +141,7 @@ describe("layerWeights", () => {
 
     it("devrait montrer la toile et le fond diffus, sans autres univers, au zoom 14", () => {
       expect(layerWeights(14)).toEqual({
-        solar: 0, planetLabels: 0, sunPoint: 1, sky: 0, stars: 0, galaxy: 0, galaxyLabels: 0, here: 1,
+        solar: 0, planetLabels: 0, sunPoint: 1, sky: 0, stars: 0, galaxy: 0, galaxyLabels: 0, here: 1, sunLabel: 0,
         localGroup: 0, web: 1, cmb: 1, multiverse: 0,
       });
     });
@@ -146,7 +172,8 @@ describe("layerWeights", () => {
     const result = layerWeights(8, out);
     expect(result).toBe(out);
     expect(out).toEqual({
-      solar: 0, planetLabels: 0, sunPoint: 1, sky: 0, stars: 0, galaxy: 1, galaxyLabels: 1, here: 1, ...EXTRAGALACTIC,
+      solar: 0, planetLabels: 0, sunPoint: 1, sky: 0, stars: 0, galaxy: 1, galaxyLabels: 1, here: 1, sunLabel: 0,
+      ...EXTRAGALACTIC,
     });
   });
 });

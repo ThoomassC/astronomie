@@ -26,8 +26,8 @@ const STARS: readonly NearbyStar[] = [
 ];
 
 const NO_WEIGHT: LayerWeights = {
-  solar: 0, planetLabels: 0, sunPoint: 0, sky: 0, stars: 0, galaxy: 0, galaxyLabels: 0, here: 0, localGroup: 0, web: 0, cmb: 0,
-  multiverse: 0,
+  solar: 0, planetLabels: 0, sunPoint: 0, sky: 0, stars: 0, galaxy: 0, galaxyLabels: 0, here: 0, sunLabel: 0, localGroup: 0,
+  web: 0, cmb: 0, multiverse: 0,
 };
 
 /** Sommets d'un objet, exprimés dans le repère du groupe du cosmos (années-lumière), transformations locales comprises. */
@@ -131,6 +131,17 @@ describe("buildGalaxy", () => {
     const galaxy = galaxyOf(cosmos);
     expect(galaxy.geometry.getAttribute("position").count).toBe(1000);
     expect(isInGroup(galaxy, cosmos.group)).toBe(true);
+  });
+
+  it("devrait mêler les points de la galaxie : tout début du nuage en est un échantillon fidèle (niveau de détail)", () => {
+    const cosmos = createCosmos(STARS);
+    buildGalaxy(cosmos, 4000);
+    const position = galaxyOf(cosmos).geometry.getAttribute("position");
+    const points = Array.from({ length: position.count }, (_, i) => new Vector3().fromBufferAttribute(position, i));
+    const center = points.reduce((sum, p) => sum.add(p), new Vector3()).divideScalar(points.length);
+    const spread = (sample: readonly Vector3[]) => Math.sqrt(sample.reduce((sum, p) => sum + p.distanceToSquared(center), 0) / sample.length);
+    // Tiré bulbe d'abord, le début du nuage serait cinq fois plus serré que la galaxie.
+    expect(spread(points.slice(0, 400)) / spread(points)).toBeGreaterThan(0.9);
   });
 
   it("ne devrait rien reconstruire au second appel (même galaxie, aucun objet en double)", () => {
