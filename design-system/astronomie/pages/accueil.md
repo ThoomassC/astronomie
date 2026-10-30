@@ -22,7 +22,8 @@ Le haut de page dégage la barre fixe (4,75 rem, encoche comprise), puis 3 rem (
 pied de page commun (`ContactFooter` : signature, contacts de l'auteur) ferme la page, dans la même colonne, 4 rem
 sous la note des sources (3 rem sur téléphone). Les règles globales `main` et `footer` (place de la règle des distances et du dock, contenu au-dessus de
 la scène) ne s'appliquent pas ici. La barre est celle de toutes les pages (`SiteHeader`, `data-page="home"`, sans
-commandes propres) : voile dense, puisque le contenu défile dessous sans scène.
+commandes propres) : fond de nuit plein jusqu'au bas des commandes, puis fondu sur sa marge basse (MASTER, « Barre
+haute »), puisque le contenu défile dessous sans scène.
 
 Titre (h1) : Bodoni 450, `clamp(2.25rem, 4.4vw, 3.5rem)`, interligne 1,05, deux lignes dans les trois langues.
 Texte : 1,0625 rem, interligne 1,6, `#D9D3C4` (couleur de `.lede`), 34 rem au plus. Bouton `.btn` suivi d'une flèche
