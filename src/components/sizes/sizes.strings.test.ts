@@ -126,3 +126,31 @@ describe("SIZES_STRINGS.railLegend", () => {
     expect(SIZES_STRINGS[locale].railLegend).toBe(legend);
   });
 });
+
+describe("SIZES_STRINGS.rank", () => {
+  it.each([
+    ["fr", 1, { value: "1", suffix: "re", superscript: true, total: " sur 10" }],
+    ["fr", 9, { value: "9", suffix: "e", superscript: true, total: " sur 10" }],
+    ["en", 1, { value: "1", suffix: "st", superscript: false, total: " of 10" }],
+    ["en", 2, { value: "2", suffix: "nd", superscript: false, total: " of 10" }],
+    ["en", 3, { value: "3", suffix: "rd", superscript: false, total: " of 10" }],
+    ["en", 9, { value: "9", suffix: "th", superscript: false, total: " of 10" }],
+    ["es", 9, { value: "9", suffix: ".ª", superscript: false, total: " de 10" }],
+  ] as const)("devrait écrire le rang d'une étoile parmi les dix (%s, %i)", (locale, position, rank) => {
+    expect(SIZES_STRINGS[locale].rank(position, 10)).toEqual(rank);
+  });
+});
+
+describe("SIZES_STRINGS.lightYears", () => {
+  it.each([
+    ["fr", 548, "548 années-lumière"],
+    ["fr", 4.2465, "4,2 années-lumière"],
+    ["fr", 3820, "3 820 années-lumière"],
+    ["en", 548, "548 light-years"],
+    ["en", 4.2465, "4.2 light-years"],
+    ["es", 548, "548 años luz"],
+    ["es", 3820, "3820 años luz"],
+  ] as const)("devrait écrire la distance en toutes lettres, une décimale sous 10 al (%s, %f)", (locale, distanceLy, expected) => {
+    expect(SIZES_STRINGS[locale].lightYears(distanceLy)).toBe(expected);
+  });
+});

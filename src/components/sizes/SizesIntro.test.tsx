@@ -9,9 +9,9 @@ afterEach(() => {
 
 describe("SizesIntro", () => {
   it.each([
-    ["fr", "Dix étoiles, de la naine à l'hypergéante"],
-    ["en", "Ten stars, from dwarf to hypergiant"],
-    ["es", "Diez estrellas, de la enana a la hipergigante"],
+    ["fr", "Dix étoiles, côte à côte."],
+    ["en", "Ten stars, side by side."],
+    ["es", "Diez estrellas, en fila."],
   ] as const)("devrait titrer la page (h1) et poser l'introduction à l'ancre #tailles, escale « intro » (%s)", (locale, title) => {
     render(<SizesIntro locale={locale} />);
     const section = screen.getByRole("region", { name: title });
@@ -21,12 +21,17 @@ describe("SizesIntro", () => {
   });
 
   it.each([
-    ["fr", "Commencer par Proxima du Centaure"],
-    ["en", "Start with Proxima Centauri"],
-    ["es", "Empezar por Próxima Centauri"],
+    ["fr", "Commencer par la plus petite"],
+    ["en", "Start with the smallest"],
+    ["es", "Empezar por la más pequeña"],
   ] as const)("devrait conduire à la plus petite étoile, à l'ancre #proxima-du-centaure (%s)", (locale, start) => {
     render(<SizesIntro locale={locale} />);
     expect(screen.getByRole("link", { name: start })).toHaveAttribute("href", "#proxima-du-centaure");
+  });
+
+  it("devrait dire ce qui est à l'échelle, et ce qui ne l'est pas (ligne discrète)", () => {
+    render(<SizesIntro locale="fr" />);
+    expect(screen.getByText(getSizesContent("fr").intro.note)).toBeInTheDocument();
   });
 
   it("devrait dire aux lecteurs d'écran ce que montre la scène 3D décorative", () => {

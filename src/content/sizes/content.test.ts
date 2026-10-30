@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { SIZES_STRINGS } from "@/components/sizes/sizes.strings";
 import { getSizesContent } from "@/content/sizes/content";
 import { LOCALES } from "@/i18n/locales";
 import { COMPARED_STARS } from "@/lib/astro/starSizes";
@@ -23,8 +22,9 @@ describe("getSizesContent", () => {
     expect(Object.keys(getSizesContent(locale).stars).sort()).toEqual(COMPARED_STARS.map((star) => star.key).sort());
   });
 
+  // « TODO » en capitales seulement : l'espagnol dit « sobre todo ».
   it.each(LOCALES)("ne devrait laisser aucun texte vide ni à faire (%s)", (locale) => {
-    const unfinished = leaves(getSizesContent(locale)).filter(([, text]) => text.trim() === "" || /TODO/i.test(text));
+    const unfinished = leaves(getSizesContent(locale)).filter(([, text]) => text.trim() === "" || /\bTODO\b/.test(text));
     expect(unfinished).toEqual([]);
   });
 
@@ -38,8 +38,12 @@ describe("getSizesContent", () => {
     expect(copied).toEqual([]);
   });
 
-  it.each(LOCALES)("devrait proposer de commencer par la plus petite étoile, sous son nom officiel (%s)", (locale) => {
-    expect(getSizesContent(locale).intro.start).toContain(SIZES_STRINGS[locale].names["proxima-centauri"]);
+  it.each([
+    ["fr", "Commencer par la plus petite"],
+    ["en", "Start with the smallest"],
+    ["es", "Empezar por la más pequeña"],
+  ] as const)("devrait proposer de commencer par la plus petite étoile (%s : %s)", (locale, start) => {
+    expect(getSizesContent(locale).intro.start).toBe(start);
   });
 
   it.each([

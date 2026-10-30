@@ -33,6 +33,13 @@ export interface SizesStrings {
   comparison(star: ComparedStar): string;
   /** Échelle graphique de la scène : « 10 Soleils côte à côte ». */
   scaleBar(suns: number): string;
+  /**
+   * Rang d'une étoile parmi `total`, de la plus petite à la plus grande : nombre, suffixe (en exposant en français),
+   * total : « 9ᵉ sur 10 », « 9th of 10 », « 9.ª de 10 ».
+   */
+  rank(position: number, total: number): { value: string; suffix: string; superscript: boolean; total: string };
+  /** Distance en années-lumière, en toutes lettres, une décimale sous 10 al : « 4,2 années-lumière », « 548 années-lumière ». */
+  lightYears(distanceLy: number): string;
   labels: {
     /** Repère du Soleil dans la scène, posé même quand il y fait moins d'un pixel. */
     sunMarker: string;
@@ -53,6 +60,26 @@ const solarRadii = (value: number, locale: Locale) => withUnit(dataNumber(value,
 /** Nombre déjà arrondi suivi du nom accordé : « 109 Terres », « 1 Soleil ». */
 const counted = (count: number, forms: PluralForms, locale: Locale) =>
   `${formatNumber(count, 0, locale)} ${plural(locale, count, forms)}`;
+
+/** Sous cette distance, en années-lumière, une décimale (4,2) ; au-delà, entière (548). */
+const ONE_DECIMAL_BELOW_LY = 10;
+
+/** Distance en années-lumière avec ses décimales, suivie du nom accordé. */
+const lightYearsIn = (distanceLy: number, forms: PluralForms, locale: Locale) => {
+  const digits = distanceLy < ONE_DECIMAL_BELOW_LY ? 1 : 0;
+  return `${formatNumber(distanceLy, digits, locale)} ${plural(locale, Number(distanceLy.toFixed(digits)), forms)}`;
+};
+
+/** Suffixes ordinaux anglais, par catégorie CLDR des ordinaux : 1st, 2nd, 3rd, 4th, 11th, 21st. */
+const EN_ORDINAL_SUFFIXES: Readonly<Record<Intl.LDMLPluralRule, string>> = {
+  zero: "th",
+  one: "st",
+  two: "nd",
+  few: "rd",
+  many: "th",
+  other: "th",
+};
+const enOrdinals = new Intl.PluralRules("en-GB", { type: "ordinal" });
 
 /** Phrases de chaque sorte de comparaison, dans une langue. */
 interface ComparisonPhrases {
@@ -114,6 +141,8 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
         suns: (count) => `Son volume contiendrait environ ${counted(count, { one: "Soleil", other: "Soleils" }, "fr")}.`,
       }),
     scaleBar: (suns) => `${counted(suns, { one: "Soleil", other: "Soleils" }, "fr")} côte à côte`,
+    rank: (position, total) => ({ value: String(position), suffix: position === 1 ? "re" : "e", superscript: true, total: ` sur ${total}` }),
+    lightYears: (distanceLy) => lightYearsIn(distanceLy, { one: "année-lumière", other: "années-lumière" }, "fr"),
     labels: { sunMarker: bodyName("sun", "fr") },
   },
   en: {
@@ -143,6 +172,13 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
         suns: (count) => `Its volume could hold about ${counted(count, { one: "Sun", other: "Suns" }, "en")}.`,
       }),
     scaleBar: (suns) => `${counted(suns, { one: "Sun", other: "Suns" }, "en")} side by side`,
+    rank: (position, total) => ({
+      value: String(position),
+      suffix: EN_ORDINAL_SUFFIXES[enOrdinals.select(position)],
+      superscript: false,
+      total: ` of ${total}`,
+    }),
+    lightYears: (distanceLy) => lightYearsIn(distanceLy, { one: "light-year", other: "light-years" }, "en"),
     labels: { sunMarker: bodyName("sun", "en") },
   },
   es: {
@@ -172,6 +208,9 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
         suns: (count) => `Su volumen podría contener unos ${counted(count, { one: "sol", other: "soles" }, "es")}.`,
       }),
     scaleBar: (suns) => `${counted(suns, { one: "sol", other: "soles" }, "es")} en fila`,
+    // Ordinal féminin (« la 9.ª estrella »), sans exposant : l'indicateur ª l'est déjà.
+    rank: (position, total) => ({ value: String(position), suffix: ".ª", superscript: false, total: ` de ${total}` }),
+    lightYears: (distanceLy) => lightYearsIn(distanceLy, { one: "año luz", other: "años luz" }, "es"),
     labels: { sunMarker: bodyName("sun", "es") },
   },
 };

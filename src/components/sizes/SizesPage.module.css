@@ -8,6 +8,15 @@
   --dock-clear: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
+/* ---------- Introduction ---------- */
+
+/* Ligne discrète sous la promesse : ce qui est à l'échelle, et ce qui ne l'est pas. */
+:global(.hero) p.introNote {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--brume);
+}
+
 /* ---------- Plaques ---------- */
 
 /* Rang : ordinal, total et catégorie, sur une ligne quand ils tiennent. */
