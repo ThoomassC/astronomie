@@ -1,6 +1,13 @@
 import { STOP_ORDER, type StopKey } from "@/lib/journey/camera";
 import { sectionRanges, type SectionBox, type SectionRange } from "@/lib/journey/sections";
 import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
+import { shownElements } from "@/lib/site/shown";
+
+/*
+ * Seule la page affichée compte : les sections des pages quittées, que Next garde masquées, n'entrent pas dans les
+ * plages de défilement, ne reçoivent pas l'avancement du repos et leurs plaques ne cadrent pas la scène.
+ */
+export { isShown, shownElements } from "@/lib/site/shown";
 
 /**
  * Plages de défilement des escales de la page, mesurées par son suivi du défilement. Les clés sont celles des
@@ -19,25 +26,6 @@ export function getSectionRanges(): readonly SectionRange[] {
 /** Escale du voyage. */
 export function isStopKey(value: string | undefined): value is StopKey {
   return value !== undefined && (STOP_ORDER as readonly string[]).includes(value);
-}
-
-/**
- * L'élément appartient à la page affichée. Next 16 (`cacheComponents`) garde dans le DOM jusqu'à trois pages
- * quittées, masquées sous <Activity> par `display: none` : leurs sections ne comptent pas dans les plages de
- * défilement, ne reçoivent pas l'avancement du repos et leurs plaques ne cadrent pas la scène. Sans
- * `checkVisibility` (jsdom, Safari avant 17.4), on remonte les ancêtres à la recherche de `display: none`.
- */
-export function isShown(element: Element): boolean {
-  if (typeof element.checkVisibility === "function") return element.checkVisibility();
-  for (let node: Element | null = element; node; node = node.parentElement) {
-    if (getComputedStyle(node).display === "none") return false;
-  }
-  return true;
-}
-
-/** Éléments de la page affichée qui répondent au sélecteur, dans l'ordre du document. */
-export function shownElements<E extends Element = HTMLElement>(selector: string): E[] {
-  return Array.from(document.querySelectorAll<E>(selector)).filter(isShown);
 }
 
 /**
