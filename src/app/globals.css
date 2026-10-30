@@ -1414,9 +1414,12 @@ footer a {
   font-weight: 400;
 }
 
-/* Couleurs forcées : les fonds disparaissent, un contour garde la bulle visible. */
+/*
+ * Couleurs forcées : les fonds disparaissent, un contour garde visibles la bulle et l'escale en cours de la liste. Au
+ * focus, l'escale en cours prend le contour du focus : le sien le masquerait (la graisse la signale encore).
+ */
 @media (forced-colors: active) {
-  .stops-list a[aria-current="location"] {
+  .stops-list a[aria-current="location"]:not(:focus-visible) {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }

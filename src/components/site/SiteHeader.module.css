@@ -443,8 +443,9 @@
 }
 
 /*
- * Couleurs forcées : les fonds disparaissent ; contours sur les capsules, ligne courante en Highlight. Les drapeaux
- * s'effacent : leurs couleurs ne passeraient pas, et le code ou le nom de la langue suffit.
+ * Couleurs forcées : les fonds disparaissent ; contours sur les capsules, ligne courante en Highlight, sauf au focus :
+ * ce contour masquerait celui du focus (la graisse signale encore la ligne courante). Les drapeaux s'effacent : leurs
+ * couleurs ne passeraient pas, et le code ou le nom de la langue suffit.
  */
 @media (forced-colors: active) {
   .flag {
@@ -458,7 +459,7 @@
     border-color: CanvasText;
   }
 
-  .panel a[aria-current] {
+  .panel a[aria-current]:not(:focus-visible) {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }
