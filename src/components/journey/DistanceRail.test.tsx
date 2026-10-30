@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { anchorOf } from "@/components/journey/anchors";
@@ -292,4 +294,48 @@ describe("DistanceRail en anglais et en espagnol", () => {
       expect(links.map((link) => link.getAttribute("aria-label"))).toEqual(labels);
     },
   );
+});
+
+/*
+ * Place de la règle (globals.css, lu tel quel) : ses seize repères doivent garder au moins 24 px entre leurs centres
+ * (WCAG 2.5.8, cibles de 24 px). Là où sa hauteur ne le permet pas, la liste des escales de la barre la remplace.
+ */
+describe("la règle et la liste des escales", () => {
+  const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+  /** Écart minimal entre les centres de deux repères voisins, en px CSS. */
+  const MIN_PITCH_PX = 24;
+  const REM_PX = 16;
+
+  /** Conditions de la requête média dont le bloc affiche la liste des escales (`.stops-menu { display: block; … }`). */
+  function swapConditions(): string[] {
+    const at = css.search(/\n {2}\.stops-menu \{\n {4}display: block;/);
+    expect(at).toBeGreaterThan(0);
+    const start = css.lastIndexOf("@media", at);
+    const query = css.slice(start + "@media".length, css.indexOf("{", start));
+    return query.split(",").map((condition) => condition.replace(/\s+/g, " ").trim());
+  }
+
+  /** Hauteur de la règle sur grand écran : `min(<vh>vh, <px>px)`, dans le premier bloc `.rail`. */
+  function railHeight(viewportHeight: number): number {
+    const match = /\n\.rail \{[^}]*?height: min\((\d+(?:\.\d+)?)vh, (\d+)px\);/.exec(css);
+    expect(match).not.toBeNull();
+    const [, vh, px] = match ?? [];
+    return Math.min((Number(vh) / 100) * viewportHeight, Number(px));
+  }
+
+  it("devrait remplacer la règle par la liste sur tout écran de 860 px de large ou moins, quelle qu'en soit la hauteur", () => {
+    expect(swapConditions()).toContain("(max-width: 860px) and (scripting: enabled)");
+  });
+
+  it("devrait remplacer la règle par la liste sous la hauteur où ses seize repères n'auraient plus 24 px entre eux", () => {
+    const short = swapConditions()
+      .map((condition) => /^\(max-height: (\d+(?:\.\d+)?)rem\) and \(scripting: enabled\)$/.exec(condition))
+      .find((match) => match !== null);
+    expect(short).toBeDefined();
+    const threshold = Number(short?.[1]) * REM_PX;
+    // Juste au-dessus du seuil, la règle s'affiche : ses repères y tiennent à 24 px au moins.
+    expect(railHeight(threshold + 0.01) / (RAIL_STOPS.length - 1)).toBeGreaterThanOrEqual(MIN_PITCH_PX);
+    // Le seuil ne retire pas la règle là où elle tiendrait encore à 25 px (pas plus d'un pixel de marge perdu).
+    expect(railHeight(threshold - 16) / (RAIL_STOPS.length - 1)).toBeLessThan(MIN_PITCH_PX + 1);
+  });
 });

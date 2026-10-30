@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SOLAR_HIDDEN_ZOOM, layerWeights, type LayerWeights } from "@/components/scene/layers";
+import { SOLAR_HIDDEN_ZOOM, galaxyMagnification, layerWeights, type LayerWeights } from "@/components/scene/layers";
+import { LOCAL_GROUP_MAGNIFICATION } from "@/lib/astro/scale";
 
 /** Zooms de −1 à 10 par pas de 0,05, et de −1 à 17 (jusqu'au-delà du multivers). */
 const ZOOMS = Array.from({ length: 221 }, (_, i) => -1 + i * 0.05);
@@ -175,5 +176,27 @@ describe("layerWeights", () => {
       solar: 0, planetLabels: 0, sunPoint: 1, sky: 0, stars: 0, galaxy: 1, galaxyLabels: 1, here: 1, sunLabel: 0,
       ...EXTRAGALACTIC,
     });
+  });
+});
+
+describe("galaxyMagnification", () => {
+  it("devrait laisser les galaxies à leur vraie taille jusqu'au zoom 8,5, escale de la Voie lactée comprise", () => {
+    for (const zoom of ALL_ZOOMS.filter((z) => z < 8.49)) expect(galaxyMagnification(zoom)).toBe(1);
+    expect(galaxyMagnification(8)).toBe(1);
+  });
+
+  it("devrait les grossir de LOCAL_GROUP_MAGNIFICATION dès le zoom 9,3 : au Groupe local et au-delà", () => {
+    expect(LOCAL_GROUP_MAGNIFICATION).toBe(4);
+    for (const zoom of ALL_ZOOMS.filter((z) => z > 9.31)) expect(galaxyMagnification(zoom)).toBe(LOCAL_GROUP_MAGNIFICATION);
+    expect(galaxyMagnification(9.7)).toBe(LOCAL_GROUP_MAGNIFICATION);
+  });
+
+  it("devrait grossir à mesure que paraît le Groupe local, sans à-coup ni retour en arrière", () => {
+    for (const zoom of ALL_ZOOMS.filter((z) => z >= 8.5 && z <= 9.3)) {
+      expect((galaxyMagnification(zoom) - 1) / (LOCAL_GROUP_MAGNIFICATION - 1)).toBeCloseTo(layerWeights(zoom).localGroup, 12);
+    }
+    const steps = stepsOf(ALL_ZOOMS.map(galaxyMagnification));
+    expect(Math.min(...steps)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...steps)).toBeLessThan(0.3);
   });
 });

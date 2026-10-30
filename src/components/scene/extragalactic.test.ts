@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   EXTRAGALACTIC_LABEL_ORDER,
   LABELLED_GALAXIES,
-  LOCAL_GROUP_FULL_DETAIL_PX,
+  LOCAL_GROUP_FULL_LIGHT_PX,
   LOCAL_GROUP_MIN_DRAWN,
+  LOCAL_GROUP_MIN_GAIN,
   LOCAL_GROUP_MIN_POINTS,
   LOCAL_GROUP_POINT_BUDGET,
+  SHELL_FIT_MARGIN_PX,
   WEB_FULL_DETAIL_PX,
   WEB_POINT_BUDGET,
   buildLocalGroup,
@@ -14,9 +16,13 @@ import {
   createExtragalactic,
   detailFraction,
   fitLocalGroup,
+  fitShells,
   fitWeb,
   galaxyLabelKey,
   isExtragalacticLabelKey,
+  labelledBubbleIndex,
+  magnifyLocalGroup,
+  shellFit,
   splitLight,
   weighExtragalactic,
   type ExtragalacticBody,
@@ -430,25 +436,60 @@ describe("fitLocalGroup", () => {
     expect(() => fitLocalGroup(create(), 10)).not.toThrow();
   });
 
-  it("devrait dessiner tous les points quand Andromède atteint le rayon de pleine finesse", () => {
-    const body = built();
-    fitLocalGroup(body, LOCAL_GROUP_FULL_DETAIL_PX);
-    for (const points of galaxiesOf(body).values()) expect(drawnOf(points)).toBe(pointCount(points));
-  });
-
-  it("devrait n'en dessiner qu'une part quand Andromède rapetisse, au moins LOCAL_GROUP_MIN_DRAWN par galaxie", () => {
-    const body = built();
-    fitLocalGroup(body, LOCAL_GROUP_FULL_DETAIL_PX / 4);
-    for (const points of galaxiesOf(body).values()) {
-      const total = pointCount(points);
-      expect(drawnOf(points)).toBe(Math.min(total, Math.max(LOCAL_GROUP_MIN_DRAWN, Math.round(total / 8))));
+  it("devrait tout dessiner à plein éclat quand Andromède atteint LOCAL_GROUP_FULL_LIGHT_PX, ou de l'intérieur", () => {
+    for (const radius of [LOCAL_GROUP_FULL_LIGHT_PX, 4 * LOCAL_GROUP_FULL_LIGHT_PX, Infinity]) {
+      const body = built();
+      fitLocalGroup(body, radius);
+      expect(body.localGroupGain.value).toBe(1);
+      for (const points of galaxiesOf(body).values()) expect(drawnOf(points)).toBe(pointCount(points));
     }
   });
 
-  it("devrait laisser le gain d'éclat à 1 : le niveau de détail règle seul la lumière", () => {
+  it("devrait d'abord baisser l'éclat, tous les points dessinés : lumière (rayon / LOCAL_GROUP_FULL_LIGHT_PX)^1,5", () => {
+    expect(LOCAL_GROUP_FULL_LIGHT_PX).toBe(80);
+    expect(LOCAL_GROUP_MIN_GAIN).toBe(0.35);
     const body = built();
-    fitLocalGroup(body, 5);
-    expect(body.localGroupGain.value).toBe(1);
+    // (64 / 80)^1,5 = 0,7155 : au-dessus du plancher, le gain porte seul la lumière.
+    fitLocalGroup(body, 64);
+    expect(body.localGroupGain.value).toBeCloseTo(0.8 ** 1.5, 12);
+    for (const points of galaxiesOf(body).values()) expect(drawnOf(points)).toBe(pointCount(points));
+  });
+
+  it("devrait ensuite garder l'éclat plancher et ne dessiner qu'une part, au moins LOCAL_GROUP_MIN_DRAWN par galaxie", () => {
+    const body = built();
+    // (20 / 80)^1,5 = 0,125 : gain 0,35, part 0,125 / 0,35.
+    fitLocalGroup(body, 20);
+    expect(body.localGroupGain.value).toBe(LOCAL_GROUP_MIN_GAIN);
+    for (const points of galaxiesOf(body).values()) {
+      const total = pointCount(points);
+      expect(drawnOf(points)).toBe(Math.min(total, Math.max(LOCAL_GROUP_MIN_DRAWN, Math.round((0.125 / 0.35) * total))));
+    }
+  });
+
+  it("devrait garder au moins LOCAL_GROUP_MIN_DRAWN points par galaxie, même pour un rayon nul", () => {
+    const body = built();
+    fitLocalGroup(body, 0);
+    for (const points of galaxiesOf(body).values()) {
+      expect(drawnOf(points)).toBe(Math.min(pointCount(points), LOCAL_GROUP_MIN_DRAWN));
+    }
+  });
+});
+
+describe("magnifyLocalGroup", () => {
+  it("ne devrait rien faire avant la construction", () => {
+    expect(() => magnifyLocalGroup(create(), 4)).not.toThrow();
+  });
+
+  it("devrait grossir chaque galaxie autour de son centre, sans la déplacer", () => {
+    const body = built();
+    const centers = [...galaxiesOf(body).values()].map((points) => points.position.clone());
+    magnifyLocalGroup(body, 4);
+    [...galaxiesOf(body).values()].forEach((points, i) => {
+      expect(points.scale.toArray()).toEqual([4, 4, 4]);
+      expect(points.position.equals(centers[i])).toBe(true);
+    });
+    magnifyLocalGroup(body, 1);
+    for (const points of galaxiesOf(body).values()) expect(points.scale.toArray()).toEqual([1, 1, 1]);
   });
 });
 
@@ -518,5 +559,79 @@ describe("isExtragalacticLabelKey", () => {
 
   it.each([undefined, "", "here", "center", "star:sirius", "lg:", "lg:inconnue", "andromeda"])("devrait refuser « %s »", (key) => {
     expect(isExtragalacticLabelKey(key)).toBe(false);
+  });
+});
+
+describe("shellFit", () => {
+  /** Zone libre du grand écran 1440 × 900 : entre la plaque (594 px) et la règle (1 244 px), toute la hauteur. */
+  const ZONE = { left: 594, right: 1244, top: 0, bottom: 900 };
+
+  it("devrait laisser entière une coquille qui tient dans l'espace libre, bord compris", () => {
+    expect(SHELL_FIT_MARGIN_PX).toBe(24);
+    expect(shellFit(919, 450, 292, ZONE)).toBe(1);
+    expect(shellFit(919, 450, 325, ZONE)).toBe(1);
+  });
+
+  it("devrait l'effacer à mesure qu'elle déborde, et tout à fait au-delà de SHELL_FIT_MARGIN_PX", () => {
+    // Bord droit à 1 256 px : 12 px de débord, moitié de la marge.
+    expect(shellFit(919, 450, 337, ZONE)).toBeCloseTo(0.5, 12);
+    expect(shellFit(919, 450, 349, ZONE)).toBe(0);
+    expect(shellFit(919, 450, 900, ZONE)).toBe(0);
+  });
+
+  it("devrait compter le débord de chaque côté, haut et bas compris (bande libre du téléphone)", () => {
+    const band = { left: 0, right: 375, top: 97, bottom: 447 };
+    expect(shellFit(187, 272, 150, band)).toBe(1);
+    expect(shellFit(187, 150, 100, band)).toBe(0);
+    expect(shellFit(30, 272, 100, band)).toBe(0);
+  });
+
+  it("devrait l'effacer quand la caméra est dedans ou qu'elle est derrière (rayon infini ou indéfini)", () => {
+    expect(shellFit(919, 450, Infinity, ZONE)).toBe(0);
+    expect(shellFit(919, 450, Number.NaN, ZONE)).toBe(0);
+    expect(shellFit(Number.NaN, 450, 100, ZONE)).toBe(0);
+  });
+});
+
+describe("fitShells", () => {
+  it("ne devrait rien faire avant la construction", () => {
+    expect(() => fitShells(create(), { cmb: 1, multiverse: 1 }, 1, [])).not.toThrow();
+  });
+
+  it("devrait donner à chaque bulle sa propre opacité : chacune s'efface seule en sortant de l'espace libre", () => {
+    const { bubbles } = universeOf(built());
+    const opacities = new Set(bubbles.map((bubble) => bubble.material.uniforms.uOpacity));
+    expect(opacities.size).toBe(bubbles.length);
+  });
+
+  it("devrait peser le fond diffus et chaque bulle par la part qui tient dans l'espace libre", () => {
+    const body = built();
+    const { cmb, bubbles } = universeOf(body);
+    const fits = bubbles.map((_, i) => (i % 2 === 0 ? 1 : 0));
+    fitShells(body, { cmb: 1, multiverse: 0.8 }, 0.5, fits);
+    expect(cmb.material.uniforms.uOpacity.value).toBeCloseTo(0.5, 12);
+    expect(cmb.visible).toBe(true);
+    bubbles.forEach((bubble, i) => {
+      expect(bubble.material.uniforms.uOpacity.value).toBeCloseTo(0.8 * fits[i], 12);
+      expect(bubble.visible).toBe(fits[i] > 0);
+    });
+  });
+
+  it("devrait cacher le fond diffus qui ne tient pas (aucun appel de dessin)", () => {
+    const body = built();
+    fitShells(body, { cmb: 1, multiverse: 0 }, 0, []);
+    expect(universeOf(body).cmb.visible).toBe(false);
+  });
+});
+
+describe("labelledBubbleIndex", () => {
+  it("devrait désigner la bulle qui porte « D'autres univers ? » : la plus grande des autres, sous son ancre", () => {
+    const body = built();
+    const { bubbles } = universeOf(body);
+    const index = labelledBubbleIndex();
+    const largest = Math.max(...bubbles.map((bubble) => bubble.scale.x));
+    expect(bubbles[index].scale.x).toBe(largest);
+    const anchor = body.labelAnchors.get("other-universes")?.position;
+    expect(anchor && bubbles[index].position.equals(new Vector3(anchor.x, anchor.y, anchor.z))).toBe(true);
   });
 });

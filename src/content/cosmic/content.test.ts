@@ -3,6 +3,7 @@ import { DEEP_SKY_STRINGS } from "@/components/scene/deepSky.strings";
 import { COSMIC_CONTENT_KEYS, getCosmicContent } from "@/content/cosmic/content";
 import { LOCALES } from "@/i18n/locales";
 import { LOCAL_GROUP } from "@/lib/astro/localGroup";
+import { LOCAL_GROUP_MAGNIFICATION } from "@/lib/astro/scale";
 import { spectralClass } from "@/lib/astro/starMap";
 import { NEARBY_STARS } from "@/lib/astro/stars";
 
@@ -148,6 +149,15 @@ describe("les fiches", () => {
 
   it.each(LOCALES)("devrait dire combien de galaxies la carte du Groupe local en montre (%s)", (locale) => {
     expect(getCosmicContent(locale).stops.localGroup.caveat).toContain(String(LOCAL_GROUP.length));
+  });
+
+  it.each([
+    ["fr", /^Les distances sont à l'échelle, pas les galaxies : elles sont grossies (\d+) fois/],
+    ["en", /^Distances are to scale, galaxies are not: they are enlarged (\d+) times/],
+    ["es", /^Las distancias están a escala, las galaxias no: están agrandadas (\d+) veces/],
+  ] as const)("devrait dire que les galaxies du Groupe local sont grossies, et de combien (%s)", (locale, pattern) => {
+    const match = pattern.exec(getCosmicContent(locale).stops.localGroup.caveat);
+    expect(Number(match?.[1])).toBe(LOCAL_GROUP_MAGNIFICATION);
   });
 });
 

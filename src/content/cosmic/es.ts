@@ -2,6 +2,7 @@ import { DEEP_SKY_STRINGS } from "@/components/scene/deepSky.strings";
 import { withUnit } from "@/i18n/units";
 import { formatNumber } from "@/lib/format";
 import { CMB_AGE_YEARS, CMB_TEMPERATURE_K, OBSERVABLE_UNIVERSE_RADIUS_GLY, UNIVERSE_AGE_GYR } from "@/lib/astro/universe";
+import { LOCAL_GROUP_MAGNIFICATION } from "@/lib/astro/scale";
 import { MAP_GALAXY_COUNT, MAP_STAR_COUNT, RED_DWARF_COUNT, distanceMlyOf } from "./figures";
 import type { CosmicContent } from "./types";
 
@@ -73,7 +74,7 @@ export const COSMIC_ES: CosmicContent = {
           note: `de fusionarse en ${n(10_000)} millones de años (estudio de 2025)`,
         },
       ],
-      caveat: `Las posiciones, distancias y tamaños están a escala; las formas están estilizadas a partir de las mediciones. El mapa muestra ${MAP_GALAXY_COUNT} de las más de 100 galaxias del grupo, y las más pequeñas brillan un poco más que en la realidad.`,
+      caveat: `Las distancias están a escala, las galaxias no: están agrandadas ${LOCAL_GROUP_MAGNIFICATION} veces para que se vean, y sus formas están estilizadas a partir de las mediciones. El mapa muestra ${MAP_GALAXY_COUNT} de las más de 100 galaxias del grupo, y las más pequeñas brillan un poco más que en la realidad.`,
       source:
         "McConnachie (2012, catálogo 2021); Li et al. (2021); Breuval et al. (2023); Pietrzyński et al. (2019); Graczyk et al. (2020); Karachentsev et al. (2009); Sawala et al. (2025); NASA",
     },

@@ -202,9 +202,10 @@
   }
 }
 
-/* Là où la règle cède la place au menu des étoiles, sa légende part avec elle. */
-@media (max-width: 860px) and (min-height: 30.0625rem) and (scripting: enabled),
-  (max-width: 1100px) and (orientation: portrait) and (min-height: 30.0625rem) and (scripting: enabled) {
+/* Là où la règle cède la place au menu des étoiles (même requête que globals.css), sa légende part avec elle. */
+@media (max-width: 860px) and (scripting: enabled),
+  (max-width: 1100px) and (orientation: portrait) and (scripting: enabled),
+  (max-height: 34.125rem) and (scripting: enabled) {
   .railLegend {
     display: none;
   }

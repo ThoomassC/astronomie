@@ -2331,12 +2331,16 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 
 /*
  * La liste des escales remplace la règle des distances là où celle-ci n'a plus que des pastilles
- * sans nom au doigt (860 px et moins) et en mise en page compacte. Pas sur un écran bas (zoom à
- * 400 %, téléphone en paysage) : la barre y suit la page et la règle fixe reste la navigation.
- * Pas sans JavaScript non plus : la liste ne s'ouvrirait pas.
+ * sans nom au doigt (860 px et moins), en mise en page compacte, et partout où elle est trop basse
+ * pour ses seize repères : il leur faut 15 × 24 px = 360 px pour garder 24 px entre leurs centres
+ * (WCAG 2.5.8), soit 66vh ≥ 360 px, une vue d'au moins 546 px de haut (34,125 rem). Sur un écran
+ * bas (téléphone en paysage, zoom à 400 %), la barre suit la page : la liste s'ouvre en haut de
+ * page, quand la règle n'y aurait que des repères qui se chevauchent. Pas sans JavaScript : la
+ * liste ne s'ouvrirait pas.
  */
-@media (max-width: 860px) and (min-height: 30.0625rem) and (scripting: enabled),
-  (max-width: 1100px) and (orientation: portrait) and (min-height: 30.0625rem) and (scripting: enabled) {
+@media (max-width: 860px) and (scripting: enabled),
+  (max-width: 1100px) and (orientation: portrait) and (scripting: enabled),
+  (max-height: 34.125rem) and (scripting: enabled) {
   :root {
     --rail-w: 0px;
   }
@@ -2410,8 +2414,9 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     margin: 0;
     padding: 0.35rem;
     list-style: none;
-    max-height: calc(100vh - 6rem - var(--dock-clear) - env(safe-area-inset-top, 0px));
-    max-height: calc(100svh - 6rem - var(--dock-clear) - env(safe-area-inset-top, 0px));
+    /* Hors mise en page compacte (écran bas, paysage), pas de dock fixe à dégager. */
+    max-height: calc(100vh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
+    max-height: calc(100svh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
     overflow-y: auto;
     overscroll-behavior: contain;
     background: #080e20;

@@ -192,6 +192,28 @@ export function buildGalaxy(cosmos: CosmosBody, count: number): void {
   cosmos.galaxy = galaxy;
 }
 
+/** Centre galactique dans le groupe du ciel profond (al) : centre du grossissement de la galaxie. */
+const GALACTIC_CENTER_LY = sceneFromGalacticXYZ(GALACTIC_CENTER_DISTANCE_LY, 0, 0);
+
+/**
+ * Grossit la galaxie de `magnification` autour de son centre (1 : vraie taille), et déplace le point-Soleil avec
+ * elle : le Soleil reste à sa place dans le disque dessiné, en c + m × (0 − c). Une galaxie construite après coup
+ * prend le grossissement au prochain appel (le moteur l'appelle à chaque changement de zoom).
+ */
+export function magnifyGalaxy(cosmos: CosmosBody, magnification: number): void {
+  const shift = 1 - magnification;
+  const { x, y, z } = GALACTIC_CENTER_LY;
+  cosmos.sunPoint.position.set(x * shift, y * shift, z * shift);
+  if (!cosmos.galaxy) return;
+  cosmos.galaxy.scale.setScalar(magnification);
+  cosmos.galaxy.position.set(x * shift, y * shift, z * shift);
+}
+
+/** Position du point-Soleil dans le groupe du ciel profond (al), grossissement compris : ancre de « Vous êtes ici ». */
+export function sunPointPosition(cosmos: CosmosBody, out: Vector3): Vector3 {
+  return out.copy(cosmos.sunPoint.position);
+}
+
 /** Fondu d'un nuage : opacité = poids ; à poids nul, plus aucun appel de dessin. */
 function weighPoints(points: Points<BufferGeometry, ShaderMaterial>, weight: number): void {
   points.material.uniforms.uOpacity.value = weight;

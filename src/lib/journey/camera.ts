@@ -3,7 +3,7 @@ import { GALACTIC_CENTER_DISTANCE_LY, GALACTIC_DISK_RADIUS_LY, sceneFromGalactic
 import { LOCAL_GROUP, galaxyCenterKly, galaxyRadiusKly, type LocalGroupGalaxyKey } from "@/lib/astro/localGroup";
 import { MULTIVERSE_SEED, MULTIVERSE_VIEW_DEG, multiverseBubbles, multiverseRadius } from "@/lib/astro/multiverse";
 import { SUN, type PlanetKey } from "@/lib/astro/planets";
-import { sceneRadius, unitsPerLightYear } from "@/lib/astro/scale";
+import { LOCAL_GROUP_MAGNIFICATION, sceneRadius, unitsPerLightYear } from "@/lib/astro/scale";
 import { NEARBY_STARS } from "@/lib/astro/stars";
 import { OBSERVABLE_UNIVERSE_RADIUS_GLY } from "@/lib/astro/universe";
 import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
@@ -182,22 +182,23 @@ function isFramedBody(key: StopKey): key is "sun" | PlanetKey {
   return key !== "hero" && key !== "belt" && key !== "beyond" && !isCosmicStop(key);
 }
 
-/** Galaxies que cadre l'escale du Groupe local : les naines lointaines (WLM, NGC 6822…) peuvent sortir du cadre. */
+/** Galaxies que cadre l'escale du Groupe local, grossies ; les naines lointaines (WLM, NGC 6822…) peuvent en sortir. */
 const LOCAL_GROUP_FRAMED: readonly LocalGroupGalaxyKey[] = [
   "milky-way", "large-magellanic-cloud", "small-magellanic-cloud", "andromeda", "triangulum",
 ];
 
 /**
  * Rayon de la sphère cadrée au Groupe local, en kly : la plus grande distance entre sa cible et le bord d'une des
- * cinq galaxies principales (≈ 1 604 kly, le Triangle). Cadrer les treize galaxies, WLM à 3 Mal comprise, porterait ce
- * rayon à 2 563 kly et rapetisserait toutes les galaxies d'un tiers.
+ * cinq galaxies principales, grossies (LOCAL_GROUP_MAGNIFICATION) : ≈ 1 695 kly, le Triangle. Cadrer les treize
+ * galaxies, WLM à 3 Mal comprise, rapetisserait toutes les galaxies d'un tiers.
  */
 const LOCAL_GROUP_FRAME_KLY = (() => {
   const kly = 1000 * unitsPerLightYear(LOCAL_GROUP_ZOOM);
   const target = { x: LOCAL_GROUP_TARGET.x / kly, y: LOCAL_GROUP_TARGET.y / kly, z: LOCAL_GROUP_TARGET.z / kly };
   const reach = LOCAL_GROUP.filter((galaxy) => LOCAL_GROUP_FRAMED.includes(galaxy.key)).map((galaxy) => {
     const center = galaxyCenterKly(galaxy);
-    return Math.hypot(center.x - target.x, center.y - target.y, center.z - target.z) + galaxyRadiusKly(galaxy);
+    const radius = LOCAL_GROUP_MAGNIFICATION * galaxyRadiusKly(galaxy);
+    return Math.hypot(center.x - target.x, center.y - target.y, center.z - target.z) + radius;
   });
   return Math.max(...reach);
 })();

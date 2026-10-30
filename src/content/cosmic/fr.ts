@@ -2,6 +2,7 @@ import { DEEP_SKY_STRINGS } from "@/components/scene/deepSky.strings";
 import { withUnit } from "@/i18n/units";
 import { formatNumber } from "@/lib/format";
 import { CMB_AGE_YEARS, CMB_TEMPERATURE_K, OBSERVABLE_UNIVERSE_RADIUS_GLY, UNIVERSE_AGE_GYR } from "@/lib/astro/universe";
+import { LOCAL_GROUP_MAGNIFICATION } from "@/lib/astro/scale";
 import { MAP_GALAXY_COUNT, MAP_STAR_COUNT, RED_DWARF_COUNT, distanceMlyOf } from "./figures";
 import type { CosmicContent } from "./types";
 
@@ -71,7 +72,7 @@ export const COSMIC_FR: CosmicContent = {
         { label: "Masse totale", value: `≈ ${n(2000)} milliards de Soleils`, note: "matière noire comprise" },
         { label: "Avenir avec Andromède", value: "une chance sur deux", note: "de fusionner d'ici 10 milliards d'années (étude de 2025)" },
       ],
-      caveat: `Positions, distances et tailles sont à l'échelle ; les formes sont stylisées d'après les mesures. La carte montre ${MAP_GALAXY_COUNT} des plus de 100 galaxies du groupe, et les plus petites y brillent un peu plus qu'en réalité.`,
+      caveat: `Les distances sont à l'échelle, pas les galaxies : elles sont grossies ${LOCAL_GROUP_MAGNIFICATION} fois pour qu'on les voie, et leurs formes sont stylisées d'après les mesures. La carte montre ${MAP_GALAXY_COUNT} des plus de 100 galaxies du groupe, et les plus petites y brillent un peu plus qu'en réalité.`,
       source:
         "McConnachie (2012, catalogue 2021) ; Li et al. (2021) ; Breuval et al. (2023) ; Pietrzyński et al. (2019) ; Graczyk et al. (2020) ; Karachentsev et al. (2009) ; Sawala et al. (2025) ; NASA",
     },

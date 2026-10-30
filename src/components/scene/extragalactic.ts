@@ -26,6 +26,7 @@ import { OBSERVABLE_UNIVERSE_RADIUS_GLY } from "@/lib/astro/universe";
 import { createBubbleMaterial, createCmbMaterial } from "./extragalacticMaterials";
 import type { LayerWeights } from "./layers";
 import { createPointCloudMaterial, type Uniform } from "./materials";
+import { smoothstep } from "./math";
 
 /**
  * Au-delà de la Voie lactée : les galaxies du Groupe local, la toile cosmique, le fond diffus cosmologique et les
@@ -93,8 +94,16 @@ export const LOCAL_GROUP_MIN_POINTS = 30;
  * lumière suit (rayon / rayon de pleine finesse)^1,5, comme celle de la Voie lactée, sans perte ni saturation.
  */
 
-/** Rayon apparent d'Andromède (px CSS) à partir duquel tous les points du Groupe local sont dessinés. */
-export const LOCAL_GROUP_FULL_DETAIL_PX = 150;
+/**
+ * Rayon apparent d'Andromède grossie (px CSS) à partir duquel le Groupe local brille à plein éclat, tous ses points
+ * dessinés. En dessous, sa lumière suit (rayon / 80 px)^1,5 : portée par le gain jusqu'à LOCAL_GROUP_MIN_GAIN, puis
+ * par la part des points dessinés (splitLight). À l'escale, Andromède grossie fait 53 px de rayon sur grand écran
+ * (lumière 0,53, tous les points) et 27 sur téléphone (gain 0,35, 56 % des points) : cœur lumineux, disque et bras
+ * visibles (banc logiciel).
+ */
+export const LOCAL_GROUP_FULL_LIGHT_PX = 80;
+/** Gain le plus bas des galaxies du Groupe local : au-dessus du demi-niveau qu'efface le tampon 8 bits. */
+export const LOCAL_GROUP_MIN_GAIN = 0.35;
 /** Rayon apparent de l'Univers observable (px CSS) à partir duquel toute la toile est dessinée. */
 export const WEB_FULL_DETAIL_PX = 250;
 /** Points dessinés au moins par galaxie : de loin, les naines restent une petite tache. */
@@ -141,6 +150,15 @@ export function isExtragalacticLabelKey(value: string | undefined): value is Ext
  */
 function labelledBubble(bubbles: readonly Bubble[]): Bubble {
   return bubbles.slice(1).reduce((best, bubble) => (bubble.radius > best.radius ? bubble : best));
+}
+
+/**
+ * Rang, parmi les autres bulles (`bubbles` du corps, la nôtre exclue), de celle qui porte « D'autres univers ? » :
+ * son étiquette s'efface avec elle.
+ */
+export function labelledBubbleIndex(): number {
+  const bubbles = multiverseBubbles(MULTIVERSE_SEED);
+  return bubbles.indexOf(labelledBubble(bubbles)) - 1;
 }
 
 /**
@@ -247,7 +265,8 @@ export function buildLocalGroup(body: ExtragalacticBody, budget: number): void {
 /**
  * Construit la toile cosmique (`webBudget` points), le fond diffus (sphère de l'Univers observable) et les 14 autres
  * bulles du multivers, rangés dans `universe` ; sans effet s'ils existent déjà. Les coquilles partagent une sphère
- * unité, mise à l'échelle par chaque maillage, et les bulles un même poids.
+ * unité, mise à l'échelle par chaque maillage ; chaque bulle a son opacité (elle s'efface seule en sortant de
+ * l'espace libre, fitShells), toutes le même programme.
  */
 export function buildUniverse(body: ExtragalacticBody, webBudget: number): void {
   if (body.web) return;
@@ -257,11 +276,10 @@ export function buildUniverse(body: ExtragalacticBody, webBudget: number): void 
   const cmb = new Mesh(sphere, createCmbMaterial().material);
   cmb.scale.setScalar(radius);
   cmb.visible = false;
-  const opacity: Uniform<number> = { value: 1 };
   const bubbles = multiverseBubbles(MULTIVERSE_SEED)
     .slice(1)
     .map((bubble) => {
-      const mesh = new Mesh(sphere, createBubbleMaterial(bubble.hue, opacity).material);
+      const mesh = new Mesh(sphere, createBubbleMaterial(bubble.hue, { value: 1 }).material);
       mesh.position.set(bubble.center.x, bubble.center.y, bubble.center.z);
       mesh.scale.setScalar(bubble.radius);
       mesh.visible = false;
@@ -299,18 +317,30 @@ function drawFirst(points: Points<BufferGeometry, ShaderMaterial>, count: number
 }
 
 /**
- * Niveau de détail du Groupe local, d'après le rayon apparent d'Andromède (px CSS, mesuré par le moteur à la
- * distance de son centre) : chaque galaxie dessine la même part de ses points (detailFraction), au moins
- * LOCAL_GROUP_MIN_DRAWN. Les proportions de lumière entre galaxies restent celles de leurs luminosités ; le gain
- * d'éclat reste à 1. Sans effet avant buildLocalGroup.
+ * Lumière du Groupe local, d'après le rayon apparent d'Andromède grossie (px CSS, mesuré par le moteur à la distance
+ * de son centre ; Infinity quand la caméra est dedans) : min(1, (rayon / LOCAL_GROUP_FULL_LIGHT_PX)^1,5), partagée
+ * entre le gain commun (jusqu'à LOCAL_GROUP_MIN_GAIN) et la part de points que dessine chaque galaxie, au moins
+ * LOCAL_GROUP_MIN_DRAWN. Les proportions de lumière entre galaxies restent celles de leurs luminosités. Sans effet
+ * avant buildLocalGroup.
  */
 export function fitLocalGroup(body: ExtragalacticBody, andromedaRadiusPx: number): void {
   if (!body.galaxies) return;
-  const fraction = detailFraction(andromedaRadiusPx, LOCAL_GROUP_FULL_DETAIL_PX);
+  const light = andromedaRadiusPx > 0 ? Math.min(1, (andromedaRadiusPx / LOCAL_GROUP_FULL_LIGHT_PX) ** 1.5) : 0;
+  const { gain, fraction } = splitLight(light, LOCAL_GROUP_MIN_GAIN);
+  body.localGroupGain.value = gain;
   for (const points of body.galaxies.values()) {
     const total = points.geometry.getAttribute("position").count;
     drawFirst(points, Math.max(LOCAL_GROUP_MIN_DRAWN, Math.round(fraction * total)));
   }
+}
+
+/**
+ * Grossit chaque galaxie du Groupe local de `magnification` autour de son centre (1 : vraie taille), comme la Voie
+ * lactée (magnifyGalaxy) : les distances ne changent pas. Sans effet avant buildLocalGroup.
+ */
+export function magnifyLocalGroup(body: ExtragalacticBody, magnification: number): void {
+  if (!body.galaxies) return;
+  for (const points of body.galaxies.values()) points.scale.setScalar(magnification);
 }
 
 /**
@@ -338,4 +368,51 @@ export function weighExtragalactic(body: ExtragalacticBody, weights: Extragalact
   if (body.web) weigh(body.web, weights.web);
   if (body.cmb) weigh(body.cmb, weights.cmb);
   if (body.bubbles) for (const bubble of body.bubbles) weigh(bubble, weights.multiverse);
+}
+
+/**
+ * Débord (px CSS) au-delà duquel une coquille a disparu : la marge entre la zone libre et la règle (ZONE_MARGIN_PX de
+ * screenLayout). Le fond diffus ou une bulle qui sort de l'espace libre s'efface avant de toucher la plaque ou la
+ * règle.
+ */
+export const SHELL_FIT_MARGIN_PX = 24;
+
+/** Espace libre de l'écran, en px CSS depuis le coin haut gauche : zone du grand écran, bande du téléphone, écran. */
+export interface ScreenBox {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * Part visible d'une coquille dans l'espace libre `free`, d'après son centre projeté (`x`, `y`) et son rayon apparent
+ * (`radius`), en px CSS : 1 tant qu'elle y tient, 0 dès qu'elle en déborde de SHELL_FIT_MARGIN_PX, d'un côté ou d'un
+ * autre ; 0 quand la caméra est dedans (rayon infini) ou qu'elle est derrière (centre ou rayon indéfini).
+ */
+export function shellFit(x: number, y: number, radius: number, free: ScreenBox): number {
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius) || radius < 0) return 0;
+  const overflow = Math.max(
+    free.left - (x - radius),
+    x + radius - free.right,
+    free.top - (y - radius),
+    y + radius - free.bottom,
+    0,
+  );
+  return 1 - smoothstep(0, SHELL_FIT_MARGIN_PX, overflow);
+}
+
+/**
+ * Pèse les coquilles selon la part qui tient dans l'espace libre : fond diffus ← cmb × `cmbFit`, bulle i ← multivers
+ * × `bubbleFits[i]` (1 sans valeur). Remplace leur pesée par weighExtragalactic pour l'image en cours. Sans effet
+ * avant buildUniverse.
+ */
+export function fitShells(
+  body: ExtragalacticBody,
+  weights: Pick<ExtragalacticWeights, "cmb" | "multiverse">,
+  cmbFit: number,
+  bubbleFits: readonly number[],
+): void {
+  if (body.cmb) weigh(body.cmb, weights.cmb * cmbFit);
+  body.bubbles?.forEach((bubble, i) => weigh(bubble, weights.multiverse * (bubbleFits[i] ?? 1)));
 }
