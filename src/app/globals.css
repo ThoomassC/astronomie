@@ -2196,8 +2196,12 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     min-height: 44px;
   }
 
-  /* Ce qui reçoit le focus, ou le bouton d'une plaque qu'on déplie, passe sous la note (hauteur mesurée). */
-  html:has(.scale-note[data-visible="true"]) {
+  /*
+   * Ce qui reçoit le focus, ou le bouton d'une plaque qu'on déplie, passe sous la note visible (hauteur mesurée). La
+   * marque vient de la note (ScaleNote) : un sélecteur `:has()` sur la note serait encore satisfait par celle d'une
+   * page quittée, que Next garde masquée.
+   */
+  html[data-scale-note] {
     scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 5.25rem + var(--note-h, 11rem) + 0.75rem);
   }
 }
@@ -2609,7 +2613,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   }
 
   /* La barre suit la page : rien à dégager en haut ; en bas, la note visible (hauteur mesurée). */
-  html:has(.scale-note[data-visible="true"]) {
+  html[data-scale-note] {
     scroll-padding-top: 1rem;
     scroll-padding-bottom: calc(14px + var(--note-h, 11rem) + 0.75rem + env(safe-area-inset-bottom, 0px));
   }
