@@ -2617,8 +2617,12 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 
 /* Écran bas ou zoom à 400 % : la barre et le dock reprennent leur place dans la page. */
 @media (max-height: 30rem) {
+  /*
+   * Seul le bouton « Tourner autour » du voyage reste fixé en haut (44 px, à 0,5 rem du bord) : ce qui reçoit le focus
+   * s'arrête 0,5 rem sous lui. En bas, rien de fixe, hors de la note d'échelle (plus bas).
+   */
   html {
-    scroll-padding-block: 1rem;
+    scroll-padding-block: calc(env(safe-area-inset-top, 0px) + 3.75rem) 1rem;
   }
 
   /* Le dock rejoint la page : la plaque n'a plus à rester collée au-dessus de lui, ni à montrer le repos. */
@@ -2663,9 +2667,9 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* La barre suit la page : rien à dégager en haut ; en bas, la note visible (hauteur mesurée). */
+  /* La barre suit la page : en haut, seulement le bouton fixé ; en bas, la note visible (hauteur mesurée). */
   html[data-scale-note] {
-    scroll-padding-top: 1rem;
+    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 3.75rem);
     scroll-padding-bottom: calc(14px + var(--note-h, 11rem) + 0.75rem + env(safe-area-inset-bottom, 0px));
   }
 

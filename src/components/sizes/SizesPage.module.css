@@ -98,9 +98,13 @@
 }
 
 /* ---------- Échelle graphique de la scène (décorative) ---------- */
+/*
+ * Au rang des étiquettes de la scène (#labels, 1), après elles dans le DOM, donc au-dessus ; sous le contenu (main,
+ * 2) : en mise en page compacte, où elle se pose sous la barre, une fiche dépliée qui passe dessous reste lisible.
+ */
 .scaleBar {
   position: fixed;
-  z-index: 3;
+  z-index: 1;
   right: calc(var(--gr) + var(--rail-w) + 1.5rem);
   bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   padding: 0.5rem 0.75rem;
