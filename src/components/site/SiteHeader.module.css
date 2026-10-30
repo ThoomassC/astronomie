@@ -7,10 +7,15 @@
  * règle d'auteur l'emporterait sur `hidden`.
  */
 
-/* Accueil et À propos : le texte défile sous la barre, sans scène ; voile plus dense que celui du voyage. */
+/*
+ * Accueil et À propos : le texte défile sous la barre, sans scène. Fond de nuit plein jusqu'au bas des commandes, puis
+ * fondu dans la marge basse de la barre (0,9 rem) : aucune ligne ne se lit derrière la marque, les onglets ou la
+ * langue, et le texte s'efface sans arête nette. Le voyage et Tailles gardent leur voile léger (« Barre haute », dans
+ * globals.css) : leur scène 3D doit se deviner sous la barre, et leurs plaques ont leur propre fond.
+ */
 .header[data-page="home"],
 .header[data-page="about"] {
-  background: linear-gradient(rgba(6, 11, 24, 0.96) 62%, rgba(6, 11, 24, 0));
+  background: linear-gradient(var(--nuit) calc(100% - 0.9rem), rgba(6, 11, 24, 0));
 }
 
 /*
