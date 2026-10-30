@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { earthReading } from "@/components/journey/earthReading";
+import { EXPLORE_STRINGS, type ReadingFigures } from "@/components/journey/explore.strings";
 
 /** Instant simulé : minuit UTC du jour donné. */
 const at = (date: string) => Date.parse(`${date}T00:00:00Z`);
@@ -45,5 +46,70 @@ describe("earthReading", () => {
     const { spoken } = earthReading("venus", at("2026-08-15"));
     expect(spoken).not.toContain("″");
     expect(spoken).not.toContain("°");
+  });
+});
+
+describe("earthReading en anglais et en espagnol", () => {
+  it.each([
+    ["en", "49% lit · 24″ across · 46° east of the Sun", "In the evening, in the west after sunset"],
+    ["es", "Iluminado al 49 % · 24″ de diámetro · 46° al este del Sol", "Al anochecer, al oeste tras la puesta de sol"],
+  ] as const)(
+    "devrait écrire les deux lignes dans la langue de la page (%s, Vénus, 15/08/2026)",
+    (locale, first, second) => {
+      expect(earthReading("venus", at("2026-08-15"), locale).lines).toEqual([first, second]);
+    },
+  );
+
+  it.each([
+    ["en", "· 3.8″ across ·"],
+    ["es", "· 3,8″ de diámetro ·"],
+  ] as const)("devrait écrire le diamètre décimal selon la langue (%s, Uranus, 21/11/2025)", (locale, diameter) => {
+    expect(earthReading("uranus", at("2025-11-21"), locale).lines[0]).toContain(diameter);
+  });
+
+  it.each([
+    ["en", "uranus", "2025-11-21", "All night, with binoculars"],
+    ["en", "neptune", "2025-09-23", "All night, with a telescope"],
+    ["en", "venus", "2025-03-23", "Too close to the Sun to be seen"],
+    ["es", "uranus", "2025-11-21", "Toda la noche, con prismáticos"],
+    ["es", "neptune", "2025-09-23", "Toda la noche, con telescopio"],
+    ["es", "venus", "2025-03-23", "Demasiado cerca del Sol para verse"],
+  ] as const)(
+    "devrait dire quand regarder, et avec quoi, dans la langue (%s, %s le %s)",
+    (locale, planet, date, line) => {
+      expect(earthReading(planet, at(date), locale).lines[1]).toBe(line);
+    },
+  );
+
+  it.each([
+    [
+      "en",
+      "Seen from Earth on this date: 49% lit, 24 arcseconds across, 46 degrees east of the Sun. In the evening, in the west after sunset.",
+    ],
+    [
+      "es",
+      "Visto desde la Tierra en esta fecha: iluminado al 49 %, 24 segundos de arco de diámetro, 46 grados al este del Sol. Al anochecer, al oeste tras la puesta de sol.",
+    ],
+  ] as const)("devrait annoncer la lecture, unités en toutes lettres et sans ″ ni ° (%s)", (locale, spoken) => {
+    expect(earthReading("venus", at("2026-08-15"), locale).spoken).toBe(spoken);
+  });
+
+  /** Lecture fictive : petits nombres, pour l'accord des unités annoncées. */
+  const SMALL: ReadingFigures = {
+    percent: 1,
+    diameter: 1.5,
+    diameterDigits: 1,
+    elongation: 1,
+    side: "west",
+    visibility: "too-close",
+    instrument: null,
+  };
+
+  it.each([
+    ["fr", "1,5 seconde d'arc de diamètre, 1 degré à l'ouest du Soleil"],
+    ["en", "1.5 arcseconds across, 1 degree west of the Sun"],
+    ["es", "1,5 segundos de arco de diámetro, 1 grado al oeste del Sol"],
+  ] as const)("devrait accorder les unités annoncées selon les règles de la langue (%s)", (locale, phrase) => {
+    expect(EXPLORE_STRINGS[locale].reading.spoken(SMALL)).toContain(phrase);
   });
 });

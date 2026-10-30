@@ -1,9 +1,10 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { earthReading } from "@/components/journey/earthReading";
 import { ExploreMode } from "@/components/journey/ExploreMode";
 import { setSectionRanges } from "@/components/journey/navigation";
+import { renderIn } from "@/components/modules/testUtils";
 import type { StopKey } from "@/lib/journey/camera";
 import { exploreStore } from "@/lib/journey/explore";
 import type { ExploreStop, OrbitInput } from "@/lib/journey/orbit";
@@ -343,5 +344,103 @@ describe("ExploreMode", () => {
       showStop("uranus");
       expect(exploreStore.get().stop).toBeNull();
     });
+  });
+});
+
+describe("ExploreMode en anglais et en espagnol", () => {
+  const LOCALIZED = [
+    {
+      locale: "en",
+      group: "Orbiting Saturn",
+      announce:
+        "Orbiting Saturn. Drag to turn, pinch or use the scroll wheel to change the distance. With the keyboard: arrow keys to turn, plus and minus for distance, 0 to recentre, Escape to finish.",
+      where: "Saturn",
+      hint: "Drag to turn · scroll for distance · Esc to finish",
+      fromEarth: "Seen from Earth",
+      done: "Done",
+      pad: ["Turn left", "Tilt up", "Tilt down", "Turn right", "Move away", "Move closer", "Recentre"],
+      title: "Seen from Earth on this date",
+      figures: "100% lit · 16″ across · 47° east of the Sun",
+      whenToLook: "In the evening, in the west after sunset",
+    },
+    {
+      locale: "es",
+      group: "Girando alrededor de Saturno",
+      announce:
+        "Girando alrededor de Saturno. Arrastra para girar, pellizca o usa la rueda del ratón para cambiar la distancia. Con el teclado: flechas para girar, más y menos para la distancia, 0 para volver a centrar, Escape para terminar.",
+      where: "Saturno",
+      hint: "Arrastra para girar · rueda para la distancia · Esc para terminar",
+      fromEarth: "Visto desde la Tierra",
+      done: "Terminar",
+      pad: [
+        "Girar a la izquierda",
+        "Girar hacia arriba",
+        "Girar hacia abajo",
+        "Girar a la derecha",
+        "Alejarse",
+        "Acercarse",
+        "Volver a centrar",
+      ],
+      title: "Visto desde la Tierra en esta fecha",
+      figures: "Iluminado al 100 % · 16″ de diámetro · 47° al este del Sol",
+      whenToLook: "Al anochecer, al oeste tras la puesta de sol",
+    },
+  ] as const;
+
+  /** La page réduite à ce que le mode touche, dans la langue donnée. */
+  const renderPageIn = (locale: (typeof LOCALIZED)[number]["locale"]) =>
+    renderIn(
+      locale,
+      <>
+        <header data-hide-on-explore>
+          <button type="button" id="tourner-autour">
+            …
+          </button>
+        </header>
+        <ExploreMode />
+      </>,
+    );
+
+  it.each(LOCALIZED)("devrait nommer le groupe des commandes d'après l'escale, dans la langue ($locale)", (t) => {
+    renderPageIn(t.locale);
+    enter("saturn");
+    expect(screen.getByRole("group", { name: t.group })).toHaveFocus();
+  });
+
+  it.each(LOCALIZED)("devrait annoncer l'exploration et ses gestes dans la langue de la page ($locale)", (t) => {
+    vi.useFakeTimers();
+    renderPageIn(t.locale);
+    enter("saturn");
+    settle();
+    expect(screen.getByRole("status")).toHaveTextContent(t.announce);
+  });
+
+  it.each(LOCALIZED)("devrait écrire la barre et le pavé dans la langue ($locale)", (t) => {
+    renderPageIn(t.locale);
+    enter("saturn");
+    const group = screen.getByRole("group", { name: t.group });
+    expect(within(group).getByText(t.where)).toBeInTheDocument();
+    expect(within(group).getByText(t.hint)).toBeInTheDocument();
+    expect(within(group).getByRole("button", { name: t.fromEarth })).toHaveAttribute("aria-pressed", "false");
+    expect(within(group).getByRole("button", { name: t.done })).toBeInTheDocument();
+    const pad = group.querySelector<HTMLElement>(".explore-pad");
+    if (!pad) throw new Error("Pavé d'exploration absent");
+    const padLabels = within(pad)
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label"));
+    expect(padLabels).toEqual(t.pad);
+  });
+
+  it.each(LOCALIZED)("devrait afficher et annoncer la lecture du jour dans la langue ($locale)", (t) => {
+    vi.useFakeTimers();
+    renderPageIn(t.locale);
+    enter("saturn");
+    settle();
+    fireEvent.click(screen.getByRole("button", { name: t.fromEarth }));
+    expect(screen.getByText(t.title)).toBeVisible();
+    expect(screen.getByText(t.figures)).toBeVisible();
+    expect(screen.getByText(t.whenToLook)).toBeVisible();
+    settle();
+    expect(screen.getByRole("status")).toHaveTextContent(earthReading("saturn", NOW, t.locale).spoken);
   });
 });

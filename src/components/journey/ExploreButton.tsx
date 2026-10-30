@@ -1,9 +1,10 @@
 "use client";
 
-import { EXPLORE } from "@/content/explore";
+import { useLocale } from "@/i18n/LocaleProvider";
 import { exploreStore } from "@/lib/journey/explore";
 import { isExploreStop } from "@/lib/journey/orbit";
 import { useCurrentStop } from "@/lib/journey/store";
+import { EXPLORE_STRINGS } from "./explore.strings";
 import { EXPLORE_BUTTON_ID } from "./ids";
 
 /** Pictogramme : une orbite dont la flèche fait le tour de l'astre. */
@@ -21,11 +22,13 @@ function OrbitIcon() {
 
 /**
  * « Tourner autour », dans la barre haute : entre dans l'exploration de l'escale affichée, qu'il suit comme le nom de
- * l'escale. Le nom accessible commence par le texte visible, complété pour les lecteurs d'écran (« de Saturne »).
+ * l'escale. Le nom accessible commence par le texte visible, complété pour les lecteurs d'écran (« de Saturne »),
+ * dans la langue de la page (« Orbit Saturn », « Girar alrededor de Saturno »).
  * À la ceinture d'astéroïdes, où l'on ne tourne pas, il garde sa place sans rien proposer : masqué, hors de l'ordre
  * de tabulation et désactivé, la barre ne saute pas.
  */
 export function ExploreButton() {
+  const t = EXPLORE_STRINGS[useLocale()];
   const current = useCurrentStop();
   const available = isExploreStop(current);
   return (
@@ -40,10 +43,10 @@ export function ExploreButton() {
       onClick={available ? () => exploreStore.enter(current) : undefined}
     >
       <OrbitIcon />
-      <span className="label">{EXPLORE.enter}</span>
+      <span className="label">{t.enter}</span>
       {/* L'espace est un nœud du bouton, entre les deux libellés : le calcul du nom accessible rogne chacun d'eux. */}
       {" "}
-      <span className="sr">{available ? EXPLORE.targets[current] : null}</span>
+      <span className="sr">{available ? t.targets[current] : null}</span>
     </button>
   );
 }

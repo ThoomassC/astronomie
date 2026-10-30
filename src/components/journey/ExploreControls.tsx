@@ -2,13 +2,14 @@
 
 import type { ReactNode } from "react";
 import type { Announcement } from "@/components/modules/useAnnouncer";
-import { EXPLORE } from "@/content/explore";
+import { useLocale } from "@/i18n/LocaleProvider";
 import { isEarthViewTarget } from "@/lib/astro/earthView";
 import { exploreStore } from "@/lib/journey/explore";
 import { KEY_ROTATE_STEP, KEY_TILT_STEP, KEY_ZOOM_STEP, type ExploreStop } from "@/lib/journey/orbit";
 import { getClock } from "@/lib/sim/clock";
 import { earthReading } from "./earthReading";
 import { EarthReadingPanel } from "./EarthReadingPanel";
+import { EXPLORE_STRINGS } from "./explore.strings";
 import { EXPLORE_GROUP_ID } from "./ids";
 import { CheckIcon } from "./ScaleToggle";
 import { stopColor, stopName } from "./stopMeta";
@@ -59,46 +60,49 @@ interface ExploreControlsProps {
  * Commandes de l'exploration, groupées sous un nom qui dit ce qu'on explore (le groupe reçoit le focus à l'entrée) :
  * en haut, la barre (escale, rappel des gestes sur grand écran, bascule « Vu depuis la Terre » pour les sept autres
  * planètes, « Terminer ») et la lecture du jour quand la bascule est enfoncée ; en bas, au-dessus du dock, le pavé
- * (tourner, distance, recentrer) qui fait au clic ce que font les gestes et le clavier.
+ * (tourner, distance, recentrer) qui fait au clic ce que font les gestes et le clavier. Tout dans la langue de la page,
+ * phrase annoncée de la lecture comprise.
  */
 export function ExploreControls({ stop, fromEarth, announce }: ExploreControlsProps) {
-  const target = EXPLORE.targets[stop];
+  const locale = useLocale();
+  const t = EXPLORE_STRINGS[locale];
+  const target = t.targets[stop];
 
   const toggleEarthView = () => {
     if (!isEarthViewTarget(stop)) return;
     const on = !exploreStore.get().fromEarth;
     exploreStore.setFromEarth(on);
     // La phrase est calculée au moment de l'annonce : la date simulée a pu avancer pendant le calme de l'annonceur.
-    if (on) announce(() => earthReading(stop, getClock().now()).spoken);
+    if (on) announce(() => earthReading(stop, getClock().now(), locale).spoken);
   };
 
   return (
-    <div id={EXPLORE_GROUP_ID} className="explore-controls" role="group" tabIndex={-1} aria-label={EXPLORE.group(target)}>
+    <div id={EXPLORE_GROUP_ID} className="explore-controls" role="group" tabIndex={-1} aria-label={t.group(target)}>
       <div className="explore-bar">
         <p className="explore-where">
           <i aria-hidden="true" style={{ background: stopColor(stop) }} />
-          <b>{stopName(stop)}</b>
+          <b>{stopName(stop, locale)}</b>
         </p>
-        <p className="explore-hint">{EXPLORE.hint}</p>
+        <p className="explore-hint">{t.hint}</p>
         {isEarthViewTarget(stop) ? (
           <button type="button" className="explore-earth" aria-pressed={fromEarth} onClick={toggleEarthView}>
             <CheckIcon checked={fromEarth} />
-            {EXPLORE.fromEarth}
+            {t.fromEarth}
           </button>
         ) : null}
         <button type="button" className="explore-done" onClick={() => exploreStore.exit()}>
-          {EXPLORE.done}
+          {t.done}
         </button>
       </div>
       {fromEarth && isEarthViewTarget(stop) ? <EarthReadingPanel target={stop} /> : null}
       <div className="explore-pad">
-        <PadButton label={EXPLORE.rotateLeft} icon="left" onPress={() => exploreStore.rotate(-KEY_ROTATE_STEP, 0)} />
-        <PadButton label={EXPLORE.rotateUp} icon="up" onPress={() => exploreStore.rotate(0, -KEY_TILT_STEP)} />
-        <PadButton label={EXPLORE.rotateDown} icon="down" onPress={() => exploreStore.rotate(0, KEY_TILT_STEP)} />
-        <PadButton label={EXPLORE.rotateRight} icon="right" onPress={() => exploreStore.rotate(KEY_ROTATE_STEP, 0)} />
-        <PadButton label={EXPLORE.farther} icon="farther" onPress={() => exploreStore.zoom(KEY_ZOOM_STEP)} />
-        <PadButton label={EXPLORE.closer} icon="closer" onPress={() => exploreStore.zoom(-KEY_ZOOM_STEP)} />
-        <PadButton label={EXPLORE.recenter} icon="recenter" onPress={() => exploreStore.recenter()} />
+        <PadButton label={t.rotateLeft} icon="left" onPress={() => exploreStore.rotate(-KEY_ROTATE_STEP, 0)} />
+        <PadButton label={t.rotateUp} icon="up" onPress={() => exploreStore.rotate(0, -KEY_TILT_STEP)} />
+        <PadButton label={t.rotateDown} icon="down" onPress={() => exploreStore.rotate(0, KEY_TILT_STEP)} />
+        <PadButton label={t.rotateRight} icon="right" onPress={() => exploreStore.rotate(KEY_ROTATE_STEP, 0)} />
+        <PadButton label={t.farther} icon="farther" onPress={() => exploreStore.zoom(KEY_ZOOM_STEP)} />
+        <PadButton label={t.closer} icon="closer" onPress={() => exploreStore.zoom(-KEY_ZOOM_STEP)} />
+        <PadButton label={t.recenter} icon="recenter" onPress={() => exploreStore.recenter()} />
       </div>
     </div>
   );
