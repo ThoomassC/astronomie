@@ -8,7 +8,7 @@ type SiteTabsProps = { locale: Locale; page: PageKey } & Omit<ComponentPropsWith
 
 /**
  * Les quatre pages, dans l'ordre du site et dans la langue de la page ; celle qu'on affiche porte
- * `aria-current="page"`. Sans état : la barre (serveur), le menu replié (client) et le plan du site la partagent.
+ * `aria-current="page"`. Sans état : la barre (serveur) et le menu replié (client) la partagent.
  * Le libellé passe aussi en `data-label`, qui réserve dans la barre la largeur de son gras (onglet courant).
  */
 export function SiteTabs({ locale, page, ...list }: SiteTabsProps) {

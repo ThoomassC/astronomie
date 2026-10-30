@@ -116,8 +116,7 @@
 
 /* Pilules de la barre (langue, menu) : 44 px, bord --filet-fort (3,54:1 sur la nuit), fond .92. */
 .langToggle,
-.menuToggle,
-.menuFallback {
+.menuToggle {
   align-items: center;
   gap: 0.5rem;
   min-height: 44px;
@@ -135,8 +134,7 @@
 }
 
 .langToggle,
-.menuToggle,
-.menuFallback {
+.menuToggle {
   display: inline-flex;
 }
 
@@ -162,8 +160,7 @@
 /* Le voile se pose sur le fond .92, qui reste dessous : la pilule ne devient jamais transparente. */
 @media (hover: hover) {
   .langToggle:hover,
-  .menuToggle:hover,
-  .menuFallback:hover {
+  .menuToggle:hover {
     border-color: var(--ivoire);
     background-image: linear-gradient(rgba(236, 229, 211, 0.06), rgba(236, 229, 211, 0.06));
   }
@@ -304,8 +301,7 @@
 
 @media (max-width: 640px) {
   /* Avec des commandes, « Menu » se réduit à son pictogramme, 44 × 44 ; le libellé reste son nom accessible. */
-  .header[data-controls] .menuToggle,
-  .header[data-controls] .menuFallback {
+  .header[data-controls] .menuToggle {
     justify-content: center;
     width: 44px;
     padding: 0;
@@ -329,20 +325,43 @@
   }
 }
 
-/* Sans JavaScript, les boutons ne déplieraient rien : des liens directs prennent leur place. */
+/*
+ * Sans JavaScript, les boutons ne déplieraient rien : des liens directs prennent leur place, à toutes les largeurs.
+ * Les pilules des langues remplacent le bouton de langue ; le menu replié disparaît, les onglets restent (ci-dessous).
+ */
 @media (scripting: none) {
   .langToggle,
-  .menuToggle {
+  .siteMenu {
     display: none;
   }
 
   .pills {
     display: flex;
   }
+}
 
-  /* Le lien « Menu » vers le plan du site devient l'élément de la ligne, à la place du bouton. */
-  .fallback {
-    display: contents;
+/*
+ * Sans JavaScript, à 860 px et moins : les onglets et les langues restent dans la barre, la marque réduite à son
+ * pictogramme (son nom accessible ne change pas). Quand la ligne ne tient pas (marque 44 px, onglets 279 à 315 px,
+ * langues 215 px et les écarts, quand un écran de 375 px en offre 343), la barre défile à l'horizontale sans changer
+ * de hauteur : aucun panneau ne s'y ouvre sans script, rien n'est coupé.
+ */
+@media (max-width: 860px) and (scripting: none) {
+  .tabs {
+    display: block;
+  }
+
+  .langMenu {
+    display: flex;
+  }
+
+  .header :global(.brand-name) {
+    display: none;
+  }
+
+  .header {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
   }
 }
 
@@ -351,8 +370,7 @@
   .tabs ul,
   .pills,
   .langToggle,
-  .menuToggle,
-  .menuFallback {
+  .menuToggle {
     border-color: CanvasText;
   }
 

@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, getDefaultNormalizer, render, screen, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { AboutFooter, AboutPage } from "@/components/about/AboutPage";
@@ -110,13 +110,16 @@ describe.each(LOCALES)("AboutPage en %s", (locale) => {
 });
 
 describe.each(LOCALES)("AboutFooter en %s", (locale) => {
-  it("devrait poser le plan du site en pied de page, hors du contenu principal", () => {
+  it("devrait poser le pied de page commun, aux contacts de l'auteur, hors du contenu principal", () => {
     render(<AboutFooter locale={locale} />);
     const footer = screen.getByRole("contentinfo");
-    expect(within(footer).getByRole("navigation", { name: SITE_STRINGS[locale].siteMap })).toBeInTheDocument();
-    expect(within(footer).getByRole("link", { name: SITE_STRINGS[locale].tabs.about })).toHaveAttribute(
-      "aria-current",
-      "page",
+    // Sans réduire les espaces : la signature garde une espace insécable avant le tiret.
+    const exact = { normalizer: getDefaultNormalizer({ collapseWhitespace: false }) };
+    expect(within(footer).getByText(SITE_STRINGS[locale].signature, exact)).toBeInTheDocument();
+    expect(within(footer).getByRole("link", { name: "caronthomas27@gmail.com" })).toHaveAttribute(
+      "href",
+      "mailto:caronthomas27@gmail.com",
     );
+    expect(within(footer).queryByRole("navigation")).not.toBeInTheDocument();
   });
 });

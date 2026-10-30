@@ -79,13 +79,15 @@ describe("HomePage", () => {
   });
 
   it.each([
-    ["fr", "Plan du site"],
-    ["en", "Site map"],
-    ["es", "Mapa del sitio"],
-  ] as const)("devrait finir par le plan du site, en pied de page (%s)", (locale, name) => {
+    ["fr", "GitHub, site externe"],
+    ["en", "GitHub, external site"],
+    ["es", "GitHub, sitio externo"],
+  ] as const)("devrait finir par le pied de page commun, aux contacts de l'auteur, sans plan du site (%s)", (locale, github) => {
     renderHome(locale);
     const footer = screen.getByRole("contentinfo");
-    expect(within(footer).getByRole("navigation", { name })).toBeInTheDocument();
+    expect(within(footer).getByRole("link", { name: github })).toHaveAttribute("href", "https://github.com/ThoomassC");
+    expect(within(footer).getByRole("link", { name: "caronthomas27@gmail.com" })).toBeInTheDocument();
+    expect(within(footer).queryByRole("navigation")).not.toBeInTheDocument();
   });
 
   it("devrait être la cible du lien d'évitement (main#contenu, focalisable par script)", () => {

@@ -9,7 +9,7 @@ afterEach(() => {
   cleanup();
 });
 
-/** Paragraphes du pied de page, hors plan du site : sources, avertissement d'échelle, crédit des cartes. */
+/** Paragraphes du pied de page, hors pied de page commun : sources, avertissement d'échelle, crédit des cartes. */
 const paragraphs = (footer: HTMLElement) => Array.from(footer.querySelectorAll(":scope > p"), (p) => p.textContent);
 
 describe("SiteFooter", () => {
@@ -54,15 +54,17 @@ describe("SiteFooter", () => {
   });
 
   it.each([
-    ["fr", "Plan du site", "À propos", "Voyage"],
-    ["en", "Site map", "About", "Journey"],
-    ["es", "Mapa del sitio", "Acerca de", "Viaje"],
-  ] as const)("devrait finir par le plan du site, qui mène à À propos dans la langue (%s)", (locale, name, about, voyage) => {
+    ["fr", "GitHub, site externe"],
+    ["en", "GitHub, external site"],
+    ["es", "GitHub, sitio externo"],
+  ] as const)("devrait finir par le pied de page commun, après le crédit des cartes, sans plan du site (%s)", (locale, github) => {
     render(<SiteFooter locale={locale} />);
-    const siteMap = within(screen.getByRole("contentinfo")).getByRole("navigation", { name });
-    expect(siteMap).toHaveAttribute("id", "plan-du-site");
-    expect(within(siteMap).getByRole("link", { name: about })).toHaveAttribute("href", `/${locale}/a-propos`);
-    expect(within(siteMap).getByRole("link", { name: voyage })).toHaveAttribute("aria-current", "page");
+    const footer = screen.getByRole("contentinfo");
+    const credit = within(footer).getByRole("link", { name: "CC BY 4.0" });
+    const contact = within(footer).getByRole("link", { name: github });
+    expect(contact).toHaveAttribute("href", "https://github.com/ThoomassC");
+    expect(credit.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(footer).queryByRole("navigation")).not.toBeInTheDocument();
   });
 
   it.each(LOCALES)("devrait s'effacer pendant l'exploration, comme le reste de la page (%s)", (locale) => {

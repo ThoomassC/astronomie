@@ -47,14 +47,9 @@ describe("SiteMenu", () => {
     expect(screen.getByRole("button", { name: "Menú" })).toBeInTheDocument();
   });
 
-  it("devrait garder, pour les navigateurs sans JavaScript, un lien « Menu » vers le plan du site en pied de page", () => {
+  it("ne devrait poser aucun lien de repli « Menu » : sans JavaScript, la barre montre ses onglets elle-même", () => {
     render(<SiteMenu locale="fr" page="voyage" />);
-    expect(screen.getByRole("link", { name: "Menu", hidden: true })).toHaveAttribute("href", "#plan-du-site");
-  });
-
-  it("devrait masquer ce lien tant que le script tourne, le bouton faisant foi", () => {
-    render(<SiteMenu locale="fr" page="voyage" />);
-    expect(screen.getByRole("link", { name: "Menu", hidden: true })).not.toBeVisible();
+    expect(screen.queryByRole("link", { name: "Menu", hidden: true })).not.toBeInTheDocument();
   });
 
   it("devrait titrer les deux groupes du panneau, rubriques puis langue", async () => {

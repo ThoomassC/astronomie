@@ -158,6 +158,16 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   quand regarder (« Le soir, à l'ouest après le coucher du Soleil », suivi de l'instrument pour Uranus et Neptune),
   chiffres tabulaires, recalculés avec la date simulée. Pas de région live : la lecture est annoncée une fois, à
   l'activation, unités en toutes lettres.
+- **Barre haute sans JavaScript** : les boutons de la langue et du menu replié ne déplieraient rien ; à leur place,
+  les pilules « FR · EN · ES » (liens directs) et, à toutes les largeurs, les onglets. À 860 px et moins, la marque se
+  réduit à son pictogramme et la barre défile à l'horizontale quand la ligne ne tient pas, sans changer de hauteur.
+- **Pied de page commun** (`ContactFooter`, dans le `footer` de chaque page ; au voyage, après les sources et le
+  crédit des cartes) : sous un filet `--filet`, la signature (« Astronomie — un site de Thomas Caron », `--brume`),
+  les coordonnées de l'auteur dans un `address` (GitHub, LinkedIn, puis l'adresse e-mail en clair sur un lien
+  `mailto:`), enfin « © 2026 Thomas Caron » (0,8125 rem), poussé à droite. Pictogrammes de 18 px en `--laiton`,
+  décoratifs ; libellés ivoire soulignés de laiton, cibles de 44 px ; liens externes signalés par « ↗ » et, aux
+  lecteurs d'écran, « , site externe ». Une ligne quand elle tient, l'un sous l'autre à 640 px et moins. Pas de plan
+  du site : les onglets restent dans la barre.
 
 ## Règles
 

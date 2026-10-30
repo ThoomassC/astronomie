@@ -19,8 +19,8 @@ ordres de grandeur. Pas de scène 3D : la page s'affiche tout de suite. Un seul 
 | `max-height: 30rem` | la barre rejoint la page (règle globale) : plus de marge haute pour elle |
 
 Le haut de page dégage la barre fixe (4,75 rem, encoche comprise), puis 3 rem (1,5 rem sur téléphone). En bas, le
-plan du site (`SiteNavFooter`) ferme la page, dans la même colonne, 4 rem sous la note des sources (3 rem sur
-téléphone). Les règles globales `main` et `footer` (place de la règle des distances et du dock, contenu au-dessus de
+pied de page commun (`ContactFooter` : signature, contacts de l'auteur) ferme la page, dans la même colonne, 4 rem
+sous la note des sources (3 rem sur téléphone). Les règles globales `main` et `footer` (place de la règle des distances et du dock, contenu au-dessus de
 la scène) ne s'appliquent pas ici. La barre est celle de toutes les pages (`SiteHeader`, `data-page="home"`, sans
 commandes propres) : voile dense, puisque le contenu défile dessous sans scène.
 
@@ -101,7 +101,7 @@ détaillées dans À propos. », lien vers la page À propos.
 ## Accessibilité
 
 - Ordre de lecture : script des anciens liens, lien d'évitement, barre, `main#contenu` (h1, texte, bouton,
-  planétaire, cartes, chiffres, note des sources), plan du site.
+  planétaire, cartes, chiffres, note des sources), pied de page.
 - Le dessin est une image nommée par son titre et la ligne datée (« Les huit planètes autour du Soleil, vues du
   dessus. Positions réelles du 29 octobre 2026 ») ; la légende dit en plus aux lecteurs d'écran où est chaque
   planète, comme l'heure d'un cadran, midi en haut (« Vénus, à 2 heures »).

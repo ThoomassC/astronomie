@@ -55,13 +55,23 @@ describe("route /[lang]/tailles", () => {
     );
   });
 
-  it("devrait suivre l'ordre de lecture : évitement, barre, règle, contenu, plan du site", async () => {
+  it("devrait suivre l'ordre de lecture : évitement, barre, règle, contenu, pied de page", async () => {
     await renderSizes("fr");
     const landmarks = Array.from(document.body.querySelectorAll("a.skip, header, nav#rail, main, footer"), (element) =>
       element.matches("a.skip") ? "évitement" : element.tagName.toLowerCase(),
     );
     expect(landmarks).toEqual(["évitement", "header", "nav", "main", "footer"]);
     expect(screen.getByRole("link", { name: "Aller au contenu" })).toHaveAttribute("href", `#${MAIN_ID}`);
+  });
+
+  it("devrait finir, après les plaques, par le pied de page commun aux contacts de l'auteur, sans plan du site", async () => {
+    await renderSizes("es");
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByRole("link", { name: "GitHub, sitio externo" })).toHaveAttribute(
+      "href",
+      "https://github.com/ThoomassC",
+    );
+    expect(within(footer).queryByRole("navigation")).not.toBeInTheDocument();
   });
 
   it("devrait marquer l'onglet Tailles comme la page courante, dans la barre commune", async () => {

@@ -1,5 +1,5 @@
 import { MAIN_ID } from "@/components/journey/ids";
-import { SiteNavFooter } from "@/components/site/SiteNavFooter";
+import { ContactFooter } from "@/components/site/ContactFooter";
 import { getAboutContent } from "@/content/about/content";
 import type { AboutLink, AboutSection } from "@/content/about/types";
 import type { Locale } from "@/i18n/locales";
@@ -71,11 +71,11 @@ export function AboutPage({ locale }: { locale: Locale }) {
   );
 }
 
-/** Pied de la page : le plan du site (rubriques et langues), entre les marges de la page. */
+/** Pied de la page : le pied de page commun (signature, contacts de l'auteur), entre les marges de la page. */
 export function AboutFooter({ locale }: { locale: Locale }) {
   return (
     <footer className={styles.footer}>
-      <SiteNavFooter locale={locale} page="about" />
+      <ContactFooter locale={locale} />
     </footer>
   );
 }

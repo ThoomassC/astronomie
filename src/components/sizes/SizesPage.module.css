@@ -8,8 +8,8 @@
   --dock-clear: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
-/* Plan du site, aligné sur les paragraphes du pied de page (comme au Voyage), au bord à 640 px et moins. */
-.siteMap {
+/* Pied de page commun, aligné sur les paragraphes du pied de page (comme au Voyage), au bord à 640 px et moins. */
+.contact {
   margin-left: clamp(0rem, 4vw, 4rem);
 }
 
@@ -185,7 +185,7 @@
 
 /* ---------- Mise en page compacte (téléphone, tablette en portrait) ---------- */
 @media (max-width: 640px) {
-  .siteMap {
+  .contact {
     margin-left: 0;
   }
 }

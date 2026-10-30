@@ -21,7 +21,7 @@ La mise en page est **celle du Voyage**, sans dock : on sait déjà la lire.
 | ≤ 860 px avec JavaScript | La règle cède la place au menu des étoiles, dans la barre (bouton « Étoiles » à l'introduction, sinon pastille et nom de l'étoile). |
 
 - Ordre du DOM, qui est l'ordre de lecture : lien d'évitement, barre commune (étoile affichée, menu des étoiles),
-  règle (`nav`), `main#contenu` (introduction, dix plaques), plan du site. Scène, étiquettes et échelle graphique
+  règle (`nav`), `main#contenu` (introduction, dix plaques), pied de page commun. Scène, étiquettes et échelle graphique
   sont `aria-hidden` : la plaque porte les noms et les nombres.
 - Introduction : la mise en page `.hero` du Voyage, un titre, un texte, une ligne discrète (0,8125 rem `--brume`)
   et l'**unique bouton plein** de la page, vers la plus petite étoile.

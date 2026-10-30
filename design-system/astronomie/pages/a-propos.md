@@ -47,8 +47,9 @@ Textes : `src/content/about/` (`fr.ts`, `en.ts`, `es.ts` ; ancres et adresses da
   onglet, « ↗ » collé au nom par une espace insécable et masqué aux lecteurs d'écran, qui entendent à la place
   « , site externe » (texte `.sr`, convention des compléments de nom du site). Les noms trop longs se coupent
   (`overflow-wrap: anywhere`).
-- **Pied de page** : le plan du site (`SiteNavFooter`, lot S1) dans un `footer` entre les marges de la page ; la classe
-  de la page écarte les marges du `footer` global, faites pour la règle et le dock du voyage.
+- **Pied de page** : le pied de page commun (`ContactFooter` : signature, contacts de l'auteur, droit d'auteur) dans un
+  `footer` entre les marges de la page ; la classe de la page écarte les marges du `footer` global, faites pour la
+  règle et le dock du voyage.
 
 ## Accessibilité
 

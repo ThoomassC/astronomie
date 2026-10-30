@@ -3,7 +3,6 @@
 import { useId } from "react";
 import type { Locale } from "@/i18n/locales";
 import type { PageKey } from "@/i18n/routes";
-import { SITE_MAP_ID } from "./ids";
 import { LanguageMenu } from "./LanguageMenu";
 import { SITE_STRINGS } from "./site.strings";
 import styles from "./SiteHeader.module.css";
@@ -28,8 +27,8 @@ function MenuIcon({ open }: { open: boolean }) {
 /**
  * Menu replié des fenêtres de 860 px et moins : « ≡ Menu » déplie les quatre rubriques puis les trois langues, sous
  * la barre, à droite. Un lien choisi referme le panneau et rend le focus au bouton (la page reste la même quand on
- * choisit la rubrique ou la langue déjà affichées). Sans JavaScript, un lien « Menu » mène au plan du site, en pied
- * de page.
+ * choisit la rubrique ou la langue déjà affichées). Sans JavaScript, le bouton ne déplierait rien : la feuille de
+ * style le retire, et la barre montre à sa place les onglets et les langues.
  */
 export function SiteMenu({ locale, page }: { locale: Locale; page: PageKey }) {
   const t = SITE_STRINGS[locale];
@@ -48,13 +47,6 @@ export function SiteMenu({ locale, page }: { locale: Locale; page: PageKey }) {
         <MenuIcon open={open} />
         <span className={styles.menuLabel}>{t.menu}</span>
       </button>
-      {/* Masqué tant que le script tourne ; la feuille de style le montre à la place du bouton sans JavaScript. */}
-      <span className={styles.fallback} hidden>
-        <a className={styles.menuFallback} href={`#${SITE_MAP_ID}`}>
-          <MenuIcon open={false} />
-          <span className={styles.menuLabel}>{t.menu}</span>
-        </a>
-      </span>
       <div id={panelId} className={`${styles.panel} ${styles.menuPanel}`} hidden={!open} onClick={onChoose}>
         <nav className={styles.group} aria-labelledby={tabsTitleId}>
           <p id={tabsTitleId} className={styles.groupTitle}>
