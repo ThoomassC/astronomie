@@ -136,7 +136,8 @@ function settleOn(key: string, correctionsLeft: number): void {
 
 /**
  * Défile jusqu'à l'escale, en douceur sauf si les animations sont réduites, puis y place
- * le focus comme le ferait une ancre. Renvoie `false` tant que les sections ne sont pas
+ * le focus comme le ferait une ancre, sur la section de la page affichée (une page quittée,
+ * masquée, peut porter la même clé). Renvoie `false` tant que les sections ne sont pas
  * mesurées : l'ancre native prend alors le relais.
  */
 export function goTo(key: string): boolean {
@@ -144,7 +145,7 @@ export function goTo(key: string): boolean {
   if (target === null) return false;
   const smooth = !prefersReducedMotion();
   window.scrollTo({ top: target, behavior: smooth ? "smooth" : "auto" });
-  document.querySelector<HTMLElement>(`[data-stop="${key}"]`)?.focus({ preventScroll: true });
+  shownElements(`[data-stop="${key}"]`)[0]?.focus({ preventScroll: true });
   if (smooth) settleOn(key, MAX_CORRECTIONS);
   else cancelSettle?.();
   return true;

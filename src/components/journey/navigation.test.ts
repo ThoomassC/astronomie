@@ -69,6 +69,16 @@ describe("goTo", () => {
     expect(document.activeElement).toBe(section);
   });
 
+  it("devrait placer le focus sur la section de la page affichée, pas sur celle d'une page quittée que Next garde masquée", () => {
+    // <Activity mode="hidden"> masque la page quittée par `display: none`, sans la retirer du document.
+    document.body.innerHTML = `
+      <main style="display: none"><section data-stop="sun" tabindex="-1" id="cachee"></section></main>
+      <main><section data-stop="sun" tabindex="-1" id="affichee"></section></main>`;
+    setSectionRanges(RANGES);
+    goTo("sun");
+    expect(document.activeElement?.id).toBe("affichee");
+  });
+
   it("devrait mener à l'escale d'une autre page, quelle que soit sa clé (« intro » de la page Tailles)", () => {
     const section = document.createElement("section");
     section.dataset.stop = "intro";
