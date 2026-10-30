@@ -1,0 +1,21 @@
+import { RAIL_ID } from "@/components/journey/ids";
+import { shownElements } from "@/components/journey/navigation";
+import { isSizeStopKey, type SizeStopKey } from "@/lib/sizes/stops";
+
+/**
+ * Ce qui borde la scène des tailles dans la page affichée : barre haute, règle des tailles, plaque de chaque escale.
+ * Next 16 garde dans le DOM des pages quittées, masquées (`display: none`) : le Voyage y a aussi sa barre, sa règle
+ * (`#rail`) et ses plaques, parfois sous la même clé (« sun »). On ne lit donc que les éléments affichés.
+ */
+export function shownSceneLayout(): { bar: Element | null; rail: Element | null; plates: Map<SizeStopKey, HTMLElement> } {
+  const plates = new Map<SizeStopKey, HTMLElement>();
+  for (const plate of shownElements("[data-stop] > .plate")) {
+    const key = plate.parentElement?.dataset.stop;
+    if (isSizeStopKey(key)) plates.set(key, plate);
+  }
+  return {
+    bar: shownElements(".bar")[0] ?? null,
+    rail: shownElements(`#${RAIL_ID}`)[0] ?? null,
+    plates,
+  };
+}

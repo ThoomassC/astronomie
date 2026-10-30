@@ -2,12 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { cssVars } from "@/components/journey/cssVars";
-import { RAIL_ID } from "@/components/journey/ids";
 import { setSceneFallback } from "@/components/scene/fallback";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { COMPARED_STARS, type SizeStarKey } from "@/lib/astro/starSizes";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
-import { isSizeStopKey, type SizeStopKey } from "@/lib/sizes/stops";
+import { shownSceneLayout } from "./sceneElements";
 import { SIZES_STRINGS } from "./sizes.strings";
 import { createSizesScene, type SizesScene as SceneEngine } from "./sizesEngine";
 import styles from "./SizesPage.module.css";
@@ -43,11 +42,6 @@ export default function SizesScene() {
     const layer = labelsRef.current;
     const scale = scaleRef.current;
     if (!canvas || !layer) return;
-    const plates = new Map<SizeStopKey, HTMLElement>();
-    for (const plate of document.querySelectorAll<HTMLElement>("[data-stop] > .plate")) {
-      const key = plate.parentElement?.dataset.stop;
-      if (isSizeStopKey(key)) plates.set(key, plate);
-    }
     const scaleSun = scale?.querySelector<HTMLElement>("[data-scale-sun]");
     const scaleLine = scale?.querySelector<HTMLElement>("[data-scale-line]");
     const scaleText = scale?.querySelector<HTMLElement>("[data-scale-text]");
@@ -58,7 +52,8 @@ export default function SizesScene() {
       sunMarker: layer.querySelector<HTMLElement>("[data-sun-here]"),
       scaleBar: scale && scaleSun && scaleLine && scaleText ? { root: scale, sun: scaleSun, line: scaleLine, text: scaleText } : null,
       scaleText: t.scaleBar,
-      layout: { bar: document.querySelector(".bar"), rail: document.getElementById(RAIL_ID), plates },
+      // Seulement la page affichée : Next garde dans le DOM, masquées, des pages quittées (le Voyage).
+      layout: shownSceneLayout(),
     });
     if (engine) engineRef.current = engine;
     else setSceneFallback("webgl", true);
