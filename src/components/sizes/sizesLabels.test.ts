@@ -43,8 +43,29 @@ describe("placeLimbLabel", () => {
     expect(placeLimbLabel({ x: 500, y: 400, radiusPx: 500, depth: 0.5 }, SIZE, VIEW, [])).toBeNull();
   });
 
-  it("ne devrait rien poser quand l'étiquette sortirait de la vue par un côté", () => {
-    expect(placeLimbLabel({ x: 20, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toBeNull();
+  it("devrait la glisser dans la vue quand, centrée, elle déborderait d'un côté : toujours au-dessus de l'étoile", () => {
+    expect(placeLimbLabel({ x: 20, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toEqual([8, 268, 128, 292]);
+    expect(placeLimbLabel({ x: 980, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toEqual([872, 268, 992, 292]);
+  });
+
+  /*
+   * Téléphone, 375 × 812, repos sur VY Canis Majoris : la caméra cadre l'étoile avec la précédente (Bételgeuse) à sa
+   * droite, son centre à 3 rayons de Bételgeuse à gauche du centre de la vue. Diamètre ≈ 115 px, centre vers x ≈ 95 px :
+   * centrée, l'étiquette (« VY Canis Majoris · 1 420 R☉ », ≈ 200 px) commencerait hors de la vue.
+   */
+  it("devrait poser au-dessus de l'étoile l'étiquette d'une supergéante cadrée à gauche d'un téléphone", () => {
+    const phone = { width: 375, height: 812 };
+    const box = placeLimbLabel({ x: 95, y: 300, radiusPx: 57.5, depth: 0.5 }, { width: 200, height: 20 }, phone, []);
+    expect(box).toEqual([8, 214.5, 208, 234.5]);
+  });
+
+  it("ne devrait rien poser quand le centre de l'étoile sort de la vue : l'étiquette ne la désignerait plus", () => {
+    expect(placeLimbLabel({ x: 4, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toBeNull();
+    expect(placeLimbLabel({ x: 996, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toBeNull();
+  });
+
+  it("ne devrait rien poser quand l'étiquette est plus large que la vue", () => {
+    expect(placeLimbLabel({ x: 500, y: 400, radiusPx: 100, depth: 0.5 }, { width: 990, height: 24 }, VIEW, [])).toBeNull();
   });
 
   it("ne devrait rien poser pour une étoile derrière la caméra", () => {

@@ -28,9 +28,12 @@ export function starLabelMode(diameterPx: number, previous: StarLabelMode | null
 const overlaps = (a: LabelBox, b: LabelBox) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
 
 /**
- * Boîte d'une étiquette centrée au-dessus du limbe de l'étoile (centre projeté x, y ; rayon projeté `radiusPx`), à
- * 8 px ; sinon au-dessous ; sinon `null`. Elle doit tenir dans la vue (sous la barre, à 8 px des autres bords), ne
- * recouvrir aucune boîte occupée, et l'étoile doit être devant la caméra (profondeur NDC ≤ 1).
+ * Boîte d'une étiquette au-dessus du limbe de l'étoile (centre projeté x, y ; rayon projeté `radiusPx`), à 8 px ;
+ * sinon au-dessous ; sinon `null`. Centrée sur l'étoile, elle glisse vers l'intérieur de la vue quand elle en
+ * déborderait d'un côté : au repos, la caméra cadre l'étoile avec la précédente à sa droite, et sur téléphone les plus
+ * grandes (Bételgeuse, VY Canis Majoris) ont leur centre à moins d'une demi-étiquette du bord gauche. Elle reste au-dessus
+ * du centre de l'étoile, sans quoi elle ne la désignerait plus. Elle doit tenir dans la vue (sous la barre, à 8 px des
+ * autres bords), ne recouvrir aucune boîte occupée, et l'étoile doit être devant la caméra (profondeur NDC ≤ 1).
  */
 export function placeLimbLabel(
   anchor: { x: number; y: number; radiusPx: number; depth: number },
@@ -40,9 +43,11 @@ export function placeLimbLabel(
 ): LabelBox | null {
   const { x, y, radiusPx, depth } = anchor;
   if (depth > 1) return null;
-  const left = x - size.width / 2;
+  const maxLeft = view.width - EDGE_MARGIN - size.width;
+  if (maxLeft < EDGE_MARGIN) return null;
+  const left = Math.min(Math.max(x - size.width / 2, EDGE_MARGIN), maxLeft);
   const right = left + size.width;
-  if (left < EDGE_MARGIN || right > view.width - EDGE_MARGIN) return null;
+  if (x < left || x > right) return null;
   const above = y - radiusPx - LIMB_GAP_PX - size.height;
   const below = y + radiusPx + LIMB_GAP_PX;
   for (const top of [above, below]) {
