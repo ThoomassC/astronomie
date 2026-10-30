@@ -8,6 +8,7 @@ import {
   LOCAL_GROUP_MIN_GAIN,
   LOCAL_GROUP_MIN_POINTS,
   LOCAL_GROUP_POINT_BUDGET,
+  SHELL_FIT_MARGIN_PX,
   WEB_FULL_DETAIL_PX,
   WEB_POINT_BUDGET,
   buildLocalGroup,
@@ -15,10 +16,13 @@ import {
   createExtragalactic,
   detailFraction,
   fitLocalGroup,
+  fitShells,
   fitWeb,
   galaxyLabelKey,
   isExtragalacticLabelKey,
+  labelledBubbleIndex,
   magnifyLocalGroup,
+  shellFit,
   splitLight,
   weighExtragalactic,
   type ExtragalacticBody,
@@ -558,3 +562,76 @@ describe("isExtragalacticLabelKey", () => {
   });
 });
 
+describe("shellFit", () => {
+  /** Zone libre du grand écran 1440 × 900 : entre la plaque (594 px) et la règle (1 244 px), toute la hauteur. */
+  const ZONE = { left: 594, right: 1244, top: 0, bottom: 900 };
+
+  it("devrait laisser entière une coquille qui tient dans l'espace libre, bord compris", () => {
+    expect(SHELL_FIT_MARGIN_PX).toBe(24);
+    expect(shellFit(919, 450, 292, ZONE)).toBe(1);
+    expect(shellFit(919, 450, 325, ZONE)).toBe(1);
+  });
+
+  it("devrait l'effacer à mesure qu'elle déborde, et tout à fait au-delà de SHELL_FIT_MARGIN_PX", () => {
+    // Bord droit à 1 256 px : 12 px de débord, moitié de la marge.
+    expect(shellFit(919, 450, 337, ZONE)).toBeCloseTo(0.5, 12);
+    expect(shellFit(919, 450, 349, ZONE)).toBe(0);
+    expect(shellFit(919, 450, 900, ZONE)).toBe(0);
+  });
+
+  it("devrait compter le débord de chaque côté, haut et bas compris (bande libre du téléphone)", () => {
+    const band = { left: 0, right: 375, top: 97, bottom: 447 };
+    expect(shellFit(187, 272, 150, band)).toBe(1);
+    expect(shellFit(187, 150, 100, band)).toBe(0);
+    expect(shellFit(30, 272, 100, band)).toBe(0);
+  });
+
+  it("devrait l'effacer quand la caméra est dedans ou qu'elle est derrière (rayon infini ou indéfini)", () => {
+    expect(shellFit(919, 450, Infinity, ZONE)).toBe(0);
+    expect(shellFit(919, 450, Number.NaN, ZONE)).toBe(0);
+    expect(shellFit(Number.NaN, 450, 100, ZONE)).toBe(0);
+  });
+});
+
+describe("fitShells", () => {
+  it("ne devrait rien faire avant la construction", () => {
+    expect(() => fitShells(create(), { cmb: 1, multiverse: 1 }, 1, [])).not.toThrow();
+  });
+
+  it("devrait donner à chaque bulle sa propre opacité : chacune s'efface seule en sortant de l'espace libre", () => {
+    const { bubbles } = universeOf(built());
+    const opacities = new Set(bubbles.map((bubble) => bubble.material.uniforms.uOpacity));
+    expect(opacities.size).toBe(bubbles.length);
+  });
+
+  it("devrait peser le fond diffus et chaque bulle par la part qui tient dans l'espace libre", () => {
+    const body = built();
+    const { cmb, bubbles } = universeOf(body);
+    const fits = bubbles.map((_, i) => (i % 2 === 0 ? 1 : 0));
+    fitShells(body, { cmb: 1, multiverse: 0.8 }, 0.5, fits);
+    expect(cmb.material.uniforms.uOpacity.value).toBeCloseTo(0.5, 12);
+    expect(cmb.visible).toBe(true);
+    bubbles.forEach((bubble, i) => {
+      expect(bubble.material.uniforms.uOpacity.value).toBeCloseTo(0.8 * fits[i], 12);
+      expect(bubble.visible).toBe(fits[i] > 0);
+    });
+  });
+
+  it("devrait cacher le fond diffus qui ne tient pas (aucun appel de dessin)", () => {
+    const body = built();
+    fitShells(body, { cmb: 1, multiverse: 0 }, 0, []);
+    expect(universeOf(body).cmb.visible).toBe(false);
+  });
+});
+
+describe("labelledBubbleIndex", () => {
+  it("devrait désigner la bulle qui porte « D'autres univers ? » : la plus grande des autres, sous son ancre", () => {
+    const body = built();
+    const { bubbles } = universeOf(body);
+    const index = labelledBubbleIndex();
+    const largest = Math.max(...bubbles.map((bubble) => bubble.scale.x));
+    expect(bubbles[index].scale.x).toBe(largest);
+    const anchor = body.labelAnchors.get("other-universes")?.position;
+    expect(anchor && bubbles[index].position.equals(new Vector3(anchor.x, anchor.y, anchor.z))).toBe(true);
+  });
+});

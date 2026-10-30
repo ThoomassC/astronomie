@@ -97,11 +97,15 @@ import {
   buildUniverse,
   createExtragalactic,
   fitLocalGroup,
+  fitShells,
   fitWeb,
+  labelledBubbleIndex,
   magnifyLocalGroup,
+  shellFit,
   splitLight,
   weighExtragalactic,
   type ExtragalacticLabelKey,
+  type ScreenBox,
 } from "./extragalactic";
 import {
   anchoredBox,
@@ -616,6 +620,15 @@ function setupScene(
   const andromedaRadiusKly = andromeda ? galaxyRadiusKly(andromeda) : 0;
   /** Grossissement des galaxies au zoom affiché (galaxyMagnification) : 1 jusqu'à la Voie lactée, 4 au Groupe local. */
   let magnification = 1;
+  /**
+   * Part du fond diffus et de chaque autre bulle qui tient dans l'espace libre de l'écran (fitShellsToScreen) : leurs
+   * étiquettes s'effacent avec elles.
+   */
+  let cmbFit = 1;
+  const bubbleFits: number[] = [];
+  const labelledBubble = labelledBubbleIndex();
+  /** Espace libre de l'écran, en px CSS (freeBox). */
+  const freeArea: ScreenBox = { left: 0, right: 0, top: 0, bottom: 0 };
   let cameraDistance = 330;
   let disposed = false;
   /** Shaders compilés (en parallèle du fil principal quand le navigateur le permet). */
@@ -1089,6 +1102,61 @@ function setupScene(
   }
 
   /**
+   * Espace libre où se cadre l'escale `stop`, en px CSS : la bande au-dessus de sa plaque (téléphone), sinon la zone
+   * entre les plaques et la règle (grand écran), sinon tout l'écran.
+   */
+  function freeBox(stop: StopKey): ScreenBox {
+    const band = screenLayout.band(stop);
+    const zone = band ? null : screenLayout.zone();
+    freeArea.left = zone ? zone.left * view.width : 0;
+    freeArea.right = zone ? zone.right * view.width : view.width;
+    freeArea.top = band ? band.top * view.height : 0;
+    freeArea.bottom = band ? band.bottom * view.height : view.height;
+    return freeArea;
+  }
+
+  /**
+   * Part d'une coquille (centre et rayon en coordonnées monde) qui tient dans `free`, vue de la caméra : rayon
+   * apparent r / √(d² − r²) en tangentes ; 0 quand la caméra est dedans ou que son centre est derrière elle.
+   */
+  function shellFitAt(center: Vector3, radius: number, free: ScreenBox, pixelsPerTangent: number): number {
+    const distance = camera.position.distanceTo(center);
+    if (distance <= radius) return 0;
+    project(center);
+    if (projected.z > 1) return 0;
+    const apparent = (radius / Math.sqrt(distance * distance - radius * radius)) * pixelsPerTangent;
+    return shellFit(onScreen.x, onScreen.y, apparent, free);
+  }
+
+  /**
+   * Coquilles retenues dans l'espace libre : le fond diffus dans celui de l'Univers observable, chaque autre bulle dans
+   * celui du multivers. À l'arrivée sur l'Univers, la coquille paraît quand elle tient entre la plaque et la règle, au
+   * lieu de les recouvrir ; une bulle qui entre dans le cadre paraît de même. En exploration, la page est masquée :
+   * rien à éviter.
+   */
+  function fitShellsToScreen(pixelsPerTangent: number): void {
+    const { cmb, bubbles } = extragalactic;
+    if (!cmb || !bubbles) return;
+    const exploringNow = exploring !== null;
+    const gly = cosmos.group.scale.x * 1e9;
+    // Caméra posée à cette image : ses matrices suivent avant de projeter (le rendu ne les a pas encore mises à jour).
+    camera.updateMatrixWorld();
+    cmbFit =
+      exploringNow || weights.cmb <= 0
+        ? 1
+        : shellFitAt(anchor.set(0, 0, 0), cmb.scale.x * gly, freeBox("universe"), pixelsPerTangent);
+    bubbles.forEach((bubble, i) => {
+      if (exploringNow || weights.multiverse <= 0) {
+        bubbleFits[i] = 1;
+        return;
+      }
+      const center = anchor.copy(bubble.position).multiplyScalar(gly);
+      bubbleFits[i] = shellFitAt(center, bubble.scale.x * gly, freeBox("multiverse"), pixelsPerTangent);
+    });
+    fitShells(extragalactic, weights, cmbFit, bubbleFits);
+  }
+
+  /**
    * Suit le mode d'exploration. À chaque changement (entrée, sortie, autre escale), fondu depuis la caméra affichée,
    * sauf en mouvement réduit ou avant la première image ; à l'entrée, la vue part des angles de la caméra de base, et
    * la parallaxe de la souris s'efface (onWindowPointerMove l'ignore pendant le mode).
@@ -1185,6 +1253,7 @@ function setupScene(
     const pixelsPerTangent = view.height / (2 * Math.tan((camera.fov * DEG) / 2));
     if (weights.galaxy > 0) updateGalaxyDetail(pixelsPerTangent);
     updateExtragalacticDetail(pixelsPerTangent);
+    fitShellsToScreen(pixelsPerTangent);
     // Éblouissement : discret près du Soleil, plus large quand on le regarde de loin (distance ramenée à
     // l'échelle du système solaire : réduit par le zoom, il est vu de très loin).
     sun.coronaUniforms.uGlare.value = lerp(0.08, 0.32, smoothstep(60, 420, camera.position.length() / scale));
@@ -1295,13 +1364,15 @@ function setupScene(
   /**
    * Opacité d'une étiquette extragalactique : les galaxies avec le Groupe local ; la toile et le fond diffus avec leur
    * couche, effacés quand paraît le multivers (« Notre univers observable » nomme alors la bulle) ; notre univers et
-   * les autres avec le multivers.
+   * les autres avec le multivers. Les étiquettes du fond diffus, de notre univers et des autres s'effacent avec leur
+   * coquille quand elle ne tient pas dans l'espace libre.
    */
   function extragalacticAlpha(key: ExtragalacticLabelKey): number {
     if (key.startsWith("lg:")) return weights.localGroup;
     if (key === "web") return weights.web * (1 - weights.multiverse);
-    if (key === "cmb") return weights.cmb * (1 - weights.multiverse);
-    return weights.multiverse;
+    if (key === "cmb") return weights.cmb * (1 - weights.multiverse) * cmbFit;
+    if (key === "our-universe") return weights.multiverse * cmbFit;
+    return weights.multiverse * (bubbleFits[labelledBubble] ?? 1);
   }
 
   function updateLabels(): void {

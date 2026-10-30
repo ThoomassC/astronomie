@@ -622,6 +622,84 @@ describe("cameraFor au Groupe local, à l'Univers observable et au multivers", (
     expect(SPHERE.localGroup / (unitsPerLy(9.7) * 1000)).toBeCloseTo(1695.378, 2);
   });
 
+  /**
+   * Boîte à l'écran (px) des silhouettes des sphères `spheres` (unités de scène), vues par la caméra `cam` sur un écran
+   * `width` × `height` : projection exacte, comme le moteur (lookAt vers la cible, haut = +y, décalage de vue
+   * setViewOffset de offX × largeur et offY × hauteur), contour échantillonné tous les degrés.
+   */
+  function silhouetteBox(cam: CamState, spheres: readonly { c: Vec3; r: number }[], width: number, height: number, fov: number) {
+    const position = {
+      x: cam.tx + cam.dist * Math.cos(cam.elev) * Math.cos(cam.azim),
+      y: cam.ty + cam.dist * Math.sin(cam.elev),
+      z: cam.tz + cam.dist * Math.cos(cam.elev) * Math.sin(cam.azim),
+    };
+    const back = { x: position.x - cam.tx, y: position.y - cam.ty, z: position.z - cam.tz };
+    const backLength = Math.hypot(back.x, back.y, back.z);
+    const z = { x: back.x / backLength, y: back.y / backLength, z: back.z / backLength };
+    const rightLength = Math.hypot(z.z, z.x);
+    const x = { x: z.z / rightLength, y: 0, z: -z.x / rightLength };
+    const y = { x: z.y * x.z, y: z.z * x.x - z.x * x.z, z: -z.y * x.x };
+    const tan = tanHalf(fov);
+    const box = { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity };
+    for (const { c, r } of spheres) {
+      for (let i = 0; i <= 180; i++) {
+        for (let j = 0; j < 360; j++) {
+          const theta = i * DEG;
+          const phi = j * DEG;
+          const p = {
+            x: c.x + r * Math.sin(theta) * Math.cos(phi) - position.x,
+            y: c.y + r * Math.cos(theta) - position.y,
+            z: c.z + r * Math.sin(theta) * Math.sin(phi) - position.z,
+          };
+          const depth = -(p.x * z.x + p.y * z.y + p.z * z.z);
+          const screenX = width * (0.5 + cam.offX) + ((p.x * x.x + p.z * x.z) / depth / (tan * (width / height))) * (width / 2);
+          const screenY = height * (0.5 + cam.offY) - ((p.x * y.x + p.y * y.y + p.z * y.z) / depth / tan) * (height / 2);
+          box.left = Math.min(box.left, screenX);
+          box.right = Math.max(box.right, screenX);
+          box.top = Math.min(box.top, screenY);
+          box.bottom = Math.max(box.bottom, screenY);
+        }
+      }
+    }
+    return box;
+  }
+
+  /** Fond diffus (l'Univers observable) et autres bulles, en unités de scène au zoom de leur escale. */
+  const cmbSphere = [{ c: { x: 0, y: 0, z: 0 }, r: SPHERE.universe }];
+  const bubbleSpheres = multiverseBubbles(MULTIVERSE_SEED).map((bubble) => {
+    const k = 1e9 * unitsPerLy(15);
+    return { c: { x: bubble.center.x * k, y: bubble.center.y * k, z: bubble.center.z * k }, r: bubble.radius * k };
+  });
+
+  it("devrait faire tenir le fond diffus dans 90 % de la zone libre du grand écran, entre la plaque et la règle (1 440 × 900)", () => {
+    const box = silhouetteBox(cameraFor("universe", context(DESK)), cmbSphere, 1440, 900, DESK.fov);
+    const [left, right] = [DESK.zone.left * 1440, DESK.zone.right * 1440];
+    expect(box.left).toBeGreaterThan(left);
+    expect(box.right).toBeLessThan(right);
+    expect((box.right - box.left) / (right - left)).toBeCloseTo(0.9, 2);
+    expect(box.top).toBeGreaterThan(0);
+    expect(box.bottom).toBeLessThan(900);
+  });
+
+  it("devrait faire tenir toutes les bulles du multivers dans la zone libre du grand écran (1 440 × 900)", () => {
+    const box = silhouetteBox(cameraFor("multiverse", context(DESK)), bubbleSpheres, 1440, 900, DESK.fov);
+    expect(box.left).toBeGreaterThan(DESK.zone.left * 1440);
+    expect(box.right).toBeLessThan(DESK.zone.right * 1440);
+    expect(box.top).toBeGreaterThan(0);
+    expect(box.bottom).toBeLessThan(900);
+  });
+
+  it.each([
+    ["universe", cmbSphere],
+    ["multiverse", bubbleSpheres],
+  ] as const)("devrait tout faire tenir dans la bande libre du téléphone, 80 %% de la largeur au plus (%s, 375 × 812)", (key, spheres) => {
+    const box = silhouetteBox(cameraFor(key, context({ portrait: true, ...PHONE })), spheres, 375, 812, PHONE.fov);
+    expect(box.left).toBeGreaterThanOrEqual(0.1 * 375 - 1e-6);
+    expect(box.right).toBeLessThanOrEqual(0.9 * 375 + 1e-6);
+    expect(box.top).toBeGreaterThan(PHONE.band.top * 812);
+    expect(box.bottom).toBeLessThan(PHONE.band.bottom * 812);
+  });
+
   it.each(["stars", "galaxy", "localGroup", "universe", "multiverse"] satisfies CosmicStopKey[])(
     "devrait laisser la cible au centre de l'écran en exploration : bande symétrique pleine hauteur (%s)",
     (key) => {

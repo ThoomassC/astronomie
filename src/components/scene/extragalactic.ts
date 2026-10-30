@@ -26,6 +26,7 @@ import { OBSERVABLE_UNIVERSE_RADIUS_GLY } from "@/lib/astro/universe";
 import { createBubbleMaterial, createCmbMaterial } from "./extragalacticMaterials";
 import type { LayerWeights } from "./layers";
 import { createPointCloudMaterial, type Uniform } from "./materials";
+import { smoothstep } from "./math";
 
 /**
  * Au-delà de la Voie lactée : les galaxies du Groupe local, la toile cosmique, le fond diffus cosmologique et les
@@ -151,6 +152,15 @@ function labelledBubble(bubbles: readonly Bubble[]): Bubble {
 }
 
 /**
+ * Rang, parmi les autres bulles (`bubbles` du corps, la nôtre exclue), de celle qui porte « D'autres univers ? » :
+ * son étiquette s'efface avec elle.
+ */
+export function labelledBubbleIndex(): number {
+  const bubbles = multiverseBubbles(MULTIVERSE_SEED);
+  return bubbles.indexOf(labelledBubble(bubbles)) - 1;
+}
+
+/**
  * Ancres des étiquettes : chaque galaxie à son centre (la Voie lactée au centre galactique, en al, dans le groupe
  * du ciel profond où vit son nuage) ; la toile sur son nœud d'étiquette ; le fond diffus en haut de notre bulle,
  * « Notre univers observable » en bas ; « D'autres univers ? » au centre de la plus grande autre bulle.
@@ -254,7 +264,8 @@ export function buildLocalGroup(body: ExtragalacticBody, budget: number): void {
 /**
  * Construit la toile cosmique (`webBudget` points), le fond diffus (sphère de l'Univers observable) et les 14 autres
  * bulles du multivers, rangés dans `universe` ; sans effet s'ils existent déjà. Les coquilles partagent une sphère
- * unité, mise à l'échelle par chaque maillage, et les bulles un même poids.
+ * unité, mise à l'échelle par chaque maillage ; chaque bulle a son opacité (elle s'efface seule en sortant de
+ * l'espace libre, fitShells), toutes le même programme.
  */
 export function buildUniverse(body: ExtragalacticBody, webBudget: number): void {
   if (body.web) return;
@@ -264,11 +275,10 @@ export function buildUniverse(body: ExtragalacticBody, webBudget: number): void 
   const cmb = new Mesh(sphere, createCmbMaterial().material);
   cmb.scale.setScalar(radius);
   cmb.visible = false;
-  const opacity: Uniform<number> = { value: 1 };
   const bubbles = multiverseBubbles(MULTIVERSE_SEED)
     .slice(1)
     .map((bubble) => {
-      const mesh = new Mesh(sphere, createBubbleMaterial(bubble.hue, opacity).material);
+      const mesh = new Mesh(sphere, createBubbleMaterial(bubble.hue, { value: 1 }).material);
       mesh.position.set(bubble.center.x, bubble.center.y, bubble.center.z);
       mesh.scale.setScalar(bubble.radius);
       mesh.visible = false;
@@ -359,3 +369,49 @@ export function weighExtragalactic(body: ExtragalacticBody, weights: Extragalact
   if (body.bubbles) for (const bubble of body.bubbles) weigh(bubble, weights.multiverse);
 }
 
+/**
+ * Débord (px CSS) au-delà duquel une coquille a disparu : la marge entre la zone libre et la règle (ZONE_MARGIN_PX de
+ * screenLayout). Le fond diffus ou une bulle qui sort de l'espace libre s'efface avant de toucher la plaque ou la
+ * règle.
+ */
+export const SHELL_FIT_MARGIN_PX = 24;
+
+/** Espace libre de l'écran, en px CSS depuis le coin haut gauche : zone du grand écran, bande du téléphone, écran. */
+export interface ScreenBox {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * Part visible d'une coquille dans l'espace libre `free`, d'après son centre projeté (`x`, `y`) et son rayon apparent
+ * (`radius`), en px CSS : 1 tant qu'elle y tient, 0 dès qu'elle en déborde de SHELL_FIT_MARGIN_PX, d'un côté ou d'un
+ * autre ; 0 quand la caméra est dedans (rayon infini) ou qu'elle est derrière (centre ou rayon indéfini).
+ */
+export function shellFit(x: number, y: number, radius: number, free: ScreenBox): number {
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius) || radius < 0) return 0;
+  const overflow = Math.max(
+    free.left - (x - radius),
+    x + radius - free.right,
+    free.top - (y - radius),
+    y + radius - free.bottom,
+    0,
+  );
+  return 1 - smoothstep(0, SHELL_FIT_MARGIN_PX, overflow);
+}
+
+/**
+ * Pèse les coquilles selon la part qui tient dans l'espace libre : fond diffus ← cmb × `cmbFit`, bulle i ← multivers
+ * × `bubbleFits[i]` (1 sans valeur). Remplace leur pesée par weighExtragalactic pour l'image en cours. Sans effet
+ * avant buildUniverse.
+ */
+export function fitShells(
+  body: ExtragalacticBody,
+  weights: Pick<ExtragalacticWeights, "cmb" | "multiverse">,
+  cmbFit: number,
+  bubbleFits: readonly number[],
+): void {
+  if (body.cmb) weigh(body.cmb, weights.cmb * cmbFit);
+  body.bubbles?.forEach((bubble, i) => weigh(bubble, weights.multiverse * (bubbleFits[i] ?? 1)));
+}
