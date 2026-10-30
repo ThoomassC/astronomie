@@ -66,8 +66,8 @@ describe("SIZES_STRINGS.comparison", () => {
     ["es", "sun", "Harían falta unas 109 Tierras en fila para igualar su diámetro."],
     ["fr", "arcturus", "Son volume contiendrait environ 16\u202f000 Soleils."],
     ["en", "rigel", "Its volume could hold about 410,000 Suns."],
-    ["es", "aldebaran", "Su volumen podría contener unos 92.000 Soles."],
-    ["es", "sirius-a", "Su volumen podría contener unos 5 Soles."],
+    ["es", "aldebaran", "Su volumen podría contener unos 92.000 soles."],
+    ["es", "sirius-a", "Su volumen podría contener unos 5 soles."],
   ] as const)("devrait dire la comparaison de l'étoile en une phrase (%s, %s)", (locale, key, expected) => {
     expect(SIZES_STRINGS[locale].comparison(star(key))).toBe(expected);
   });
@@ -87,9 +87,9 @@ describe("SIZES_STRINGS.comparison", () => {
 
 describe("SIZES_STRINGS, libellés de l'interface", () => {
   it.each([
-    ["fr", "Règle des tailles", "Étoile"],
-    ["en", "Size scale", "Star"],
-    ["es", "Escala de tamaños", "Estrella"],
+    ["fr", "Règle des tailles, de la plus petite à la plus grande étoile", "Étoile"],
+    ["en", "Size scale, from the smallest to the largest star", "Star"],
+    ["es", "Escala de tamaños, de la estrella más pequeña a la más grande", "Estrella"],
   ] as const)("devrait nommer la règle et l'étoile affichée selon le glossaire du site (%s)", (locale, railLabel, current) => {
     expect(SIZES_STRINGS[locale].railLabel).toBe(railLabel);
     expect(SIZES_STRINGS[locale].current).toBe(current);
@@ -101,5 +101,28 @@ describe("SIZES_STRINGS, libellés de l'interface", () => {
     ["es", { nav: "Estrellas", home: "Estrellas", choose: "elegir una estrella", change: "cambiar de estrella" }],
   ] as const)("devrait nommer le menu des étoiles et ses compléments lus après le bouton (%s)", (locale, menu) => {
     expect(SIZES_STRINGS[locale].menu).toEqual(menu);
+  });
+});
+
+describe("SIZES_STRINGS.scaleBar", () => {
+  it.each([
+    ["fr", 10, "10 Soleils côte à côte"],
+    ["fr", 1000, "1\u202f000 Soleils côte à côte"],
+    ["en", 2, "2 Suns side by side"],
+    ["en", 1000, "1,000 Suns side by side"],
+    ["es", 1000, "1000 soles en fila"],
+    ["es", 2000, "2000 soles en fila"],
+  ] as const)("devrait dire ce que mesure l'échelle graphique (%s, %i Soleils)", (locale, suns, expected) => {
+    expect(SIZES_STRINGS[locale].scaleBar(suns)).toBe(expected);
+  });
+});
+
+describe("SIZES_STRINGS.railLegend", () => {
+  it.each([
+    ["fr", "× 10 à chaque graduation"],
+    ["en", "× 10 per mark"],
+    ["es", "× 10 en cada marca"],
+  ] as const)("devrait rappeler que chaque graduation de la règle multiplie le rayon par 10 (%s)", (locale, legend) => {
+    expect(SIZES_STRINGS[locale].railLegend).toBe(legend);
   });
 });

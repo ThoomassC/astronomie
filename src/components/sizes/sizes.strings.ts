@@ -16,6 +16,8 @@ export interface SizesStrings {
   names: Readonly<Record<SizeStarKey, string>>;
   /** Nom accessible de la règle des tailles. */
   railLabel: string;
+  /** Légende sous la règle (décorative) : chaque graduation multiplie le rayon par 10. */
+  railLegend: string;
   /**
    * Menu des étoiles : nom du `<nav>`, texte du bouton à l'introduction, et complément lu après le bouton
    * (sans ponctuation) selon qu'aucune étoile n'est encore affichée (`choose`) ou qu'une l'est (`change`).
@@ -29,6 +31,8 @@ export interface SizesStrings {
   radiusRange(low: number, high: number): string;
   /** Comparaison parlante de l'étoile, en une phrase (règle de `pickComparison`). */
   comparison(star: ComparedStar): string;
+  /** Échelle graphique de la scène : « 10 Soleils côte à côte ». */
+  scaleBar(suns: number): string;
   labels: {
     /** Repère du Soleil dans la scène, posé même quand il y fait moins d'un pixel. */
     sunMarker: string;
@@ -96,7 +100,8 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
       betelgeuse: "Bételgeuse",
       "vy-canis-majoris": "VY Canis Majoris",
     },
-    railLabel: "Règle des tailles",
+    railLabel: "Règle des tailles, de la plus petite à la plus grande étoile",
+    railLegend: "× 10 à chaque graduation",
     menu: { nav: "Étoiles", home: "Étoiles", choose: "choisir une étoile", change: "changer d'étoile" },
     current: "Étoile",
     radius: (radiusSolar) => solarRadii(radiusSolar, "fr"),
@@ -108,6 +113,7 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
           `Il faudrait environ ${counted(count, { one: "Terre", other: "Terres" }, "fr")} côte à côte pour égaler son diamètre.`,
         suns: (count) => `Son volume contiendrait environ ${counted(count, { one: "Soleil", other: "Soleils" }, "fr")}.`,
       }),
+    scaleBar: (suns) => `${counted(suns, { one: "Soleil", other: "Soleils" }, "fr")} côte à côte`,
     labels: { sunMarker: bodyName("sun", "fr") },
   },
   en: {
@@ -123,7 +129,8 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
       betelgeuse: "Betelgeuse",
       "vy-canis-majoris": "VY Canis Majoris",
     },
-    railLabel: "Size scale",
+    railLabel: "Size scale, from the smallest to the largest star",
+    railLegend: "× 10 per mark",
     menu: { nav: "Stars", home: "Stars", choose: "choose a star", change: "change star" },
     current: "Star",
     radius: (radiusSolar) => solarRadii(radiusSolar, "en"),
@@ -135,6 +142,7 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
           `It would take about ${counted(count, { one: "Earth", other: "Earths" }, "en")} side by side to span its diameter.`,
         suns: (count) => `Its volume could hold about ${counted(count, { one: "Sun", other: "Suns" }, "en")}.`,
       }),
+    scaleBar: (suns) => `${counted(suns, { one: "Sun", other: "Suns" }, "en")} side by side`,
     labels: { sunMarker: bodyName("sun", "en") },
   },
   es: {
@@ -150,7 +158,8 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
       betelgeuse: "Betelgeuse",
       "vy-canis-majoris": "VY Canis Majoris",
     },
-    railLabel: "Escala de tamaños",
+    railLabel: "Escala de tamaños, de la estrella más pequeña a la más grande",
+    railLegend: "× 10 en cada marca",
     menu: { nav: "Estrellas", home: "Estrellas", choose: "elegir una estrella", change: "cambiar de estrella" },
     current: "Estrella",
     radius: (radiusSolar) => solarRadii(radiusSolar, "es"),
@@ -160,8 +169,9 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
         orbit: (planet) => `En el lugar del Sol, su superficie llegaría más allá de la órbita ${ofPlanetEs(planet)}.`,
         earths: (count) =>
           `Harían falta unas ${counted(count, { one: "Tierra", other: "Tierras" }, "es")} en fila para igualar su diámetro.`,
-        suns: (count) => `Su volumen podría contener unos ${counted(count, { one: "Sol", other: "Soles" }, "es")}.`,
+        suns: (count) => `Su volumen podría contener unos ${counted(count, { one: "sol", other: "soles" }, "es")}.`,
       }),
+    scaleBar: (suns) => `${counted(suns, { one: "sol", other: "soles" }, "es")} en fila`,
     labels: { sunMarker: bodyName("sun", "es") },
   },
 };
