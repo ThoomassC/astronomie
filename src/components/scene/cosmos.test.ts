@@ -156,6 +156,29 @@ describe("buildGalaxy", () => {
     expect(countObjects(cosmos.group)).toBe(objects);
   });
 
+  /*
+   * Au retour sur le Voyage, Next rend la page gardée masquée et la scène se reconstruit : la galaxie (graine fixe)
+   * reprend les tableaux déjà tirés au lieu de les tirer de nouveau.
+   */
+  it("devrait reprendre les tableaux déjà tirés pour le même nombre de points, au lieu de les tirer de nouveau", () => {
+    const first = createCosmos(STARS);
+    buildGalaxy(first, 1000);
+    const second = createCosmos(STARS);
+    buildGalaxy(second, 1000);
+    for (const name of ["position", "color", "size"]) {
+      expect(galaxyOf(second).geometry.getAttribute(name).array).toBe(galaxyOf(first).geometry.getAttribute(name).array);
+    }
+  });
+
+  it("devrait tirer un autre nuage pour un autre nombre de points", () => {
+    const small = createCosmos(STARS);
+    buildGalaxy(small, 1000);
+    const large = createCosmos(STARS);
+    buildGalaxy(large, 2000);
+    expect(galaxyOf(large).geometry.getAttribute("position").count).toBe(2000);
+    expect(galaxyOf(small).geometry.getAttribute("position").count).toBe(1000);
+  });
+
   it("devrait poser une sphère englobante analytique : centrée sur le centre galactique, de 60 000 al de rayon", () => {
     const cosmos = createCosmos(STARS);
     buildGalaxy(cosmos, 1000);

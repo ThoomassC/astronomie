@@ -205,6 +205,16 @@ export function createExtragalactic(pixelRatio: Uniform<number>, galaxies: reado
   };
 }
 
+/*
+ * Nuages déjà tirés. Graines fixes : le même budget donne les mêmes nuages. Au retour sur le Voyage, Next rend la page
+ * gardée masquée et la scène se reconstruit : galaxies et toile reprennent leurs tableaux au lieu de les tirer de
+ * nouveau. Un seul budget par appareil : 0,4 Mo pour le Groupe local, 0,8 Mo pour la toile, au plus.
+ */
+/** Nuages des galaxies du Groupe local, par liste de galaxies (`members`, LOCAL_GROUP en production), puis par budget. */
+const localGroupClouds = new WeakMap<readonly LocalGroupGalaxy[], Map<number, readonly PointCloud[]>>();
+/** Nuages de la toile, par nombre de points. */
+const webClouds = new Map<number, PointCloud>();
+
 /** Nuage de points du matériau commun (materials.ts), sphère englobante posée d'emblée : rien à calculer au premier rendu. */
 function pointCloud(cloud: PointCloud, pixelRatio: Uniform<number>, gain: Uniform<number>, bounds: Sphere): Points<BufferGeometry, ShaderMaterial> {
   const geometry = new BufferGeometry();
@@ -240,18 +250,52 @@ function pointShares(galaxies: readonly LocalGroupGalaxy[], budget: number): num
 }
 
 /**
+ * Nuages des galaxies `drawn` de `members` pour `budget` points, dans l'ordre de `drawn` : budget partagé selon
+ * pointShares, même éclat par point (14 000 / budget). Tirés une fois, puis repris.
+ */
+function localGroupPoints(
+  members: readonly LocalGroupGalaxy[],
+  drawn: readonly LocalGroupGalaxy[],
+  budget: number,
+): readonly PointCloud[] {
+  let byBudget = localGroupClouds.get(members);
+  if (!byBudget) {
+    byBudget = new Map();
+    localGroupClouds.set(members, byBudget);
+  }
+  let clouds = byBudget.get(budget);
+  if (!clouds) {
+    const counts = pointShares(drawn, budget);
+    const glow = LOCAL_GROUP_POINT_BUDGET.fine / budget;
+    clouds = drawn.map((galaxy, i) => galaxyCloud(galaxy, counts[i], galaxySeed(galaxy.key), glow));
+    byBudget.set(budget, clouds);
+  }
+  return clouds;
+}
+
+/** Nuage de la toile de `count` points : tiré une fois, puis repris. */
+function webPoints(count: number): PointCloud {
+  let cloud = webClouds.get(count);
+  if (!cloud) {
+    cloud = cosmicWebCloud(count, COSMIC_WEB_SEED);
+    webClouds.set(count, cloud);
+  }
+  return cloud;
+}
+
+/**
  * Construit les galaxies du Groupe local (sauf la Voie lactée, déjà dessinée) et les range dans `localGroup`,
  * chacune à son centre ; sans effet si elles existent déjà. Budget partagé selon pointShares ; toutes reçoivent le
- * même éclat par point (14 000 / budget), leur lumière suit donc leur luminosité sur tous les appareils.
+ * même éclat par point (14 000 / budget), leur lumière suit donc leur luminosité sur tous les appareils. Nuages tirés
+ * une seule fois par budget (localGroupPoints).
  */
 export function buildLocalGroup(body: ExtragalacticBody, budget: number): void {
   if (body.galaxies) return;
   const drawn = body.members.filter((galaxy) => galaxy.key !== "milky-way");
-  const counts = pointShares(drawn, budget);
-  const glow = LOCAL_GROUP_POINT_BUDGET.fine / budget;
+  const clouds = localGroupPoints(body.members, drawn, budget);
   const galaxies = new Map<LocalGroupGalaxyKey, Points<BufferGeometry, ShaderMaterial>>();
   drawn.forEach((galaxy, i) => {
-    const cloud = galaxyCloud(galaxy, counts[i], galaxySeed(galaxy.key), glow);
+    const cloud = clouds[i];
     const bounds = new Sphere(new Vector3(), GALAXY_EXTENT_RATIO * galaxyRadiusKly(galaxy));
     const points = pointCloud(cloud, body.pixelRatio, body.localGroupGain, bounds);
     const center = galaxyCenterKly(galaxy);
@@ -263,15 +307,15 @@ export function buildLocalGroup(body: ExtragalacticBody, budget: number): void {
 }
 
 /**
- * Construit la toile cosmique (`webBudget` points), le fond diffus (sphère de l'Univers observable) et les 14 autres
- * bulles du multivers, rangés dans `universe` ; sans effet s'ils existent déjà. Les coquilles partagent une sphère
+ * Construit la toile cosmique (`webBudget` points, tirés une seule fois : webPoints), le fond diffus (sphère de l'Univers
+ * observable) et les 14 autres bulles du multivers, rangés dans `universe` ; sans effet s'ils existent déjà. Les coquilles partagent une sphère
  * unité, mise à l'échelle par chaque maillage ; chaque bulle a son opacité (elle s'efface seule en sortant de
  * l'espace libre, fitShells), toutes le même programme.
  */
 export function buildUniverse(body: ExtragalacticBody, webBudget: number): void {
   if (body.web) return;
   const radius = OBSERVABLE_UNIVERSE_RADIUS_GLY;
-  const web = pointCloud(cosmicWebCloud(webBudget, COSMIC_WEB_SEED), body.pixelRatio, body.webGain, new Sphere(new Vector3(), radius));
+  const web = pointCloud(webPoints(webBudget), body.pixelRatio, body.webGain, new Sphere(new Vector3(), radius));
   const sphere = new SphereGeometry(1, SHELL_SEGMENTS.width, SHELL_SEGMENTS.height);
   const cmb = new Mesh(sphere, createCmbMaterial().material);
   cmb.scale.setScalar(radius);

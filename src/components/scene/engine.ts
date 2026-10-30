@@ -833,9 +833,10 @@ function setupScene(
 
   /**
    * Galaxie (≈ 10 à 30 ms, une fois), dès l'au-delà de Neptune ; puis, en chaîne et au repos, le Groupe local
-   * (≈ 2 à 7 ms) et l'Univers (≈ 3 à 10 ms, toile, fond diffus et bulles). Le programme des points est déjà compilé
-   * (partagé avec les étoiles) ; ceux du fond diffus et des bulles le sont hors du fil principal, juste après leur
-   * construction. Chacun est pesé aussitôt construit.
+   * (≈ 2 à 7 ms) et l'Univers (≈ 3 à 10 ms, toile, fond diffus et bulles). Les nuages de points ne sont tirés qu'une
+   * fois par chargement de la page : au retour sur le Voyage, la scène reconstruite les reprend (cosmos.ts,
+   * extragalactic.ts). Le programme des points est déjà compilé (partagé avec les étoiles) ; ceux du fond diffus et des
+   * bulles le sont hors du fil principal, juste après leur construction. Chacun est pesé aussitôt construit.
    */
   const universeBuild = deferredBuild(
     "Univers observable",

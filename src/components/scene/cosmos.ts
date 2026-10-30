@@ -12,7 +12,7 @@ import {
 import type { Vec3 } from "@/lib/astro/constants";
 import { GALACTIC_CENTER_DISTANCE_LY, sceneFromGalacticXYZ } from "@/lib/astro/galactic";
 import { shufflePointCloud } from "@/lib/astro/galaxyShapes";
-import { GALAXY_SEED, milkyWayCloud } from "@/lib/astro/milkyWay";
+import { GALAXY_SEED, milkyWayCloud, type PointCloud } from "@/lib/astro/milkyWay";
 import { SUN } from "@/lib/astro/planets";
 import { absoluteMagnitude, spectralColor, starPointSize, starPositionLy } from "@/lib/astro/starMap";
 import type { NearbyStar } from "@/lib/astro/stars";
@@ -177,14 +177,31 @@ export function createCosmos(stars: readonly NearbyStar[]): CosmosBody {
 }
 
 /**
- * Crée la galaxie (milkyWayCloud(count, GALAXY_SEED), même nuage à chaque visite) et l'ajoute au groupe ;
- * sans effet si elle existe déjà. Invisible jusqu'à la prochaine pesée. Sa sphère englobante entoure le centre
+ * Nuages de la galaxie déjà tirés, par nombre de points : graine fixe, le même nombre donne le même nuage. Au retour sur
+ * le Voyage, Next rend la page gardée masquée et la scène se reconstruit : la galaxie reprend ses tableaux au lieu de
+ * les tirer de nouveau (≈ 10 à 30 ms, bien plus sur téléphone). Un seul budget par appareil : 1,1 Mo au plus.
+ */
+const milkyWayClouds = new Map<number, PointCloud>();
+
+/** Nuage de `count` points de la galaxie, mêlés : tiré une fois, puis repris. */
+function milkyWayPoints(count: number): PointCloud {
+  let cloud = milkyWayClouds.get(count);
+  if (!cloud) {
+    // Points mêlés : quand la galaxie rapetisse à l'écran, le moteur n'en dessine qu'un début, fidèle au tout.
+    cloud = shufflePointCloud(milkyWayCloud(count, GALAXY_SEED), GALAXY_SEED);
+    milkyWayClouds.set(count, cloud);
+  }
+  return cloud;
+}
+
+/**
+ * Crée la galaxie (milkyWayCloud(count, GALAXY_SEED), même nuage à chaque visite, tiré une seule fois) et l'ajoute au
+ * groupe ; sans effet si elle existe déjà. Invisible jusqu'à la prochaine pesée. Sa sphère englobante entoure le centre
  * galactique (GALAXY_BOUNDING_RADIUS_LY) : le découpage par le champ de la caméra n'a rien à mesurer.
  */
 export function buildGalaxy(cosmos: CosmosBody, count: number): void {
   if (cosmos.galaxy) return;
-  // Points mêlés : quand la galaxie rapetisse à l'écran, le moteur n'en dessine qu'un début, fidèle au tout.
-  const cloud = shufflePointCloud(milkyWayCloud(count, GALAXY_SEED), GALAXY_SEED);
+  const cloud = milkyWayPoints(count);
   const center = sceneFromGalacticXYZ(GALACTIC_CENTER_DISTANCE_LY, 0, 0);
   const bounds = new Sphere(new Vector3(center.x, center.y, center.z), GALAXY_BOUNDING_RADIUS_LY);
   const galaxy = pointCloud(cloud.positions, cloud.colors, cloud.sizes, cosmos.pixelRatio, cosmos.galaxyGain, bounds);
