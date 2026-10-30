@@ -53,7 +53,7 @@ export const SIZES_FR: SizesContent = {
       kind: "supergéante bleue",
       hook: "Bleutée, brûlante, et des dizaines de milliers de fois plus lumineuse que le Soleil.",
       lede: `Rigel est une supergéante, environ 21 fois plus massive que le Soleil, qui consomme son combustible à toute allure. À ${n(12_100)} K, sa surface est deux fois plus chaude que celle du Soleil, d'où sa teinte bleutée. À sa place, elle frôlerait l'orbite de Mercure. On la voit en hiver, dans Orion.`,
-      caveat: `Sa distance fait encore débat : à ${n(1170)} années-lumière plutôt qu'à 860, son rayon approcherait 106 R☉.`,
+      caveat: `Sa distance fait encore débat : à ${n(1170)} années-lumière plutôt qu'à 860, son rayon serait d'environ 101 R☉.`,
     },
     "antares-a": {
       kind: "supergéante rouge",

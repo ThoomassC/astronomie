@@ -56,6 +56,30 @@ describe("getSizesContent", () => {
 });
 
 /*
+ * Rigel : à diamètre angulaire fixe (θ_LD = 2,606 mas, Baines et al. 2018), le rayon est proportionnel à la distance.
+ * Si elle était à 1 170 al et non à 860, ses 74 R☉ deviendraient 74 × 1 170 / 860 ≈ 100,7 R☉.
+ */
+describe("mise en garde sur la distance de Rigel", () => {
+  const rigel = COMPARED_STARS.find((star) => star.key === "rigel");
+  const ALTERNATIVE_DISTANCE_LY = 1170;
+
+  it("devrait tirer le rayon à 1 170 al du rayon et de la distance retenus : environ 101 R☉", () => {
+    if (!rigel) throw new Error("Rigel absente du comparateur");
+    expect(Math.round((rigel.radiusSolar * ALTERNATIVE_DISTANCE_LY) / rigel.distanceLy)).toBe(101);
+  });
+
+  it.each([
+    ["fr", "environ 101 R☉"],
+    ["en", "about 101 R☉"],
+    ["es", "unos 101 R☉"],
+  ] as const)("devrait l'écrire dans la mise en garde de la plaque (%s : « %s »)", (locale, radius) => {
+    const caveat = getSizesContent(locale).stars.rigel.caveat ?? "";
+    expect(caveat).toContain(radius);
+    expect(caveat).not.toContain("106");
+  });
+});
+
+/*
  * Typographie : les nombres des textes reprennent la sortie d'Intl (formatNumber) de leur langue. Les années (2012,
  * 2025) restent sans séparateur, d'où l'absence de règle sur les nombres de quatre chiffres en français et en anglais.
  */

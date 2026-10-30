@@ -80,7 +80,8 @@ export const COMPARED_STARS: readonly ComparedStar[] = [
     sources: "Hatzes et al. 2015, Richichi & Roccatagliata 2005, Strassmeier et al. 2018, Gatewood 2008, van Leeuwen 2007 (Hipparcos)",
   },
   // NPOI : 74,1 (+6,1/−7,3) (Baines et al. 2018) ; 78,9 ± 7,4 (Moravveji et al. 2012). 12 100 K (Przybilla et al. 2006).
-  // Distance : Hipparcos (≈ 1 170 al dans d'autres études, d'où un rayon proche de 106).
+  // Distance : Hipparcos (≈ 1 170 al dans d'autres études ; à diamètre angulaire fixe, θ_LD = 2,606 mas, le rayon suit la
+  // distance : 74 × 1 170 / 860 ≈ 101).
   {
     key: "rigel", radiusSolar: 74, radiusRange: [70, 79], temperatureK: 12_100, distanceLy: 860, spectralType: "B8Ia",
     color: "#c2d1ff",
