@@ -18,7 +18,7 @@ import { LOCALES, type Locale } from "./locales";
 /** Racine du dépôt, d'où Vitest se lance. */
 const ROOT = process.cwd();
 
-/** Fichiers sources du site : `src/**` en `.ts` et `.tsx`, tests exclus, chemins relatifs à la racine (« src/i18n/names.ts »). */
+/** Fichiers sources du site (`src/**`, `.ts` et `.tsx`, hors tests), relatifs à la racine : « src/i18n/names.ts ». */
 export function sourceFiles(): string[] {
   return readdirSync(join(ROOT, "src"), { recursive: true, encoding: "utf8" })
     .map((file) => `src/${file.split("\\").join("/")}`)
@@ -29,6 +29,12 @@ export function sourceFiles(): string[] {
 /** Texte d'un fichier source, chemin relatif à la racine. */
 export function readSource(file: string): string {
   return readFileSync(join(ROOT, file), "utf8");
+}
+
+/** Arbre syntaxique d'un fichier source (TypeScript, JSX selon l'extension), parents renseignés. */
+export function parseSource(file: string): ts.SourceFile {
+  const kind = file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  return ts.createSourceFile(file, readSource(file), ts.ScriptTarget.Latest, true, kind);
 }
 
 /** Contenus serveur, un par domaine de `src/content/`, lus dans une langue. */
@@ -74,16 +80,19 @@ export interface TextLeaf {
   value: string | TextFunction;
 }
 
+/** Clés qui ne portent pas de texte : adresses des liens, ancres des sections (les mêmes dans les trois langues). */
+const NOT_TEXT_KEYS: ReadonlySet<string> = new Set(["href", "id"]);
+
 /**
- * Feuilles de texte d'un contenu ou d'une table, dans l'ordre de l'objet. Les adresses des liens (`href`) n'en sont
- * pas, ni les nombres et les booléens (heures de l'échelle, exposants).
+ * Feuilles de texte d'un contenu ou d'une table, dans l'ordre de l'objet. Les adresses (`href`) et les ancres (`id`)
+ * n'en sont pas, ni les nombres et les booléens (heures de l'échelle, exposants).
  */
 export function textLeaves(value: unknown, path = ""): TextLeaf[] {
   if (typeof value === "string") return [{ path, value }];
   if (typeof value === "function") return [{ path, value: value as TextFunction }];
   if (value !== null && typeof value === "object") {
     return Object.entries(value)
-      .filter(([key]) => key !== "href")
+      .filter(([key]) => !NOT_TEXT_KEYS.has(key))
       .flatMap(([key, child]) => textLeaves(child, path ? `${path}.${key}` : key));
   }
   return [];
@@ -133,13 +142,7 @@ const isModuleSpecifier = (node: ts.Node) =>
 
 /** Littéraux de chaîne d'un fichier source (chaînes et morceaux de gabarits), chemins de modules exclus. */
 export function sourceLiterals(file: string): SourceLiteral[] {
-  const source = ts.createSourceFile(
-    file,
-    readSource(file),
-    ts.ScriptTarget.Latest,
-    true,
-    file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-  );
+  const source = parseSource(file);
   const fileLanguage = LOCALES.find((locale) => file.endsWith(`/${locale}.ts`)) ?? null;
   const literals: SourceLiteral[] = [];
   const visit = (node: ts.Node, language: Locale | null) => {

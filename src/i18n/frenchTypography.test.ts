@@ -61,15 +61,14 @@ function around(text: string, index: number): string {
  * peut n'être qu'un morceau (« Vitesse : » avant `${speed}`), seules ses espaces sont alors jugées.
  */
 function frenchSpacingFaults(text: string, whole: boolean): string[] {
-  return PLACES.flatMap(({ name, expected, wrong, missing }) => [
-    ...Array.from(
-      text.matchAll(wrong),
-      (match) => `${SPACE_NAMES[match[1]]} ${name}, ${SPACE_NAMES[expected]} attendue : « ${around(text, match.index)} »`,
-    ),
-    ...(whole && missing
-      ? Array.from(text.matchAll(missing), (match) => `aucune espace ${name}, ${SPACE_NAMES[expected]} attendue : « ${around(text, match.index)} »`)
-      : []),
-  ]);
+  return PLACES.flatMap(({ name, expected, wrong, missing }) => {
+    const fault = (found: string, index: number) =>
+      `${found} ${name}, ${SPACE_NAMES[expected]} attendue : « ${around(text, index)} »`;
+    return [
+      ...Array.from(text.matchAll(wrong), (match) => fault(SPACE_NAMES[match[1]], match.index)),
+      ...(whole && missing ? Array.from(text.matchAll(missing), (match) => fault("aucune espace", match.index)) : []),
+    ];
+  });
 }
 
 describe("frenchSpacingFaults", () => {
