@@ -1843,7 +1843,8 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
  * fixe pour rester utilisable.
  */
 @media (max-height: 30rem) {
-  .bar {
+  /* Réserve du bouton fixé, qui n'existe que sur la barre du voyage. */
+  .bar[data-page="voyage"] {
     padding-right: calc(var(--gr) + 52px);
   }
 

@@ -5,7 +5,7 @@ import { PLATE_MORE } from "@/content/site";
 import { clampToRest, restRange } from "@/lib/journey/sections";
 import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
 import { cssVars } from "./cssVars";
-import { measureSections, scrollInstantly } from "./navigation";
+import { measureSections, scrollInstantly, shownElements } from "./navigation";
 
 export interface PlateSection {
   key: string;
@@ -108,7 +108,7 @@ export function Plate({ id, name, color, header, sections, footer }: PlateProps)
       return;
     }
     const { scrollY, arrive, depart, height } = request.before;
-    const stops = document.querySelectorAll("[data-stop]");
+    const stops = shownElements("[data-stop]");
     const last = stops[stops.length - 1] === section;
     let top = scrollY;
     if (scrollY > depart) {

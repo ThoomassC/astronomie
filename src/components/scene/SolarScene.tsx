@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { cssVars } from "@/components/journey/cssVars";
 import { RAIL_ID } from "@/components/journey/ids";
-import { goTo, isStopKey } from "@/components/journey/navigation";
+import { goTo, isStopKey, shownElements } from "@/components/journey/navigation";
 import { useRealScale } from "@/components/journey/realScale";
 import { DEEP_SKY_LABELS } from "@/content/site";
 import { PLANETS, SUN } from "@/lib/astro/planets";
@@ -76,7 +76,7 @@ export default function SolarScene() {
       if (isDeepLabelKey(key)) deepLabels.set(key, element);
     }
     const plates = new Map<StopKey, HTMLElement>();
-    for (const plate of document.querySelectorAll<HTMLElement>("[data-stop] > .plate")) {
+    for (const plate of shownElements("[data-stop] > .plate")) {
       const key = plate.parentElement?.dataset.stop;
       if (isStopKey(key)) plates.set(key, plate);
     }

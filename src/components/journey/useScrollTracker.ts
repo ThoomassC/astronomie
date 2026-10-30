@@ -3,7 +3,7 @@ import { restProgress, scrollState } from "@/lib/journey/sections";
 import type { StopStore } from "@/lib/journey/store";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { useReducedMotion } from "@/lib/sim/reducedMotion";
-import { getSectionRanges, measureSections, setSectionRanges, takeSkipSmoothing } from "./navigation";
+import { getSectionRanges, measureSections, setSectionRanges, shownElements, takeSkipSmoothing } from "./navigation";
 
 /** Plaque d'une escale, et dernier avancement du repos écrit (au millième). */
 interface PlateRest {
@@ -50,7 +50,7 @@ export function useScrollTracker<K extends string>(
   const plates = useRef(new Map<K, PlateRest>());
 
   useEffect(() => {
-    for (const element of document.querySelectorAll<HTMLElement>("[data-stop] > .plate")) {
+    for (const element of shownElements("[data-stop] > .plate")) {
       const key = element.parentElement?.dataset.stop;
       if (isKey(key)) plates.current.set(key, { element, rest: -1 });
     }

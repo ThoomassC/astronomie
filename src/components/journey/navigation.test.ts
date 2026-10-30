@@ -192,6 +192,30 @@ describe("measureSections", () => {
       { key: "proxima-centauri", arrive: expect.closeTo(804, 9), depart: 1600 },
     ]);
   });
+
+  it("devrait ignorer les sections d'une page quittée, que Next garde masquée dans le DOM", async () => {
+    const { getSectionRanges, measureSections } = await import("@/components/journey/navigation");
+    vi.stubGlobal("innerHeight", 800);
+    scrolledTo(0);
+    // <Activity mode="hidden"> masque la page quittée par `display: none`, sans la retirer du document.
+    const hiddenPage = document.createElement("main");
+    hiddenPage.style.display = "none";
+    document.body.append(hiddenPage);
+    hiddenPage.append(section("sun", 0, 0));
+    section("intro", 0, 900);
+    measureSections();
+    expect(getSectionRanges().map((range) => range.key)).toEqual(["intro"]);
+  });
+});
+
+describe("shownElements", () => {
+  it("devrait ne rendre que les éléments de la page affichée, dans l'ordre du document", async () => {
+    const { shownElements } = await import("@/components/journey/navigation");
+    document.body.innerHTML = `
+      <main style="display: none"><section data-stop="sun"><article class="plate" id="cachee"></article></section></main>
+      <main><section data-stop="soleil"><article class="plate" id="affichee"></article></section></main>`;
+    expect(shownElements("[data-stop] > .plate").map((plate) => plate.id)).toEqual(["affichee"]);
+  });
 });
 
 describe("scrollInstantly", () => {

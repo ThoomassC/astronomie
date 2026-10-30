@@ -22,12 +22,31 @@ export function isStopKey(value: string | undefined): value is StopKey {
 }
 
 /**
- * Position de chaque `[data-stop]` non vide du document, convertie en plages de défilement.
+ * L'élément appartient à la page affichée. Next 16 (`cacheComponents`) garde dans le DOM jusqu'à trois pages
+ * quittées, masquées sous <Activity> par `display: none` : leurs sections ne comptent pas dans les plages de
+ * défilement, ne reçoivent pas l'avancement du repos et leurs plaques ne cadrent pas la scène. Sans
+ * `checkVisibility` (jsdom, Safari avant 17.4), on remonte les ancêtres à la recherche de `display: none`.
+ */
+export function isShown(element: Element): boolean {
+  if (typeof element.checkVisibility === "function") return element.checkVisibility();
+  for (let node: Element | null = element; node; node = node.parentElement) {
+    if (getComputedStyle(node).display === "none") return false;
+  }
+  return true;
+}
+
+/** Éléments de la page affichée qui répondent au sélecteur, dans l'ordre du document. */
+export function shownElements<E extends Element = HTMLElement>(selector: string): E[] {
+  return Array.from(document.querySelectorAll<E>(selector)).filter(isShown);
+}
+
+/**
+ * Position de chaque `[data-stop]` non vide de la page affichée, convertie en plages de défilement.
  * Appelée par le suivi du défilement, et par une plaque qui vient de changer de hauteur.
  */
 export function measureSections(): void {
   const boxes: SectionBox[] = [];
-  for (const element of document.querySelectorAll<HTMLElement>("[data-stop]")) {
+  for (const element of shownElements("[data-stop]")) {
     const key = element.dataset.stop;
     if (!key) continue;
     const rect = element.getBoundingClientRect();
