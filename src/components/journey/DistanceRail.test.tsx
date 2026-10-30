@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { anchorOf } from "@/components/journey/anchors";
 import { DistanceRail, type RailStop } from "@/components/journey/DistanceRail";
+import { renderIn } from "@/components/modules/testUtils";
 import { RAIL_STOPS } from "@/lib/journey/camera";
 import { journeyStore } from "@/lib/journey/store";
 import type * as FrameLoopModule from "@/lib/sim/frameLoop";
@@ -220,4 +221,54 @@ describe("DistanceRail", () => {
     fireEvent.pointerLeave(rail());
     expect(rail()).not.toHaveAttribute("data-tips");
   });
+});
+
+describe("DistanceRail en anglais et en espagnol", () => {
+  it.each([
+    {
+      locale: "en",
+      rail: "Stops, from the Sun outwards",
+      labels: [
+        "Sun, the centre",
+        "Mercury, 0.39 AU",
+        "Venus, 0.72 AU",
+        "Earth, 1 AU",
+        "Mars, 1.52 AU",
+        "Asteroids, 2.1 to 3.3 AU",
+        "Jupiter, 5.20 AU",
+        "Saturn, 9.54 AU",
+        "Uranus, 19.2 AU",
+        "Neptune, 30.1 AU",
+        "Beyond, over 30 AU",
+        "Nearby stars, from 4.2 ly",
+        "Milky Way, centre at 27,000 ly",
+      ],
+    },
+    {
+      locale: "es",
+      rail: "Escalas, del Sol hacia fuera",
+      labels: [
+        "Sol, el centro",
+        "Mercurio, 0,39 UA",
+        "Venus, 0,72 UA",
+        "Tierra, 1 UA",
+        "Marte, 1,52 UA",
+        "Asteroides, de 2,1 a 3,3 UA",
+        "Júpiter, 5,20 UA",
+        "Saturno, 9,54 UA",
+        "Urano, 19,2 UA",
+        "Neptuno, 30,1 UA",
+        "Más allá, más de 30 UA",
+        "Estrellas vecinas, desde 4,2 al",
+        "Vía Láctea, centro a 27.000 al",
+      ],
+    },
+  ] as const)(
+    "devrait nommer la règle et chaque repère dans la langue de la page ($locale)",
+    ({ locale, rail: name, labels }) => {
+      renderIn(locale, <DistanceRail stops={STOPS} />);
+      const links = within(screen.getByRole("navigation", { name })).getAllByRole("link");
+      expect(links.map((link) => link.getAttribute("aria-label"))).toEqual(labels);
+    },
+  );
 });
