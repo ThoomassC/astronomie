@@ -23,11 +23,13 @@ import { J2000_JD } from "@/lib/astro/constants";
 import { isEarthViewTarget, viewFromEarth } from "@/lib/astro/earthView";
 import { elementsAt, heliocentric, julianDate, positionAt } from "@/lib/astro/ephemeris";
 import { GALACTIC_CENTER_DISTANCE_LY, GALACTIC_DISK_RADIUS_LY, sceneFromGalacticXYZ } from "@/lib/astro/galactic";
+import { LOCAL_GROUP, galaxyCenterKly, galaxyRadiusKly } from "@/lib/astro/localGroup";
 import { galaxyPointBudget } from "@/lib/astro/milkyWay";
 import { ROTATION } from "@/lib/astro/orientation";
 import { PLANETS, PLANET_BY_KEY, type PlanetKey } from "@/lib/astro/planets";
 import { REAL_SCALE_PLANET_SHRINK, toScene, unitsPerLightYear, zoomScale } from "@/lib/astro/scale";
 import { NEARBY_STARS } from "@/lib/astro/stars";
+import { OBSERVABLE_UNIVERSE_RADIUS_GLY } from "@/lib/astro/universe";
 import {
   STOP_ORDER,
   blendCameras,
@@ -86,6 +88,19 @@ import {
   type DeepLabelKey,
 } from "./cosmos";
 import {
+  EXTRAGALACTIC_LABEL_ORDER,
+  LOCAL_GROUP_POINT_BUDGET,
+  WEB_POINT_BUDGET,
+  buildLocalGroup,
+  buildUniverse,
+  createExtragalactic,
+  fitLocalGroup,
+  fitWeb,
+  splitLight,
+  weighExtragalactic,
+  type ExtragalacticLabelKey,
+} from "./extragalactic";
+import {
   anchoredBox,
   markerLayouts,
   placeLabel,
@@ -121,11 +136,12 @@ export interface SolarSceneOptions {
    */
   note: HTMLElement | null;
   /**
-   * Étiquettes du ciel profond (étoiles voisines, « Vous êtes ici », centre galactique, cercles de distance), placées
-   * après celles des astres et seulement aux zooms où leur couche est dessinée : repère exactement sur l'astre, texte
-   * à droite ou à gauche, jamais hors de la vue ni sur le point d'une étoile.
+   * Étiquettes du ciel profond (étoiles voisines, « Vous êtes ici », centre galactique, cercles de distance, galaxies
+   * du Groupe local, toile, fond diffus, univers), placées après celles des astres et seulement aux zooms où leur
+   * couche est dessinée : repère exactement sur l'astre, texte à droite ou à gauche, jamais hors de la vue ni sur le
+   * point d'une étoile.
    */
-  deepLabels: ReadonlyMap<DeepLabelKey, HTMLElement>;
+  deepLabels: ReadonlyMap<DeepLabelKey | ExtragalacticLabelKey, HTMLElement>;
   /** Clic sur un astre de la scène. */
   onPick(key: BodyKey): void;
 }
@@ -153,7 +169,8 @@ const ORBIT_FADE_EPSILON = 1e-3;
 /**
  * Ordre de placement des étiquettes des astres : les premières gagnent en cas de chevauchement. Viennent ensuite les
  * points visibles (point-Soleil, étoiles), que nulle étiquette du ciel profond ne recouvre, puis le ciel profond :
- * « Vous êtes ici », le centre galactique, les étoiles de la plus proche à la plus lointaine, les cercles de distance.
+ * « Vous êtes ici », le centre galactique, les galaxies du Groupe local, la toile, le fond diffus, notre univers et
+ * les autres (EXTRAGALACTIC_LABEL_ORDER), les étoiles de la plus proche à la plus lointaine, les cercles de distance.
  */
 const LABEL_PRIORITY: readonly BodyKey[] = ["sun", "earth", "jupiter", "saturn", "neptune", "uranus", "mars", "venus", "mercury"];
 /** Sous cette opacité, une étiquette est masquée. */
@@ -163,27 +180,41 @@ const SOLAR_FAR = 7000;
 /**
  * Plan lointain du ciel profond (zoom ≥ SOLAR_HIDDEN_ZOOM) : plus aucune géométrie opaque ni écriture de
  * profondeur, la précision du tampon de profondeur est sans objet ; les bords de la galaxie (21 000 unités
- * au zoom 6) entrent dans le champ sans à-coup.
+ * au zoom 6) entrent dans le champ sans à-coup. Il suffit jusqu'au multivers : quand la toile paraît (zoom 11,2),
+ * l'Univers observable fait 80 950 unités de rayon, caméra près de son centre ; au Groupe local, Andromède est à
+ * 140 unités ; à l'Univers observable, la sphère fait 128 unités, au multivers 13.
  */
 const DEEP_FAR = 100_000;
 /** Au-delà de ce zoom affiché, la galaxie manquante est construite tout de suite (lien direct vers la Voie lactée). */
 const GALAXY_EAGER_ZOOM = 5.5;
+/** De même pour le Groupe local (ses galaxies paraissent à 8,5) et pour l'Univers (la toile paraît à 11,2). */
+const LOCAL_GROUP_EAGER_ZOOM = 8.6;
+const UNIVERSE_EAGER_ZOOM = 11;
 /**
  * Escales d'où la galaxie se prépare : l'au-delà de Neptune et après. Qui ne quitte pas le système solaire ne paie
  * ni sa génération ni sa mémoire.
  */
 const GALAXY_PREPARE_STOPS: ReadonlySet<StopKey> = new Set(STOP_ORDER.slice(STOP_ORDER.indexOf("beyond")));
-/** Construction de la galaxie planifiée : délai maximal de requestIdleCallback, et attente du repli sans lui (Safari). */
-const GALAXY_IDLE_TIMEOUT_MS = 3000;
-const GALAXY_FALLBACK_DELAY_MS = 1500;
+/**
+ * Constructions au repos (galaxie, puis Groupe local, puis Univers, en chaîne) : délai maximal de requestIdleCallback,
+ * et attente du repli sans lui (Safari).
+ */
+const BUILD_IDLE_TIMEOUT_MS = 3000;
+const BUILD_FALLBACK_DELAY_MS = 1500;
 /**
  * Rayon apparent du disque de la Galaxie (px CSS) auquel ses couleurs sont réglées : celui de l'escale « galaxy »
- * en 1440 × 900. Plus petite à l'écran, elle concentre sa lumière et partirait au blanc : son gain suit
- * (rayon / 290 px)^1,5, borné à 1, entre une lumière totale constante (exposant 0, qui sature) et un éclat de
+ * en 1440 × 900. Plus petite à l'écran, elle concentre sa lumière et partirait au blanc : sa lumière suit
+ * (rayon / 290 px)^1,5, bornée à 1, entre une lumière totale constante (exposant 0, qui sature) et un éclat de
  * surface constant (exposant 2, trop sombre sur téléphone).
  */
 const GALAXY_REFERENCE_RADIUS_PX = 290;
 const GALAXY_GAIN_EXPONENT = 1.5;
+/**
+ * Gain le plus bas de la galaxie : en dessous, chaque point ajouterait moins d'un demi-niveau sur 255 et le tampon
+ * 8 bits l'effacerait (au Groupe local, le gain tomberait à 0,0025 : plus de Voie lactée). La lumière qui reste se
+ * règle alors par la part des points dessinés (splitLight) ; au-dessus, rien ne change.
+ */
+const GALAXY_MIN_GAIN = 0.25;
 /**
  * Étiquette d'un cercle de distance : points du cercle essayés tour à tour, en angle depuis la direction de la
  * caméra. D'abord le côté opposé (au-dessus du Soleil à l'écran), puis les côtés, droit en premier (l'étiquette
@@ -439,6 +470,9 @@ function setupScene(
   // Ciel profond, en années-lumière, mis à l'échelle du zoom : étoiles voisines, Soleil vu de loin, cercles, galaxie.
   const cosmos = createCosmos(NEARBY_STARS);
   scene.add(cosmos.group);
+  // Au-delà : galaxies du Groupe local (kly), toile, fond diffus et autres bulles (Gal), construits à la demande.
+  const extragalactic = createExtragalactic(cosmos.pixelRatio, LOCAL_GROUP);
+  scene.add(extragalactic.localGroup, extragalactic.universe);
 
   const bodies = new Map<PlanetKey, PlanetBody>(planets.map((body) => [body.planet.key, body]));
   const bodyOf = (key: PlanetKey): PlanetBody => {
@@ -572,10 +606,11 @@ function setupScene(
   const galacticCenterLy = new Vector3();
   sceneFromGalacticXYZ(GALACTIC_CENTER_DISTANCE_LY, 0, 0, galacticCenterLy);
   const galacticCenter = new Vector3();
-  /** Construction de la galaxie planifiée au repos : de quoi l'annuler. */
-  let cancelGalaxyTask: (() => void) | null = null;
-  /** Une construction a échoué : la scène continue sans galaxie, sans réessayer à chaque image. */
-  let galaxyFailed = false;
+  /** Andromède, la plus grande galaxie du Groupe local : son rayon apparent règle le niveau de détail du groupe. */
+  const andromeda = LOCAL_GROUP.find((galaxy) => galaxy.key === "andromeda");
+  const andromedaCenterKly = new Vector3();
+  if (andromeda) galaxyCenterKly(andromeda, andromedaCenterKly);
+  const andromedaRadiusKly = andromeda ? galaxyRadiusKly(andromeda) : 0;
   let cameraDistance = 330;
   let disposed = false;
   /** Shaders compilés (en parallèle du fil principal quand le navigateur le permet). */
@@ -643,7 +678,9 @@ function setupScene(
   const projected = new Vector3();
   const anchor = new Vector3();
   const bodySlots = new Map<BodyKey, LabelSlot>([...labels].map(([key, element]) => [key, labelSlot(element)]));
-  const deepSlots = new Map<DeepLabelKey, LabelSlot>([...deepLabels].map(([key, element]) => [key, labelSlot(element)]));
+  const deepSlots = new Map<DeepLabelKey | ExtragalacticLabelKey, LabelSlot>(
+    [...deepLabels].map(([key, element]) => [key, labelSlot(element)]),
+  );
   const labelSlots = [...bodySlots.values(), ...deepSlots.values()];
   /** Étiquettes à repère : tout le ciel profond, et « Soleil », qui en prend la disposition quand le Soleil devient un point. */
   const sunSlot = bodySlots.get("sun");
@@ -655,6 +692,11 @@ function setupScene(
     size: cosmos.starSizes.get(key) ?? 0,
   }));
   const ringLabels = DISTANCE_RINGS_LY.map((radius) => ({ slot: deepSlots.get(ringLabelKey(radius)), radius }));
+  /** Galaxies, toile, fond diffus, univers, dans l'ordre de priorité : étiquette, ancre dans le repère de son groupe. */
+  const extragalacticLabels = EXTRAGALACTIC_LABEL_ORDER.flatMap((key) => {
+    const anchorOf = extragalactic.labelAnchors.get(key);
+    return anchorOf ? [{ key, slot: deepSlots.get(key), group: anchorOf.group, position: anchorOf.position }] : [];
+  });
   let obstacleBoxes: LabelBox[] = [];
   const occupied: LabelBox[] = [];
   /** Position projetée de la dernière ancre, en px (la profondeur reste dans `projected.z`). */
@@ -725,41 +767,95 @@ function setupScene(
     if (!disposed) measureLayout();
   });
 
-  // ---------- Galaxie : construite une fois, quand on approche des étoiles, ou tout de suite si l'on y arrive directement ----------
-  /**
-   * Construit la galaxie (≈ 10 à 30 ms, une fois) et la pèse aussitôt. Un échec laisse la scène tourner
-   * sans galaxie, sans nouvel essai.
-   */
-  function buildGalaxyNow(): void {
-    cancelGalaxyTask?.();
-    cancelGalaxyTask = null;
-    if (disposed || cosmos.galaxy || galaxyFailed) return;
-    try {
-      buildGalaxy(cosmos, galaxyPointBudget(coarsePointer));
-    } catch (error) {
-      galaxyFailed = true;
-      console.error("Voie lactée non construite : la scène continue sans elle", error);
-      return;
-    }
-    weighCosmos(cosmos, weights);
-    if (weights.galaxy > 0) needsRender = true;
+  // ---------- Ciel profond : construit une fois, au repos ou tout de suite si l'on y arrive directement ----------
+  /** Construction faite une fois, au repos (planifiée) ou tout de suite ; un échec ne se retente pas. */
+  interface DeferredBuild {
+    /** Construit tout de suite et annule l'attente ; sans effet si c'est déjà fait ou après un échec. */
+    now(): void;
+    /** Planifie la construction quand le fil principal est libre, au plus tard BUILD_IDLE_TIMEOUT_MS après. */
+    schedule(): void;
+    cancel(): void;
   }
 
   /**
-   * Planifie la construction quand le fil principal est libre (au plus tard GALAXY_IDLE_TIMEOUT_MS après), une fois
-   * les shaders compilés (le programme des points, partagé avec les étoiles, est déjà prêt) et l'au-delà de Neptune
-   * atteint. Safari n'a pas requestIdleCallback : simple délai, qui peut tomber pendant un défilement.
+   * Construction différée de `what` : `build` crée les objets ; `built` dit s'ils existent ; `after` les pèse et
+   * enchaîne. Un échec laisse la scène tourner sans eux, sans nouvel essai. Safari n'a pas requestIdleCallback :
+   * simple délai, qui peut tomber pendant un défilement.
    */
-  function scheduleGalaxy(): void {
-    if (disposed || cosmos.galaxy || galaxyFailed || cancelGalaxyTask) return;
-    if (typeof window.requestIdleCallback === "function") {
-      const handle = window.requestIdleCallback(() => buildGalaxyNow(), { timeout: GALAXY_IDLE_TIMEOUT_MS });
-      cancelGalaxyTask = () => window.cancelIdleCallback(handle);
-    } else {
-      const handle = setTimeout(buildGalaxyNow, GALAXY_FALLBACK_DELAY_MS);
-      cancelGalaxyTask = () => clearTimeout(handle);
-    }
+  function deferredBuild(what: string, built: () => boolean, build: () => void, after: () => void): DeferredBuild {
+    let failed = false;
+    let cancelTask: (() => void) | null = null;
+    const cancel = () => {
+      cancelTask?.();
+      cancelTask = null;
+    };
+    const now = () => {
+      cancel();
+      if (disposed || failed || built()) return;
+      try {
+        build();
+      } catch (error) {
+        failed = true;
+        console.error(`${what} non construit : la scène continue sans`, error);
+        return;
+      }
+      after();
+    };
+    return {
+      now,
+      cancel,
+      schedule() {
+        if (disposed || failed || cancelTask || built()) return;
+        if (typeof window.requestIdleCallback === "function") {
+          const handle = window.requestIdleCallback(now, { timeout: BUILD_IDLE_TIMEOUT_MS });
+          cancelTask = () => window.cancelIdleCallback(handle);
+        } else {
+          const handle = setTimeout(now, BUILD_FALLBACK_DELAY_MS);
+          cancelTask = () => clearTimeout(handle);
+        }
+      },
+    };
   }
+
+  /**
+   * Galaxie (≈ 10 à 30 ms, une fois), dès l'au-delà de Neptune ; puis, en chaîne et au repos, le Groupe local
+   * (≈ 2 à 7 ms) et l'Univers (≈ 3 à 10 ms, toile, fond diffus et bulles). Le programme des points est déjà compilé
+   * (partagé avec les étoiles) ; ceux du fond diffus et des bulles le sont hors du fil principal, juste après leur
+   * construction. Chacun est pesé aussitôt construit.
+   */
+  const universeBuild = deferredBuild(
+    "Univers observable",
+    () => extragalactic.web !== null,
+    () => buildUniverse(extragalactic, WEB_POINT_BUDGET[coarsePointer ? "coarse" : "fine"]),
+    () => {
+      weighExtragalactic(extragalactic, weights);
+      const compiledUniverse = () => {
+        if (weights.web > 0 || weights.cmb > 0 || weights.multiverse > 0) needsRender = true;
+      };
+      renderer.compileAsync(extragalactic.universe, camera, scene).then(compiledUniverse, compiledUniverse);
+      if (weights.web > 0 || weights.cmb > 0 || weights.multiverse > 0) needsRender = true;
+    },
+  );
+  const localGroupBuild = deferredBuild(
+    "Groupe local",
+    () => extragalactic.galaxies !== null,
+    () => buildLocalGroup(extragalactic, LOCAL_GROUP_POINT_BUDGET[coarsePointer ? "coarse" : "fine"]),
+    () => {
+      weighExtragalactic(extragalactic, weights);
+      if (weights.localGroup > 0) needsRender = true;
+      universeBuild.schedule();
+    },
+  );
+  const galaxyBuild = deferredBuild(
+    "Voie lactée",
+    () => cosmos.galaxy !== null,
+    () => buildGalaxy(cosmos, galaxyPointBudget(coarsePointer)),
+    () => {
+      weighCosmos(cosmos, weights);
+      if (weights.galaxy > 0) needsRender = true;
+      localGroupBuild.schedule();
+    },
+  );
 
   // Compilation des shaders hors du premier rendu ; en cas d'échec, elle se fera au premier rendu.
   const onCompiled = () => {
@@ -910,17 +1006,24 @@ function setupScene(
   /**
    * Zoom cosmique affiché : réduit le système solaire autour du Soleil (10^−zoom, la lumière des shaders vient
    * toujours de l'origine) et le cache au-delà de SOLAR_HIDDEN_ZOOM, met le ciel profond à l'échelle des
-   * années-lumière, pèse chaque couche, choisit le plan lointain. Au zoom 0, rien ne change : échelle 1,
-   * couches nouvelles invisibles, plan lointain de 7 000.
+   * années-lumière, le Groupe local à celle des milliers et l'Univers à celle des milliards d'années-lumière, pèse
+   * chaque couche, choisit le plan lointain. Au zoom 0, rien ne change : échelle 1, couches nouvelles invisibles, plan
+   * lointain de 7 000.
    */
   function applyZoom(zoom: number): void {
     const scale = zoomScale(zoom);
+    const lightYear = unitsPerLightYear(zoom);
     solarRoot.scale.setScalar(scale);
     solarRoot.visible = zoom < SOLAR_HIDDEN_ZOOM;
-    cosmos.group.scale.setScalar(unitsPerLightYear(zoom));
-    if (zoom > GALAXY_EAGER_ZOOM && !cosmos.galaxy) buildGalaxyNow();
+    cosmos.group.scale.setScalar(lightYear);
+    extragalactic.localGroup.scale.setScalar(lightYear * 1e3);
+    extragalactic.universe.scale.setScalar(lightYear * 1e9);
+    if (zoom > GALAXY_EAGER_ZOOM && !cosmos.galaxy) galaxyBuild.now();
+    if (zoom > LOCAL_GROUP_EAGER_ZOOM && !extragalactic.galaxies) localGroupBuild.now();
+    if (zoom > UNIVERSE_EAGER_ZOOM && !extragalactic.web) universeBuild.now();
     layerWeights(zoom, weights);
     weighCosmos(cosmos, weights);
+    weighExtragalactic(extragalactic, weights);
     fadeSky(sky, weights.sky);
     if (worldDirty || scale !== worldScale) syncSolarWorld(scale);
     // La projection est recalculée par setViewOffset, à chaque image.
@@ -928,16 +1031,49 @@ function setupScene(
   }
 
   /**
-   * Gain de la galaxie : rayon apparent de son disque (px CSS, à la distance de son centre) rapporté au rayon de
-   * référence, à la puissance GALAXY_GAIN_EXPONENT, borné à 1. Plus grande qu'au repos (vol vers elle), elle ne
-   * s'éclaircit pas : ses points s'écartent.
+   * Rayon apparent (px CSS) d'une sphère de rayon `radius` centrée en `center` (coordonnées monde) : Infinity quand la
+   * caméra est dedans.
    */
-  function updateGalaxyGain(): void {
+  function apparentRadiusPx(center: Vector3, radius: number, pixelsPerTangent: number): number {
+    const distance = camera.position.distanceTo(center);
+    return distance <= radius ? Infinity : (radius * pixelsPerTangent) / distance;
+  }
+
+  /**
+   * Lumière de la galaxie : rayon apparent de son disque (px CSS, à la distance de son centre) rapporté au rayon de
+   * référence, à la puissance GALAXY_GAIN_EXPONENT, bornée à 1. Plus grande qu'au repos (vol vers elle), elle ne
+   * s'éclaircit pas : ses points s'écartent. Portée par le gain jusqu'à GALAXY_MIN_GAIN (comme avant), puis par la part
+   * des points dessinés : au Groupe local, elle reste une petite tache au lieu de disparaître.
+   */
+  function updateGalaxyDetail(pixelsPerTangent: number): void {
     const lightYear = cosmos.group.scale.x;
     galacticCenter.copy(galacticCenterLy).multiplyScalar(lightYear);
-    const pixelsPerTangent = view.height / (2 * Math.tan((camera.fov * DEG) / 2));
-    const radiusPx = (GALACTIC_DISK_RADIUS_LY * lightYear * pixelsPerTangent) / camera.position.distanceTo(galacticCenter);
-    cosmos.galaxyGain.value = Math.min(1, (radiusPx / GALAXY_REFERENCE_RADIUS_PX) ** GALAXY_GAIN_EXPONENT);
+    const radiusPx = apparentRadiusPx(galacticCenter, GALACTIC_DISK_RADIUS_LY * lightYear, pixelsPerTangent);
+    const light = Math.min(1, (radiusPx / GALAXY_REFERENCE_RADIUS_PX) ** GALAXY_GAIN_EXPONENT);
+    const { gain, fraction } = splitLight(light, GALAXY_MIN_GAIN);
+    cosmos.galaxyGain.value = gain;
+    const galaxy = cosmos.galaxy;
+    if (galaxy) {
+      const count = galaxy.geometry.getAttribute("position").count;
+      galaxy.geometry.setDrawRange(0, Math.max(1, Math.round(fraction * count)));
+    }
+  }
+
+  /**
+   * Niveau de détail au-delà de la Voie lactée : le Groupe local selon le rayon apparent d'Andromède, la toile selon
+   * celui de l'Univers observable (fitLocalGroup, fitWeb). Les gains restent à 1.
+   */
+  function updateExtragalacticDetail(pixelsPerTangent: number): void {
+    const lightYear = cosmos.group.scale.x;
+    if (weights.localGroup > 0) {
+      const kly = lightYear * 1e3;
+      anchor.copy(andromedaCenterKly).multiplyScalar(kly);
+      fitLocalGroup(extragalactic, apparentRadiusPx(anchor, andromedaRadiusKly * kly, pixelsPerTangent));
+    }
+    if (weights.web > 0) {
+      const universeRadius = OBSERVABLE_UNIVERSE_RADIUS_GLY * 1e9 * lightYear;
+      fitWeb(extragalactic, apparentRadiusPx(anchor.set(0, 0, 0), universeRadius, pixelsPerTangent));
+    }
   }
 
   /**
@@ -1034,7 +1170,9 @@ function setupScene(
     );
     sky.group.position.copy(camera.position);
     cameraDistance = state.dist;
-    if (weights.galaxy > 0) updateGalaxyGain();
+    const pixelsPerTangent = view.height / (2 * Math.tan((camera.fov * DEG) / 2));
+    if (weights.galaxy > 0) updateGalaxyDetail(pixelsPerTangent);
+    updateExtragalacticDetail(pixelsPerTangent);
     // Éblouissement : discret près du Soleil, plus large quand on le regarde de loin (distance ramenée à
     // l'échelle du système solaire : réduit par le zoom, il est vu de très loin).
     sun.coronaUniforms.uGlare.value = lerp(0.08, 0.32, smoothstep(60, 420, camera.position.length() / scale));
@@ -1142,6 +1280,18 @@ function setupScene(
     setLabelShown(slot, false);
   }
 
+  /**
+   * Opacité d'une étiquette extragalactique : les galaxies avec le Groupe local ; la toile et le fond diffus avec leur
+   * couche, effacés quand paraît le multivers (« Notre univers observable » nomme alors la bulle) ; notre univers et
+   * les autres avec le multivers.
+   */
+  function extragalacticAlpha(key: ExtragalacticLabelKey): number {
+    if (key.startsWith("lg:")) return weights.localGroup;
+    if (key === "web") return weights.web * (1 - weights.multiverse);
+    if (key === "cmb") return weights.cmb * (1 - weights.multiverse);
+    return weights.multiverse;
+  }
+
   function updateLabels(): void {
     // Vue rapprochée : les étiquettes s'effacent ; en échelle réelle, elles sont le seul repère.
     const alpha = realScale > 0.5 ? 1 : smoothstep(28, 95, cameraDistance);
@@ -1149,10 +1299,10 @@ function setupScene(
     const lightYear = cosmos.group.scale.x;
     /*
      * « Soleil » et « Vous êtes ici » partagent l'ancre du Soleil : le premier s'efface pendant la première
-     * moitié de l'arrivée de la galaxie, le second apparaît pendant la seconde ; jamais l'un sur l'autre.
+     * moitié de l'arrivée de la galaxie (sunLabel), le second apparaît pendant la seconde (here) et reste jusqu'au
+     * multivers ; jamais l'un sur l'autre.
      */
-    const sunFade = 1 - smoothstep(0, 0.5, weights.galaxy);
-    const hereFade = smoothstep(0.5, 1, weights.galaxy);
+    const sunFade = weights.sunLabel;
     occupied.length = 0;
     occupied.push(...obstacleBoxes);
     for (const key of LABEL_PRIORITY) {
@@ -1178,8 +1328,15 @@ function setupScene(
       }
     }
     // Ciel profond : non interactif, placé après les astres.
-    placeMarkedSlot(deepSlots.get("here"), anchor.set(0, 0, 0), hereFade);
-    placeMarkedSlot(deepSlots.get("center"), anchor.copy(galacticCenterLy).multiplyScalar(lightYear), weights.galaxy);
+    placeMarkedSlot(deepSlots.get("here"), anchor.set(0, 0, 0), weights.here);
+    const center = anchor.copy(galacticCenterLy).multiplyScalar(lightYear);
+    placeMarkedSlot(deepSlots.get("center"), center, weights.galaxyLabels);
+    // Au-delà : galaxies, toile, fond diffus, univers, chacun dans le repère de son groupe.
+    for (const { key, slot, group, position } of extragalacticLabels) {
+      const scale = group === "cosmos" ? lightYear : group === "localGroup" ? lightYear * 1e3 : lightYear * 1e9;
+      const at = anchor.set(position.x, position.y, position.z).multiplyScalar(scale);
+      placeMarkedSlot(slot, at, extragalacticAlpha(key));
+    }
     for (const { slot, position } of stars) {
       placeMarkedSlot(slot, anchor.set(position.x, position.y, position.z).multiplyScalar(lightYear), weights.stars);
     }
@@ -1198,8 +1355,8 @@ function setupScene(
         if (++compileWaitFrames < MAX_COMPILE_WAIT_FRAMES) return;
         compiled = true;
       }
-      // La galaxie se prépare dès l'au-delà de Neptune (scheduleGalaxy ne planifie qu'une fois).
-      if (GALAXY_PREPARE_STOPS.has(journey.current)) scheduleGalaxy();
+      // La galaxie se prépare dès l'au-delà de Neptune (une seule planification), le reste du ciel profond à sa suite.
+      if (GALAXY_PREPARE_STOPS.has(journey.current)) galaxyBuild.schedule();
       const clock = getClock();
       const now = clock.now();
       const snapshot = clock.snapshot();
@@ -1256,8 +1413,9 @@ function setupScene(
       canvas.removeEventListener("click", onCanvasClick);
       canvas.removeEventListener("webglcontextrestored", onContextRestored);
       canvas.style.cursor = "";
-      cancelGalaxyTask?.();
-      cancelGalaxyTask = null;
+      galaxyBuild.cancel();
+      localGroupBuild.cancel();
+      universeBuild.cancel();
       for (const slot of labelSlots) slot.element.style.visibility = "hidden";
       textures.dispose();
       scene.traverse(disposeObject);

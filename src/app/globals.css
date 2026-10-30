@@ -244,6 +244,26 @@ main > section:focus {
   background: var(--laiton);
 }
 
+/*
+ * Au-delà de la Voie lactée, le repère prend la couleur de l'escale (--lc, posée par la scène) : un ovale pour les
+ * galaxies du Groupe local, l'anneau ordinaire pour la toile, le fond diffus et notre univers.
+ */
+.lbl.deep.galaxy i {
+  width: 16px;
+  height: 9px;
+}
+
+/* Autres univers : une hypothèse, dite dans l'étiquette ; le repère en pointillés ne désigne rien d'observé. */
+.lbl.deep.hypothesis i {
+  width: 14px;
+  height: 14px;
+  border: 1.5px dashed var(--lc, var(--laiton));
+}
+
+.lbl.deep.hypothesis > span {
+  font-style: italic;
+}
+
 /* Repli sans scène 3D : le canvas (qui garderait sa dernière image) disparaît, un Soleil CSS le remplace. */
 .sky-fallback {
   display: none;
