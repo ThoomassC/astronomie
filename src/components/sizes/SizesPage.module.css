@@ -8,6 +8,11 @@
   --dock-clear: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
+/* Plan du site, aligné sur les paragraphes du pied de page (comme au Voyage), au bord à 640 px et moins. */
+.siteMap {
+  margin-left: clamp(0rem, 4vw, 4rem);
+}
+
 /* ---------- Introduction ---------- */
 
 /* Ligne discrète sous la promesse : ce qui est à l'échelle, et ce qui ne l'est pas. */
@@ -179,6 +184,12 @@
 }
 
 /* ---------- Mise en page compacte (téléphone, tablette en portrait) ---------- */
+@media (max-width: 640px) {
+  .siteMap {
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 640px), (max-width: 1100px) and (orientation: portrait) {
   .page :global(.plate) h2 {
     font-size: clamp(2.25rem, 7vw, 3.25rem);
