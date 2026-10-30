@@ -1,14 +1,18 @@
-import { DOCK_ID, MAIN_ID } from "./ids";
+import { SkipToContent } from "@/components/site/SkipToContent";
+import { getVoyageContent } from "@/content/voyage/content";
+import type { Locale } from "@/i18n/locales";
+import { DOCK_ID } from "./ids";
 
-/** Liens d'évitement, visibles au focus : vers le contenu et vers la machine à remonter le temps. */
-export function SkipLinks() {
+/**
+ * Liens d'évitement du voyage, visibles au focus, dans la langue de la page : vers le contenu (celui de toutes les
+ * pages, « Aller au contenu ») et vers la machine à remonter le temps.
+ */
+export function SkipLinks({ locale }: { locale: Locale }) {
   return (
     <div className="skip-links" data-hide-on-explore>
-      <a className="skip" href={`#${MAIN_ID}`}>
-        Aller au contenu
-      </a>
+      <SkipToContent locale={locale} />
       <a className="skip" href={`#${DOCK_ID}`}>
-        Aller à la machine à remonter le temps
+        {getVoyageContent(locale).skipToDock}
       </a>
     </div>
   );

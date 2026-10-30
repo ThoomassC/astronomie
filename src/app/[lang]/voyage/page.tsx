@@ -39,7 +39,7 @@ export default async function VoyagePage({ params }: PageProps<"/[lang]/voyage">
   const railStops: RailStop[] = RAIL_STOPS.map(({ key, au }) => ({ key, au, href: anchorOf(key) }));
   return (
     <>
-      <SkipLinks />
+      <SkipLinks locale={lang} />
       {/* Fond de repli sans scène 3D (classe `no3d`) : un Soleil dessiné en CSS. */}
       <div className="sky-fallback" aria-hidden="true" />
       <SceneErrorBoundary>
@@ -51,7 +51,7 @@ export default async function VoyagePage({ params }: PageProps<"/[lang]/voyage">
         <SolarStops locale={lang} sunHref={sunHref} />
         <CosmicStops locale={lang} sunHref={sunHref} />
       </main>
-      <SiteFooter />
+      <SiteFooter locale={lang} />
       <ScaleNote />
       {/* Avant le dock, sous lui à l'écran (z-index) : au clavier, la barre et le pavé d'exploration, puis le dock. */}
       <ExploreMode />
