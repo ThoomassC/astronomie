@@ -2419,7 +2419,10 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     margin: 0;
     padding: 0.35rem;
     list-style: none;
-    /* Hors mise en page compacte (écran bas, paysage), pas de dock fixe à dégager. */
+    /*
+     * Elle défile entre la barre fixe et la réserve du dock (hors mise en page compacte, rien à dégager) ; sur écran
+     * bas, où la barre et le dock suivent la page, elle s'ouvre en entier (plus bas, « Écran bas ou zoom à 400 % »).
+     */
     max-height: calc(100vh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
     max-height: calc(100svh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
     overflow-y: auto;
@@ -2601,6 +2604,15 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   .bar {
     position: relative;
     top: auto;
+  }
+
+  /*
+   * La barre suit la page : la liste des escales (voyage) ou des étoiles (Tailles) s'ouvre en entier sous elle, et la
+   * page défile pour la parcourir. Mesurée sur la vue, sa hauteur tomberait à 0 à 400 % (175 px de haut, moins la
+   * barre et une réserve du dock qui n'a plus lieu d'être). Même règle pour « Menu » (SiteHeader.module.css).
+   */
+  .stops-list {
+    max-height: none;
   }
 
   .dock {
