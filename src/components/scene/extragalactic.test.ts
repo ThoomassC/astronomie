@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   EXTRAGALACTIC_LABEL_ORDER,
   LABELLED_GALAXIES,
-  LOCAL_GROUP_FULL_DETAIL_PX,
+  LOCAL_GROUP_FULL_LIGHT_PX,
   LOCAL_GROUP_MIN_DRAWN,
+  LOCAL_GROUP_MIN_GAIN,
   LOCAL_GROUP_MIN_POINTS,
   LOCAL_GROUP_POINT_BUDGET,
   WEB_FULL_DETAIL_PX,
@@ -17,6 +18,7 @@ import {
   fitWeb,
   galaxyLabelKey,
   isExtragalacticLabelKey,
+  magnifyLocalGroup,
   splitLight,
   weighExtragalactic,
   type ExtragalacticBody,
@@ -430,25 +432,60 @@ describe("fitLocalGroup", () => {
     expect(() => fitLocalGroup(create(), 10)).not.toThrow();
   });
 
-  it("devrait dessiner tous les points quand Andromède atteint le rayon de pleine finesse", () => {
-    const body = built();
-    fitLocalGroup(body, LOCAL_GROUP_FULL_DETAIL_PX);
-    for (const points of galaxiesOf(body).values()) expect(drawnOf(points)).toBe(pointCount(points));
-  });
-
-  it("devrait n'en dessiner qu'une part quand Andromède rapetisse, au moins LOCAL_GROUP_MIN_DRAWN par galaxie", () => {
-    const body = built();
-    fitLocalGroup(body, LOCAL_GROUP_FULL_DETAIL_PX / 4);
-    for (const points of galaxiesOf(body).values()) {
-      const total = pointCount(points);
-      expect(drawnOf(points)).toBe(Math.min(total, Math.max(LOCAL_GROUP_MIN_DRAWN, Math.round(total / 8))));
+  it("devrait tout dessiner à plein éclat quand Andromède atteint LOCAL_GROUP_FULL_LIGHT_PX, ou de l'intérieur", () => {
+    for (const radius of [LOCAL_GROUP_FULL_LIGHT_PX, 4 * LOCAL_GROUP_FULL_LIGHT_PX, Infinity]) {
+      const body = built();
+      fitLocalGroup(body, radius);
+      expect(body.localGroupGain.value).toBe(1);
+      for (const points of galaxiesOf(body).values()) expect(drawnOf(points)).toBe(pointCount(points));
     }
   });
 
-  it("devrait laisser le gain d'éclat à 1 : le niveau de détail règle seul la lumière", () => {
+  it("devrait d'abord baisser l'éclat, tous les points dessinés : lumière (rayon / LOCAL_GROUP_FULL_LIGHT_PX)^1,5", () => {
+    expect(LOCAL_GROUP_FULL_LIGHT_PX).toBe(80);
+    expect(LOCAL_GROUP_MIN_GAIN).toBe(0.35);
     const body = built();
-    fitLocalGroup(body, 5);
-    expect(body.localGroupGain.value).toBe(1);
+    // (64 / 80)^1,5 = 0,7155 : au-dessus du plancher, le gain porte seul la lumière.
+    fitLocalGroup(body, 64);
+    expect(body.localGroupGain.value).toBeCloseTo(0.8 ** 1.5, 12);
+    for (const points of galaxiesOf(body).values()) expect(drawnOf(points)).toBe(pointCount(points));
+  });
+
+  it("devrait ensuite garder l'éclat plancher et ne dessiner qu'une part, au moins LOCAL_GROUP_MIN_DRAWN par galaxie", () => {
+    const body = built();
+    // (20 / 80)^1,5 = 0,125 : gain 0,35, part 0,125 / 0,35.
+    fitLocalGroup(body, 20);
+    expect(body.localGroupGain.value).toBe(LOCAL_GROUP_MIN_GAIN);
+    for (const points of galaxiesOf(body).values()) {
+      const total = pointCount(points);
+      expect(drawnOf(points)).toBe(Math.min(total, Math.max(LOCAL_GROUP_MIN_DRAWN, Math.round((0.125 / 0.35) * total))));
+    }
+  });
+
+  it("devrait garder au moins LOCAL_GROUP_MIN_DRAWN points par galaxie, même pour un rayon nul", () => {
+    const body = built();
+    fitLocalGroup(body, 0);
+    for (const points of galaxiesOf(body).values()) {
+      expect(drawnOf(points)).toBe(Math.min(pointCount(points), LOCAL_GROUP_MIN_DRAWN));
+    }
+  });
+});
+
+describe("magnifyLocalGroup", () => {
+  it("ne devrait rien faire avant la construction", () => {
+    expect(() => magnifyLocalGroup(create(), 4)).not.toThrow();
+  });
+
+  it("devrait grossir chaque galaxie autour de son centre, sans la déplacer", () => {
+    const body = built();
+    const centers = [...galaxiesOf(body).values()].map((points) => points.position.clone());
+    magnifyLocalGroup(body, 4);
+    [...galaxiesOf(body).values()].forEach((points, i) => {
+      expect(points.scale.toArray()).toEqual([4, 4, 4]);
+      expect(points.position.equals(centers[i])).toBe(true);
+    });
+    magnifyLocalGroup(body, 1);
+    for (const points of galaxiesOf(body).values()) expect(points.scale.toArray()).toEqual([1, 1, 1]);
   });
 });
 
@@ -520,3 +557,4 @@ describe("isExtragalacticLabelKey", () => {
     expect(isExtragalacticLabelKey(key)).toBe(false);
   });
 });
+

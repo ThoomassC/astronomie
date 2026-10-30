@@ -2,6 +2,7 @@ import { DEEP_SKY_STRINGS } from "@/components/scene/deepSky.strings";
 import { withUnit } from "@/i18n/units";
 import { formatNumber } from "@/lib/format";
 import { CMB_AGE_YEARS, CMB_TEMPERATURE_K, OBSERVABLE_UNIVERSE_RADIUS_GLY, UNIVERSE_AGE_GYR } from "@/lib/astro/universe";
+import { LOCAL_GROUP_MAGNIFICATION } from "@/lib/astro/scale";
 import { MAP_GALAXY_COUNT, MAP_STAR_COUNT, RED_DWARF_COUNT, distanceMlyOf } from "./figures";
 import type { CosmicContent } from "./types";
 
@@ -66,7 +67,7 @@ export const COSMIC_EN: CosmicContent = {
         { label: "Total mass", value: "≈ 2 trillion Suns", note: "including dark matter" },
         { label: "Future with Andromeda", value: "a one-in-two chance", note: "of merging within 10 billion years (2025 study)" },
       ],
-      caveat: `Positions, distances and sizes are to scale; the shapes are stylised from measurements. The map shows ${MAP_GALAXY_COUNT} of the group's more than 100 galaxies, and the smallest ones shine a little brighter than they really do.`,
+      caveat: `Distances are to scale, galaxies are not: they are enlarged ${LOCAL_GROUP_MAGNIFICATION} times so that we can see them, and their shapes are stylised from measurements. The map shows ${MAP_GALAXY_COUNT} of the group's more than 100 galaxies, and the smallest ones shine a little brighter than they really do.`,
       source:
         "McConnachie (2012, 2021 catalogue); Li et al. (2021); Breuval et al. (2023); Pietrzyński et al. (2019); Graczyk et al. (2020); Karachentsev et al. (2009); Sawala et al. (2025); NASA",
     },

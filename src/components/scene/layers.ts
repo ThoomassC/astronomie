@@ -1,3 +1,4 @@
+import { LOCAL_GROUP_MAGNIFICATION } from "@/lib/astro/scale";
 import { smoothstep } from "./math";
 
 /**
@@ -19,6 +20,9 @@ import { smoothstep } from "./math";
  * | web          | 0 → 1 sur [11,2 ; 12,8], × (1 − 0,65 × 0 → 1 sur [14,3 ; 14,9]) | 0 | 0 | 0 | 0 | 0  | 0,5 | 1  | 0,35 |
  * | cmb          | 0 → 1 sur [12,6 ; 13,6]                                  | 0     | 0   | 0 | 0   | 0    | 0   | 1  | 1    |
  * | multiverse   | 0 → 1 sur [14,2 ; 14,9]                                  | 0     | 0   | 0 | 0   | 0    | 0   | 0  | 1    |
+ *
+ * Les galaxies grossissent avec l'arrivée du Groupe local : galaxyMagnification, de 1 à LOCAL_GROUP_MAGNIFICATION sur
+ * [8,5 ; 9,3], puis constant.
  *
  * Entre 1,2 et 3, le Soleil reste seul sur le ciel : c'est le vide entre le système solaire et les étoiles.
  * Au zoom 0, aucune couche nouvelle n'est dessinée : la scène du système solaire reste celle d'avant ; jusqu'au
@@ -97,4 +101,13 @@ export function layerWeights(
   out.cmb = smoothstep(12.6, 13.6, zoom);
   out.multiverse = smoothstep(14.2, 14.9, zoom);
   return out;
+}
+
+/**
+ * Grossissement des galaxies (Voie lactée et Groupe local) au zoom donné : 1 jusqu'au zoom 8,5 (la Voie lactée à son
+ * escale garde sa vraie taille), LOCAL_GROUP_MAGNIFICATION dès 9,3, en même temps que paraît le Groupe local
+ * (1 + (M − 1) × poids d'entrée de la couche `localGroup`).
+ */
+export function galaxyMagnification(zoom: number): number {
+  return 1 + (LOCAL_GROUP_MAGNIFICATION - 1) * smoothstep(8.5, 9.3, zoom);
 }

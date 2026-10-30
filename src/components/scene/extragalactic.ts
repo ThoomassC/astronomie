@@ -93,8 +93,15 @@ export const LOCAL_GROUP_MIN_POINTS = 30;
  * lumière suit (rayon / rayon de pleine finesse)^1,5, comme celle de la Voie lactée, sans perte ni saturation.
  */
 
-/** Rayon apparent d'Andromède (px CSS) à partir duquel tous les points du Groupe local sont dessinés. */
-export const LOCAL_GROUP_FULL_DETAIL_PX = 150;
+/**
+ * Rayon apparent d'Andromède grossie (px CSS) à partir duquel le Groupe local brille à plein éclat, tous ses points
+ * dessinés. En dessous, sa lumière suit (rayon / 80 px)^1,5 : portée par le gain jusqu'à LOCAL_GROUP_MIN_GAIN, puis
+ * par la part des points dessinés (splitLight). À l'escale, Andromède grossie fait 53 px de rayon sur grand écran
+ * (lumière 0,54, tous les points) et 27 sur téléphone (gain 0,35, 57 % des points) : cœurs lumineux sans tache blanche.
+ */
+export const LOCAL_GROUP_FULL_LIGHT_PX = 80;
+/** Gain le plus bas des galaxies du Groupe local : au-dessus du demi-niveau qu'efface le tampon 8 bits. */
+export const LOCAL_GROUP_MIN_GAIN = 0.35;
 /** Rayon apparent de l'Univers observable (px CSS) à partir duquel toute la toile est dessinée. */
 export const WEB_FULL_DETAIL_PX = 250;
 /** Points dessinés au moins par galaxie : de loin, les naines restent une petite tache. */
@@ -299,18 +306,30 @@ function drawFirst(points: Points<BufferGeometry, ShaderMaterial>, count: number
 }
 
 /**
- * Niveau de détail du Groupe local, d'après le rayon apparent d'Andromède (px CSS, mesuré par le moteur à la
- * distance de son centre) : chaque galaxie dessine la même part de ses points (detailFraction), au moins
- * LOCAL_GROUP_MIN_DRAWN. Les proportions de lumière entre galaxies restent celles de leurs luminosités ; le gain
- * d'éclat reste à 1. Sans effet avant buildLocalGroup.
+ * Lumière du Groupe local, d'après le rayon apparent d'Andromède grossie (px CSS, mesuré par le moteur à la distance
+ * de son centre ; Infinity quand la caméra est dedans) : min(1, (rayon / LOCAL_GROUP_FULL_LIGHT_PX)^1,5), partagée
+ * entre le gain commun (jusqu'à LOCAL_GROUP_MIN_GAIN) et la part de points que dessine chaque galaxie, au moins
+ * LOCAL_GROUP_MIN_DRAWN. Les proportions de lumière entre galaxies restent celles de leurs luminosités. Sans effet
+ * avant buildLocalGroup.
  */
 export function fitLocalGroup(body: ExtragalacticBody, andromedaRadiusPx: number): void {
   if (!body.galaxies) return;
-  const fraction = detailFraction(andromedaRadiusPx, LOCAL_GROUP_FULL_DETAIL_PX);
+  const light = andromedaRadiusPx > 0 ? Math.min(1, (andromedaRadiusPx / LOCAL_GROUP_FULL_LIGHT_PX) ** 1.5) : 0;
+  const { gain, fraction } = splitLight(light, LOCAL_GROUP_MIN_GAIN);
+  body.localGroupGain.value = gain;
   for (const points of body.galaxies.values()) {
     const total = points.geometry.getAttribute("position").count;
     drawFirst(points, Math.max(LOCAL_GROUP_MIN_DRAWN, Math.round(fraction * total)));
   }
+}
+
+/**
+ * Grossit chaque galaxie du Groupe local de `magnification` autour de son centre (1 : vraie taille), comme la Voie
+ * lactée (magnifyGalaxy) : les distances ne changent pas. Sans effet avant buildLocalGroup.
+ */
+export function magnifyLocalGroup(body: ExtragalacticBody, magnification: number): void {
+  if (!body.galaxies) return;
+  for (const points of body.galaxies.values()) points.scale.setScalar(magnification);
 }
 
 /**
@@ -339,3 +358,4 @@ export function weighExtragalactic(body: ExtragalacticBody, weights: Extragalact
   if (body.cmb) weigh(body.cmb, weights.cmb);
   if (body.bubbles) for (const bubble of body.bubbles) weigh(bubble, weights.multiverse);
 }
+

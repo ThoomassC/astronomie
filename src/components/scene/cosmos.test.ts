@@ -6,6 +6,8 @@ import {
   SUN_POINT_SIZE_PX,
   buildGalaxy,
   createCosmos,
+  magnifyGalaxy,
+  sunPointPosition,
   weighCosmos,
   type CosmosBody,
 } from "@/components/scene/cosmos";
@@ -211,5 +213,52 @@ describe("weighCosmos", () => {
     weighCosmos(cosmos, { ...NO_WEIGHT, sunPoint: 0.8 });
     expect(cosmos.sunPoint.visible).toBe(true);
     expect(cosmos.sunPoint.material.uniforms.uOpacity.value).toBeCloseTo(0.8, 12);
+  });
+});
+
+describe("magnifyGalaxy", () => {
+  const center = sceneFromGalacticXYZ(GALACTIC_CENTER_DISTANCE_LY, 0, 0);
+
+  it("devrait tout laisser en place à sa vraie taille (grossissement 1)", () => {
+    const cosmos = createCosmos(STARS);
+    buildGalaxy(cosmos, 500);
+    const before = verticesInGroup(galaxyOf(cosmos), cosmos.group);
+    magnifyGalaxy(cosmos, 1);
+    expect(verticesInGroup(galaxyOf(cosmos), cosmos.group)).toEqual(before.map((p) => closeTo(p, 6)));
+    expect(sunPointPosition(cosmos, new Vector3()).length()).toBe(0);
+  });
+
+  it("devrait grossir la galaxie autour de son centre : chaque point s'en éloigne d'autant", () => {
+    const cosmos = createCosmos(STARS);
+    buildGalaxy(cosmos, 500);
+    const before = verticesInGroup(galaxyOf(cosmos), cosmos.group);
+    magnifyGalaxy(cosmos, 4);
+    const expected = before.map((p) => ({
+      x: center.x + 4 * (p.x - center.x),
+      y: center.y + 4 * (p.y - center.y),
+      z: center.z + 4 * (p.z - center.z),
+    }));
+    expect(verticesInGroup(galaxyOf(cosmos), cosmos.group)).toEqual(expected.map((p) => closeTo(p, 3)));
+  });
+
+  it("devrait garder le Soleil à sa place dans le disque grossi : point-Soleil en c + 4 (0 − c)", () => {
+    const cosmos = createCosmos(STARS);
+    buildGalaxy(cosmos, 500);
+    magnifyGalaxy(cosmos, 4);
+    const sun = sunPointPosition(cosmos, new Vector3());
+    expect({ x: sun.x, y: sun.y, z: sun.z }).toEqual(closeTo({ x: -3 * center.x, y: -3 * center.y, z: -3 * center.z }, 6));
+    expect(verticesInGroup(cosmos.sunPoint, cosmos.group)).toEqual([closeTo({ x: sun.x, y: sun.y, z: sun.z }, 6)]);
+  });
+
+  it("devrait déplacer le point-Soleil même avant la construction de la galaxie, et la grossir une fois construite", () => {
+    const cosmos = createCosmos(STARS);
+    magnifyGalaxy(cosmos, 4);
+    expect(sunPointPosition(cosmos, new Vector3()).distanceTo(new Vector3(center.x, center.y, center.z))).toBeCloseTo(
+      4 * GALACTIC_CENTER_DISTANCE_LY,
+      3,
+    );
+    buildGalaxy(cosmos, 500);
+    magnifyGalaxy(cosmos, 4);
+    expect(galaxyOf(cosmos).scale.x).toBe(4);
   });
 });

@@ -4,6 +4,7 @@ import { galacticFromScene, sceneFromEquatorial } from "@/lib/astro/galactic";
 import { LOCAL_GROUP, galaxyCenterKly, galaxyRadiusKly, type LocalGroupGalaxyKey } from "@/lib/astro/localGroup";
 import { MULTIVERSE_SEED, MULTIVERSE_VIEW_DEG, multiverseBubbles, multiverseRadius } from "@/lib/astro/multiverse";
 import type { PlanetKey } from "@/lib/astro/planets";
+import { LOCAL_GROUP_MAGNIFICATION } from "@/lib/astro/scale";
 import { OBSERVABLE_UNIVERSE_RADIUS_GLY } from "@/lib/astro/universe";
 import {
   angleDiff,
@@ -504,7 +505,7 @@ const LOCAL_GROUP_TARGET: Vec3 = (() => {
 
 /**
  * Sphère cadrée par chaque escale lointaine, en unités de scène à son zoom : les cinq galaxies principales du Groupe
- * local autour de sa cible (bord compris), l'Univers observable, le multivers dessiné.
+ * local autour de sa cible (bord de leur disque grossi compris), l'Univers observable, le multivers dessiné.
  */
 const SPHERE: Readonly<Record<"localGroup" | "universe" | "multiverse", number>> = {
   localGroup: (() => {
@@ -512,7 +513,10 @@ const SPHERE: Readonly<Record<"localGroup" | "universe" | "multiverse", number>>
     const target = { x: LOCAL_GROUP_TARGET.x / kly, y: LOCAL_GROUP_TARGET.y / kly, z: LOCAL_GROUP_TARGET.z / kly };
     const reach = MAIN_GALAXIES.map((key) => {
       const center = galaxyCenterKly(galaxy(key));
-      return Math.hypot(center.x - target.x, center.y - target.y, center.z - target.z) + galaxyRadiusKly(galaxy(key));
+      return (
+        Math.hypot(center.x - target.x, center.y - target.y, center.z - target.z) +
+        LOCAL_GROUP_MAGNIFICATION * galaxyRadiusKly(galaxy(key))
+      );
     });
     return Math.max(...reach) * kly;
   })(),
@@ -580,7 +584,7 @@ describe("cameraFor au Groupe local, à l'Univers observable et au multivers", (
 
   // Distances recalculées hors du dépôt : rayon / sin(atan(tan)) dans la plus étroite des deux directions.
   it.each([
-    ["localGroup", 525.632336],
+    ["localGroup", 555.671224],
     ["universe", 755.630034],
     ["multiverse", 684.739061],
   ] as const)(
@@ -597,7 +601,7 @@ describe("cameraFor au Groupe local, à l'Univers observable et au multivers", (
   );
 
   it.each([
-    ["localGroup", 433.148153],
+    ["localGroup", 457.901746],
     ["universe", 622.678117],
     ["multiverse", 564.2603],
   ] as const)(
@@ -613,9 +617,9 @@ describe("cameraFor au Groupe local, à l'Univers observable et au multivers", (
     },
   );
 
-  it("devrait cadrer le Groupe local sur ses cinq galaxies principales (les naines lointaines peuvent sortir du cadre)", () => {
-    // 1 604 kly autour de la cible ; cadrer WLM, à 3 Mal, rapetisserait toutes les galaxies d'un tiers.
-    expect(SPHERE.localGroup / (unitsPerLy(9.7) * 1000)).toBeCloseTo(1603.728, 2);
+  it("devrait cadrer le Groupe local sur ses cinq galaxies principales, grossies (les naines lointaines peuvent sortir du cadre)", () => {
+    // 1 696 kly autour de la cible, jusqu'au bord du Triangle grossi 4 fois.
+    expect(SPHERE.localGroup / (unitsPerLy(9.7) * 1000)).toBeCloseTo(1695.378, 2);
   });
 
   it.each(["stars", "galaxy", "localGroup", "universe", "multiverse"] satisfies CosmicStopKey[])(

@@ -82,8 +82,10 @@ import {
   SUN_POINT_SIZE_PX,
   buildGalaxy,
   createCosmos,
+  magnifyGalaxy,
   ringLabelKey,
   starLabelKey,
+  sunPointPosition,
   weighCosmos,
   type DeepLabelKey,
 } from "./cosmos";
@@ -96,6 +98,7 @@ import {
   createExtragalactic,
   fitLocalGroup,
   fitWeb,
+  magnifyLocalGroup,
   splitLight,
   weighExtragalactic,
   type ExtragalacticLabelKey,
@@ -109,7 +112,7 @@ import {
   type LabelBox,
   type MarkerLayout,
 } from "./labels";
-import { SOLAR_HIDDEN_ZOOM, layerWeights } from "./layers";
+import { SOLAR_HIDDEN_ZOOM, galaxyMagnification, layerWeights } from "./layers";
 import { createPlaceholderTexture, type SurfaceUniforms, type Uniform } from "./materials";
 import { DEG, TAU, clamp, easeFactor, lerp, smoothstep } from "./math";
 import { createScreenLayout } from "./screenLayout";
@@ -611,6 +614,8 @@ function setupScene(
   const andromedaCenterKly = new Vector3();
   if (andromeda) galaxyCenterKly(andromeda, andromedaCenterKly);
   const andromedaRadiusKly = andromeda ? galaxyRadiusKly(andromeda) : 0;
+  /** Grossissement des galaxies au zoom affiché (galaxyMagnification) : 1 jusqu'à la Voie lactée, 4 au Groupe local. */
+  let magnification = 1;
   let cameraDistance = 330;
   let disposed = false;
   /** Shaders compilés (en parallèle du fil principal quand le navigateur le permet). */
@@ -841,6 +846,7 @@ function setupScene(
     () => extragalactic.galaxies !== null,
     () => buildLocalGroup(extragalactic, LOCAL_GROUP_POINT_BUDGET[coarsePointer ? "coarse" : "fine"]),
     () => {
+      magnifyLocalGroup(extragalactic, magnification);
       weighExtragalactic(extragalactic, weights);
       if (weights.localGroup > 0) needsRender = true;
       universeBuild.schedule();
@@ -851,6 +857,7 @@ function setupScene(
     () => cosmos.galaxy !== null,
     () => buildGalaxy(cosmos, galaxyPointBudget(coarsePointer)),
     () => {
+      magnifyGalaxy(cosmos, magnification);
       weighCosmos(cosmos, weights);
       if (weights.galaxy > 0) needsRender = true;
       localGroupBuild.schedule();
@@ -1006,9 +1013,9 @@ function setupScene(
   /**
    * Zoom cosmique affiché : réduit le système solaire autour du Soleil (10^−zoom, la lumière des shaders vient
    * toujours de l'origine) et le cache au-delà de SOLAR_HIDDEN_ZOOM, met le ciel profond à l'échelle des
-   * années-lumière, le Groupe local à celle des milliers et l'Univers à celle des milliards d'années-lumière, pèse
-   * chaque couche, choisit le plan lointain. Au zoom 0, rien ne change : échelle 1, couches nouvelles invisibles, plan
-   * lointain de 7 000.
+   * années-lumière, le Groupe local à celle des milliers et l'Univers à celle des milliards d'années-lumière, grossit
+   * les galaxies au Groupe local (galaxyMagnification), pèse chaque couche, choisit le plan lointain. Au zoom 0, rien
+   * ne change : échelle 1, couches nouvelles invisibles, plan lointain de 7 000.
    */
   function applyZoom(zoom: number): void {
     const scale = zoomScale(zoom);
@@ -1021,6 +1028,9 @@ function setupScene(
     if (zoom > GALAXY_EAGER_ZOOM && !cosmos.galaxy) galaxyBuild.now();
     if (zoom > LOCAL_GROUP_EAGER_ZOOM && !extragalactic.galaxies) localGroupBuild.now();
     if (zoom > UNIVERSE_EAGER_ZOOM && !extragalactic.web) universeBuild.now();
+    magnification = galaxyMagnification(zoom);
+    magnifyGalaxy(cosmos, magnification);
+    magnifyLocalGroup(extragalactic, magnification);
     layerWeights(zoom, weights);
     weighCosmos(cosmos, weights);
     weighExtragalactic(extragalactic, weights);
@@ -1048,7 +1058,8 @@ function setupScene(
   function updateGalaxyDetail(pixelsPerTangent: number): void {
     const lightYear = cosmos.group.scale.x;
     galacticCenter.copy(galacticCenterLy).multiplyScalar(lightYear);
-    const radiusPx = apparentRadiusPx(galacticCenter, GALACTIC_DISK_RADIUS_LY * lightYear, pixelsPerTangent);
+    const diskRadius = GALACTIC_DISK_RADIUS_LY * magnification * lightYear;
+    const radiusPx = apparentRadiusPx(galacticCenter, diskRadius, pixelsPerTangent);
     const light = Math.min(1, (radiusPx / GALAXY_REFERENCE_RADIUS_PX) ** GALAXY_GAIN_EXPONENT);
     const { gain, fraction } = splitLight(light, GALAXY_MIN_GAIN);
     cosmos.galaxyGain.value = gain;
@@ -1068,7 +1079,8 @@ function setupScene(
     if (weights.localGroup > 0) {
       const kly = lightYear * 1e3;
       anchor.copy(andromedaCenterKly).multiplyScalar(kly);
-      fitLocalGroup(extragalactic, apparentRadiusPx(anchor, andromedaRadiusKly * kly, pixelsPerTangent));
+      const andromedaRadius = andromedaRadiusKly * magnification * kly;
+      fitLocalGroup(extragalactic, apparentRadiusPx(anchor, andromedaRadius, pixelsPerTangent));
     }
     if (weights.web > 0) {
       const universeRadius = OBSERVABLE_UNIVERSE_RADIUS_GLY * 1e9 * lightYear;
@@ -1321,14 +1333,18 @@ function setupScene(
      * masque aucun point, est placé avant eux : sur téléphone, les points qui serrent le Soleil (Lacaille 9352,
      * Lalande 21185, Epsilon Indi, Luyten 726-8) ne lui laisseraient aucune place.
      */
-    if (weights.sunPoint > 0) reservePoint(anchor.set(0, 0, 0), SUN_POINT_SIZE_PX);
+    if (weights.sunPoint > 0) {
+      reservePoint(sunPointPosition(cosmos, anchor).multiplyScalar(lightYear), SUN_POINT_SIZE_PX);
+    }
     if (weights.stars > 0) {
       for (const { position, size } of stars) {
         reservePoint(anchor.set(position.x, position.y, position.z).multiplyScalar(lightYear), size);
       }
     }
     // Ciel profond : non interactif, placé après les astres.
-    placeMarkedSlot(deepSlots.get("here"), anchor.set(0, 0, 0), weights.here);
+    // « Vous êtes ici » suit le point-Soleil, à sa place dans la galaxie grossie au Groupe local.
+    const here = sunPointPosition(cosmos, anchor).multiplyScalar(lightYear);
+    placeMarkedSlot(deepSlots.get("here"), here, weights.here);
     const center = anchor.copy(galacticCenterLy).multiplyScalar(lightYear);
     placeMarkedSlot(deepSlots.get("center"), center, weights.galaxyLabels);
     // Au-delà : galaxies, toile, fond diffus, univers, chacun dans le repère de son groupe.
