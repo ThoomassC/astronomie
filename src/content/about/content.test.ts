@@ -111,6 +111,25 @@ describe("sources de la page À propos", () => {
   });
 
   /*
+   * Titre laissé dans sa langue (« Sun Fact Sheet ») : la page le marque pour la synthèse vocale (critère 3.1.2). C'est
+   * une propriété de la source, pas de la traduction : la même dans les trois langues, au même titre recopié.
+   */
+  it.each(TRANSLATED)("devrait dire en %s, comme en français, quels titres de sources sont anglais", (locale) => {
+    const titles = (from: Locale) =>
+      (section(from, "sources").links ?? []).map(({ label, lang }) => ({ label: lang ? label : null, lang }));
+    expect(titles(locale)).toEqual(titles("fr"));
+  });
+
+  it("devrait marquer en anglais les titres anglais des sources", () => {
+    const english = (section("fr", "sources").links ?? []).filter(({ lang }) => lang === "en").map(({ label }) => label);
+    expect(english).toEqual([
+      "NASA, Sun Fact Sheet",
+      "NASA, Planetary Fact Sheet",
+      "JPL, Approximate Positions of the Planets",
+    ]);
+  });
+
+  /*
    * Les chiffres clés de l'accueil renvoient ici pour leurs sources : chacun figure dans la description de la sienne,
    * écrit comme l'accueil l'écrit (formateurs du site : l'espagnol ne groupe pas quatre chiffres).
    */

@@ -46,7 +46,9 @@ Textes : `src/content/about/` (`fr.ts`, `en.ts`, `es.ts` ; ancres et adresses da
   2 px. Cible de 44 px de haut (bloc en ligne, 0,5 rem au-dessus et au-dessous du texte). Vers un autre site : même
   onglet, « ↗ » collé au nom par une espace insécable et masqué aux lecteurs d'écran, qui entendent à la place
   « , site externe » (texte `.sr`, convention des compléments de nom du site). Les noms trop longs se coupent
-  (`overflow-wrap: anywhere`).
+  (`overflow-wrap: anywhere`). Titres originaux anglais (« NASA, Sun Fact Sheet », « JPL, Approximate Positions of
+  the Planets ») : marqués `lang="en"` sur les pages française et espagnole, pour la synthèse vocale (critère 3.1.2),
+  la précision « , site externe » restant dans la langue de la page ; le lien porte `hreflang="en"`.
 - **Pied de page** : le pied de page commun (`ContactFooter` : signature, contacts de l'auteur, droit d'auteur) dans un
   `footer` entre les marges de la page ; la classe de la page écarte les marges du `footer` global, faites pour la
   règle et le dock du voyage.

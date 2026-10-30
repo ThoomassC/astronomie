@@ -31,11 +31,13 @@ export const ABOUT_ES: AboutContent = {
         {
           label: "NASA, Sun Fact Sheet",
           href: ABOUT_URLS.nasaSunFactSheet,
+          lang: "en",
           description: `Diámetro del Sol: ${figures.sunInEarths} Tierras en fila.`,
         },
         {
           label: "NASA, Planetary Fact Sheet",
           href: ABOUT_URLS.nasaFactSheet,
+          lang: "en",
           description: "Datos físicos de los planetas, entre ellos el diámetro de la Tierra.",
         },
         {
@@ -46,6 +48,7 @@ export const ABOUT_ES: AboutContent = {
         {
           label: "JPL, Approximate Positions of the Planets",
           href: ABOUT_URLS.jplApproximatePositions,
+          lang: "en",
           description: "Elementos orbitales de los planetas, válidos de 1800 a 2050: sus posiciones de cada día.",
         },
         {

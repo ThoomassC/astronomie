@@ -10,19 +10,28 @@ function headingId(sectionId: string): string {
   return `${sectionId}-titre`;
 }
 
+interface OutboundLinksProps {
+  links: readonly AboutLink[];
+  external: string;
+  /** Langue de la page : un titre de source dans une autre langue y est marqué. */
+  locale: Locale;
+}
+
 /**
  * Liste filetée de liens vers d'autres sites : le nom (le lien), puis ce que le site en tire. La flèche dit à l'œil
  * que le lien quitte le site, la précision masquée le dit aux lecteurs d'écran ; tout s'ouvre dans le même onglet.
+ * Un titre original laissé dans sa langue (« Sun Fact Sheet ») porte `lang` quand ce n'est pas celle de la page, et le
+ * lien dit la langue de la page liée (`hrefLang`) ; la précision masquée reste dans la langue de la page.
  * `role="list"` : Safari retire le rôle de liste aux listes sans puces, et le nombre d'entrées annoncé aide à
  * s'orienter.
  */
-function OutboundLinks({ links, external }: { links: readonly AboutLink[]; external: string }) {
+function OutboundLinks({ links, external, locale }: OutboundLinksProps) {
   return (
     <ul role="list" className={styles.outbound}>
-      {links.map(({ label, href, description }) => (
+      {links.map(({ label, href, lang, description }) => (
         <li key={label}>
-          <a href={href}>
-            {label}
+          <a href={href} hrefLang={lang}>
+            {lang === undefined || lang === locale ? label : <span lang={lang}>{label}</span>}
             <span className="sr">, {external}</span>
             {/* Espace insécable : la flèche ne passe jamais seule à la ligne. */}
             <span className={styles.arrow} aria-hidden="true">
@@ -37,7 +46,7 @@ function OutboundLinks({ links, external }: { links: readonly AboutLink[]; exter
 }
 
 /** Une section sous son h2 : ses paragraphes, puis ses liens vers d'autres sites (Sources). */
-function AboutPart({ section, external }: { section: AboutSection; external: string }) {
+function AboutPart({ section, external, locale }: { section: AboutSection; external: string; locale: Locale }) {
   const { id, heading, paragraphs, links } = section;
   return (
     <section className={styles.part} id={id} aria-labelledby={headingId(id)}>
@@ -45,7 +54,7 @@ function AboutPart({ section, external }: { section: AboutSection; external: str
       {paragraphs.map((paragraph) => (
         <p key={paragraph}>{paragraph}</p>
       ))}
-      {links ? <OutboundLinks links={links} external={external} /> : null}
+      {links ? <OutboundLinks links={links} external={external} locale={locale} /> : null}
     </section>
   );
 }
@@ -65,7 +74,7 @@ export function AboutPage({ locale }: { locale: Locale }) {
         <p className={styles.intro}>{intro}</p>
       </div>
       {sections.map((section) => (
-        <AboutPart key={section.id} section={section} external={external} />
+        <AboutPart key={section.id} section={section} external={external} locale={locale} />
       ))}
     </main>
   );

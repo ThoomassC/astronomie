@@ -80,12 +80,15 @@ export interface TextLeaf {
   value: string | TextFunction;
 }
 
-/** Clés qui ne portent pas de texte : adresses des liens, ancres des sections (les mêmes dans les trois langues). */
-const NOT_TEXT_KEYS: ReadonlySet<string> = new Set(["href", "id"]);
+/**
+ * Clés qui ne portent pas de texte : adresses des liens, ancres des sections, langue d'un titre de source (« en »),
+ * les mêmes dans les trois langues.
+ */
+const NOT_TEXT_KEYS: ReadonlySet<string> = new Set(["href", "id", "lang"]);
 
 /**
- * Feuilles de texte d'un contenu ou d'une table, dans l'ordre de l'objet. Les adresses (`href`) et les ancres (`id`)
- * n'en sont pas, ni les nombres et les booléens (heures de l'échelle, exposants).
+ * Feuilles de texte d'un contenu ou d'une table, dans l'ordre de l'objet. Les adresses (`href`), les ancres (`id`) et
+ * les langues (`lang`) n'en sont pas, ni les nombres et les booléens (heures de l'échelle, exposants).
  */
 export function textLeaves(value: unknown, path = ""): TextLeaf[] {
   if (typeof value === "string") return [{ path, value }];
