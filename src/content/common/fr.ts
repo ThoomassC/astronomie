@@ -3,22 +3,22 @@ import type { CommonContent } from "./types";
 /** Textes communs en français. */
 export const COMMON_FR: CommonContent = {
   description:
-    "Le système solaire en mouvement, puis les étoiles, les galaxies et l'Univers : les planètes à leur vraie place, des tailles et des distances enfin comparables.",
+    "Le système solaire en mouvement, puis les étoiles, les galaxies et l'Univers : les planètes à leur vraie place, des tailles et des distances enfin comparables.",
   pages: {
     home: {
       title: "Astronomie · Le système solaire et au-delà",
       description:
-        "Le système solaire tel qu'il est aujourd'hui, puis trois chemins : un voyage jusqu'au multivers, la taille des étoiles et les coulisses du site.",
+        "Le système solaire tel qu'il est aujourd'hui, puis trois chemins : un voyage jusqu'au multivers, la taille des étoiles et les coulisses du site.",
     },
     voyage: {
       title: "Voyage du Soleil au multivers",
       description:
-        "Du Soleil à l'hypothèse du multivers, un voyage en 3D au fil de la page : les planètes à leur place du jour, les étoiles voisines, la Voie lactée, les galaxies.",
+        "Du Soleil à l'hypothèse du multivers, un voyage en 3D au fil de la page : les planètes à leur place du jour, les étoiles voisines, la Voie lactée, les galaxies.",
     },
     sizes: {
       title: "Tailles des étoiles",
       description:
-        "De Proxima du Centaure à VY Canis Majoris, dix étoiles côte à côte et à la même échelle, Soleil compris : de la naine rouge à l'hypergéante.",
+        "De Proxima du Centaure à VY Canis Majoris, dix étoiles côte à côte et à la même échelle, Soleil compris : de la naine rouge à l'hypergéante.",
     },
     about: {
       title: "À propos du site",

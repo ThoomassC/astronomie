@@ -9,7 +9,8 @@
 
 Un planétaire (l'instrument mécanique en laiton qui montre le mouvement des planètes),
 rendu vivant : ciel de nuit, réglets gradués, une couleur propre à chaque astre.
-Site pédagogique grand public (12 ans et plus), en français.
+Site pédagogique grand public (12 ans et plus), en français, en anglais et en espagnol. Quatre pages : Accueil,
+Voyage, Tailles, À propos (précisions par page dans `pages/`).
 
 - Un seul monde visuel, sombre, assumé (pas de thème clair) : `color-scheme: dark`.
 - L'élément fort : la scène 3D aux positions réelles et le voyage au défilement.
@@ -30,7 +31,9 @@ Site pédagogique grand public (12 ans et plus), en français.
 Couleurs d'astres : Soleil `#FFB13B`, Mercure `#B5ADA3`, Vénus `#E6CB94`, Terre `#5B9BE6`,
 Mars `#DA6A43`, Jupiter `#D8A878`, Saturne `#E2C98F`, Uranus `#9ED9DE`, Neptune `#5878E8`.
 Escales sans astre : vue d'ensemble `#FFB547`, astéroïdes `#A89F94`, au-delà `#C2A36B`,
-étoiles voisines `#CFDCFF` (blanc bleuté), Voie lactée `#B3A4EE` (lavande).
+étoiles voisines `#CFDCFF` (blanc bleuté), Voie lactée `#B3A4EE` (lavande), Groupe local `#A9B8E8` (bleu
+pervenche), Univers observable `#E7A6C1` (rose poudré), multivers `#7FD8C8` (vert d'eau). Chacune tient 3:1 au moins
+sur `--nuit` (pastilles, filets, curseur de la règle).
 
 Couleurs des étoiles (scène, pastilles du tableau) : celles du corps noir de leur classe spectrale,
 O `#9BB0FF`, B `#AABFFF`, A `#CAD7FF`, F `#F8F7FF`, G `#FFF4EA`, K `#FFD2A1`, M `#FFB56C`.
@@ -42,6 +45,9 @@ O `#9BB0FF`, B `#AABFFF`, A `#CAD7FF`, F `#F8F7FF`, G `#FFF4EA`, K `#FFD2A1`, M 
   public scolaire). Chiffres en `tabular-nums` dès qu'ils changent en direct.
 - Pas de capitales espacées pour les étiquettes, pas de police mono décorative.
 - Échelle : 0.8125 / 0.9375 / 1.0625 (texte) / 1.375 / 2 / 3.5–7 rem (noms d'astres).
+- Espaces du français, sur tout texte affiché (canevas compris) : espace fine insécable (U+202F) entre les milliers
+  et avant « ; ! ? », espace insécable (U+00A0) avant « : » et dans les guillemets « », jamais d'espace ordinaire à
+  ces places (règle du README, gardée par un test). Anglais et espagnol : rien avant la ponctuation.
 
 ## Arrondis
 
@@ -82,13 +88,18 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 - **Fiche** : grille 2 colonnes `dt` / `dd`, une ligne « ce jour » recalculée avec la date simulée.
 - **Module** : une animation explicative par escale (Canvas 2D), boutons au clavier,
   texte équivalent en `aria-live`.
-- **Plaques des escales lointaines** (étoiles voisines, Voie lactée) : même plaque que les astres, filet
-  de la couleur de l'escale. « Lire la fiche » : texte, fiche `dt` / `dd`, puis deux lignes discrètes
-  (0,8125 rem, `--brume`) : ce que la vue simplifie, puis les sources. Les étoiles voisines ont une
-  seconde section, « Les étoiles de la carte » : tableau légendé (`caption`), colonnes Étoile / Distance
+- **Plaques des escales lointaines** (étoiles voisines, Voie lactée, Groupe local, Univers observable, multivers) :
+  même plaque que les astres, filet de la couleur de l'escale. « Lire la fiche » : texte, fiche `dt` / `dd`, puis
+  deux lignes discrètes (0,8125 rem, `--brume`) : ce que la vue simplifie, puis les sources. Les étoiles voisines ont
+  une seconde section, « Les étoiles de la carte » : tableau légendé (`caption`), colonnes Étoile / Distance
   (« 4,2 al », alignée à droite, chiffres tabulaires) / Type en mots simples (« naine rouge ») et sa
   précision en petit ; pastille de la couleur du point de la carte devant chaque nom ; filets `--filet`,
-  cellules de 0,5 rem au moins. La Voie lactée est la dernière escale : sur téléphone, son filet reste plein.
+  cellules de 0,5 rem au moins. Le Groupe local a de même le tableau de ses galaxies (Galaxie / Distance / Taille).
+  Le multivers est la dernière escale : sur téléphone, son filet reste plein.
+- **Avertissement d'hypothèse** (multivers) : il ouvre la plaque, avant le rang et le titre, et reste visible plaque
+  repliée : encadré de 1 px en pointillés de la couleur de l'escale, `--r-sm`, 0,875 rem ivoire, interligne 1,45.
+  Pointillés comme le repère des autres univers dans la scène, dont l'étiquette dit aussi « hypothèse ». La ligne de
+  ce que la vue simplifie commence par « Rendu artistique » : jamais de mot qui donnerait l'image pour observée.
 - **Étiquettes du ciel profond** : repère creux posé exactement sur l'astre (couleur de l'étoile), texte (nom et
   distance) sur une pilule `--plaque-a` filetée `--filet` : lisible sur les points les plus clairs de la galaxie
   (sur du blanc pur, ivoire 11,8:1, laiton 6,2:1). Placées après les astres, sans que leurs textes se
@@ -102,24 +113,32 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   n'apparaisse) ; « Centre de la Galaxie » se lit sous son repère : à la même hauteur à l'écran, les deux textes
   ne se rencontrent jamais. Cercles de distance 5 et 10 al en laiton, étiquette 0,75 rem, posée au premier point
   libre du cercle (côté opposé au Soleil d'abord, puis les côtés), sur une graduation de laiton de 2 × 9 px :
-  jamais l'anneau d'une étoile.
+  jamais l'anneau d'une étoile. Au-delà de la Voie lactée, mêmes pilules : les galaxies du Groupe local par leur
+  nom, puis « Toile cosmique », « Fond diffus cosmologique » et « Notre univers observable » ; les autres univers ont
+  un repère en pointillés et un nom en italique qui dit l'hypothèse (« D'autres univers ? (hypothèse) »).
 - **Ciel profond (scène)** : étoiles voisines aux couleurs de leur classe ; Voie lactée en points additifs, bras
   bleus (étoiles jeunes), régions HII rouge rosé le long des bras majeurs, bulbe et barre jaune orangé, disque
   chaud et faible. L'éclat se règle à l'écran et s'atténue quand la galaxie rapetisse : jamais de blanc saturé.
   Cadrage des escales lointaines : comme les astres, elles remplissent la bande libre en mise en page compacte
   (80 % de la largeur, 90 % de la bande) et la zone libre sur grand écran (90 % de sa largeur, 80 % de la
   hauteur), inclinaison et perspective comprises ; les étoiles jusqu'à 17 al, la galaxie jusqu'au bord de son disque.
+  Au-delà, les galaxies du Groupe local en points, grossies 4 fois (distances à l'échelle), puis la toile cosmique, le
+  fond diffus et les bulles du multivers, stylisés, cadrés comme une sphère ; une coquille qui déborderait sur la
+  plaque ou la règle s'efface sur les 24 px qui l'en séparent.
 - **Règle des distances** : sommaire vertical à échelle logarithmique, en trois segments : UA jusqu'à 50
-  (les planètes), grand vide comprimé jusqu'à 1 al, puis années-lumière jusqu'à 100 000 (plafond 98 %).
-  Entre le système solaire et les étoiles, l'axe s'interrompt de 87 à 90 % : signe « ≈ » en laiton,
-  0,875 rem, centré sur l'axe. Graduations d'UA, puis une par puissance de dix d'années-lumière (majeure : 1 al).
-  Sous les repères lointains : « dès 4,2 al », « centre à 27 000 al ». Curseur suivant la caméra.
+  (les planètes), grand vide comprimé jusqu'à 1 al, puis années-lumière jusqu'à 10¹¹ al, au-delà de l'Univers
+  observable (fin de l'axe à 98 %). Le multivers, à l'infini, se pose après l'axe, hors échelle (99,4 %).
+  Entre le système solaire et les étoiles, l'axe s'interrompt de 87 à 88,5 % : signe « ≈ » en laiton,
+  0,875 rem, centré sur l'axe. Graduations d'UA, puis une par puissance de dix d'années-lumière (majeures : 1 al,
+  1 million et 1 milliard d'al). Sous les repères lointains : « dès 4,2 al », « centre à 27 000 al », « Andromède à
+  2,5 millions d'al », « rayon de 46 milliards d'al », « hypothèse ». Seize repères, 24 px au moins entre leurs
+  centres (WCAG 2.5.8). Curseur suivant la caméra.
   Infobulles au survol (appareils qui survolent) et au focus clavier ; au doigt, le nom de l'escale
-  en cours reste affiché. Là où elle n'a plus que des pastilles (860 px et moins) et en mise en page
-  compacte, elle laisse sa place au menu **Escales** : le nom de l'escale en cours (« Escales » à
-  l'accueil), dans la barre, ouvre la liste des escales (pastille creuse, pleine pour l'escale en
-  cours, nom, distance en UA, lignes de 44 px). Sur écran bas (zoom à 400 %) et sans JavaScript,
-  la règle reste.
+  en cours reste affiché. Là où elle n'a plus que des pastilles (860 px et moins), en mise en page compacte et sur
+  écran bas (546 px de haut et moins : téléphone en paysage, zoom à 400 %), elle laisse sa place au menu
+  **Escales** : le nom de l'escale en cours (« Escales » à l'accueil), dans la barre, ouvre la liste des escales
+  (pastille creuse, pleine pour l'escale en cours, nom, distance, lignes de 44 px). Sur écran bas, la barre suit la
+  page et la liste s'ouvre en haut de page. Sans JavaScript, la règle reste.
 - **Note d'échelle** : encart `--r-md` bordé `--soleil`, visible avec les distances réelles ; au-dessus
   du dock ; en mise en page compacte, en haut sous la barre et dans la colonne de lecture, pour ne
   couvrir ni la plaque ni la règle. Sur téléphone, elle tient sur deux lignes, l'essentiel en tête :
@@ -131,8 +150,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   sombre des libellés, découpée à la forme de la bulle, inverse le texte exactement là où elle passe
   (jamais de texte sombre sur fond sombre). Le dock ne passe jamais à la ligne au-dessus de 360 px :
   complet au-delà de 900 px, boutons de droite réduits à leur icône jusqu'à 761 px, compact en dessous
-  (un seul bouton de vitesse, date courte). Aux étoiles voisines et à la Voie lactée, où tout est déjà
-  à l'échelle, la bascule « Distances réelles » est indisponible : atténuée (opacité 0,45, sans survol),
+  (un seul bouton de vitesse, date courte). Aux escales lointaines (des étoiles voisines au multivers), où tout
+  est déjà à l'échelle, la bascule « Distances réelles » est indisponible : atténuée (opacité 0,45, sans survol),
   toujours focalisable, `aria-disabled` avec sa raison en description (« Ici, les distances sont déjà
   réelles. ») ; un clic ne change rien et le choix revient au retour dans le système solaire. La note
   d'échelle s'y tait aussi, sans quitter sa place dans le cadrage ; si le focus y était, il rejoint la bascule
@@ -158,6 +177,10 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   quand regarder (« Le soir, à l'ouest après le coucher du Soleil », suivi de l'instrument pour Uranus et Neptune),
   chiffres tabulaires, recalculés avec la date simulée. Pas de région live : la lecture est annoncée une fois, à
   l'activation, unités en toutes lettres.
+- **Tailles** (`pages/tailles.md`) : la mise en page du Voyage, sans dock. Dix plaques d'étoile (rayon en R☉ et en
+  km, type, température et sa réglette, distance, comparaison), une scène 3D qui cadre l'étoile affichée et la
+  précédente, la règle des tailles (rayons solaires, logarithmique, une graduation par facteur 10) et, à 860 px et
+  moins, le menu des étoiles dans la barre. Couleur de chaque étoile : celle du corps noir à sa température.
 - **Barre haute** : marque à gauche, capsule des onglets au centre, puis un bloc à droite (commandes de la page,
   langue, menu replié), dans cet ordre de tabulation. Plus de 860 px, une grille `1fr auto 1fr` centre les onglets
   dans la barre ; une colonne latérale ne descend jamais sous la largeur de son contenu, si bien que les onglets se
@@ -165,7 +188,10 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   (au Voyage, à 1 329 px au pire, à l'escale la plus longue en espagnol). Seuil vérifié au pire cas (espagnol,
   Voyage) : 800 px de contenu pour 829 disponibles à 861 px en paysage ; en portrait, où le menu des escales remplace
   l'escale, 860 px qui ne tiennent qu'à 892 px : la grille y attend 900 px, la ligne d'origine sert avant. Hauteur
-  inchangée, une seule ligne ; à 860 px et moins, les onglets passent dans « Menu ».
+  inchangée, une seule ligne ; à 860 px et moins, les onglets passent dans « Menu ». Fond : au Voyage et à Tailles,
+  un voile léger (`--voile` vers transparent, plus dense à 640 px et moins), pour que la scène 3D se devine dessous ;
+  à l'Accueil et à À propos, où le texte défile sous la barre, `--nuit` plein jusqu'au bas des commandes puis un
+  fondu sur la marge basse (0,9 rem) : rien ne se lit derrière la marque ni les onglets.
 - **Choix de la langue** : le bouton de la barre montre le drapeau de la langue de la page, puis son code (« FR ») et
   le chevron ; chaque ligne de la liste (et du menu replié), le drapeau puis le nom de la langue dans sa langue ; les
   pilules sans JavaScript, le drapeau puis le code. Drapeaux en SVG (pas d'emoji : Windows ne les dessine pas),
@@ -187,8 +213,10 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 ## Règles
 
 - Données sourcées (NASA Planetary Fact Sheet, éléments orbitaux JPL 1800–2050 ; étoiles : Gaia DR3 et
-  parallaxes publiées ; galaxie : modèle simplifié d'après Reid et al. 2019 et GRAVITY 2022). Ce que la
-  vue simplifie est dit sur la plaque (tailles des étoiles exagérées, bras dessinés d'après un modèle).
+  parallaxes publiées ; galaxie : modèle simplifié d'après Reid et al. 2019 et GRAVITY 2022 ; Groupe local :
+  McConnachie 2012 ; Univers observable : Planck 2018 ; Tailles : rayons mesurés par interférométrie). Ce que la
+  vue simplifie est dit sur la plaque (tailles des étoiles exagérées, bras dessinés d'après un modèle, galaxies
+  grossies, toile cosmique et fond diffus stylisés) ; le multivers est une hypothèse, dite avant tout le reste.
 - `prefers-reduced-motion` : temps en pause au chargement, pas d'animation automatique.
 - Animations Canvas actives seulement quand elles sont visibles (batterie).
 - Contraste texte ≥ 4.5:1, focus visible `--soleil`, cibles tactiles ≥ 44 px.

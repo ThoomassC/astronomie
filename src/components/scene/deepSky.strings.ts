@@ -94,7 +94,7 @@ export const DEEP_SKY_STRINGS: Readonly<Record<Locale, DeepSkyStrings>> = {
       web: "Toile cosmique",
       cmb: "Fond diffus cosmologique",
       ourUniverse: "Notre univers observable",
-      otherUniverses: "D'autres univers ? (hypothèse)",
+      otherUniverses: "D'autres univers ? (hypothèse)",
     },
     ring: (radiusLy) => lightYears(radiusLy, 0, "fr"),
     starDistance: (distanceLy) => ` · ${lightYears(distanceLy, 1, "fr")}`,

@@ -26,13 +26,13 @@ const CASES: readonly (readonly [Locale, Expected])[] = [
     "fr",
     {
       canvas:
-        "Saturne et l'ouverture de ses anneaux selon l'année, de 2010 à 2050. Les anneaux sont vus par la tranche en 2025, puis en 2039-2040 ; entre ces passages, ils s'ouvrent jusqu'à environ 27°.",
+        "Saturne et l'ouverture de ses anneaux selon l'année, de 2010 à 2050. Les anneaux sont vus par la tranche en 2025, puis en 2039-2040\u202f; entre ces passages, ils s'ouvrent jusqu'à environ 27°.",
       play: "Faire défiler les années",
       pause: "Pause",
       year: "Année",
-      initial: "2026 : anneaux ouverts d'environ 9°, vus par-dessous (face sud).",
-      edgeOn: "2025 : anneaux vus par la tranche, presque invisibles.",
-      paused: /^20\d\d : anneaux (ouverts d'environ \d+°, vus par-dess(us|ous) \(face (nord|sud)\)|vus par la tranche, presque invisibles)\.$/,
+      initial: "2026\u00a0: anneaux ouverts d'environ 9°, vus par-dessous (face sud).",
+      edgeOn: "2025\u00a0: anneaux vus par la tranche, presque invisibles.",
+      paused: /^20\d\d\u00a0: anneaux (ouverts d'environ \d+°, vus par-dess(us|ous) \(face (nord|sud)\)|vus par la tranche, presque invisibles)\.$/,
       drawn: ["2010", "2020", "2030", "2040", "2050", "par la tranche", "2026"],
     },
   ],

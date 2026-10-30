@@ -20,11 +20,11 @@ import type { NearbyStar } from "@/lib/astro/stars";
 /** Trois étoiles fixées par le test (SIMBAD, Gaia DR3), indépendantes du fichier de données. */
 const STARS: readonly NearbyStar[] = [
   {
-    key: "proxima-centauri", name: "Proxima du Centaure", raDeg: 217.42895, decDeg: -62.67949, distanceLy: 4.2465,
-    spectralType: "M5.5Ve", apparentMag: 11.13,
+    key: "proxima-centauri", raDeg: 217.42895, decDeg: -62.67949, distanceLy: 4.2465, spectralType: "M5.5Ve",
+    apparentMag: 11.13,
   },
-  { key: "sirius", name: "Sirius", raDeg: 101.287155, decDeg: -16.716116, distanceLy: 8.6, spectralType: "A1V", apparentMag: -1.46 },
-  { key: "altair", name: "Altaïr", raDeg: 297.6958, decDeg: 8.8683, distanceLy: 16.73, spectralType: "A7V", apparentMag: 0.76 },
+  { key: "sirius", raDeg: 101.287155, decDeg: -16.716116, distanceLy: 8.6, spectralType: "A1V", apparentMag: -1.46 },
+  { key: "altair", raDeg: 297.6958, decDeg: 8.8683, distanceLy: 16.73, spectralType: "A7V", apparentMag: 0.76 },
 ];
 
 const NO_WEIGHT: LayerWeights = {

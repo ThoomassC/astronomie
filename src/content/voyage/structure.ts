@@ -66,8 +66,8 @@ export const BEYOND_MARKS: readonly { key: BeyondMarkKey; hours: number; color: 
 
 /**
  * Références des étoiles voisines citées en pied de page : la liste de `NEARBY_STARS_SOURCE`, écrite à la française
- * (« ; » précédé d'une espace), avec la ponctuation de la langue (en anglais et en espagnol, rien avant « ; »).
+ * (espace fine insécable avant « ; »), avec la ponctuation de la langue (en anglais et en espagnol, rien avant « ; »).
  */
 export function nearbyStarsSource(locale: Locale): string {
-  return locale === "fr" ? NEARBY_STARS_SOURCE : NEARBY_STARS_SOURCE.replaceAll(" ; ", "; ");
+  return locale === "fr" ? NEARBY_STARS_SOURCE : NEARBY_STARS_SOURCE.replaceAll("\u202f; ", "; ");
 }

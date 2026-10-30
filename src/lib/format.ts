@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, INTL_LOCALE, type Locale } from "@/i18n/locales";
+import { INTL_LOCALE, type Locale } from "@/i18n/locales";
 
 /**
  * Formateurs déjà construits, par notation, langue et décimales : en construire un coûte cher, et certains textes
@@ -16,8 +16,9 @@ function cachedFormatter(key: string, locale: Locale, options: Intl.NumberFormat
 }
 
 /**
- * Nombre avec exactement `digits` décimales, selon la langue (fr par défaut pendant la migration, obligatoire en
- * clôture). Sortie d'Intl telle quelle, que les nombres écrits à la main dans les textes reprennent :
+ * Nombre avec exactement `digits` décimales, dans la langue `locale`. Les deux sont obligatoires : un nombre écrit sans
+ * sa langue serait du français sur une page anglaise. Sortie d'Intl telle quelle, que les nombres écrits à la main
+ * dans les textes reprennent :
  * - fr : virgule décimale, milliers groupés dès 4 chiffres par une espace fine insécable (U+202F) :
  *   « 4 879 », « 27 000 », « 0,9930 » ;
  * - en : point décimal, virgule dès 4 chiffres : « 4,879 », « 27,000 », « 0.39 » ;
@@ -26,7 +27,7 @@ function cachedFormatter(key: string, locale: Locale, options: Intl.NumberFormat
  * L'unité se joint ensuite par `withUnit`. Négatifs : Intl écrit le trait d'union (« -180 »), les textes le signe
  * moins (« −180 », U+2212).
  */
-export function formatNumber(value: number, digits = 0, locale: Locale = DEFAULT_LOCALE): string {
+export function formatNumber(value: number, digits: number, locale: Locale): string {
   return cachedFormatter(`fixed:${locale}:${digits}`, locale, {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,

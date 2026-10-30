@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COMPARED_STARS, SOLAR_RADIUS_KM } from "@/lib/astro/starSizes";
+import { COMPARED_STAR_BY_KEY, COMPARED_STARS, SOLAR_RADIUS_KM } from "@/lib/astro/starSizes";
 
 /*
  * Contrat du fichier de données du comparateur de tailles : ces tests disent ce que la page attend
@@ -70,6 +70,17 @@ describe("COMPARED_STARS", () => {
     expect(COMPARED_STARS.filter((star) => star.radiusRange).map((star) => star.key)).toEqual([
       "rigel", "antares-a", "betelgeuse", "vy-canis-majoris",
     ]);
+  });
+});
+
+describe("COMPARED_STAR_BY_KEY", () => {
+  it("devrait retrouver chacune des dix étoiles par sa clé", () => {
+    for (const star of COMPARED_STARS) expect(COMPARED_STAR_BY_KEY[star.key]).toBe(star);
+    expect(Object.keys(COMPARED_STAR_BY_KEY)).toHaveLength(COMPARED_STARS.length);
+  });
+
+  it("devrait donner à VY Canis Majoris le rayon de l'accueil et de la page À propos : 1 420 R☉", () => {
+    expect(COMPARED_STAR_BY_KEY["vy-canis-majoris"].radiusSolar).toBe(1420);
   });
 });
 

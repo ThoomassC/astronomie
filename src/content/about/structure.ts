@@ -2,6 +2,7 @@ import type { Locale } from "@/i18n/locales";
 import { withUnit } from "@/i18n/units";
 import { formatDuration, lightSeconds } from "@/lib/astro/light";
 import { PLANET_BY_KEY, SUN } from "@/lib/astro/planets";
+import { COMPARED_STAR_BY_KEY } from "@/lib/astro/starSizes";
 import { NEARBY_STARS } from "@/lib/astro/stars";
 import { formatNumber } from "@/lib/format";
 
@@ -58,9 +59,6 @@ export function ccByUrl(locale: Locale): `https://${string}` {
   return `https://creativecommons.org/licenses/by/4.0/deed.${locale}`;
 }
 
-/** Rayon de VY Canis Majoris, en rayons solaires : 1 420 ± 120 (Wittkowski et al. 2012), celui de l'accueil. */
-const VY_CANIS_MAJORIS_RADIUS_SOLAR = 1420;
-
 /** Les quatre chiffres clés de l'accueil, écrits dans une langue, pour les poser à côté de leurs sources. */
 export interface SourcedFigures {
   /** Terres alignées dans la largeur du Soleil : « 109 ». */
@@ -79,10 +77,11 @@ export interface SourcedFigures {
  */
 export function sourcedFigures(locale: Locale): SourcedFigures {
   const nearestLy = Math.min(...NEARBY_STARS.map((star) => star.distanceLy));
+  const largestRadius = COMPARED_STAR_BY_KEY["vy-canis-majoris"].radiusSolar;
   return {
     sunInEarths: formatNumber(Math.round(SUN.diameterKm / PLANET_BY_KEY.earth.diameterKm), 0, locale),
     sunlight: formatDuration(lightSeconds(1)),
     nearestStar: withUnit(formatNumber(nearestLy, 1, locale), "ly", locale),
-    vyCanisMajoris: withUnit(formatNumber(VY_CANIS_MAJORIS_RADIUS_SOLAR, 0, locale), "solarRadius", locale),
+    vyCanisMajoris: withUnit(formatNumber(largestRadius, 0, locale), "solarRadius", locale),
   };
 }

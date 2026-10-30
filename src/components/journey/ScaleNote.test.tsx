@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, getDefaultNormalizer, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Profiler } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +11,9 @@ import { journeyStore } from "@/lib/journey/store";
 
 /** Texte de la note, en français (hors fournisseur de langue). */
 const NOTE = SCALE_STRINGS.fr.note;
+
+/** Recherche du texte exact : par défaut, l'espace insécable de « réelles : » deviendrait une espace ordinaire. */
+const EXACT = { normalizer: getDefaultNormalizer({ collapseWhitespace: false }) };
 
 beforeEach(() => {
   // La note publie sa hauteur pour les marges de défilement (jsdom n'a pas de ResizeObserver).
@@ -190,7 +193,7 @@ describe("ScaleNote au fil du voyage", () => {
     act(() => journeyStore.update("beyond", "stars", 0.6));
     act(() => journeyStore.update("stars", "beyond", 0.6));
     // Le texte est bien de retour à l'écran, mais la région d'annonce reste muette.
-    expect(screen.getByText(NOTE)).toBeVisible();
+    expect(screen.getByText(NOTE, EXACT)).toBeVisible();
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
@@ -198,10 +201,10 @@ describe("ScaleNote au fil du voyage", () => {
     vi.useFakeTimers();
     render(<ScaleNote />);
     act(() => setRealScale(true));
-    expect(screen.getByRole("status")).toHaveTextContent(NOTE);
+    expect(screen.getByRole("status").textContent).toBe(NOTE);
     act(() => vi.advanceTimersByTime(10_000));
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
-    expect(screen.getByText(NOTE)).toBeVisible();
+    expect(screen.getByText(NOTE, EXACT)).toBeVisible();
   });
 
   it("devrait se dire suspendue aux escales cosmiques tant que les distances réelles restent actives", () => {

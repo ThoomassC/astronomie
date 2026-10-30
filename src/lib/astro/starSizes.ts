@@ -107,3 +107,11 @@ export const COMPARED_STARS: readonly ComparedStar[] = [
     sources: "Wittkowski et al. 2012, Zhang et al. 2012, Choi et al. 2008",
   },
 ];
+
+/**
+ * Étoiles du comparateur, par clé. L'accueil et la page À propos y lisent le rayon de VY Canis Majoris, la plus grande
+ * étoile bien mesurée : une seule valeur pour tout le site.
+ */
+export const COMPARED_STAR_BY_KEY = Object.fromEntries(
+  COMPARED_STARS.map((star) => [star.key, star]),
+) as Readonly<Record<SizeStarKey, ComparedStar>>;

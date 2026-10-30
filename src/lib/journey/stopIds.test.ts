@@ -1,7 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { HERO_ID } from "@/components/journey/ids";
-import { BEYOND } from "@/content/site";
-import { STOPS } from "@/content/stops";
 import { STOP_ORDER } from "@/lib/journey/camera";
 import { STOP_IDS, stopAnchor } from "@/lib/journey/stopIds";
 
@@ -43,31 +40,6 @@ describe("STOP_IDS", () => {
       expect(id).toMatch(/^[a-z-]+$/);
     },
   );
-});
-
-/** Identifiants lus aujourd'hui dans le contenu (src/content), qui disparaîtra en clôture avec ces quatre cas. */
-describe("STOP_IDS, comme le contenu actuel", () => {
-  it.each(STOPS.map((stop) => [stop.key, stop.id] as const))(
-    "devrait reprendre l'ancre de l'escale %s (« %s »)",
-    (key, id) => {
-      expect(STOP_IDS[key]).toBe(id);
-    },
-  );
-
-  it("devrait reprendre l'ancre de l'au-delà", () => {
-    expect(STOP_IDS.beyond).toBe(BEYOND.id);
-  });
-
-  it.each([
-    ["stars", "etoiles-voisines"],
-    ["galaxy", "voie-lactee"],
-  ] as const)("devrait garder l'ancre publiée de l'escale cosmique %s (« %s »)", (key, id) => {
-    expect(STOP_IDS[key]).toBe(id);
-  });
-
-  it("devrait reprendre l'ancre de l'accueil", () => {
-    expect(STOP_IDS.hero).toBe(HERO_ID);
-  });
 });
 
 describe("stopAnchor", () => {

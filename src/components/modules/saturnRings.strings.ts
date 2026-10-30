@@ -18,13 +18,13 @@ export interface SaturnRingsStrings {
 export const SATURN_RINGS_STRINGS: Readonly<Record<Locale, SaturnRingsStrings>> = {
   fr: {
     canvasLabel:
-      "Saturne et l'ouverture de ses anneaux selon l'année, de 2010 à 2050. Les anneaux sont vus par la tranche en 2025, puis en 2039-2040 ; entre ces passages, ils s'ouvrent jusqu'à environ 27°.",
+      "Saturne et l'ouverture de ses anneaux selon l'année, de 2010 à 2050. Les anneaux sont vus par la tranche en 2025, puis en 2039-2040 ; entre ces passages, ils s'ouvrent jusqu'à environ 27°.",
     play: "Faire défiler les années",
     year: "Année",
     edgeOn: "par la tranche",
-    edgeOnReadout: (year) => `${year} : anneaux vus par la tranche, presque invisibles.`,
+    edgeOnReadout: (year) => `${year} : anneaux vus par la tranche, presque invisibles.`,
     openReadout: (year, angle, north) =>
-      `${year} : anneaux ouverts d'environ ${angle}, vus ${north ? "par-dessus (face nord)" : "par-dessous (face sud)"}.`,
+      `${year} : anneaux ouverts d'environ ${angle}, vus ${north ? "par-dessus (face nord)" : "par-dessous (face sud)"}.`,
   },
   en: {
     canvasLabel:

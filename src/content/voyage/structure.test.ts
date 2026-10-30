@@ -59,6 +59,6 @@ describe("nearbyStarsSource", () => {
   it.each(["en", "es"] as const)("devrait citer les mêmes références en %s, sans espace avant « ; »", (locale) => {
     const source = nearbyStarsSource(locale);
     expect(source).not.toMatch(/\s;/);
-    expect(source.split("; ")).toEqual(NEARBY_STARS_SOURCE.split(" ; "));
+    expect(source.split("; ")).toEqual(NEARBY_STARS_SOURCE.split("\u202f; "));
   });
 });

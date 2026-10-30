@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+import type { Locale } from "@/i18n/locales";
 import { pad2 } from "@/lib/format";
 
 const D2R = Math.PI / 180;
@@ -52,9 +52,9 @@ const MINUTES_SUFFIX: Readonly<Record<Locale, string>> = { fr: "", en: " min", e
 
 /**
  * Durée du jour terrestre à partir d'une fraction de 24 h (arrondie à la minute), minutes sur deux chiffres :
- * « 16 h 05 » en français, « 16 h 05 min » en anglais et en espagnol. Langue facultative pendant la migration.
+ * « 16 h 05 » en français, « 16 h 05 min » en anglais et en espagnol.
  */
-export function formatDayLength(fraction: number, locale: Locale = DEFAULT_LOCALE): string {
+export function formatDayLength(fraction: number, locale: Locale): string {
   const minutes = Math.round(Math.min(1, Math.max(0, fraction)) * 1440);
   return `${Math.floor(minutes / 60)} h ${pad2(minutes % 60)}${MINUTES_SUFFIX[locale]}`;
 }

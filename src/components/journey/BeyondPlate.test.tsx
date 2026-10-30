@@ -29,7 +29,7 @@ describe("BeyondPlate", () => {
   it.each([
     [
       "fr",
-      "Neptune : 4 heures 10 ; Pluton : 5 heures 28 ; Kuiper : environ 7 heures ; Voyager 2 : environ 20 heures ; Voyager 1 : environ 24 heures.",
+      "Neptune\u00a0: 4 heures 10\u202f; Pluton\u00a0: 5 heures 28\u202f; Kuiper\u00a0: environ 7 heures\u202f; Voyager 2\u00a0: environ 20 heures\u202f; Voyager 1\u00a0: environ 24 heures.",
     ],
     [
       "en",

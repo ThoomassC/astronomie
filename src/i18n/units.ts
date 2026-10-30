@@ -40,8 +40,9 @@ const GLUED_UNITS: Readonly<Record<Locale, readonly (keyof UnitSymbols)[]>> = {
  * - une espace ordinaire (U+0020) avant l'unité, dans les trois langues : « 1,52 UA », « 1.52 AU », « 764 R☉ » ;
  * - % espacé en français et en espagnol (« 49 % »), collé en anglais (« 49% ») ;
  * - seconde d'arc et degré collés partout : « 24″ », « 46° ».
- * L'espace ordinaire est celle de tous les textes actuels du site et de leurs tests (le français reste inchangé pendant
- * la migration) ; l'espace insécable que recommandent les normes (BIPM, RAE) se posera d'un bloc, sur tout le site.
+ * L'espace ordinaire est celle de tous les textes du site : sa règle typographique (README) pose des espaces
+ * insécables entre les milliers, avant la ponctuation haute et dans les guillemets, pas entre un nombre et son unité.
+ * L'espace insécable que les normes recommandent aussi à cette place (BIPM, RAE) se posera d'un bloc, sur tout le site.
  */
 export function withUnit(value: string, unit: keyof UnitSymbols, locale: Locale): string {
   const space = GLUED_UNITS[locale].includes(unit) ? "" : " ";

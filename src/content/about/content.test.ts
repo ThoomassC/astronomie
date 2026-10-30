@@ -151,10 +151,11 @@ describe("typographie de la page À propos", () => {
     expect(allText(locale)).not.toMatch(/"|\.\.\./);
   });
 
-  it("devrait poser une espace insécable (U+00A0) avant : et ; en français, et dans les guillemets « »", () => {
+  it("devrait poser en français une espace insécable (U+00A0) avant : et dans « », une espace fine (U+202F) avant ; ? !", () => {
     const french = allText("fr");
-    expect(french).toMatch(/\u00a0[:;]/);
-    expect(french).not.toMatch(/[ \u202f][:;?!]/);
+    expect(french).toMatch(/\u00a0:/);
+    expect(french).toMatch(/\u202f;/);
+    expect(french).not.toMatch(/[ \u202f]:|[ \u00a0][;?!]/);
     expect(french).not.toMatch(/[^\s\d][:;?!]/);
     expect(french).not.toMatch(/«(?!\u00a0)|(?<!\u00a0)»/);
   });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEEP_SKY_STRINGS } from "@/components/scene/deepSky.strings";
 import { COSMIC_CONTENT_KEYS, getCosmicContent } from "@/content/cosmic/content";
-import { LOCALES } from "@/i18n/locales";
+import { LOCALES, type Locale } from "@/i18n/locales";
 import { LOCAL_GROUP } from "@/lib/astro/localGroup";
 import { LOCAL_GROUP_MAGNIFICATION } from "@/lib/astro/scale";
 import { spectralClass } from "@/lib/astro/starMap";
@@ -152,7 +152,7 @@ describe("les fiches", () => {
   });
 
   it.each([
-    ["fr", /^Les distances sont à l'échelle, pas les galaxies : elles sont grossies (\d+) fois/],
+    ["fr", /^Les distances sont à l'échelle, pas les galaxies\u00a0: elles sont grossies (\d+) fois/],
     ["en", /^Distances are to scale, galaxies are not: they are enlarged (\d+) times/],
     ["es", /^Las distancias están a escala, las galaxias no: están agrandadas (\d+) veces/],
   ] as const)("devrait dire que les galaxies du Groupe local sont grossies, et de combien (%s)", (locale, pattern) => {
@@ -166,14 +166,11 @@ describe("les tableaux", () => {
     expect(Object.keys(getCosmicContent(locale).starTable.types).sort()).toEqual(["A", "B", "F", "G", "K", "M", "O"]);
   });
 
-  it.each(LOCALES)("devrait traduire la précision de chaque étoile qui en a une dans les données (%s)", (locale) => {
-    const noted = NEARBY_STARS.filter((star) => star.note).map((star) => star.key);
-    expect(Object.keys(getCosmicContent(locale).starTable.notes).sort()).toEqual([...noted].sort());
-  });
-
-  it("devrait reprendre en français les précisions des données, mot pour mot", () => {
-    const { notes } = getCosmicContent("fr").starTable;
-    for (const star of NEARBY_STARS.filter((candidate) => candidate.note)) expect(notes[star.key]).toBe(star.note);
+  it.each(LOCALES)("devrait préciser les mêmes étoiles qu'en français, toutes sur la carte (%s)", (locale) => {
+    const noted = (language: Locale) => Object.keys(getCosmicContent(language).starTable.notes).sort();
+    expect(noted(locale)).toEqual(noted("fr"));
+    expect(noted(locale).length).toBeGreaterThan(0);
+    expect(noted(locale).filter((key) => !NEARBY_STARS.some((star) => star.key === key))).toEqual([]);
   });
 
   it.each(LOCALES)("devrait donner trois colonnes au tableau des galaxies : galaxie, distance, taille (%s)", (locale) => {

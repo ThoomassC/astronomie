@@ -10,40 +10,40 @@ const at = (date: string) => Date.parse(`${date}T00:00:00Z`);
  * Uranus le 21/11/2025 et Neptune le 23/09/2025 : à l'opposition (3,81″ et 2,36″).
  * Vénus le 23/03/2025 : conjonction inférieure, 8,4° du Soleil.
  */
-describe("earthReading", () => {
+describe("earthReading en français", () => {
   it("devrait dire la fraction éclairée, le diamètre et l'élongation sur la première ligne (Vénus, 15/08/2026)", () => {
-    expect(earthReading("venus", at("2026-08-15")).lines[0]).toBe(
+    expect(earthReading("venus", at("2026-08-15"), "fr").lines[0]).toBe(
       "Éclairée à 49 % · 24″ de diamètre · 46° à l'est du Soleil",
     );
   });
 
   it("devrait dire quand regarder sur la seconde ligne, sans instrument pour une planète à l'œil nu (Vénus, 15/08/2026)", () => {
-    expect(earthReading("venus", at("2026-08-15")).lines[1]).toBe("Le soir, à l'ouest après le coucher du Soleil");
+    expect(earthReading("venus", at("2026-08-15"), "fr").lines[1]).toBe("Le soir, à l'ouest après le coucher du Soleil");
   });
 
   it("devrait garder une décimale au diamètre sous 10″ (Uranus, 21/11/2025)", () => {
-    expect(earthReading("uranus", at("2025-11-21")).lines[0]).toContain("· 3,8″ de diamètre ·");
+    expect(earthReading("uranus", at("2025-11-21"), "fr").lines[0]).toContain("· 3,8″ de diamètre ·");
   });
 
   it.each([
     ["uranus", "2025-11-21", "Toute la nuit, aux jumelles"],
     ["neptune", "2025-09-23", "Toute la nuit, au télescope"],
   ] as const)("devrait ajouter l'instrument nécessaire (%s le %s : « %s »)", (planet, date, line) => {
-    expect(earthReading(planet, at(date)).lines[1]).toBe(line);
+    expect(earthReading(planet, at(date), "fr").lines[1]).toBe(line);
   });
 
   it("devrait dire qu'elle est trop près du Soleil, sans instrument (Vénus, 23/03/2025)", () => {
-    expect(earthReading("venus", at("2025-03-23")).lines[1]).toBe("Trop près du Soleil pour être vue");
+    expect(earthReading("venus", at("2025-03-23"), "fr").lines[1]).toBe("Trop près du Soleil pour être vue");
   });
 
   it("devrait écrire les unités en toutes lettres dans la phrase annoncée (secondes d'arc, degrés)", () => {
-    const { spoken } = earthReading("venus", at("2026-08-15"));
+    const { spoken } = earthReading("venus", at("2026-08-15"), "fr");
     expect(spoken).toContain("secondes d'arc");
     expect(spoken).toContain("degrés");
   });
 
   it("ne devrait laisser ni ″ ni ° dans la phrase annoncée", () => {
-    const { spoken } = earthReading("venus", at("2026-08-15"));
+    const { spoken } = earthReading("venus", at("2026-08-15"), "fr");
     expect(spoken).not.toContain("″");
     expect(spoken).not.toContain("°");
   });

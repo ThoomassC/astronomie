@@ -187,7 +187,7 @@ export const EXPLORE_STRINGS: Readonly<Record<Locale, ExploreStrings>> = {
     },
     group: (target) => `Exploration autour ${target}`,
     announce: (target) =>
-      `Exploration autour ${target}. Faites glisser pour tourner, pincez ou utilisez la molette pour changer la distance. Au clavier : flèches pour tourner, plus et moins pour la distance, 0 pour recentrer, Échap pour terminer.`,
+      `Exploration autour ${target}. Faites glisser pour tourner, pincez ou utilisez la molette pour changer la distance. Au clavier : flèches pour tourner, plus et moins pour la distance, 0 pour recentrer, Échap pour terminer.`,
     hint: "Glisser pour tourner · molette pour la distance · Échap pour terminer",
     done: "Terminer",
     rotateLeft: "Tourner vers la gauche",
@@ -212,7 +212,7 @@ export const EXPLORE_STRINGS: Readonly<Record<Locale, ExploreStrings>> = {
         const n = written(figures, "fr");
         const diameter = counted("fr", figures.diameter, n.diameter, ARCSECONDS_FR);
         const elongation = counted("fr", figures.elongation, n.elongation, DEGREES_FR);
-        return `${TITLE_FR} : éclairée à ${n.percent}, ${diameter} de diamètre, ${elongation} ${SIDE_FR[figures.side]} du Soleil. ${whenToLook(figures, WHEN_FR)}.`;
+        return `${TITLE_FR} : éclairée à ${n.percent}, ${diameter} de diamètre, ${elongation} ${SIDE_FR[figures.side]} du Soleil. ${whenToLook(figures, WHEN_FR)}.`;
       },
     },
   },

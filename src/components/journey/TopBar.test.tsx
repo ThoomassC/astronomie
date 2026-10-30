@@ -92,7 +92,7 @@ describe("TopBar", () => {
       screen.getByRole("link", { name: "À propos" }),
       screen.getByRole("button", { name: "Saturne, changer d'escale" }),
       screen.getByRole("button", { name: "Tourner autour de Saturne" }),
-      screen.getByRole("button", { name: "FR, langue : français" }),
+      screen.getByRole("button", { name: "FR, langue\u00a0: français" }),
       screen.getByRole("button", { name: "Menu" }),
     ];
     for (const element of order) {
@@ -105,7 +105,7 @@ describe("TopBar", () => {
     const user = userEvent.setup();
     showStop("saturn");
     render(<TopBar locale="fr" stops={STOPS} />);
-    await user.click(screen.getByRole("button", { name: "FR, langue : français" }));
+    await user.click(screen.getByRole("button", { name: "FR, langue\u00a0: français" }));
     const english = screen.getByRole("link", { name: "English" });
     await user.click(english);
     expect(english).toHaveAttribute("href", "/en/voyage#saturne");

@@ -36,7 +36,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const toggle = () => screen.getByRole("button", { name: "FR, langue : français" });
+const toggle = () => screen.getByRole("button", { name: "FR, langue\u00a0: français" });
 
 /** Ce que chaque lien de la liste annonce : libellé, adresse, langue du libellé, langue de la page visée. */
 function languageLinks(): (string | null)[][] {
@@ -175,7 +175,7 @@ describe("LanguageMenu", () => {
     await user.click(toggle());
     screen.getByRole("navigation", { name: "Langue" }).style.display = "none";
     fireEvent(window, new Event("resize"));
-    expect(screen.getByRole("button", { name: "FR, langue : français", hidden: true })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "FR, langue\u00a0: français", hidden: true })).toHaveAttribute(
       "aria-expanded",
       "false",
     );

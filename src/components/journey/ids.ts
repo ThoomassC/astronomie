@@ -1,5 +1,7 @@
-/** Identifiants partagés entre la page, les liens d'évitement et les composants client. */
-export const HERO_ID = "accueil";
+/**
+ * Identifiants partagés entre la page, les liens d'évitement et les composants client. Les ancres des escales sont
+ * dans `STOP_IDS` (`src/lib/journey/stopIds.ts`).
+ */
 export const MAIN_ID = "contenu";
 export const DOCK_ID = "machine";
 /** Bascule « distances réelles » du dock : reçoit le focus quand on masque la note d'échelle. */

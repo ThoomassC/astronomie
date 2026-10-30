@@ -124,8 +124,10 @@ describe("le tableau des étoiles de la carte", () => {
     renderStops(locale);
     const rows = rowsOf(within(section(STOP_IDS.stars)).getByRole("table"));
     const { notes } = getCosmicContent(locale).starTable;
+    expect(Object.keys(notes).length).toBeGreaterThan(0);
     NEARBY_STARS.forEach((star, i) => {
-      if (star.note) expect(rows[i][2]).toContain(notes[star.key]);
+      const note = notes[star.key];
+      if (note) expect(rows[i][2]).toContain(note);
     });
   });
 });

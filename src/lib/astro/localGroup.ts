@@ -163,10 +163,6 @@ export const LOCAL_GROUP: readonly LocalGroupGalaxy[] = [
   },
 ];
 
-/** Sources des galaxies du Groupe local, citées sous la plaque. */
-export const LOCAL_GROUP_SOURCE =
-  "McConnachie (2012, catalogue 2021) ; Li et al. (2021) ; Breuval et al. (2023) ; Pietrzyński et al. (2019) ; Graczyk et al. (2020) ; NED ; SIMBAD";
-
 const DEG = Math.PI / 180;
 /** Pôle nord céleste, dans les axes de scène : il fixe le nord local sur le ciel (angles de position). */
 const CELESTIAL_NORTH: Readonly<Vec3> = sceneFromEquatorial(0, 90);
