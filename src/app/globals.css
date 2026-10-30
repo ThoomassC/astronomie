@@ -1985,10 +1985,6 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   .rail[data-tips="off"] a span {
     visibility: hidden;
   }
-
-  .where span {
-    display: none;
-  }
 }
 
 /*

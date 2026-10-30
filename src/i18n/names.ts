@@ -5,8 +5,8 @@ import type { Locale } from "./locales";
 export type NamedBody = "sun" | PlanetKey | "moon";
 
 /**
- * Seule source des noms des astres, dans les trois langues (les champs `name` français des données disparaissent
- * en clôture).
+ * Seule source des noms des astres, dans les trois langues : les données (`planets.ts`, `weight.ts`) n'en portent
+ * aucun.
  * fr : Soleil, Mercure, Vénus, Terre, Mars, Jupiter, Saturne, Uranus, Neptune, Lune ;
  * en : Sun, Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune, Moon ;
  * es : Sol, Mercurio, Venus, Tierra, Marte, Júpiter, Saturno, Urano, Neptuno, Luna.

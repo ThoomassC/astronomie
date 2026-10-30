@@ -1,6 +1,7 @@
 import type { Locale } from "@/i18n/locales";
 import { lightSeconds } from "@/lib/astro/light";
 import { PLANET_BY_KEY, SUN } from "@/lib/astro/planets";
+import { COMPARED_STAR_BY_KEY } from "@/lib/astro/starSizes";
 import { NEARBY_STARS } from "@/lib/astro/stars";
 import { formatNumber } from "@/lib/format";
 
@@ -26,10 +27,11 @@ export const KEY_FIGURE_COLORS: Readonly<Record<KeyFigureKey, string>> = {
 };
 
 /**
- * Rayon de VY Canis Majoris, en rayons solaires : 1 420 ± 120 (Wittkowski et al. 2012, VLTI/AMBER, distance par
- * parallaxe de masers). La plus grande des étoiles dont le diamètre est mesuré directement et la distance géométrique.
+ * Rayon de VY Canis Majoris, en rayons solaires, celui de l'onglet Tailles : 1 420 ± 120 (Wittkowski et al. 2012,
+ * VLTI/AMBER, distance par parallaxe de masers). La plus grande des étoiles dont le diamètre est mesuré directement et
+ * la distance géométrique.
  */
-export const LARGEST_STAR_RADIUS_SOLAR = 1420;
+const LARGEST_STAR_RADIUS_SOLAR = COMPARED_STAR_BY_KEY["vy-canis-majoris"].radiusSolar;
 
 /** Diamètre équatorial de la Terre, en km (NASA). */
 const EARTH_DIAMETER_KM = PLANET_BY_KEY.earth.diameterKm;

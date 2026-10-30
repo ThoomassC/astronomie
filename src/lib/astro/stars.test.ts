@@ -30,13 +30,8 @@ describe("NEARBY_STARS", () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it("devrait donner à chaque étoile un nom unique", () => {
-    const names = NEARBY_STARS.map((star) => star.name);
-    expect(new Set(names).size).toBe(names.length);
-  });
-
   it("devrait contenir Sirius, l'étoile la plus brillante du ciel : 8,6 al, magnitude −1,46", () => {
-    const sirius = NEARBY_STARS.find((star) => star.name.includes("Sirius"));
+    const sirius = NEARBY_STARS.find((star) => star.key === "sirius");
     expect(sirius?.distanceLy).toBeGreaterThan(8.5);
     expect(sirius?.distanceLy).toBeLessThan(8.7);
     expect(sirius?.apparentMag).toBeCloseTo(-1.46, 1);
@@ -45,10 +40,6 @@ describe("NEARBY_STARS", () => {
   describe.each(NEARBY_STARS)("étoile $key", (star) => {
     it("devrait avoir une clé ASCII en kebab-case (clé React et des étiquettes)", () => {
       expect(star.key).toMatch(KEBAB_CASE);
-    });
-
-    it("devrait avoir un nom affichable", () => {
-      expect(star.name.trim()).not.toBe("");
     });
 
     it("devrait avoir une ascension droite dans [0°, 360°[", () => {

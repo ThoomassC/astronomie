@@ -21,8 +21,8 @@ function spoken(value: string): string {
 }
 
 /*
- * Textes d'origine du voyage, repris mot pour mot des anciens contenus (`src/content/stops.ts`, `site.ts`), espaces
- * comprises ; `fr.test.ts` le garde jusqu'à la clôture.
+ * Textes du voyage en français, la langue d'origine du site (vouvoiement). L'anglais et l'espagnol en gardent la forme :
+ * mêmes escales, mêmes lignes de fiche, mêmes précisions (content.test.ts).
  */
 export const VOYAGE_FR: VoyageContent = {
   hero: {

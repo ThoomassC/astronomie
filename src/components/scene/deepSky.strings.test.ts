@@ -16,11 +16,17 @@ describe("DEEP_SKY_STRINGS.starNames", () => {
     expect(NEARBY_STARS.filter((star) => !names[star.key]?.trim()).map((star) => star.key)).toEqual([]);
   });
 
-  it("devrait reprendre en français les noms des données, tels qu'affichés aujourd'hui", () => {
-    expect(NEARBY_STARS.map((star) => DEEP_SKY_STRINGS.fr.starNames[star.key])).toEqual(NEARBY_STARS.map((star) => star.name));
+  it.each(LOCALES)("devrait donner un nom différent à chaque étoile de la carte (%s)", (locale) => {
+    const names = NEARBY_STARS.map((star) => DEEP_SKY_STRINGS[locale].starNames[star.key]);
+    expect(new Set(names).size).toBe(NEARBY_STARS.length);
   });
 
   it.each([
+    ["fr", "proxima-centauri", "Proxima du Centaure"],
+    ["fr", "alpha-centauri", "Alpha du Centaure A et B"],
+    ["fr", "barnard", "Étoile de Barnard"],
+    ["fr", "61-cygni", "61 du Cygne"],
+    ["fr", "altair", "Altaïr"],
     ["en", "proxima-centauri", "Proxima Centauri"],
     ["es", "proxima-centauri", "Próxima Centauri"],
     ["en", "alpha-centauri", "Alpha Centauri A and B"],

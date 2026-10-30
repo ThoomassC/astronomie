@@ -4,22 +4,21 @@ import { EARTH_G, type ParseResult } from "@/lib/astro/constants";
 export interface GravityEntry {
   /** Astre, nommé dans chaque langue par `bodyName`. */
   key: NamedBody;
-  name: string;
   /** Gravité de surface (sommet des nuages pour les géantes), en m/s². */
   g: number;
   color: string;
 }
 
 export const SURFACE_GRAVITY: readonly GravityEntry[] = [
-  { key: "mercury", name: "Mercure", g: 3.7, color: "#B5ADA3" },
-  { key: "venus", name: "Vénus", g: 8.87, color: "#E6CB94" },
-  { key: "earth", name: "Terre", g: 9.81, color: "#5B9BE6" },
-  { key: "moon", name: "Lune", g: 1.62, color: "#BDB9B2" },
-  { key: "mars", name: "Mars", g: 3.71, color: "#DA6A43" },
-  { key: "jupiter", name: "Jupiter", g: 24.79, color: "#D8A878" },
-  { key: "saturn", name: "Saturne", g: 10.44, color: "#E2C98F" },
-  { key: "uranus", name: "Uranus", g: 8.87, color: "#9ED9DE" },
-  { key: "neptune", name: "Neptune", g: 11.15, color: "#5878E8" },
+  { key: "mercury", g: 3.7, color: "#B5ADA3" },
+  { key: "venus", g: 8.87, color: "#E6CB94" },
+  { key: "earth", g: 9.81, color: "#5B9BE6" },
+  { key: "moon", g: 1.62, color: "#BDB9B2" },
+  { key: "mars", g: 3.71, color: "#DA6A43" },
+  { key: "jupiter", g: 24.79, color: "#D8A878" },
+  { key: "saturn", g: 10.44, color: "#E2C98F" },
+  { key: "uranus", g: 8.87, color: "#9ED9DE" },
+  { key: "neptune", g: 11.15, color: "#5878E8" },
 ];
 
 export const MASS_MIN_KG = 1;
