@@ -27,9 +27,18 @@ multivers est une hypothèse, jamais observée. Contraintes :
 - **Cadrage en sphère.** Les deux premières escales lointaines restent cadrées comme un disque. Les trois nouvelles le
   sont comme une sphère : `dist = rayon / sin(atan(tan))`, dans la bande libre du téléphone ou la zone libre du grand
   écran, avec les mêmes taux que pour le disque.
-  - Groupe local : la sphère couvre les cinq galaxies principales, soit environ 1 604 kly de rayon, jusqu'au bord du
-    Triangle. Cadrer les treize galaxies porterait ce rayon à 2 563 kly et réduirait chaque galaxie d'un tiers.
+  - Groupe local : la sphère couvre les cinq galaxies principales, grossies, soit environ 1 695 kly de rayon, jusqu'au
+    bord du Triangle. Cadrer les treize galaxies réduirait chaque galaxie d'un tiers.
   - Univers : 46 Gal. Multivers : rayon des bulles (`multiverseRadius`).
+- **Galaxies grossies 4 fois au Groupe local, distances à l'échelle** (`LOCAL_GROUP_MAGNIFICATION`, comme les étoiles
+  voisines, grossies elles aussi). À l'échelle, Andromède n'y faisait que 14 px de rayon sur grand écran et 7 sur
+  téléphone, la Voie lactée 9 et 5 : quelques points épars, aucune forme.
+  - Le grossissement monte de 1 à 4 sur [8,5 ; 9,3], avec l'arrivée du Groupe local (`galaxyMagnification`). À son
+    escale, la Voie lactée garde sa vraie taille.
+  - Chaque galaxie grossit autour de son centre ; la Voie lactée autour du centre galactique, avec le point-Soleil et
+    « Vous êtes ici », qui restent à leur place dans le disque dessiné.
+  - À l'escale : Andromède 53 px de rayon sur grand écran et 27 sur téléphone, la Voie lactée 32 et 17, le Triangle
+    21 et 11. La plaque le dit dans les trois langues (« les galaxies sont grossies 4 fois »).
 - **Deux groupes de plus, chacun dans son unité.** `extragalactic.localGroup` est en kly, à l'échelle
   `unitsPerLightYear(zoom) × 1e3` (positions < 3 100). `extragalactic.universe` est en Gal, à l'échelle × 1e9
   (positions < 450). Comme à l'ADR 0001, l'échelle passe par la matrice du groupe, calculée en float64. La Voie lactée
@@ -50,8 +59,10 @@ multivers est une hypothèse, jamais observée. Contraintes :
   - Au zoom 9,7, le gain de la Voie lactée tomberait à 0,0025 : plus de Voie lactée.
   - Les nuages sont donc tirés dans un ordre aléatoire. La Voie lactée est mélangée par `shufflePointCloud`, avec la
     même graine. Le moteur ne dessine qu'une part de chaque nuage (`setDrawRange`), d'éclat inchangé.
-  - Groupe local : part `(r / 150 px)^1,5`, r étant le rayon apparent d'Andromède. Chaque galaxie dessine au moins
-    12 points.
+  - Groupe local : lumière `(r / 80 px)^1,5`, r étant le rayon apparent d'Andromède grossie. Comme pour la Voie lactée,
+    le gain la porte jusqu'à 0,35, puis la part dessinée prend le relais. Chaque galaxie dessine au moins 12 points.
+    À l'escale, au banc logiciel : lumière 0,53 sur grand écran (tous les points) ; sur téléphone, gain 0,35 et 56 %
+    des points.
   - Toile : même loi, rapportée à 250 px de rayon apparent de l'Univers observable.
   - Voie lactée : le gain suit `(r / 290 px)^1,5` comme avant, jusqu'à 0,25. En dessous, la part dessinée fait le reste
     (`splitLight`), et la lumière totale suit toujours la même loi.
@@ -63,10 +74,24 @@ multivers est une hypothèse, jamais observée. Contraintes :
   - Les programmes du fond diffus et des bulles sont compilés hors du fil principal (`compileAsync`) dès que l'Univers
     est construit.
   - En développement, `checkShaderErrors` écrit dans la console toute erreur de compilation des shaders.
+- **Coquilles retenues dans l'espace libre.** Le fond diffus et les autres bulles ne recouvrent jamais la plaque ni la
+  règle.
+  - Au repos, la sphère de l'Univers occupe 90 % de la largeur de la zone libre du grand écran et 80 % de celle du
+    téléphone, dans sa bande ; toutes les bulles du multivers y tiennent.
+  - En vol, la caméra traverse le fond diffus puis le voit rapetisser jusqu'à sa taille de repos. Sur grand écran, en
+    1440 × 900, entre 70 et 88 % du vol depuis le Groupe local, la coquille débordait de 50 à 2 600 px sur la plaque et
+    la règle.
+  - Chaque coquille est donc pesée par la part qui tient dans l'espace libre (`shellFit`, `fitShells`). Cet espace est
+    la zone entre la plaque et la règle, ou la bande au-dessus de la plaque. La coquille s'efface sur les 24 px de
+    débord qui la séparent de la règle, avec son étiquette. Elle paraît donc à la fin du vol, quand elle tient.
+  - En exploration, la page est masquée : rien n'est retenu.
 - **Règle des distances.** Quatre segments logarithmiques : 0 → 2 % ; UA jusqu'à 50 ; de 50 UA à 1 al, de 86 à 89 % ;
   au-delà, de 89 à 98 % pour 1 à 10¹¹ al. Rupture « ≈ » entre 87 et 88,5 %.
   - Graduations en puissances de dix d'al, majeures à 1 al, 1 Mal et 1 Gal.
   - Le multivers, à l'infini, se place hors échelle à 99,4 %, après la fin de l'axe ; sous son nom, « hypothèse ».
+  - Ses seize repères gardent au moins 24 px entre leurs centres (WCAG 2.5.8) : il faut 360 px de règle, donc une vue
+    d'au moins 546 px de haut (66vh). En dessous, et à 860 px de large ou moins, la liste des escales de la barre
+    remplace la règle. Sur un écran bas (480 px et moins), la barre suit la page : la liste s'ouvre en haut de page.
 - **Le multivers est une hypothèse, et la page le dit :**
   - l'avertissement ouvre sa plaque, avant le rang et le titre ;
   - « hypothèse » sur la règle ;
@@ -85,6 +110,13 @@ multivers est une hypothèse, jamais observée. Contraintes :
 - **Deux scènes ou deux passes de rendu** : double coût GPU et fondus à synchroniser (déjà écarté à l'ADR 0001).
 - **Cadrer les treize galaxies du Groupe local** : WLM, à 3 Mal, éloigne la caméra. Toutes les galaxies rapetissent
   d'un tiers, et les naines tombent à un ou deux pixels.
+- **Galaxies à leur vraie taille au Groupe local** (premier câblage) : quelques points épars, aucune forme lisible,
+  Voie lactée comprise. Grossir davantage que 4 fois rapprocherait le disque de la Voie lactée du Grand Nuage de
+  Magellan (à 160 000 al de son centre), déjà voisins à l'écran.
+- **Cadrer l'Univers de plus loin** pour qu'il tienne aussi en vol : au repos, il deviendrait petit pour rien. Le
+  débord n'a lieu qu'à la fin du vol, quand la caméra sort de la coquille.
+- **Garder la règle sur un écran bas en serrant ses repères** : à 390 px de haut, ils n'auraient que 14,5 px entre eux,
+  pour des liens de 29 px. Ils se chevaucheraient.
 - **Une carte réelle du fond diffus** (Planck) : lourde et peu lisible à cette taille. Un motif procédural dit la même
   chose : une peau presque uniforme, aux contrastes infimes.
 
@@ -104,8 +136,13 @@ multivers est une hypothèse, jamais observée. Contraintes :
   remonte les repères au-dessus, reliés à leur vraie place par un trait fin :
   - règle de 560 px : Neptune remonte de 33 px ;
   - règle de 475 px : Neptune remonte de 52 px ;
-  - sous 430 px, la poussée atteint Vénus ;
-  - plus courte encore (paysage sur téléphone), l'écart entre repères se réduit pour tout y faire tenir.
+  - sous 430 px, la poussée atteint Vénus.
+- Entre 24 et 33 px d'écart (règle de 360 à 495 px), les liens d'un repère, hauts de 33 px sur grand écran, se
+  recouvrent encore de quelques pixels. Chacun garde au moins 24 px à lui.
+- La règle cède sa place à la liste des escales à 546 px de haut et moins. Cela vaut aussi pour la page Tailles, qui
+  partage la règle et la requête.
+- Au Groupe local, le grossissement passe dans l'image et dans les étiquettes : le point-Soleil s'écarte du centre de la
+  Voie lactée avec son disque, de 81 000 al au plus, invisible à l'échelle des Gal.
 - Toute nouvelle couche au-delà de la Voie lactée doit entrer dans l'un des deux groupes, être pesée par
   `weighExtragalactic` et, si c'est un nuage de points additif, régler son détail par la part dessinée.
 - Le rendu WebGL réel (shaders, fondus, lisibilité des étiquettes, tenue sur téléphone) se vérifie dans le

@@ -98,7 +98,8 @@ export const LOCAL_GROUP_MIN_POINTS = 30;
  * Rayon apparent d'Andromède grossie (px CSS) à partir duquel le Groupe local brille à plein éclat, tous ses points
  * dessinés. En dessous, sa lumière suit (rayon / 80 px)^1,5 : portée par le gain jusqu'à LOCAL_GROUP_MIN_GAIN, puis
  * par la part des points dessinés (splitLight). À l'escale, Andromède grossie fait 53 px de rayon sur grand écran
- * (lumière 0,54, tous les points) et 27 sur téléphone (gain 0,35, 57 % des points) : cœurs lumineux sans tache blanche.
+ * (lumière 0,53, tous les points) et 27 sur téléphone (gain 0,35, 56 % des points) : cœur lumineux, disque et bras
+ * visibles (banc logiciel).
  */
 export const LOCAL_GROUP_FULL_LIGHT_PX = 80;
 /** Gain le plus bas des galaxies du Groupe local : au-dessus du demi-niveau qu'efface le tampon 8 bits. */
