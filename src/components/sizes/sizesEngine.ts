@@ -7,11 +7,12 @@ import {
   SRGBColorSpace,
   Scene,
   Vector3,
-  WebGLRenderer,
   type Material,
   type Object3D,
+  type WebGLRenderer,
 } from "three";
 import { anchoredBox, markerLayouts, placeMarkedLabel, pointBox, type LabelBox, type MarkerLayout } from "@/components/scene/labels";
+import { createRenderer, releaseRenderer } from "@/components/scene/renderer";
 import { COMPACT_LAYOUT_QUERY, createScreenLayout, type ScreenLayoutElements } from "@/components/scene/screenLayout";
 import { julianDate } from "@/lib/astro/ephemeris";
 import { solarActivity, sunspotLatitude } from "@/lib/astro/solarCycle";
@@ -194,20 +195,15 @@ const emptyCam = (): SizesCam => ({ tx: 0, dist: 1, offX: 0, offY: 0 });
  * taille vraie, côte à côte (placeStars), une caméra qui suit le défilement (sizesStore), leurs étiquettes et
  * l'échelle graphique. Elle ne rend une image que si quelque chose bouge (vol, mise en page, taille de la vue) ;
  * la surface des étoiles n'avance que pendant un vol, et jamais en mouvement réduit. Renvoie `null` sans WebGL 2 ou en
- * rendu logiciel : la page passe alors au repli sans scène.
+ * rendu logiciel : la page passe alors au repli sans scène (createRenderer).
  */
 export function createSizesScene(options: SizesSceneOptions): SizesScene | null {
-  let renderer: WebGLRenderer;
-  try {
-    // Un rendu logiciel serait trop lent : le repli vaut mieux.
-    renderer = new WebGLRenderer({ canvas: options.canvas, antialias: true, failIfMajorPerformanceCaveat: true });
-  } catch {
-    return null;
-  }
+  const renderer = createRenderer(options.canvas);
+  if (!renderer) return null;
   try {
     return setupScene(renderer, options);
   } catch (error) {
-    renderer.dispose();
+    releaseRenderer(renderer);
     throw error;
   }
 }
@@ -556,7 +552,7 @@ function setupScene(
       for (const slot of allSlots) slot.element.style.visibility = "hidden";
       scaleBar?.root.removeAttribute("data-visible");
       scene.traverse(disposeObject);
-      renderer.dispose();
+      releaseRenderer(renderer);
     },
   };
 }

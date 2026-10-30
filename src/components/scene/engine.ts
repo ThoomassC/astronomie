@@ -15,9 +15,9 @@ import {
   Texture,
   Vector2,
   Vector3,
-  WebGLRenderer,
   type Material,
   type Object3D,
+  type WebGLRenderer,
 } from "three";
 import { J2000_JD } from "@/lib/astro/constants";
 import { isEarthViewTarget, viewFromEarth } from "@/lib/astro/earthView";
@@ -119,6 +119,7 @@ import {
 import { SOLAR_HIDDEN_ZOOM, galaxyMagnification, layerWeights } from "./layers";
 import { createPlaceholderTexture, type SurfaceUniforms, type Uniform } from "./materials";
 import { DEG, TAU, clamp, easeFactor, lerp, smoothstep } from "./math";
+import { createRenderer, releaseRenderer } from "./renderer";
 import { createScreenLayout } from "./screenLayout";
 import { createTextureStream } from "./textureLoader";
 import { pickTextureTier, textureLoadOrder, type TextureKey } from "./textureSet";
@@ -416,20 +417,15 @@ const surfaceSlot = (surface: SurfaceUniforms, sharp = true): TextureSlot => ({
 
 /**
  * Scène 3D du système solaire, portée de la maquette (Three r128) vers Three 0.186.
- * Renvoie `null` sans WebGL 2 ou en rendu logiciel : la page passe alors au repli CSS.
+ * Renvoie `null` sans WebGL 2 ou en rendu logiciel : la page passe alors au repli CSS (createRenderer).
  */
 export function createSolarScene(options: SolarSceneOptions): SolarScene | null {
-  let renderer: WebGLRenderer;
-  try {
-    // Un rendu logiciel serait trop lent : le repli CSS vaut mieux.
-    renderer = new WebGLRenderer({ canvas: options.canvas, antialias: true, failIfMajorPerformanceCaveat: true });
-  } catch {
-    return null;
-  }
+  const renderer = createRenderer(options.canvas);
+  if (!renderer) return null;
   try {
     return setupScene(renderer, options);
   } catch (error) {
-    renderer.dispose();
+    releaseRenderer(renderer);
     throw error;
   }
 }
@@ -1507,7 +1503,7 @@ function setupScene(
       textures.dispose();
       scene.traverse(disposeObject);
       placeholder.dispose();
-      renderer.dispose();
+      releaseRenderer(renderer);
     },
   };
 }
