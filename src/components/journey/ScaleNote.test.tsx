@@ -5,8 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DOCK_SCALE_TOGGLE_ID } from "@/components/journey/ids";
 import { ScaleNote } from "@/components/journey/ScaleNote";
 import { setRealScale } from "@/components/journey/realScale";
-import { SCALE_TOGGLE } from "@/content/site";
+import { SCALE_STRINGS } from "@/components/journey/scale.strings";
+import { renderIn } from "@/components/modules/testUtils";
 import { journeyStore } from "@/lib/journey/store";
+
+/** Texte de la note, en français (hors fournisseur de langue). */
+const NOTE = SCALE_STRINGS.fr.note;
 
 beforeEach(() => {
   // La note publie sa hauteur pour les marges de défilement (jsdom n'a pas de ResizeObserver).
@@ -102,6 +106,30 @@ describe("ScaleNote", () => {
   });
 });
 
+describe("ScaleNote en anglais et en espagnol", () => {
+  it.each([
+    {
+      locale: "en",
+      note: "Real distances: each planet would be smaller than a pixel, so a circle shows where it is. Earth is 1 AU from the Sun and Neptune is 30.",
+      more: "Read the whole note",
+      hide: "Hide note",
+    },
+    {
+      locale: "es",
+      note: "Distancias reales: cada planeta sería más pequeño que un píxel, así que un círculo indica dónde está. La Tierra está a 1 UA del Sol; Neptuno, a 30.",
+      more: "Leer toda la nota",
+      hide: "Ocultar la nota",
+    },
+  ] as const)("devrait écrire la note, ses boutons et son annonce dans la langue de la page ($locale)", (t) => {
+    const { container } = renderIn(t.locale, <ScaleNote />);
+    act(() => setRealScale(true));
+    expect(container.querySelector(".scale-note > p")).toHaveTextContent(t.note);
+    expect(screen.getByRole("status")).toHaveTextContent(t.note);
+    expect(screen.getByRole("button", { name: t.more })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: t.hide })).toBeInTheDocument();
+  });
+});
+
 describe("ScaleNote aux escales cosmiques", () => {
   afterEach(() => {
     act(() => journeyStore.update("hero", "hero", 0));
@@ -162,7 +190,7 @@ describe("ScaleNote au fil du voyage", () => {
     act(() => journeyStore.update("beyond", "stars", 0.6));
     act(() => journeyStore.update("stars", "beyond", 0.6));
     // Le texte est bien de retour à l'écran, mais la région d'annonce reste muette.
-    expect(screen.getByText(SCALE_TOGGLE.note)).toBeVisible();
+    expect(screen.getByText(NOTE)).toBeVisible();
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
@@ -170,10 +198,10 @@ describe("ScaleNote au fil du voyage", () => {
     vi.useFakeTimers();
     render(<ScaleNote />);
     act(() => setRealScale(true));
-    expect(screen.getByRole("status")).toHaveTextContent(SCALE_TOGGLE.note);
+    expect(screen.getByRole("status")).toHaveTextContent(NOTE);
     act(() => vi.advanceTimersByTime(10_000));
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
-    expect(screen.getByText(SCALE_TOGGLE.note)).toBeVisible();
+    expect(screen.getByText(NOTE)).toBeVisible();
   });
 
   it("devrait se dire suspendue aux escales cosmiques tant que les distances réelles restent actives", () => {

@@ -1,7 +1,8 @@
 "use client";
 
-import { SCALE_TOGGLE } from "@/content/site";
+import { useLocale } from "@/i18n/LocaleProvider";
 import { toggleRealScale, useRealScale } from "./realScale";
+import { SCALE_STRINGS } from "./scale.strings";
 
 /** Case dessinée, cochée quand la bascule est active : l'état ne repose pas que sur la couleur. */
 export function CheckIcon({ checked }: { checked: boolean }) {
@@ -28,10 +29,11 @@ export function CheckIcon({ checked }: { checked: boolean }) {
  */
 export function ScaleToggle({ className }: { className: string }) {
   const real = useRealScale();
+  const t = SCALE_STRINGS[useLocale()];
   return (
     <button className={className} type="button" aria-pressed={real} onClick={toggleRealScale}>
       <CheckIcon checked={real} />
-      {SCALE_TOGGLE.off}
+      {t.show}
     </button>
   );
 }

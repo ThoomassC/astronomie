@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { SCALE_TOGGLE } from "@/content/site";
+import { useLocale } from "@/i18n/LocaleProvider";
 import { isCosmicStop } from "@/lib/journey/camera";
 import { journeyStore } from "@/lib/journey/store";
 import { DOCK_SCALE_TOGGLE_ID } from "./ids";
 import { dismissScaleNote, useScaleNote } from "./realScale";
+import { SCALE_STRINGS } from "./scale.strings";
 
 /** L'annonce est ensuite retirée, pour ne pas doubler la note visible en lecture linéaire (comme `useAnnouncer`). */
 const ANNOUNCE_CLEAR_MS = 7000;
@@ -20,6 +21,7 @@ const ANNOUNCE_CLEAR_MS = 7000;
  */
 export function ScaleNote() {
   const { visible, suspended } = useScaleNote();
+  const t = SCALE_STRINGS[useLocale()];
   const noteRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [shown, setShown] = useState({ visible, suspended });
@@ -107,7 +109,7 @@ export function ScaleNote() {
         if (visible && !(event.target as Element).closest("button")) setExpanded((value) => !value);
       }}
     >
-      <p id={textId}>{visible ? SCALE_TOGGLE.note : null}</p>
+      <p id={textId}>{visible ? t.note : null}</p>
       {visible ? (
         <>
           <button
@@ -117,7 +119,7 @@ export function ScaleNote() {
             aria-controls={textId}
             onClick={() => setExpanded((value) => !value)}
           >
-            <span className="sr">Lire toute la note</span>
+            <span className="sr">{t.readNote}</span>
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
               <path
                 d="M2.5 4.5 6 8l3.5-3.5"
@@ -130,7 +132,7 @@ export function ScaleNote() {
             </svg>
           </button>
           <button type="button" className="note-hide" onClick={() => hide(true)}>
-            <span className="note-hide-label">Masquer la note</span>
+            <span className="note-hide-label">{t.hideNote}</span>
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
               <path d="m3 3 6 6M9 3 3 9" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
@@ -138,7 +140,7 @@ export function ScaleNote() {
         </>
       ) : null}
       <div className="sr" role="status">
-        {announced ? SCALE_TOGGLE.note : null}
+        {announced ? t.note : null}
       </div>
     </div>
   );
