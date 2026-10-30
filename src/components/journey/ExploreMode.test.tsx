@@ -292,7 +292,7 @@ describe("ExploreMode", () => {
       settle();
       fireEvent.click(toggle());
       settle();
-      expect(screen.getByRole("status")).toHaveTextContent(earthReading("saturn", NOW).spoken);
+      expect(screen.getByRole("status")).toHaveTextContent(earthReading("saturn", NOW, "fr").spoken);
     });
 
     it("devrait relâcher la bascule quand on fait tourner l'astre", async () => {

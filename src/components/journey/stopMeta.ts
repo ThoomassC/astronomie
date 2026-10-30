@@ -20,10 +20,9 @@ function isNonBodyStop(key: StopKey): key is NonBodyStopKey {
 
 /**
  * Nom affiché d'une escale (barre haute, règle des distances, menu des escales, exploration), dans la langue :
- * « Vue d'ensemble », « Overview », « Vista general » ; le Soleil et les planètes par `bodyName`. Français par
- * défaut pendant la migration (langue obligatoire en clôture).
+ * « Vue d'ensemble », « Overview », « Vista general » ; le Soleil et les planètes par `bodyName`.
  */
-export function stopName(key: StopKey, locale: Locale = DEFAULT_LOCALE): string {
+export function stopName(key: StopKey, locale: Locale): string {
   return isNonBodyStop(key) ? JOURNEY_STRINGS[locale].stopNames[key] : bodyName(key, locale);
 }
 
@@ -54,14 +53,14 @@ export function stopColor(key: StopKey): string {
 }
 
 /**
- * Distance au Soleil affichée sous le nom d'un repère de la règle, dans la langue (français par défaut pendant la
- * migration). En UA dans le système solaire : « 1,52 UA », « 1.52 AU » ; une distance entière sans décimales, comme
+ * Distance au Soleil affichée sous le nom d'un repère de la règle, dans la langue. En UA dans le système solaire :
+ * « 1,52 UA », « 1.52 AU » ; une distance entière sans décimales, comme
  * dans la fiche (« 1 UA ») ; deux décimales sous 10 UA, une au-delà. En années-lumière au-delà : « dès 4,2 al »
  * (l'étoile la plus proche), « centre à 27 000 al » ; en toutes lettres au-delà du million, à deux chiffres
  * significatifs : « Andromède à 2,5 millions d'al », « rayon de 46 milliards d'al ». Le multivers, à l'infini :
  * « hypothèse ». Le Soleil (distance nulle) : « le centre ».
  */
-export function railDistanceLabel(key: StopKey, au: number, locale: Locale = DEFAULT_LOCALE): string {
+export function railDistanceLabel(key: StopKey, au: number, locale: Locale): string {
   const t = JOURNEY_STRINGS[locale].distance;
   const inAu = (value: number, digits: number) => withUnit(formatNumber(value, digits, locale), "au", locale);
   const inLy = (value: number, digits: number) =>
