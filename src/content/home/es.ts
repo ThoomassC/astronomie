@@ -21,7 +21,7 @@ export const HOME_ES: HomeContent = {
       },
       about: {
         title: "Acerca de",
-        text: "Por qué existe este sitio, de dónde vienen los datos, qué simplifican las imágenes y cómo usarlo con teclado o lector de pantalla.",
+        text: "Por qué existe este sitio y de dónde salen sus cifras: las fuentes, de las agencias espaciales a los artículos científicos.",
         action: "Saber más",
       },
     },

@@ -21,7 +21,7 @@ export const HOME_FR: HomeContent = {
       },
       about: {
         title: "À propos",
-        text: "Pourquoi ce site, d'où viennent les données, ce que les images simplifient, et comment l'utiliser au clavier ou avec un lecteur d'écran.",
+        text: "Pourquoi ce site, et d'où viennent ses chiffres : les sources, des agences spatiales aux articles scientifiques.",
         action: "En savoir plus",
       },
     },

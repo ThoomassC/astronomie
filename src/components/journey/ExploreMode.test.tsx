@@ -179,6 +179,15 @@ describe("ExploreMode", () => {
   });
 
   describe("clavier", () => {
+    it("devrait rappeler les flèches à côté des gestes, sur la barre d'exploration", () => {
+      renderPage();
+      enter("saturn");
+      const group = screen.getByRole("group", { name: SATURN_GROUP });
+      expect(
+        within(group).getByText("Glisser ou flèches pour tourner · molette pour la distance · Échap pour terminer"),
+      ).toBeInTheDocument();
+    });
+
     it.each([
       ["{ArrowLeft}", TURN_LEFT],
       ["{Home}", RECENTER],
@@ -456,7 +465,7 @@ describe("ExploreMode en anglais et en espagnol", () => {
       announce:
         "Orbiting Saturn. Drag to turn, pinch or use the scroll wheel to change the distance. With the keyboard: arrow keys to turn, plus and minus for distance, 0 to recentre, Escape to finish.",
       where: "Saturn",
-      hint: "Drag to turn · scroll for distance · Esc to finish",
+      hint: "Drag or arrow keys to turn · scroll for distance · Esc to finish",
       fromEarth: "Seen from Earth",
       done: "Done",
       pad: ["Turn left", "Tilt up", "Tilt down", "Turn right", "Move away", "Move closer", "Recentre"],
@@ -470,7 +479,7 @@ describe("ExploreMode en anglais et en espagnol", () => {
       announce:
         "Girando alrededor de Saturno. Arrastra para girar, pellizca o usa la rueda del ratón para cambiar la distancia. Con el teclado: flechas para girar, más y menos para la distancia, 0 para volver a centrar, Escape para terminar.",
       where: "Saturno",
-      hint: "Arrastra para girar · rueda para la distancia · Esc para terminar",
+      hint: "Arrastra o usa las flechas para girar · rueda para la distancia · Esc para terminar",
       fromEarth: "Visto desde la Tierra",
       done: "Terminar",
       pad: [

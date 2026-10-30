@@ -1703,13 +1703,18 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   border-radius: 50%;
 }
 
+/*
+ * Rappel des gestes : le seul élément de la barre qui cède la place. Sur une ligne quand il tient, sinon sur deux
+ * lignes équilibrées, à la hauteur des boutons : la barre ne déborde jamais de l'écran et ses boutons restent entiers.
+ */
 .explore-hint {
   margin: 0 0.4rem 0 0;
   padding-left: 0.8rem;
   border-left: 1px solid var(--filet);
   font-size: 0.8125rem;
+  line-height: 1.35;
   color: var(--brume);
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .explore-bar button {

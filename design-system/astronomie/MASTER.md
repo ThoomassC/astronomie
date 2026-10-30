@@ -165,7 +165,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 - **Exploration** : la page (barre, règle, plaques, pied de page, note d'échelle) s'efface en 0,6 s et devient
   inerte pendant que la caméra glisse vers la vue d'exploration ; tout est instantané en mouvement réduit. La page
   ne défile plus ; la scène et le dock restent. En haut, une barre en capsule, comme le dock : pastille et nom de
-  l'escale, rappel des gestes sur grand écran au pointeur précis (0,8125 rem, `--brume`, séparé par un filet),
+  l'escale, rappel des gestes et des flèches sur grand écran au pointeur précis (0,8125 rem, `--brume`, séparé par
+  un filet ; sur deux lignes équilibrées quand la barre ne le tient pas d'une traite),
   bascule « Vu depuis la Terre » pour les sept planètes autres que la Terre (case dessinée, fond `--soleil` quand
   elle est enfoncée), puis « Terminer » ; boutons de 44 px. Sur téléphone, le nom de la planète cède sa place à la
   bascule. En bas, au-dessus du dock, le pavé en capsule : sept boutons ronds de 44 px (tourner vers la gauche, le
