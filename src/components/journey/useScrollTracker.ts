@@ -27,8 +27,9 @@ const SCROLL_SMOOTHING_RATE = 5;
 
 /**
  * Suit le défilement d'une page à escales (voyage, Tailles) et publie le vol en cours dans `store`. Aucun rendu.
- * - Mesure les `[data-stop]` de la page : au montage, 120 ms après un redimensionnement, quand <main> change de
- *   hauteur (ResizeObserver), une fois les polices chargées.
+ * - Mesure les `[data-stop]` de la page : au montage, 120 ms après un redimensionnement, quand son <main> change de
+ *   hauteur (ResizeObserver), une fois les polices chargées. Seulement la page affichée : Next garde dans le DOM,
+ *   masquées, des pages quittées, chacune avec son <main>.
  * - Lisse la position à chaque image (taux 5/s) ; saute directement à la position après un défilement immédiat
  *   (`takeSkipSmoothing`) ou en mouvement réduit ; se pose dessus à moins de 0,5 px.
  * - Écrit l'avancement du repos (`--rest`, de 0 à 1, au millième) sur la plaque de l'escale (`[data-stop] > .plate`) :
@@ -36,7 +37,8 @@ const SCROLL_SMOOTHING_RATE = 5;
  * - Ne publie que si (from, to, t) change : la scène compare ces valeurs pour sauter les images inutiles. Une section
  *   dont `isKey` refuse la clé n'est pas publiée.
  * - Au démontage, rend le parcours à son état initial (`store.reset()`) et oublie les plages mesurées : la page
- *   suivante repart du haut.
+ *   suivante repart du haut. De même quand la page est masquée (<Activity>) ; à son retour, le lissage repart de la
+ *   position du défilement, que Next a remis en haut : la caméra ne balaie pas les escales depuis celle d'avant.
  * `store` et `isKey` sont stables (définis au niveau du module) : en changer remesure tout et remet le parcours au
  * départ.
  */
@@ -50,6 +52,8 @@ export function useScrollTracker<K extends string>(
   const plates = useRef(new Map<K, PlateRest>());
 
   useEffect(() => {
+    // Ref gardé quand la page est masquée puis affichée de nouveau : le premier relevé prend le défilement tel quel.
+    smoothedY.current = null;
     for (const element of shownElements("[data-stop] > .plate")) {
       const key = element.parentElement?.dataset.stop;
       if (isKey(key)) plates.current.set(key, { element, rest: -1 });
@@ -62,7 +66,7 @@ export function useScrollTracker<K extends string>(
     };
     window.addEventListener("resize", onResize);
     const observer = new ResizeObserver(() => measureSections());
-    const main = document.querySelector("main");
+    const [main] = shownElements("main");
     if (main) observer.observe(main);
     let active = true;
     void document.fonts?.ready.then(() => {
