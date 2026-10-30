@@ -181,6 +181,9 @@ export const EXPLORE_STRINGS: Readonly<Record<Locale, ExploreStrings>> = {
       beyond: "du système solaire",
       stars: "des étoiles voisines",
       galaxy: "de la Voie lactée",
+      localGroup: "du Groupe local",
+      universe: "de l'Univers observable",
+      multiverse: "du multivers",
     },
     group: (target) => `Exploration autour ${target}`,
     announce: (target) =>
@@ -221,6 +224,9 @@ export const EXPLORE_STRINGS: Readonly<Record<Locale, ExploreStrings>> = {
       beyond: "the Solar System",
       stars: "the nearby stars",
       galaxy: "the Milky Way",
+      localGroup: "the Local Group",
+      universe: "the observable Universe",
+      multiverse: "the multiverse",
     },
     group: (target) => `Orbiting ${target}`,
     announce: (target) =>
@@ -261,6 +267,9 @@ export const EXPLORE_STRINGS: Readonly<Record<Locale, ExploreStrings>> = {
       beyond: "del sistema solar",
       stars: "de las estrellas vecinas",
       galaxy: "de la Vía Láctea",
+      localGroup: "del Grupo Local",
+      universe: "del Universo observable",
+      multiverse: "del multiverso",
     },
     group: (target) => `Girando alrededor ${target}`,
     announce: (target) =>

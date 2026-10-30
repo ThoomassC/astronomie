@@ -1,7 +1,7 @@
 import type { Vec3 } from "@/lib/astro/constants";
 import { SUN, type PlanetKey } from "@/lib/astro/planets";
 import { REAL_SCALE_PLANET_SHRINK, REAL_SCALE_SUN_SHRINK, zoomScale } from "@/lib/astro/scale";
-import { angleDiff, RING_EXTENT, type CamState, type StopKey } from "@/lib/journey/camera";
+import { angleDiff, isCosmicStop, RING_EXTENT, type CamState, type StopKey } from "@/lib/journey/camera";
 import type { ScreenBand } from "@/lib/journey/screen";
 
 /*
@@ -59,8 +59,11 @@ export const ORBIT_MIN_RADII = 1.8;
 export const RING_CLEARANCE = 1.15;
 /** Distance minimale absolue (8 × le plan proche de 0,05) : en échelle réelle, la planète ne fait plus qu'un point. */
 export const ORBIT_MIN_DISTANCE = 0.4;
-/** Approche minimale relative aux escales sans astre cadré (étoiles voisines, Voie lactée). */
-export const ORBIT_MIN_RATIO = { stars: 0.25, galaxy: 0.4 } as const;
+/**
+ * Approche minimale relative aux escales lointaines, sans astre cadré : un quart de la base aux étoiles voisines,
+ * 0,4 ailleurs (Voie lactée, Groupe local, Univers observable, multivers).
+ */
+export const ORBIT_MIN_RATIO = { stars: 0.25, galaxy: 0.4, localGroup: 0.4, universe: 0.4, multiverse: 0.4 } as const;
 /** Distance minimale caméra–centre du Soleil, en rayons solaires affichés (le moteur la garde aussi en vol). */
 export const SUN_CLEARANCE = 2.5;
 /** Pas du clavier et du pavé, de côté (azimut). */
@@ -78,11 +81,12 @@ const WHEEL_ZOOM_MAX = 0.5;
 /** Pixels par ligne quand la molette compte en lignes (deltaMode 1, Firefox). */
 const WHEEL_LINE_PX = 16;
 /**
- * Cadre des escales lointaines (étoiles voisines, Voie lactée) pendant l'exploration, au sens d'une bande libre de
- * `cameraFor` (fractions de la hauteur de la vue) : le contenu est masqué, le disque cadré remplit tout l'écran, à 8 %
- * près en haut et en bas (barre d'exploration, pavé et dock). Symétrique, comme la caméra d'exploration qui vise le
- * centre de l'écran. Sans lui, la base serait la distance sans mise en page (640, 1 120 en portrait) : la caméra
- * reculerait à l'entrée, jusqu'à 60 % sur téléphone. Les astres, l'accueil et l'au-delà gardent leur base sans cadre.
+ * Cadre des escales lointaines (des étoiles voisines au multivers) pendant l'exploration, au sens d'une bande libre
+ * de `cameraFor` (fractions de la hauteur de la vue) : le contenu est masqué, le cadre (disque ou sphère) remplit tout
+ * l'écran, à 8 % près en haut et en bas (barre d'exploration, pavé et dock). Symétrique, comme la caméra
+ * d'exploration qui vise le centre de l'écran. Sans lui, la base serait la distance sans mise en page (640, 1 120 en
+ * portrait) : la caméra reculerait à l'entrée, jusqu'à 60 % sur téléphone. Les astres, l'accueil et l'au-delà gardent
+ * leur base sans cadre.
  */
 export const EXPLORE_COSMIC_BAND: Readonly<ScreenBand> = { top: 0.08, bottom: 0.92 };
 /** Vitesse à laquelle la vue affichée rejoint la vue demandée, par seconde. */
@@ -124,11 +128,11 @@ export function orbitFromCamera(base: CamState, out: OrbitView = emptyView()): O
  * - planète : max(ORBIT_MIN_RADII × rayon affiché, RING_CLEARANCE × RING_EXTENT × rayon affiché, ORBIT_MIN_DISTANCE),
  *   rayon affiché = planetRadius × lerp(1, REAL_SCALE_PLANET_SHRINK, realScale) ;
  * - sun, hero, beyond : max(sunClearance(realScale, base.zoom), ORBIT_MIN_DISTANCE) ;
- * - stars, galaxy : ORBIT_MIN_RATIO × base.dist.
+ * - escales lointaines (des étoiles voisines au multivers) : ORBIT_MIN_RATIO × base.dist.
  */
 export function orbitLimits(stop: ExploreStop, base: CamState, ctx: OrbitContext): OrbitLimits {
   let minDistance: number;
-  if (stop === "stars" || stop === "galaxy") {
+  if (isCosmicStop(stop)) {
     minDistance = ORBIT_MIN_RATIO[stop] * base.dist;
   } else if (stop === "sun" || stop === "hero" || stop === "beyond") {
     minDistance = Math.max(sunClearance(ctx.realScale, base.zoom), ORBIT_MIN_DISTANCE);

@@ -26,6 +26,12 @@ export interface JourneyStrings {
     from(distance: string): string;
     /** Voie lactée, par la distance de son centre : « centre à 27 000 al ». */
     centreAt(distance: string): string;
+    /** Groupe local, par la distance d'Andromède : « Andromède à 2,5 millions d'al ». */
+    andromedaAt(distance: string): string;
+    /** Univers observable, par son rayon : « rayon de 46 milliards d'al ». */
+    radius(distance: string): string;
+    /** Multivers, à l'infini : une hypothèse, pas une distance. */
+    hypothesis: string;
   };
   /**
    * Menu des escales : nom du `<nav>`, texte du bouton à la vue d'ensemble, et complément lu après le bouton (sans
@@ -54,6 +60,9 @@ export const JOURNEY_STRINGS: Readonly<Record<Locale, JourneyStrings>> = {
       beyond: "Au-delà",
       stars: "Étoiles voisines",
       galaxy: "Voie lactée",
+      localGroup: "Groupe local",
+      universe: "Univers observable",
+      multiverse: "Multivers",
     },
     distance: {
       centre: "le centre",
@@ -61,6 +70,9 @@ export const JOURNEY_STRINGS: Readonly<Record<Locale, JourneyStrings>> = {
       beyond: (distance) => `plus de ${distance}`,
       from: (distance) => `dès ${distance}`,
       centreAt: (distance) => `centre à ${distance}`,
+      andromedaAt: (distance) => `Andromède à ${distance}`,
+      radius: (distance) => `rayon de ${distance}`,
+      hypothesis: "hypothèse",
     },
     stopsMenu: { nav: "Escales", home: "Escales", choose: "choisir une escale", change: "changer d'escale" },
     railLabel: "Escales, du Soleil vers l'extérieur",
@@ -78,6 +90,9 @@ export const JOURNEY_STRINGS: Readonly<Record<Locale, JourneyStrings>> = {
       beyond: "Beyond",
       stars: "Nearby stars",
       galaxy: "Milky Way",
+      localGroup: "Local Group",
+      universe: "Observable Universe",
+      multiverse: "Multiverse",
     },
     distance: {
       centre: "the centre",
@@ -85,6 +100,9 @@ export const JOURNEY_STRINGS: Readonly<Record<Locale, JourneyStrings>> = {
       beyond: (distance) => `over ${distance}`,
       from: (distance) => `from ${distance}`,
       centreAt: (distance) => `centre at ${distance}`,
+      andromedaAt: (distance) => `Andromeda at ${distance}`,
+      radius: (distance) => `${distance} in radius`,
+      hypothesis: "hypothesis",
     },
     stopsMenu: { nav: "Stops", home: "Stops", choose: "choose a stop", change: "change stop" },
     railLabel: "Stops, from the Sun outwards",
@@ -102,6 +120,9 @@ export const JOURNEY_STRINGS: Readonly<Record<Locale, JourneyStrings>> = {
       beyond: "Más allá",
       stars: "Estrellas vecinas",
       galaxy: "Vía Láctea",
+      localGroup: "Grupo Local",
+      universe: "Universo observable",
+      multiverse: "Multiverso",
     },
     distance: {
       centre: "el centro",
@@ -109,6 +130,9 @@ export const JOURNEY_STRINGS: Readonly<Record<Locale, JourneyStrings>> = {
       beyond: (distance) => `más de ${distance}`,
       from: (distance) => `desde ${distance}`,
       centreAt: (distance) => `centro a ${distance}`,
+      andromedaAt: (distance) => `Andrómeda a ${distance}`,
+      radius: (distance) => `radio de ${distance}`,
+      hypothesis: "hipótesis",
     },
     stopsMenu: { nav: "Escalas", home: "Escalas", choose: "elegir una escala", change: "cambiar de escala" },
     railLabel: "Escalas, del Sol hacia fuera",

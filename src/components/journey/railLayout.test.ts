@@ -48,7 +48,7 @@ describe("spreadPositions", () => {
     expect(ideal).toEqual([10, 15, 100]);
   });
 
-  describe("sur la règle réelle des treize escales", () => {
+  describe("sur la règle réelle des seize escales", () => {
     it("devrait garder les positions vraies quand la règle est assez haute pour tout espacer", () => {
       const ideal = railIdeal(2000);
       expect(spreadPositions(ideal, MIN_GAP_PX, 2000)).toEqual(ideal);
@@ -72,9 +72,13 @@ describe("spreadPositions", () => {
       },
     );
 
-    it("devrait écarter la Terre de Vénus, sans toucher au Soleil, à Mercure ni à Vénus, sur une règle de 420 px", () => {
-      const ideal = railIdeal(420);
-      const placed = spreadPositions(ideal, MIN_GAP_PX, 420);
+    /*
+     * 440 px : la règle la plus haute des petits écrans (min(56vh, 440px)). Plus courte, la poussée des cinq escales
+     * lointaines, serrées entre 89,5 et 99,4 %, remonte jusqu'à Vénus (1 px à 420 px).
+     */
+    it("devrait écarter la Terre de Vénus, sans toucher au Soleil, à Mercure ni à Vénus, sur une règle de 440 px", () => {
+      const ideal = railIdeal(440);
+      const placed = spreadPositions(ideal, MIN_GAP_PX, 440);
       const at = (key: StopKey) => RAIL_STOPS.findIndex((stop) => stop.key === key);
       expect(placed.slice(at("sun"), at("venus") + 1)).toEqual(ideal.slice(at("sun"), at("venus") + 1));
       expect(placed[at("earth")]).toBeCloseTo(ideal[at("venus")] + MIN_GAP_PX, 9);

@@ -1,19 +1,25 @@
 import { describe, expect, it } from "vitest";
 import type { Vec3 } from "@/lib/astro/constants";
-import { galacticFromScene } from "@/lib/astro/galactic";
+import { galacticFromScene, sceneFromEquatorial } from "@/lib/astro/galactic";
+import { LOCAL_GROUP, galaxyCenterKly, galaxyRadiusKly, type LocalGroupGalaxyKey } from "@/lib/astro/localGroup";
+import { MULTIVERSE_SEED, MULTIVERSE_VIEW_DEG, multiverseBubbles, multiverseRadius } from "@/lib/astro/multiverse";
 import type { PlanetKey } from "@/lib/astro/planets";
+import { OBSERVABLE_UNIVERSE_RADIUS_GLY } from "@/lib/astro/universe";
 import {
   angleDiff,
   blendCameras,
   cameraFor,
   isCosmicStop,
   mixCameras,
+  RAIL_AXIS_END,
   RAIL_BREAK,
+  RAIL_OFF_SCALE,
   RAIL_STOPS,
   railPercent,
   RING_EXTENT,
   STOP_ORDER,
   type CamState,
+  type CosmicStopKey,
   type StopCameraContext,
   type StopKey,
 } from "@/lib/journey/camera";
@@ -453,6 +459,9 @@ describe("isCosmicStop", () => {
   it.each([
     ["stars", true],
     ["galaxy", true],
+    ["localGroup", true],
+    ["universe", true],
+    ["multiverse", true],
     ["hero", false],
     ["sun", false],
     ["earth", false],
@@ -464,9 +473,159 @@ describe("isCosmicStop", () => {
 });
 
 describe("STOP_ORDER", () => {
-  it("devrait finir par l'au-delà, les étoiles voisines puis la Voie lactée", () => {
-    expect(STOP_ORDER.slice(-3)).toEqual(["beyond", "stars", "galaxy"]);
+  it("devrait finir par l'au-delà, les étoiles voisines, la Voie lactée, le Groupe local, l'Univers observable et le multivers", () => {
+    expect(STOP_ORDER.slice(-6)).toEqual(["beyond", "stars", "galaxy", "localGroup", "universe", "multiverse"]);
   });
+
+  it("devrait compter dix-sept escales, chacune une seule fois", () => {
+    expect(STOP_ORDER).toHaveLength(17);
+    expect(new Set(STOP_ORDER).size).toBe(17);
+  });
+});
+
+/** Unités de scène par année-lumière au zoom z, recalculées ici : 4,41 × 63 241,077 × 10^−z. */
+const unitsPerLy = (zoom: number) => 4.41 * AU_PER_LY * 10 ** -zoom;
+/** Les cinq galaxies que l'escale du Groupe local cadre. */
+const MAIN_GALAXIES: readonly LocalGroupGalaxyKey[] = ["milky-way", "large-magellanic-cloud", "small-magellanic-cloud", "andromeda", "triangulum"];
+
+function galaxy(key: LocalGroupGalaxyKey) {
+  const found = LOCAL_GROUP.find((candidate) => candidate.key === key);
+  if (!found) throw new Error(`Galaxie absente : ${key}`);
+  return found;
+}
+
+/** Cible du Groupe local, recalculée : la moitié du chemin vers Andromède (J2000 et distance des données), au zoom 9,7. */
+const LOCAL_GROUP_TARGET: Vec3 = (() => {
+  const andromeda = galaxy("andromeda");
+  const direction = sceneFromEquatorial(andromeda.raDeg, andromeda.decDeg);
+  const length = 0.5 * andromeda.distanceMly * 1e6 * unitsPerLy(9.7);
+  return { x: direction.x * length, y: direction.y * length, z: direction.z * length };
+})();
+
+/**
+ * Sphère cadrée par chaque escale lointaine, en unités de scène à son zoom : les cinq galaxies principales du Groupe
+ * local autour de sa cible (bord compris), l'Univers observable, le multivers dessiné.
+ */
+const SPHERE: Readonly<Record<"localGroup" | "universe" | "multiverse", number>> = {
+  localGroup: (() => {
+    const kly = unitsPerLy(9.7) * 1000;
+    const target = { x: LOCAL_GROUP_TARGET.x / kly, y: LOCAL_GROUP_TARGET.y / kly, z: LOCAL_GROUP_TARGET.z / kly };
+    const reach = MAIN_GALAXIES.map((key) => {
+      const center = galaxyCenterKly(galaxy(key));
+      return Math.hypot(center.x - target.x, center.y - target.y, center.z - target.z) + galaxyRadiusKly(galaxy(key));
+    });
+    return Math.max(...reach) * kly;
+  })(),
+  universe: OBSERVABLE_UNIVERSE_RADIUS_GLY * 1e9 * unitsPerLy(14),
+  multiverse: multiverseRadius(multiverseBubbles(MULTIVERSE_SEED)) * 1e9 * unitsPerLy(15),
+};
+
+describe("cameraFor au Groupe local, à l'Univers observable et au multivers", () => {
+  describe("Groupe local (localGroup)", () => {
+    it("devrait viser la moitié du chemin vers Andromède, à l'échelle du zoom 9,7", () => {
+      const cam = cameraFor("localGroup", context());
+      expect(cam.zoom).toBe(9.7);
+      expect(cam.tx).toBeCloseTo(LOCAL_GROUP_TARGET.x, 9);
+      expect(cam.ty).toBeCloseTo(LOCAL_GROUP_TARGET.y, 9);
+      expect(cam.tz).toBeCloseTo(LOCAL_GROUP_TARGET.z, 9);
+    });
+
+    it("devrait regarder l'axe Voie lactée–Andromède de côté (azimut perpendiculaire), 25° au-dessus de l'horizon", () => {
+      const cam = cameraFor("localGroup", context());
+      expect(Math.abs(Math.cos(cam.azim - Math.atan2(cam.tz, cam.tx)))).toBeLessThan(1e-9);
+      expect(cam.elev).toBeCloseTo(25 * DEG, 12);
+    });
+
+    it("devrait viser de loin, cible décalée à droite, quand l'écran est en paysage sans mise en page mesurée", () => {
+      const cam = cameraFor("localGroup", context());
+      expect(cam.dist).toBe(640);
+      expect(cam.offX).toBeCloseTo(0.14, 12);
+      expect(cam.offY).toBe(0);
+      expect(cam.planet).toBe(false);
+    });
+
+    it("devrait reculer de × 1,75, centrer et remonter la cible de 0,1 quand l'écran est en portrait", () => {
+      const cam = cameraFor("localGroup", context({ portrait: true }));
+      expect(cam.dist).toBeCloseTo(1120, 9);
+      expect(cam.offX).toBe(0);
+      expect(cam.offY).toBeCloseTo(-0.1, 12);
+    });
+  });
+
+  describe.each([
+    ["universe", 14],
+    ["multiverse", 15],
+  ] as const)("%s", (key, zoom) => {
+    it(`devrait viser notre bulle, au centre, au zoom ${zoom}`, () => {
+      const cam = cameraFor(key, context());
+      expect([cam.tx, cam.ty, cam.tz]).toEqual([0, 0, 0]);
+      expect(cam.zoom).toBe(zoom);
+    });
+
+    it("devrait regarder dans la direction où le multivers garde notre bulle dégagée (MULTIVERSE_VIEW_DEG)", () => {
+      const cam = cameraFor(key, context());
+      expectSameAngle(cam.azim, MULTIVERSE_VIEW_DEG.azimuth * DEG, "azim");
+      expect(cam.elev).toBeCloseTo(MULTIVERSE_VIEW_DEG.elevation * DEG, 12);
+    });
+
+    it("devrait reculer de × 1,75, centrer et remonter la cible de 0,1 quand l'écran est en portrait", () => {
+      const cam = cameraFor(key, context({ portrait: true }));
+      expect(cam.dist).toBeCloseTo(1120, 9);
+      expect(cam.offY).toBeCloseTo(-0.1, 12);
+    });
+  });
+
+  /** Tangente du demi-angle sous lequel la caméra voit la sphère cadrée : tan(asin(r / d)). */
+  const sphereTan = (radius: number, dist: number) => Math.tan(Math.asin(radius / dist));
+
+  // Distances recalculées hors du dépôt : rayon / sin(atan(tan)) dans la plus étroite des deux directions.
+  it.each([
+    ["localGroup", 525.632336],
+    ["universe", 755.630034],
+    ["multiverse", 684.739061],
+  ] as const)(
+    "devrait cadrer la sphère au plus large dans la bande libre du téléphone, centrée, sans en déborder (%s : dist %f)",
+    (key, dist) => {
+      const cam = cameraFor(key, context({ portrait: true, ...PHONE }));
+      expect(cam.offX).toBe(0);
+      expect(cam.offY).toBeCloseTo((0.08 + 0.53) / 2 - 0.5, 9);
+      expect(cam.dist).toBeCloseTo(dist, 5);
+      const tan = tanHalf(PHONE.fov);
+      const fill = Math.max(sphereTan(SPHERE[key], cam.dist) / (0.8 * PHONE.aspect * tan), sphereTan(SPHERE[key], cam.dist) / (0.9 * 0.45 * tan));
+      expect(fill).toBeCloseTo(1, 9);
+    },
+  );
+
+  it.each([
+    ["localGroup", 433.148153],
+    ["universe", 622.678117],
+    ["multiverse", 564.2603],
+  ] as const)(
+    "devrait cadrer la sphère au plus large au milieu de la zone libre du grand écran, sans en déborder (%s : dist %f)",
+    (key, dist) => {
+      const cam = cameraFor(key, context(DESK));
+      expect(cam.offX).toBeCloseTo((0.41 + 0.86) / 2 - 0.5, 9);
+      expect(cam.offY).toBe(0);
+      expect(cam.dist).toBeCloseTo(dist, 5);
+      const tan = tanHalf(DESK.fov);
+      const fill = Math.max(sphereTan(SPHERE[key], cam.dist) / (0.9 * 0.45 * DESK.aspect * tan), sphereTan(SPHERE[key], cam.dist) / (0.8 * tan));
+      expect(fill).toBeCloseTo(1, 9);
+    },
+  );
+
+  it("devrait cadrer le Groupe local sur ses cinq galaxies principales (les naines lointaines peuvent sortir du cadre)", () => {
+    // 1 604 kly autour de la cible ; cadrer WLM, à 3 Mal, rapetisserait toutes les galaxies d'un tiers.
+    expect(SPHERE.localGroup / (unitsPerLy(9.7) * 1000)).toBeCloseTo(1603.728, 2);
+  });
+
+  it.each(["stars", "galaxy", "localGroup", "universe", "multiverse"] satisfies CosmicStopKey[])(
+    "devrait laisser la cible au centre de l'écran en exploration : bande symétrique pleine hauteur (%s)",
+    (key) => {
+      const cam = cameraFor(key, context({ portrait: true, aspect: 375 / 812, fov: 50, band: { top: 0.08, bottom: 0.92 } }));
+      expect(cam.offX).toBe(0);
+      expect(cam.offY).toBeCloseTo(0, 12);
+    },
+  );
 });
 
 describe("angleDiff", () => {
@@ -710,25 +869,34 @@ describe("railPercent", () => {
   it.each([
     [0.3, 6],
     [1, 24.8268],
+    [45, 84.3525],
     [50, 86],
   ])("devrait suivre l'échelle logarithmique 6 + 80 × ln(au / 0,3) / ln(50 / 0,3) jusqu'à 50 UA (%f UA → %f)", (au, expected) => {
     expect(railPercent(au)).toBeCloseTo(expected, 4);
   });
 
   it.each([
-    [1000, 88.09706],
-    [AU_PER_LY, 91],
-  ])("devrait comprimer de 50 UA à 1 al : 86 + 5 × ln(au / 50) / ln(1 al / 50 UA) (%f UA → %f)", (au, expected) => {
+    [1000, 87.258238],
+    [AU_PER_LY, 89],
+  ])("devrait comprimer de 50 UA à 1 al : 86 + 3 × ln(au / 50) / ln(1 al / 50 UA) (%f UA → %f)", (au, expected) => {
     expect(railPercent(au)).toBeCloseTo(expected, 4);
   });
 
+  // Valeurs de contrôle du plan, recalculées hors du dépôt (Univers observable : 46 milliards d'al, données v2).
   it.each([
-    [4.2465, 91.87924],
-    [27_000, 97.20391],
-    [100_000, 98],
-    [200_000, 98],
-  ])("devrait compter en années-lumière au-delà : 91 + 7 × ln(d / 1 al) / ln(100 000), au plus 98 (%f al → %f)", (ly, expected) => {
+    [4.2465, 89.513844],
+    [27_000, 92.625661],
+    [2.48e6, 94.231824],
+    [46e9, 97.724075],
+    [1e11, 98],
+    [2e11, 98],
+  ])("devrait compter en années-lumière au-delà : 89 + 9 × ln(d / 1 al) / ln(10¹¹), au plus 98 (%f al → %f)", (ly, expected) => {
     expect(railPercent(ly * AU_PER_LY)).toBeCloseTo(expected, 4);
+  });
+
+  it("devrait placer une distance infinie (le multivers) hors échelle, après la fin de l'axe", () => {
+    expect(railPercent(Infinity)).toBe(RAIL_OFF_SCALE);
+    expect(RAIL_OFF_SCALE).toBe(99.4);
   });
 
   it.each([[50], [AU_PER_LY]])("devrait rester continue au raccord de deux segments (%f UA)", (au) => {
@@ -743,10 +911,17 @@ describe("railPercent", () => {
 });
 
 describe("RAIL_STOPS", () => {
-  it("devrait compter treize repères, du Soleil à la Voie lactée, dans l'ordre du voyage", () => {
+  it("devrait compter seize repères, du Soleil au multivers, dans l'ordre du voyage", () => {
     expect(RAIL_STOPS.map((stop) => stop.key)).toEqual([
       "sun", "mercury", "venus", "earth", "mars", "belt", "jupiter", "saturn", "uranus", "neptune", "beyond", "stars", "galaxy",
+      "localGroup", "universe", "multiverse",
     ]);
+  });
+
+  it("devrait ranger les repères du plus proche au plus lointain, le multivers en dernier, à l'infini", () => {
+    const distances = RAIL_STOPS.map((stop) => stop.au);
+    expect(distances).toEqual([...distances].sort((a, b) => a - b));
+    expect(distances.at(-1)).toBe(Infinity);
   });
 
   it("devrait placer les étoiles voisines à Proxima du Centaure et la Voie lactée à son centre", () => {
@@ -754,13 +929,26 @@ describe("RAIL_STOPS", () => {
     expect(lightYears("stars")).toBeCloseTo(4.2465, 6);
     expect(lightYears("galaxy")).toBeCloseTo(27_000, 3);
   });
+
+  it("devrait placer le Groupe local à Andromède et l'Univers observable à son rayon", () => {
+    const lightYears = (key: StopKey) => (RAIL_STOPS.find((stop) => stop.key === key)?.au ?? Number.NaN) / AU_PER_LY;
+    expect(lightYears("localGroup")).toBeCloseTo(galaxy("andromeda").distanceMly * 1e6, 0);
+    expect(lightYears("universe") / 1e9).toBeCloseTo(OBSERVABLE_UNIVERSE_RADIUS_GLY, 9);
+  });
 });
 
-describe("RAIL_BREAK", () => {
-  it("devrait interrompre l'axe entre l'au-delà (84,35 %) et les étoiles voisines (91,88 %)", () => {
+describe("RAIL_BREAK et fin de l'axe", () => {
+  it("devrait interrompre l'axe entre l'au-delà (84,35 %) et les étoiles voisines (89,51 %), où l'unité change", () => {
+    expect(RAIL_BREAK).toEqual({ from: 87, to: 88.5 });
     expect(RAIL_BREAK.from).toBeGreaterThan(railPercent(45));
     expect(RAIL_BREAK.to).toBeGreaterThan(RAIL_BREAK.from);
     expect(RAIL_BREAK.to).toBeLessThan(railPercent(4.2465 * AU_PER_LY));
+  });
+
+  it("devrait arrêter l'axe à 98 %, après l'Univers observable et avant le repère hors échelle du multivers", () => {
+    expect(RAIL_AXIS_END).toBe(98);
+    expect(RAIL_AXIS_END).toBeGreaterThanOrEqual(railPercent(46e9 * AU_PER_LY));
+    expect(RAIL_OFF_SCALE).toBeGreaterThan(RAIL_AXIS_END);
   });
 });
 

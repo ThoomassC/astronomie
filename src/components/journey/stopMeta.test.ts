@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { railDistanceLabel, stopColor, stopName } from "@/components/journey/stopMeta";
 import { LOCALES } from "@/i18n/locales";
 import { PLANET_BY_KEY } from "@/lib/astro/planets";
-import { STOP_ORDER } from "@/lib/journey/camera";
+import { RAIL_STOPS, STOP_ORDER, type StopKey } from "@/lib/journey/camera";
 
 /** Unités astronomiques par année-lumière (UAI). */
 const AU_PER_LY = 63_241.077;
@@ -28,6 +28,9 @@ describe("stopName", () => {
       "Au-delà",
       "Étoiles voisines",
       "Voie lactée",
+      "Groupe local",
+      "Univers observable",
+      "Multivers",
     ]);
   });
 
@@ -50,7 +53,32 @@ describe("stopColor", () => {
     const colors = STOP_ORDER.map((key) => stopColor(key).toUpperCase());
     expect(new Set(colors).size).toBe(STOP_ORDER.length);
   });
+
+  it.each([
+    ["localGroup", "#A9B8E8"],
+    ["universe", "#E7A6C1"],
+    ["multiverse", "#7FD8C8"],
+  ] as const)("devrait donner sa couleur à l'escale %s (%s), contrastée sur le fond de nuit (≥ 3:1)", (key, color) => {
+    expect(stopColor(key)).toBe(color);
+    expect(contrast(color, "#060B18")).toBeGreaterThanOrEqual(3);
+  });
 });
+
+/** Luminance relative WCAG d'une couleur #RRGGBB. */
+function luminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const linear = (c: number) => (c <= 0.040_45 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+}
+
+/** Rapport de contraste WCAG entre deux couleurs. */
+function contrast(a: string, b: string): number {
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+/** Distance d'un repère de la règle, en UA. */
+const railAu = (key: StopKey) => RAIL_STOPS.find((stop) => stop.key === key)?.au ?? Number.NaN;
 
 describe("railDistanceLabel", () => {
   it.each([["hero"], ["sun"]] as const)("devrait dire « le centre » quand la distance est nulle (%s)", (key) => {
@@ -85,6 +113,18 @@ describe("railDistanceLabel", () => {
     // formatNumber sépare les milliers par une espace fine insécable (U+202F).
     expect(railDistanceLabel("galaxy", 27_000 * AU_PER_LY)).toBe("centre à 27\u202f000 al");
   });
+
+  it("devrait situer le Groupe local par Andromède, en millions d'années-lumière écrits en toutes lettres", () => {
+    expect(railDistanceLabel("localGroup", railAu("localGroup"))).toBe("Andromède à 2,5 millions d'al");
+  });
+
+  it("devrait donner le rayon de l'Univers observable, en milliards d'années-lumière", () => {
+    expect(railDistanceLabel("universe", railAu("universe"))).toBe("rayon de 46 milliards d'al");
+  });
+
+  it("devrait présenter le multivers, à l'infini, comme une hypothèse plutôt que par une distance", () => {
+    expect(railDistanceLabel("multiverse", railAu("multiverse"))).toBe("hypothèse");
+  });
 });
 
 describe("stopName dans les trois langues", () => {
@@ -110,6 +150,9 @@ describe("stopName dans les trois langues", () => {
       "Beyond",
       "Nearby stars",
       "Milky Way",
+      "Local Group",
+      "Observable Universe",
+      "Multiverse",
     ]);
   });
 
@@ -129,6 +172,9 @@ describe("stopName dans les trois langues", () => {
       "Más allá",
       "Estrellas vecinas",
       "Vía Láctea",
+      "Grupo Local",
+      "Universo observable",
+      "Multiverso",
     ]);
   });
 });
@@ -143,6 +189,9 @@ describe("railDistanceLabel en anglais et en espagnol", () => {
     ["neptune", 30.07, "30.1 AU", "30,1 UA"],
     ["stars", 4.2465 * AU_PER_LY, "from 4.2 ly", "desde 4,2 al"],
     ["galaxy", 27_000 * AU_PER_LY, "centre at 27,000 ly", "centro a 27.000 al"],
+    ["localGroup", railAu("localGroup"), "Andromeda at 2.5 million ly", "Andrómeda a 2,5 millones de al"],
+    ["universe", railAu("universe"), "46 billion ly in radius", "radio de 46 mil millones de al"],
+    ["multiverse", railAu("multiverse"), "hypothesis", "hipótesis"],
   ] as const)("devrait situer l'escale %s, à %s UA, dans la langue (« %s », « %s »)", (key, au, en, es) => {
     expect(railDistanceLabel(key, au, "en")).toBe(en);
     expect(railDistanceLabel(key, au, "es")).toBe(es);

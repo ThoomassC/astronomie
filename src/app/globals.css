@@ -865,6 +865,20 @@ main > section > * {
   color: var(--brume);
 }
 
+/*
+ * Multivers : l'avertissement d'hypothèse, en tête de plaque, avant le rang et le titre ; en pointillés, comme son
+ * repère dans la scène.
+ */
+.hypothesis {
+  margin: 0 0 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--c);
+  border-radius: var(--r-sm);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--ivoire);
+}
+
 /* ---------- Modules explicatifs (classes partagées avec src/components/modules) ---------- */
 .module {
   margin: 1.1rem 0 0;

@@ -5,6 +5,7 @@ import { AU_PER_LIGHT_YEAR } from "@/lib/astro/constants";
 import { PLANET_BY_KEY, SUN } from "@/lib/astro/planets";
 import type { StopKey } from "@/lib/journey/camera";
 import { formatNumber } from "@/lib/format";
+import { DEEP_SKY_STRINGS } from "@/components/scene/deepSky.strings";
 import { JOURNEY_STRINGS, type NonBodyStopKey } from "./journey.strings";
 
 /** Étendue de la ceinture principale d'astéroïdes, en UA. */
@@ -41,6 +42,12 @@ export function stopColor(key: StopKey): string {
       return "#CFDCFF";
     case "galaxy":
       return "#B3A4EE";
+    case "localGroup":
+      return "#A9B8E8";
+    case "universe":
+      return "#E7A6C1";
+    case "multiverse":
+      return "#7FD8C8";
     default:
       return PLANET_BY_KEY[key].color;
   }
@@ -50,7 +57,9 @@ export function stopColor(key: StopKey): string {
  * Distance au Soleil affichée sous le nom d'un repère de la règle, dans la langue (français par défaut pendant la
  * migration). En UA dans le système solaire : « 1,52 UA », « 1.52 AU » ; une distance entière sans décimales, comme
  * dans la fiche (« 1 UA ») ; deux décimales sous 10 UA, une au-delà. En années-lumière au-delà : « dès 4,2 al »
- * (l'étoile la plus proche), « centre à 27 000 al ». Le Soleil (distance nulle) : « le centre ».
+ * (l'étoile la plus proche), « centre à 27 000 al » ; en toutes lettres au-delà du million, à deux chiffres
+ * significatifs : « Andromède à 2,5 millions d'al », « rayon de 46 milliards d'al ». Le multivers, à l'infini :
+ * « hypothèse ». Le Soleil (distance nulle) : « le centre ».
  */
 export function railDistanceLabel(key: StopKey, au: number, locale: Locale = DEFAULT_LOCALE): string {
   const t = JOURNEY_STRINGS[locale].distance;
@@ -62,5 +71,10 @@ export function railDistanceLabel(key: StopKey, au: number, locale: Locale = DEF
   if (key === "beyond") return t.beyond(inAu(BEYOND_AU, 0));
   if (key === "stars") return t.from(inLy(au, 1));
   if (key === "galaxy") return t.centreAt(inLy(au, 0));
+  // Au-delà du million d'années-lumière, les mots du ciel profond : « 2,5 millions d'al ».
+  const inWords = () => DEEP_SKY_STRINGS[locale].galaxyDistance(au / AU_PER_LIGHT_YEAR / 1e6);
+  if (key === "localGroup") return t.andromedaAt(inWords());
+  if (key === "universe") return t.radius(inWords());
+  if (key === "multiverse") return t.hypothesis;
   return inAu(au, Number.isInteger(au) ? 0 : au < 10 ? 2 : 1);
 }
