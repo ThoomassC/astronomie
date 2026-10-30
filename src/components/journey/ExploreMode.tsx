@@ -68,9 +68,18 @@ export function ExploreMode() {
     announce(t.announce(t.targets[entered]));
   });
 
+  /*
+   * Page quittée sans rechargement (masquée sous <Activity> par le routeur) ou démontée : l'exploration prend fin. La
+   * scène y met fin d'ordinaire en se libérant, mais elle n'est pas encore montée tant que three.js se charge. Nettoyage
+   * synchrone, comme celui de l'effet suivant : rien ne réapparaît figé au retour.
+   */
+  useLayoutEffect(() => () => exploreStore.exit(), []);
+
   // Avant la peinture : la page n'apparaît jamais à la fois figée et encore active, ou l'inverse.
   useLayoutEffect(() => {
-    if (stop === null) return;
+    // Au retour sur la page, les effets sont recréés depuis le dernier rendu, qui peut précéder la sortie : seule
+    // l'exploration en cours fige la page.
+    if (stop === null || exploreStore.get().stop !== stop) return;
     const layer = layerRef.current;
     const html = document.documentElement;
     holdAt(stop);

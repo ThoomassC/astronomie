@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Activity } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { earthReading } from "@/components/journey/earthReading";
 import { ExploreMode } from "@/components/journey/ExploreMode";
@@ -342,6 +343,56 @@ describe("ExploreMode", () => {
       renderPage();
       enter("saturn");
       showStop("uranus");
+      expect(exploreStore.get().stop).toBeNull();
+    });
+  });
+
+  /*
+   * Next 16, avec `cacheComponents`, ne démonte pas la page qu'on quitte par un onglet ou par le retour arrière : il la
+   * masque sous `<Activity>` (effets nettoyés, état gardé) pour la rendre telle quelle au retour. C'est d'ordinaire la
+   * scène qui met fin à l'exploration en se libérant ; tant que three.js se charge, elle n'est pas encore montée.
+   */
+  describe("en quittant la page sans la recharger, scène pas encore montée", () => {
+    /** La page du voyage, affichée ou masquée par le routeur. */
+    const page = (mode: "visible" | "hidden") => (
+      <Activity mode={mode}>
+        <header data-hide-on-explore>
+          <button type="button" id="tourner-autour">
+            Tourner autour
+          </button>
+        </header>
+        <main data-hide-on-explore>
+          <button type="button">Lire la fiche</button>
+        </main>
+        <ExploreMode />
+      </Activity>
+    );
+
+    it("devrait sortir de l'exploration quand la page est masquée", () => {
+      const { rerender } = render(page("visible"));
+      enter("saturn");
+      rerender(page("hidden"));
+      expect(exploreStore.get().stop).toBeNull();
+      expect(document.documentElement).not.toHaveAttribute("data-explore");
+    });
+
+    it("ne devrait pas reprendre l'exploration au retour sur la page : ni saut, ni page figée, ni focus déplacé", () => {
+      const { rerender } = render(page("visible"));
+      enter("saturn");
+      rerender(page("hidden"));
+      scrollTo.mockClear();
+      rerender(page("visible"));
+      expect(exploreStore.get().stop).toBeNull();
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(document.documentElement).not.toHaveAttribute("data-explore");
+      expect(document.querySelectorAll("[data-hide-on-explore][inert]")).toHaveLength(0);
+      expect(screen.queryByRole("group")).not.toBeInTheDocument();
+    });
+
+    it("devrait sortir de l'exploration quand la page est démontée", () => {
+      const { unmount } = renderPage();
+      enter("saturn");
+      unmount();
       expect(exploreStore.get().stop).toBeNull();
     });
   });
