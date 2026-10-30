@@ -74,6 +74,13 @@
   visibility: hidden;
 }
 
+/* Pilule de langue, sans JavaScript : le drapeau, puis le code, sur une ligne. */
+.pills a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 @media (hover: hover) {
   .tabs a:hover,
   .pills a:hover {
@@ -138,7 +145,7 @@
   display: inline-flex;
 }
 
-/* Sphère et menu en laiton, comme l'orbite de « Tourner autour ». */
+/* Pictogramme du menu en laiton, comme l'orbite de « Tourner autour ». */
 .icon {
   flex: none;
   color: var(--laiton);
@@ -146,6 +153,18 @@
 
 .code {
   font-weight: 600;
+}
+
+/*
+ * Drapeau de la langue (flags.tsx), 21 × 14 px, décoratif : coins adoucis et fin filet de laiton qui le détache du fond
+ * de nuit (le bleu de l'Union Jack s'y perdrait). Arrondi de la moitié de --r-xs : à 14 px de haut, 6 px feraient du
+ * drapeau une pilule.
+ */
+.flag {
+  flex: none;
+  display: block;
+  border-radius: calc(var(--r-xs) / 2);
+  box-shadow: 0 0 0 1px var(--filet-fort);
 }
 
 .chevron {
@@ -208,11 +227,12 @@
   list-style: none;
 }
 
-/* Lignes de 44 px ; la marge gauche porte le triangle de la ligne courante. */
+/* Lignes de 44 px ; la marge gauche porte le triangle de la ligne courante. Langues : le drapeau, puis le nom. */
 .panel a {
   position: relative;
   display: flex;
   align-items: center;
+  gap: 0.75rem;
   min-height: 44px;
   padding: 0.5rem 0.75rem 0.5rem 1.5rem;
   border-radius: var(--r-sm);
@@ -365,8 +385,15 @@
   }
 }
 
-/* Couleurs forcées : les fonds disparaissent ; contours sur les capsules, ligne courante en Highlight. */
+/*
+ * Couleurs forcées : les fonds disparaissent ; contours sur les capsules, ligne courante en Highlight. Les drapeaux
+ * s'effacent : leurs couleurs ne passeraient pas, et le code ou le nom de la langue suffit.
+ */
 @media (forced-colors: active) {
+  .flag {
+    display: none;
+  }
+
   .tabs ul,
   .pills,
   .langToggle,

@@ -158,6 +158,13 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   quand regarder (« Le soir, à l'ouest après le coucher du Soleil », suivi de l'instrument pour Uranus et Neptune),
   chiffres tabulaires, recalculés avec la date simulée. Pas de région live : la lecture est annoncée une fois, à
   l'activation, unités en toutes lettres.
+- **Choix de la langue** : le bouton de la barre montre le drapeau de la langue de la page, puis son code (« FR ») et
+  le chevron ; chaque ligne de la liste (et du menu replié), le drapeau puis le nom de la langue dans sa langue ; les
+  pilules sans JavaScript, le drapeau puis le code. Drapeaux en SVG (pas d'emoji : Windows ne les dessine pas),
+  21 × 14 px au rapport 3:2 : France, Royaume-Uni pour l'anglais britannique (Union Jack redessiné en 3:2, sautoirs
+  contre-changés), Espagne en drapeau civil, sans armoiries. Coins de 3 px (la moitié de `--r-xs`), filet de 1 px
+  `--filet-fort` autour ; décoratifs (`aria-hidden`), le texte reste le libellé et le nom accessible. Masqués en
+  couleurs forcées.
 - **Barre haute sans JavaScript** : les boutons de la langue et du menu replié ne déplieraient rien ; à leur place,
   les pilules « FR · EN · ES » (liens directs) et, à toutes les largeurs, les onglets. À 860 px et moins, la marque se
   réduit à son pictogramme et la barre défile à l'horizontale quand la ligne ne tient pas, sans changer de hauteur.

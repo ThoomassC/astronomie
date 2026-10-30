@@ -1,8 +1,11 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Activity } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Flag } from "@/components/site/flags";
 import { LanguageMenu } from "@/components/site/LanguageMenu";
+import { LOCALES, type Locale } from "@/i18n/locales";
 import { setFragmentSource } from "@/lib/site/fragment";
 
 /**
@@ -42,6 +45,20 @@ function languageLinks(): (string | null)[][] {
     .map((link) => [link.textContent, link.getAttribute("href"), link.getAttribute("lang"), link.getAttribute("hreflang")]);
 }
 
+/** Le drapeau d'une langue tel que `Flag` le dessine seul : la référence des comparaisons. */
+function drawing(locale: Locale): Element | null {
+  const template = document.createElement("template");
+  template.innerHTML = renderToStaticMarkup(<Flag locale={locale} />);
+  return template.content.firstElementChild;
+}
+
+/** Langues dont le drapeau figure dans un élément, dans l'ordre du DOM. */
+function flagsIn(element: Element): Locale[] {
+  return Array.from(element.querySelectorAll("svg")).flatMap((svg) =>
+    LOCALES.filter((locale) => svg.isEqualNode(drawing(locale))),
+  );
+}
+
 describe("LanguageMenu", () => {
   it("devrait nommer la langue de la page sur son bouton, liste fermée", () => {
     render(<LanguageMenu locale="fr" page="voyage" />);
@@ -55,6 +72,16 @@ describe("LanguageMenu", () => {
   ] as const)("devrait nommer son bouton dans la langue de la page ($locale)", ({ locale, name }) => {
     render(<LanguageMenu locale={locale} page="home" />);
     expect(screen.getByRole("button", { name })).toBeInTheDocument();
+  });
+
+  it("devrait montrer sur son bouton le drapeau de la langue de la page, devant son code (fr)", () => {
+    render(<LanguageMenu locale="fr" page="voyage" />);
+    expect(flagsIn(toggle())).toEqual(["fr"]);
+  });
+
+  it("devrait montrer le drapeau espagnol sur le bouton d'une page en espagnol", () => {
+    render(<LanguageMenu locale="es" page="voyage" />);
+    expect(flagsIn(screen.getByRole("button", { name: "ES, idioma: español" }))).toEqual(["es"]);
   });
 
   it("devrait se ranger sous un repère de navigation « Langue »", () => {
@@ -72,6 +99,13 @@ describe("LanguageMenu", () => {
       ["English", "/en/voyage", "en", "en"],
       ["Español", "/es/voyage", "es", "es"],
     ]);
+  });
+
+  it("devrait poser devant chaque langue de la liste son drapeau, un par langue", async () => {
+    const user = userEvent.setup();
+    render(<LanguageMenu locale="fr" page="voyage" />);
+    await user.click(toggle());
+    expect(screen.getAllByRole("link").map(flagsIn)).toEqual([["fr"], ["en"], ["es"]]);
   });
 
   it("devrait relier son bouton à la liste qu'il ouvre", async () => {
@@ -259,6 +293,14 @@ describe("LanguageMenu", () => {
       expect(link).toHaveAttribute("hreflang", lang);
     });
 
+    it("devrait poser devant chaque code le drapeau de sa langue", () => {
+      render(<LanguageMenu locale="fr" page="voyage" />);
+      const pills = ["FR, Français", "EN, English", "ES, Español"].map((name) =>
+        screen.getByRole("link", { name, hidden: true }),
+      );
+      expect(pills.map(flagsIn)).toEqual([["fr"], ["en"], ["es"]]);
+    });
+
     it("devrait marquer la langue de la page parmi ces liens directs", () => {
       render(<LanguageMenu locale="es" page="voyage" />);
       expect(screen.getByRole("link", { name: "ES, Español", hidden: true })).toHaveAttribute("aria-current", "true");
@@ -279,6 +321,12 @@ describe("LanguageMenu", () => {
           .getAllByRole("link")
           .map((link) => link.getAttribute("href")),
       ).toEqual(["/fr/a-propos", "/en/a-propos", "/es/a-propos"]);
+    });
+
+    it("devrait poser devant chaque langue son drapeau", () => {
+      render(<LanguageMenu locale="es" page="about" variant="list" />);
+      const links = within(screen.getByRole("navigation", { name: "Idioma" })).getAllByRole("link");
+      expect(links.map(flagsIn)).toEqual([["fr"], ["en"], ["es"]]);
     });
 
     it("devrait aussi garder la position et retenir la langue choisie", async () => {
