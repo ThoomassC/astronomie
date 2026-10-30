@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COMPARED_STARS } from "@/lib/astro/starSizes";
-import { isSizeStopKey, SIZE_STOP_IDS, SIZE_STOP_ORDER } from "@/lib/sizes/stops";
+import { isSizeStopKey, SIZE_STOP_IDS, SIZE_STOP_ORDER, sizeStarIndex, sizeStopAnchor } from "@/lib/sizes/stops";
 
 const KEBAB_CASE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -56,6 +56,36 @@ describe("SIZE_STOP_IDS", () => {
     "devrait donner à l'escale %s un identifiant ASCII en kebab-case, utilisable tel quel en ancre (%s)",
     (_key, id) => {
       expect(id).toMatch(KEBAB_CASE);
+    },
+  );
+});
+
+describe("sizeStopAnchor", () => {
+  it.each([
+    ["intro", "#tailles"],
+    ["proxima-centauri", "#proxima-du-centaure"],
+    ["vy-canis-majoris", "#vy-canis-majoris"],
+  ] as const)("devrait donner l'ancre de l'escale %s (%s)", (key, anchor) => {
+    expect(sizeStopAnchor(key)).toBe(anchor);
+  });
+});
+
+describe("sizeStarIndex", () => {
+  it.each([
+    ["intro", 0],
+    ["proxima-centauri", 0],
+    ["sun", 1],
+    ["betelgeuse", 8],
+    ["vy-canis-majoris", 9],
+  ] as const)("devrait donner l'indice de l'étoile montrée à l'escale %s (%i) ; l'introduction montre la plus petite", (key, index) => {
+    expect(sizeStarIndex(key)).toBe(index);
+  });
+
+  it.each(COMPARED_STARS.map((star, index) => [star.key, index] as const))(
+    "devrait retrouver l'étoile %s à son rang dans les données (%i)",
+    (key, index) => {
+      expect(COMPARED_STARS[sizeStarIndex(key)].key).toBe(key);
+      expect(sizeStarIndex(key)).toBe(index);
     },
   );
 });

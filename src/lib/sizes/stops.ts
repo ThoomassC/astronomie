@@ -33,3 +33,16 @@ export const SIZE_STOP_IDS: Readonly<Record<SizeStopKey, string>> = {
   betelgeuse: "betelgeuse",
   "vy-canis-majoris": "vy-canis-majoris",
 };
+
+/** Ancre de la section d'une escale : « #betelgeuse », « #tailles » pour l'introduction. */
+export function sizeStopAnchor(key: SizeStopKey): `#${string}` {
+  return `#${SIZE_STOP_IDS[key]}`;
+}
+
+/**
+ * Indice de l'étoile d'une escale dans COMPARED_STARS (et dans la disposition de placeStars) : l'introduction montre
+ * la plus petite, comme la première étoile.
+ */
+export function sizeStarIndex(stop: SizeStopKey): number {
+  return Math.max(0, SIZE_STOP_ORDER.indexOf(stop) - 1);
+}
