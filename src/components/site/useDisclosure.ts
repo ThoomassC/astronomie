@@ -1,4 +1,13 @@
-import { useEffect, useId, useRef, useState, type FocusEvent, type MouseEvent, type RefObject } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type MouseEvent,
+  type RefObject,
+} from "react";
 
 /** Panneau déplié par un bouton : état et réglages à poser sur la racine, le bouton et le panneau. */
 export interface Disclosure<T extends HTMLElement> {
@@ -23,13 +32,17 @@ export interface Disclosure<T extends HTMLElement> {
  * Motif « disclosure » de la barre, réglé comme `StopsMenu` : Échap (en capture, puis annulé : un appui ne ferme
  * qu'une couche) referme le panneau et rend le focus au bouton s'il était dedans ; un toucher hors du composant, un
  * focus qui en sort, ou la mise en page qui le masque (fenêtre qui franchit le seuil du menu replié) le referment
- * aussi. Ainsi, un seul panneau de la barre reste ouvert à la fois.
+ * aussi. Ainsi, un seul panneau de la barre reste ouvert à la fois. Quitter la page le referme aussi : Next garde la
+ * page quittée, état compris (`<Activity>`), et l'on ne doit pas la retrouver panneau ouvert au retour.
  */
 export function useDisclosure<T extends HTMLElement>(): Disclosure<T> {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<T>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
+
+  // Nettoyage synchrone quand la page est masquée par la navigation ou démontée : le panneau ne réapparaît pas ouvert.
+  useLayoutEffect(() => () => setOpen(false), []);
 
   useEffect(() => {
     if (!open) return;

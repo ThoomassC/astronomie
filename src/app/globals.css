@@ -270,6 +270,14 @@ main > section:focus {
 }
 
 /* ---------- Barre haute ---------- */
+/*
+ * Barre commune aux quatre pages (SiteHeader, rendue par chaque page) : marque, onglets, commandes de la page (voyage :
+ * escale en cours, menu des escales, « Tourner autour »), langue ; à 860 px et moins, « Menu » remplace onglets et
+ * langue. Ici la ligne, la marque et l'escale en cours ; onglets, langue et menu dans SiteHeader.module.css. Une seule
+ * ligne de 320 à 1 440 px, dans les trois langues : rien n'y passe à la ligne, et l'escale en cours (ou le menu des
+ * escales) cède la place en finissant en « … ». Hauteur : 0,9 rem + 46 px (capsule des onglets) + 0,9 rem au-dessus de
+ * 860 px, commandes de 44 px au-dessous ; la scène mesure son bas.
+ */
 body::before {
   content: "";
   position: fixed;
@@ -293,6 +301,7 @@ body::before {
 }
 
 .brand {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -303,32 +312,76 @@ body::before {
   font-size: 1.375rem;
   font-weight: 500;
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .brand svg {
+  flex: none;
   width: 28px;
   height: 28px;
 }
 
+/*
+ * Escale en cours : le seul élément de la ligne qui rétrécit, son nom finit en « … ». Paragraphe sans ses marges
+ * (1 em) : elles portaient la barre du voyage à 79 px, et en décaleraient les onglets de ceux des autres pages (75 px).
+ */
 .where {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-left: auto;
+  min-width: 0;
+  margin: 0 0 0 auto;
   font-size: 0.875rem;
   color: var(--brume);
+  white-space: nowrap;
 }
 
 .where b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--ivoire);
   font-weight: 600;
 }
 
 .where i {
+  flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--c);
+}
+
+/*
+ * 1 100 px et moins : écart de 0,75 rem (0,6 rem à 640 px et moins, plus bas), le mot « Escale » s'efface, et la
+ * marque se réduit à son pictogramme dès que la barre porte des commandes. Réduite, elle reste une cible de 44 × 44 ;
+ * son nom accessible ne change pas.
+ */
+@media (max-width: 1100px) {
+  .bar {
+    gap: 0.75rem;
+  }
+
+  .brand {
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .where span,
+  .bar[data-controls] .brand-name {
+    display: none;
+  }
+}
+
+/*
+ * De 861 à 1 100 px, onglets affichés : pictogramme seul sur toutes les pages, pour que les onglets ne bougent pas
+ * d'une page à l'autre. Au-dessous, sans commandes (accueil, À propos), la marque retrouve son nom jusqu'à 360 px.
+ */
+@media (min-width: 861px) and (max-width: 1100px) {
+  .brand-name {
+    display: none;
+  }
 }
 
 /* ---------- Règle des distances ---------- */
@@ -1686,7 +1739,10 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   min-height: 44px;
 }
 
-/* Bouton « Tourner autour » de la barre haute : pilule de 44 px, comme le menu des escales. */
+/*
+ * Bouton « Tourner autour » de la barre haute : pilule de 44 px, comme le menu des escales, au fond .92 des pilules de
+ * la barre (sur un fond à .6, l'ivoire tomberait à 4:1 devant un astre clair). Le voile du survol se pose dessus.
+ */
 .explore-toggle {
   flex: none;
   display: inline-flex;
@@ -1696,7 +1752,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   padding: 0.35rem 0.95rem 0.35rem 0.75rem;
   border: 1px solid var(--filet-fort);
   border-radius: var(--r-pill);
-  background: rgba(8, 14, 32, 0.6);
+  background: rgba(8, 14, 32, 0.92);
   color: var(--ivoire);
   font-size: 0.9375rem;
   white-space: nowrap;
@@ -1707,7 +1763,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 
 .explore-toggle:hover {
   border-color: var(--ivoire);
-  background: rgba(236, 229, 211, 0.06);
+  background-image: linear-gradient(rgba(236, 229, 211, 0.06), rgba(236, 229, 211, 0.06));
 }
 
 .explore-toggle svg {
@@ -2263,7 +2319,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     padding: 0.35rem 0.85rem;
     border: 1px solid var(--filet-fort);
     border-radius: var(--r-pill);
-    background: rgba(8, 14, 32, 0.6);
+    background: rgba(8, 14, 32, 0.92);
     color: var(--ivoire);
     font-size: 0.9375rem;
     white-space: nowrap;

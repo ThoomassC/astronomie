@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Activity } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SiteMenu } from "@/components/site/SiteMenu";
 
@@ -145,6 +146,21 @@ describe("SiteMenu", () => {
     act(() => screen.getByRole("link", { name: "Español" }).focus());
     await user.tab();
     expect(screen.getByRole("button", { name: "Partir du Soleil" })).toHaveFocus();
+    expect(toggle()).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("devrait se refermer quand on quitte la page sans la recharger, pour ne pas la retrouver ouverte au retour", async () => {
+    // Next garde la page quittée, masquée sous <Activity> avec son état : le retour arrière la rend telle quelle.
+    const page = (mode: "visible" | "hidden") => (
+      <Activity mode={mode}>
+        <SiteMenu locale="fr" page="voyage" />
+      </Activity>
+    );
+    const user = userEvent.setup();
+    const { rerender } = render(page("visible"));
+    await user.click(toggle());
+    rerender(page("hidden"));
+    rerender(page("visible"));
     expect(toggle()).toHaveAttribute("aria-expanded", "false");
   });
 });
