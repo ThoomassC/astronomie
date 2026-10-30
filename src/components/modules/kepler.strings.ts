@@ -23,11 +23,11 @@ export interface KeplerStrings {
 export const KEPLER_STRINGS: Readonly<Record<Locale, KeplerStrings>> = {
   fr: {
     canvasLabel:
-      "Orbite de Mercure découpée en 11 secteurs de même aire, parcourus chacun en 8 jours. Au périhélie, à 46 millions de km du Soleil, Mercure file à 59 km/s ; à l'aphélie, à 70 millions de km, elle ne va plus qu'à 39 km/s.",
+      "Orbite de Mercure découpée en 11 secteurs de même aire, parcourus chacun en 8 jours. Au périhélie, à 46 millions de km du Soleil, Mercure file à 59 km/s ; à l'aphélie, à 70 millions de km, elle ne va plus qu'à 39 km/s.",
     play: "Lancer l'animation",
     pause: "Mettre en pause",
     areas: "Afficher les aires",
-    readout: (speed, distance) => `Vitesse : ${speed}. Distance au Soleil : ${distance} millions de km.`,
+    readout: (speed, distance) => `Vitesse : ${speed}. Distance au Soleil : ${distance} millions de km.`,
     perihelion: "Périhélie",
     perihelionValues: "46 millions de km, 59 km/s",
     aphelion: "Aphélie",

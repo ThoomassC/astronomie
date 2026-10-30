@@ -292,7 +292,8 @@ describe("ExploreMode", () => {
       settle();
       fireEvent.click(toggle());
       settle();
-      expect(screen.getByRole("status")).toHaveTextContent(earthReading("saturn", NOW, "fr").spoken);
+      // Texte exact : toHaveTextContent ramènerait l'espace insécable (« ce jour : ») à une espace ordinaire.
+      expect(screen.getByRole("status").textContent).toContain(earthReading("saturn", NOW, "fr").spoken);
     });
 
     it("devrait relâcher la bascule quand on fait tourner l'astre", async () => {

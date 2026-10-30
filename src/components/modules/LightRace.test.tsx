@@ -51,13 +51,13 @@ const CASES: readonly (readonly [Locale, Expected])[] = [
       group: "Accélération",
       speeds: ["×100", `×1${NNBSP}000`, `×10${NNBSP}000`],
       // Lecture de départ rédigée à la main : espace ordinaire, contrairement aux boutons écrits par Intl.
-      initial: "Prêt. À ×1 000, l'éclair atteint Neptune en 15 secondes.",
+      initial: "Prêt. À ×1\u202f000, l'éclair atteint Neptune en 15 secondes.",
       ready100: "Prêt. À ×100, l'éclair atteint Neptune en 2 min 30 s.",
       mars: "Mars atteinte après 12 min 40 s de trajet.",
       arrival:
         "Neptune atteinte après 4 h 10 min. Les quatre premières planètes tiennent dans les 5 premiers pour cent du trajet.",
       drawn: [
-        "Temps écoulé : 0 s",
+        "Temps écoulé\u00a0: 0 s",
         "0 à 30 UA, à l'échelle",
         "Zoom sur les 1,6 premières UA",
         "Mercure à Mars",

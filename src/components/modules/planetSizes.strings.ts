@@ -33,21 +33,21 @@ const EARTHS_ES: PluralForms = { one: "Tierra", other: "Tierras" };
 
 export const PLANET_SIZES_STRINGS: Readonly<Record<Locale, PlanetSizesStrings>> = {
   fr: {
-    describe: (name, km, ratio) => `${name} : ${km} km, ${ratio} fois la Terre.`,
+    describe: (name, km, ratio) => `${name} : ${km} km, ${ratio} fois la Terre.`,
     planetEntry: (name, km, earths) =>
       earths ? `${name}, ${km} km (${counted("fr", earths, EARTHS_FR)})` : `${name}, ${km} km`,
     canvasLabel: (planets, sunKm, earthsShown) =>
-      `Les huit planètes dessinées à la même échelle : ${planets.join(" ; ")}.` +
-      (sunKm ? ` Le Soleil est dessiné à côté : ${sunKm} km, 109 Terres.` : "") +
+      `Les huit planètes dessinées à la même échelle : ${planets.join(" ; ")}.` +
+      (sunKm ? ` Le Soleil est dessiné à côté : ${sunKm} km, 109 Terres.` : "") +
       (earthsShown ? " 11 Terres sont alignées sur le diamètre de Jupiter." : ""),
     legend: "Planète détaillée",
-    pickerHint: "Ou choisissez-la ici ; au clavier, avec les flèches.",
+    pickerHint: "Ou choisissez-la ici ; au clavier, avec les flèches.",
     framing: "Cadrage",
     planets: "Les planètes",
     withSun: "Avec le Soleil",
     lineUp: "Aligner 11 Terres",
     lineUpReadout: "11 Terres côte à côte couvrent presque le diamètre de Jupiter (11,2 exactement).",
-    sunReadout: (km) => `Le Soleil mesure ${km} km : 109 Terres, ou presque 10 Jupiter.`,
+    sunReadout: (km) => `Le Soleil mesure ${km} km : 109 Terres, ou presque 10 Jupiter.`,
   },
   en: {
     describe: (name, km, ratio) => `${name}: ${km} km, ${ratio} times Earth's diameter.`,

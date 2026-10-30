@@ -40,7 +40,7 @@ export const SITE_STRINGS: Readonly<Record<Locale, SiteStrings>> = {
     tabs: { home: "Accueil", voyage: "Voyage", sizes: "Tailles", about: "À propos" },
     menu: "Menu",
     language: "Langue",
-    currentLanguage: "langue : français",
+    currentLanguage: "langue : français",
     signature: `${SITE_NAME}\u00a0— un site de ${AUTHOR.name}`,
     externalSite: "site externe",
     skipToContent: "Aller au contenu",

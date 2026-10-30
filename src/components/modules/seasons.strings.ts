@@ -74,8 +74,8 @@ export const SEASONS_STRINGS: Readonly<Record<Locale, SeasonsStrings>> = {
     noonAbove: (angle) => `${angle} au-dessus de l’horizon`,
     noonBelow: "sous l’horizon",
     line: (when, latName, day, noon) => [
-      `${when} : `,
-      ` dans l'hémisphère nord. ${latName} : ${day}. Soleil à midi : ${noon}.`,
+      `${when} : `,
+      ` dans l'hémisphère nord. ${latName} : ${day}. Soleil à midi : ${noon}.`,
     ],
   },
   en: {

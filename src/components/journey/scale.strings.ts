@@ -16,7 +16,7 @@ export interface ScaleStrings {
 export const SCALE_STRINGS: Readonly<Record<Locale, ScaleStrings>> = {
   fr: {
     show: "Voir les distances réelles",
-    note: "Distances réelles : chaque planète serait plus petite qu'un pixel, un cercle la signale. La Terre est à 1 UA du Soleil, Neptune à 30.",
+    note: "Distances réelles : chaque planète serait plus petite qu'un pixel, un cercle la signale. La Terre est à 1 UA du Soleil, Neptune à 30.",
     readNote: "Lire toute la note",
     hideNote: "Masquer la note",
     locked: "Ici, les distances sont déjà réelles.",

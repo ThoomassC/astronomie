@@ -38,17 +38,17 @@ const CASES: readonly (readonly [Locale, Expected])[] = [
   [
     "fr",
     {
-      canvas: "Deux cadrans : l'année de Vénus et sa rotation",
+      canvas: "Deux cadrans\u00a0: l'année de Vénus et sa rotation",
       start: "Lancer la course",
       pause: "Pause",
       resume: "Reprendre",
       restart: "Relancer",
       initial: "Jour 0.",
-      paused: /^Jour \d+ : \d+ % du tour du Soleil, \d+ % du tour sur elle-même\.$/,
-      year: "Jour 224,7 : l'année de Vénus est bouclée. Sa rotation n'en est qu'à 92 %.",
+      paused: /^Jour \d+\u00a0: \d+ % du tour du Soleil, \d+ % du tour sur elle-même\.$/,
+      year: "Jour 224,7\u00a0: l'année de Vénus est bouclée. Sa rotation n'en est qu'à 92 %.",
       yearDone: "Année bouclée",
       rotation:
-        "Jour 243 : Vénus a enfin fait un tour sur elle-même. Son jour sidéral dure plus longtemps que son année. Du lever au lever du Soleil, il s'écoule 117 jours.",
+        "Jour 243\u00a0: Vénus a enfin fait un tour sur elle-même. Son jour sidéral dure plus longtemps que son année. Du lever au lever du Soleil, il s'écoule 117 jours.",
       drawn: ["Jour 0", "Un tour du Soleil", "224,7 jours", "Un tour sur elle-même", "243 jours, dans l’autre sens", "0 %"],
     },
   ],

@@ -122,7 +122,7 @@ describe("SiteHeader", () => {
   it("devrait proposer le menu des langues et le menu replié des petits écrans, fermés", () => {
     render(<SiteHeader locale="fr" page="home" />);
     const banner = screen.getByRole("banner");
-    expect(within(banner).getByRole("button", { name: "FR, langue : français" })).toHaveAttribute(
+    expect(within(banner).getByRole("button", { name: "FR, langue\u00a0: français" })).toHaveAttribute(
       "aria-expanded",
       "false",
     );

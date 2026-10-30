@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, getDefaultNormalizer, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { SizesIntro } from "@/components/sizes/SizesIntro";
 import { getSizesContent } from "@/content/sizes/content";
@@ -31,7 +31,9 @@ describe("SizesIntro", () => {
 
   it("devrait dire ce qui est à l'échelle, et ce qui ne l'est pas (ligne discrète)", () => {
     render(<SizesIntro locale="fr" />);
-    expect(screen.getByText(getSizesContent("fr").intro.note)).toBeInTheDocument();
+    // Texte exact : la recherche par défaut ramènerait l'espace fine insécable (« échelle ; ») à une espace ordinaire.
+    const exact = { normalizer: getDefaultNormalizer({ collapseWhitespace: false }) };
+    expect(screen.getByText(getSizesContent("fr").intro.note, exact)).toBeInTheDocument();
   });
 
   it("devrait dire aux lecteurs d'écran ce que montre la scène 3D décorative", () => {

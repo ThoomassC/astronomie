@@ -15,7 +15,7 @@ describe("SiteFooter", () => {
   it.each([
     [
       "fr",
-      "Cartes des astres : Solar System Scope, d'après des données de la NASA, redimensionnées pour le site. Licence CC BY 4.0.",
+      "Cartes des astres\u00a0: Solar System Scope, d'après des données de la NASA, redimensionnées pour le site. Licence CC BY 4.0.",
       "https://creativecommons.org/licenses/by/4.0/deed.fr",
     ],
     [

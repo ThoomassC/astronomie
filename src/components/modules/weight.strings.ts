@@ -20,7 +20,7 @@ export const WEIGHT_STRINGS: Readonly<Record<Locale, WeightStrings>> = {
     error: (min, max) => `Indiquez une masse entre ${min} et ${max} kg, par exemple 40 ou 62,5.`,
     here: (body, reading) => `Sur ${body}, la balance afficherait ${reading}.`,
     others: "Les autres astres sont dans la liste.",
-    note: "Pour les géantes gazeuses, gravité au sommet des nuages : on ne peut pas s'y poser.",
+    note: "Pour les géantes gazeuses, gravité au sommet des nuages : on ne peut pas s'y poser.",
   },
   en: {
     massLabel: "Mass on Earth",

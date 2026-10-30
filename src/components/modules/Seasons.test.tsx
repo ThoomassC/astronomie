@@ -34,9 +34,9 @@ const EARTH: readonly (readonly [Locale, Expected])[] = [
       range: "Date",
       valueText: "29 octobre",
       initial:
-        "29 octobre : automne dans l'hémisphère nord. Durée du jour à Paris : 10 h 04. Soleil à midi : 28° au-dessus de l’horizon.",
+        "29 octobre\u00a0: automne dans l'hémisphère nord. Durée du jour à Paris\u00a0: 10 h 04. Soleil à midi\u00a0: 28° au-dessus de l’horizon.",
       moved:
-        "20 juillet : été dans l'hémisphère nord. Durée du jour à Paris : 15 h 38. Soleil à midi : 62° au-dessus de l’horizon.",
+        "20 juillet\u00a0: été dans l'hémisphère nord. Durée du jour à Paris\u00a0: 15 h 38. Soleil à midi\u00a0: 62° au-dessus de l’horizon.",
       movedValueText: "20 juillet",
       drawn: ["20 mars", "21 juin", "22 sept.", "21 déc.", "N", "Vue du dessus", "Lumière du Soleil", "Paris", "Vue de côté"],
     },
@@ -82,9 +82,9 @@ const URANUS: readonly (readonly [Locale, Expected])[] = [
       range: "Année",
       valueText: "En 2026",
       initial:
-        "En 2026 : printemps dans l'hémisphère nord. À 49° nord : Soleil permanent, il ne se couche pas. Soleil à midi : 65° au-dessus de l’horizon.",
+        "En 2026\u00a0: printemps dans l'hémisphère nord. À 49° nord\u00a0: Soleil permanent, il ne se couche pas. Soleil à midi\u00a0: 65° au-dessus de l’horizon.",
       moved:
-        "En 2070 : hiver dans l'hémisphère nord. À 49° nord : nuit permanente, le Soleil ne se lève pas. Soleil à midi : sous l’horizon.",
+        "En 2070\u00a0: hiver dans l'hémisphère nord. À 49° nord\u00a0: nuit permanente, le Soleil ne se lève pas. Soleil à midi\u00a0: sous l’horizon.",
       movedValueText: "En 2070",
       drawn: ["2007", "2028", "2049", "2070", "N", "Vue du dessus", "Lumière du Soleil", "49° N", "Vue de côté"],
     },

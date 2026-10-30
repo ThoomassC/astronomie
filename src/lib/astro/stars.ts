@@ -71,6 +71,6 @@ export const NEARBY_STARS: readonly NearbyStar[] = [
   { key: "altair", raDeg: 297.6958, decDeg: 8.8683, distanceLy: 16.7303, spectralType: "A7V", apparentMag: 0.76 },
 ];
 
-/** Sources des valeurs, citées dans le pied de page. */
+/** Sources des valeurs, citées dans le pied de page, écrites à la française : espace fine insécable avant « ; ». */
 export const NEARBY_STARS_SOURCE =
-  "ESA, Gaia DR3 ; SIMBAD (CDS) ; Hipparcos (van Leeuwen, 2007) ; Akeson et al. (2021) ; Bond et al. (2017) ; Benedict et al. (2006) ; Kervella et al. (2022) ; RECONS";
+  "ESA, Gaia DR3 ; SIMBAD (CDS) ; Hipparcos (van Leeuwen, 2007) ; Akeson et al. (2021) ; Bond et al. (2017) ; Benedict et al. (2006) ; Kervella et al. (2022) ; RECONS";

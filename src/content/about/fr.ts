@@ -5,8 +5,8 @@ import type { AboutContent } from "./types";
 const figures = sourcedFigures("fr");
 
 /**
- * Page À propos, en français : vouvoiement ; espace insécable (U+00A0) à l'intérieur des guillemets « » et avant
- * « : » et « ; ». Les noms des liens sont des noms propres, laissés dans leur langue.
+ * Page À propos, en français : vouvoiement ; typographie du site (espace insécable avant « : » et dans les guillemets,
+ * espace fine insécable avant « ; »). Les noms des liens sont des noms propres, laissés dans leur langue.
  */
 export const ABOUT_FR: AboutContent = {
   title: "À propos",
@@ -25,7 +25,7 @@ export const ABOUT_FR: AboutContent = {
       id: "sources",
       heading: "Sources",
       paragraphs: [
-        "Les chiffres viennent des agences spatiales et d'articles scientifiques ; voici les principales sources, en anglais. Les rayons des étoiles de l'onglet Tailles viennent de mesures publiées, étoile par étoile.",
+        "Les chiffres viennent des agences spatiales et d'articles scientifiques ; voici les principales sources, en anglais. Les rayons des étoiles de l'onglet Tailles viennent de mesures publiées, étoile par étoile.",
       ],
       links: [
         {
@@ -51,7 +51,7 @@ export const ABOUT_FR: AboutContent = {
         {
           label: "ESA, Gaia DR3",
           href: ABOUT_URLS.gaiaDr3,
-          description: `Distances des étoiles voisines, dont Proxima du Centaure à ${figures.nearestStar} ; complétées par Hipparcos et RECONS.`,
+          description: `Distances des étoiles voisines, dont Proxima du Centaure à ${figures.nearestStar} ; complétées par Hipparcos et RECONS.`,
         },
         { label: "CDS, SIMBAD", href: ABOUT_URLS.simbad, description: "Positions des étoiles dans le ciel." },
         {

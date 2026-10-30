@@ -27,13 +27,13 @@ export interface VenusRaceStrings {
 
 export const VENUS_RACE_STRINGS: Readonly<Record<Locale, VenusRaceStrings>> = {
   fr: {
-    canvasLabel: "Deux cadrans : l'année de Vénus et sa rotation",
+    canvasLabel: "Deux cadrans : l'année de Vénus et sa rotation",
     start: "Lancer la course",
     day: (day) => `Jour ${day}`,
-    yearReadout: "Jour 224,7 : l'année de Vénus est bouclée. Sa rotation n'en est qu'à 92 %.",
+    yearReadout: "Jour 224,7 : l'année de Vénus est bouclée. Sa rotation n'en est qu'à 92 %.",
     rotationReadout:
-      "Jour 243 : Vénus a enfin fait un tour sur elle-même. Son jour sidéral dure plus longtemps que son année. Du lever au lever du Soleil, il s'écoule 117 jours.",
-    paused: (day, year, rotation) => `${day} : ${year} du tour du Soleil, ${rotation} du tour sur elle-même.`,
+      "Jour 243 : Vénus a enfin fait un tour sur elle-même. Son jour sidéral dure plus longtemps que son année. Du lever au lever du Soleil, il s'écoule 117 jours.",
+    paused: (day, year, rotation) => `${day} : ${year} du tour du Soleil, ${rotation} du tour sur elle-même.`,
     orbit: "Un tour du Soleil",
     orbitDays: "224,7 jours",
     spin: "Un tour sur elle-même",

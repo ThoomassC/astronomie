@@ -152,7 +152,7 @@ describe("les fiches", () => {
   });
 
   it.each([
-    ["fr", /^Les distances sont à l'échelle, pas les galaxies : elles sont grossies (\d+) fois/],
+    ["fr", /^Les distances sont à l'échelle, pas les galaxies\u00a0: elles sont grossies (\d+) fois/],
     ["en", /^Distances are to scale, galaxies are not: they are enlarged (\d+) times/],
     ["es", /^Las distancias están a escala, las galaxias no: están agrandadas (\d+) veces/],
   ] as const)("devrait dire que les galaxies du Groupe local sont grossies, et de combien (%s)", (locale, pattern) => {

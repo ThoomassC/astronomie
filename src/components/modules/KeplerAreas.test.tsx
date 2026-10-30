@@ -30,11 +30,11 @@ const CASES: readonly (readonly [Locale, Expected])[] = [
     "fr",
     {
       canvas:
-        "Orbite de Mercure découpée en 11 secteurs de même aire, parcourus chacun en 8 jours. Au périhélie, à 46 millions de km du Soleil, Mercure file à 59 km/s ; à l'aphélie, à 70 millions de km, elle ne va plus qu'à 39 km/s.",
+        "Orbite de Mercure découpée en 11 secteurs de même aire, parcourus chacun en 8 jours. Au périhélie, à 46 millions de km du Soleil, Mercure file à 59 km/s\u202f; à l'aphélie, à 70 millions de km, elle ne va plus qu'à 39 km/s.",
       play: "Lancer l'animation",
       pause: "Mettre en pause",
       areas: "Afficher les aires",
-      initial: "Vitesse : 59,0 km/s. Distance au Soleil : 46,0 millions de km.",
+      initial: "Vitesse\u00a0: 59,0 km/s. Distance au Soleil\u00a0: 46,0 millions de km.",
       drawn: [
         "Périhélie",
         "46 millions de km, 59 km/s",

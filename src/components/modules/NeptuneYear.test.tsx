@@ -48,9 +48,9 @@ const CASES: readonly (readonly [Locale, Expected])[] = [
       discovery107: "Depuis sa découverte, Neptune a fait 1,07 tour du Soleil.",
       discovery203: "Depuis sa découverte, Neptune a fait 2,03 tours du Soleil.",
       readout:
-        "Depuis 2012, Neptune a parcouru 9,0 % de son orbite. Sur Neptune, vous n'auriez pas encore un an : 0,09 année neptunienne. Sur Mars, vous auriez 7,9 ans.",
+        "Depuis 2012, Neptune a parcouru 9,0 % de son orbite. Sur Neptune, vous n'auriez pas encore un an\u00a0: 0,09 année neptunienne. Sur Mars, vous auriez 7,9 ans.",
       announced1990:
-        "Depuis 1990, Neptune a parcouru 22,3 % de son orbite. Sur Neptune, vous n'auriez pas encore un an : 0,22 année neptunienne. Sur Mars, vous auriez 19,6 ans.",
+        "Depuis 1990, Neptune a parcouru 22,3 % de son orbite. Sur Neptune, vous n'auriez pas encore un an\u00a0: 0,22 année neptunienne. Sur Mars, vous auriez 19,6 ans.",
       overOneOrbit:
         "Depuis 2012, Neptune a fait plus d'un tour du Soleil. Sur Neptune, vous auriez 1,14 année neptunienne. Sur Mars, vous auriez 100,0 ans.",
       notBorn: "La date du site est antérieure à votre naissance.",

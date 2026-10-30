@@ -58,7 +58,7 @@ export const NEPTUNE_YEAR_STRINGS: Readonly<Record<Locale, NeptuneYearStrings>> 
     notBorn: "La date du site est antérieure à votre naissance.",
     // Âge sur Mars toujours en « ans », comme avant la traduction.
     beforeOneOrbit: (birthYear, share, life, mars) =>
-      `Depuis ${birthYear}, Neptune a parcouru ${share} de son orbite. Sur Neptune, vous n'auriez pas encore un an : ${counted("fr", life, NEPTUNE_YEARS_FR)}. Sur Mars, vous auriez ${mars.text} ans.`,
+      `Depuis ${birthYear}, Neptune a parcouru ${share} de son orbite. Sur Neptune, vous n'auriez pas encore un an : ${counted("fr", life, NEPTUNE_YEARS_FR)}. Sur Mars, vous auriez ${mars.text} ans.`,
     afterOneOrbit: (birthYear, life, mars) =>
       `Depuis ${birthYear}, Neptune a fait plus d'un tour du Soleil. Sur Neptune, vous auriez ${counted("fr", life, NEPTUNE_YEARS_FR)}. Sur Mars, vous auriez ${mars.text} ans.`,
     discovered: "1846, découverte",
