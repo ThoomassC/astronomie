@@ -1,0 +1,223 @@
+/*
+ * Page « Tailles » : la mise en page du Voyage (plaques à gauche, règle à droite, plaque compacte collée en bas sur
+ * téléphone), sans dock. Seuls les écarts propres à Tailles vivent ici ; le reste est dans globals.css.
+ */
+
+/* Pas de dock : la plaque compacte se colle à 16 px du bas de l'écran (zone sûre comprise). */
+.page {
+  --dock-clear: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Plan du site, aligné sur les paragraphes du pied de page (comme au Voyage), au bord à 640 px et moins. */
+.siteMap {
+  margin-left: clamp(0rem, 4vw, 4rem);
+}
+
+/* ---------- Introduction ---------- */
+
+/* Ligne discrète sous la promesse : ce qui est à l'échelle, et ce qui ne l'est pas. */
+:global(.hero) p.introNote {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--brume);
+}
+
+/* ---------- Plaques ---------- */
+
+/* Rang : ordinal, total et catégorie, sur une ligne quand ils tiennent. */
+.rank {
+  text-wrap: balance;
+}
+
+/* Ligne de la fiche sur toute la largeur : température et sa réglette, comparaison. */
+.wide {
+  grid-column: 1 / -1;
+}
+
+/* La comparaison est une phrase : graisse et taille du texte courant, pas d'une valeur. */
+.sentence {
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+:global(.facts) dd small + small {
+  margin-top: 0.25rem;
+}
+
+/* ---------- Réglette des températures (décorative : la fiche dit tout en mots) ---------- */
+.thermo {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--brume);
+}
+
+.thermoTrack {
+  position: relative;
+  height: 6px;
+  margin-block: 12px 18px;
+  border-radius: var(--r-pill);
+  background: var(--thermo-gradient);
+}
+
+/* Repère de l'étoile : triangle ivoire de 8 px au-dessus de la piste. */
+.thermoStar {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: var(--at);
+  width: 0;
+  height: 0;
+  border-inline: 5px solid transparent;
+  border-top: 8px solid var(--ivoire);
+  transform: translateX(-50%);
+}
+
+/* Repère du Soleil : trait de laiton de 1 × 10 px sous la piste, et son nom dessous. */
+.thermoSun {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: var(--at);
+  width: 1px;
+  height: 10px;
+  background: var(--laiton);
+}
+
+.thermoSun span {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.thermoEnds {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* ---------- Échelle graphique de la scène (décorative) ---------- */
+.scaleBar {
+  position: fixed;
+  z-index: 3;
+  right: calc(var(--gr) + var(--rail-w) + 1.5rem);
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--filet);
+  border-radius: var(--r-pill);
+  background: var(--plaque-a);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s,
+    visibility 0s 0.2s;
+}
+
+.scaleBar[data-visible] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s;
+}
+
+.scaleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 24px;
+}
+
+/* Soleil à l'échelle : disque de 4 à 24 px ; sinon un point de 1 px dans un anneau de 10 px. */
+.scaleSun {
+  flex: none;
+  border-radius: 50%;
+}
+
+.scaleSun[data-mode="disc"] {
+  width: var(--sun-size, 4px);
+  height: var(--sun-size, 4px);
+  background: #fff1e7;
+}
+
+.scaleSun[data-mode="ring"] {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--soleil);
+  background: radial-gradient(circle, #fff1e7 0 0.5px, transparent 1px);
+}
+
+/* Trait de laiton terminé par deux traits de 8 px ; sa longueur vient du moteur (--len). */
+.scaleLine {
+  display: block;
+  width: var(--len, 0px);
+  height: 8px;
+  border-inline: 1px solid var(--laiton);
+  background: linear-gradient(var(--laiton), var(--laiton)) center / 100% 1px no-repeat;
+}
+
+.scaleText {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--brume);
+  white-space: nowrap;
+}
+
+/* ---------- Étiquettes de la scène ---------- */
+
+/* Au-dessus du limbe d'une grande étoile : la pilule seule, sans repère, centrée par le moteur. */
+:global(#labels) .limbLabel {
+  padding: 0;
+}
+
+/* ---------- Légende de la règle ---------- */
+.railLegend {
+  position: fixed;
+  z-index: 4;
+  right: calc(var(--gr) + 0.25rem);
+  top: calc(50% + min(33vh, 280px) + 0.75rem);
+  width: var(--rail-w);
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--brume);
+  text-align: right;
+}
+
+/* ---------- Mise en page compacte (téléphone, tablette en portrait) ---------- */
+@media (max-width: 640px) {
+  .siteMap {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait) {
+  .page :global(.plate) h2 {
+    font-size: clamp(2.25rem, 7vw, 3.25rem);
+  }
+
+  .scaleBar {
+    top: calc(env(safe-area-inset-top, 0px) + 4.75rem + 0.5rem);
+    right: var(--gr);
+    bottom: auto;
+  }
+}
+
+/* Là où la règle cède la place au menu des étoiles, sa légende part avec elle. */
+@media (max-width: 860px) and (min-height: 30.0625rem) and (scripting: enabled),
+  (max-width: 1100px) and (orientation: portrait) and (min-height: 30.0625rem) and (scripting: enabled) {
+  .railLegend {
+    display: none;
+  }
+}
+
+/* Repli sans scène 3D : ni échelle, ni étiquettes, fond de nuit (globals.css masque le canevas). */
+:global(.no3d) .scaleBar {
+  display: none;
+}
+
+@media (forced-colors: active) {
+  .thermo,
+  .scaleBar {
+    display: none;
+  }
+}
