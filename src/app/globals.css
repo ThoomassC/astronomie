@@ -712,6 +712,17 @@ main > section > * {
   pointer-events: none;
 }
 
+/*
+ * Avancement du repos de la caméra, de 0 à 1, écrit sur la plaque de l'escale à chaque image (suivi du défilement) et
+ * lu par son seul filet (::after, mise en page compacte). Non héritée : sinon chaque écriture invaliderait le style de
+ * tout le contenu de la plaque ; le filet la reprend explicitement (`inherit`).
+ */
+@property --rest {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 .rank {
   margin: 0 0 0.25rem;
   font-size: 0.875rem;
@@ -2133,6 +2144,11 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   }
 
   .plate::after {
+    /*
+     * --rest n'est pas héritée (@property, plus haut) : le filet la prend de sa plaque. Le repli 0 sert aux navigateurs
+     * sans @property, tant que la plaque n'en a pas reçu.
+     */
+    --rest: inherit;
     content: "";
     position: absolute;
     top: -1px;
