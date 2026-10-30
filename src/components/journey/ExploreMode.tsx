@@ -3,10 +3,11 @@
 import { useEffectEvent, useLayoutEffect, useRef } from "react";
 import { StatusMessage } from "@/components/modules/StatusMessage";
 import { useAnnouncer } from "@/components/modules/useAnnouncer";
-import { EXPLORE } from "@/content/explore";
+import { useLocale } from "@/i18n/LocaleProvider";
 import { exploreStore, useExploration } from "@/lib/journey/explore";
 import { orbitKeyCommand, type ExploreStop } from "@/lib/journey/orbit";
 import { journeyStore } from "@/lib/journey/store";
+import { EXPLORE_STRINGS } from "./explore.strings";
 import { ExploreControls } from "./ExploreControls";
 import { ExploreSurface } from "./ExploreSurface";
 import { EXPLORE_BUTTON_ID, EXPLORE_GROUP_ID } from "./ids";
@@ -53,21 +54,32 @@ function focusWasInLayer(layer: HTMLElement | null): boolean {
  * rendu, puis le focus revient au bouton « Tourner autour ».
  * Garde-fous : la page défile quand même (ancre, retour arrière, iOS) ou l'escale affichée change ⇒ sortie, et le
  * voyage reprend là où est la page ; la fenêtre change de taille ⇒ la page se repose sur l'escale.
- * La région d'annonce est présente dès le rendu, hors de la couche (jamais inerte).
+ * La région d'annonce est présente dès le rendu, hors de la couche (jamais inerte) ; l'annonce est dans la langue de la
+ * page.
  */
 export function ExploreMode() {
+  const t = EXPLORE_STRINGS[useLocale()];
   const { stop, fromEarth } = useExploration();
   const { message, announce } = useAnnouncer();
   const layerRef = useRef<HTMLDivElement>(null);
   const active = stop !== null;
 
   const announceEntry = useEffectEvent((entered: ExploreStop) => {
-    announce(EXPLORE.announce(EXPLORE.targets[entered]));
+    announce(t.announce(t.targets[entered]));
   });
+
+  /*
+   * Page quittée sans rechargement (masquée sous <Activity> par le routeur) ou démontée : l'exploration prend fin. La
+   * scène y met fin d'ordinaire en se libérant, mais elle n'est pas encore montée tant que three.js se charge. Nettoyage
+   * synchrone, comme celui de l'effet suivant : rien ne réapparaît figé au retour.
+   */
+  useLayoutEffect(() => () => exploreStore.exit(), []);
 
   // Avant la peinture : la page n'apparaît jamais à la fois figée et encore active, ou l'inverse.
   useLayoutEffect(() => {
-    if (stop === null) return;
+    // Au retour sur la page, les effets sont recréés depuis le dernier rendu, qui peut précéder la sortie : seule
+    // l'exploration en cours fige la page.
+    if (stop === null || exploreStore.get().stop !== stop) return;
     const layer = layerRef.current;
     const html = document.documentElement;
     holdAt(stop);

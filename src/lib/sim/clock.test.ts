@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { DAY_MS } from "@/lib/astro/constants";
-import { createClock, type SimClock } from "@/lib/sim/clock";
+import { createClock, SPEEDS, type SimClock } from "@/lib/sim/clock";
 
 /** 2026-01-01T00:00Z : début pile d'un jour simulé. */
 const START = Date.UTC(2026, 0, 1);
@@ -172,5 +172,16 @@ describe("createClock", () => {
       expect(clock.now()).toBe(START + 3.5 * DAY_MS);
       expect(clock.snapshot()).toMatchObject({ ms: START + 3.5 * DAY_MS, day: START_DAY + 3 });
     });
+  });
+});
+
+describe("SPEEDS", () => {
+  it("devrait identifier les quatre vitesses du jour à l'année, dans l'ordre, en jours simulés par seconde", () => {
+    expect(SPEEDS).toEqual([
+      { id: "day", days: 1 },
+      { id: "week", days: 7 },
+      { id: "month", days: 30.44 },
+      { id: "year", days: 365.25 },
+    ]);
   });
 });

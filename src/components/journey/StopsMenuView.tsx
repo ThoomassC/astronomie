@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent } from "react";
 import { cssVars } from "./cssVars";
 import { GoToLink } from "./GoToLink";
 
@@ -38,7 +38,8 @@ export interface StopsMenuViewProps {
  * Le nom de l'escale en cours, dans la barre haute, ouvre la liste des escales, avec de grandes
  * cibles tactiles : il remplace la règle là où elle n'a plus que des pastilles sans nom
  * (globals.css). Ailleurs, la règle reste et ce menu est masqué. Échap, un choix, un toucher
- * hors du menu ou un focus qui en sort le referment.
+ * hors du menu ou un focus qui en sort le referment. Quitter la page aussi : Next garde la page
+ * quittée, état compris (`<Activity>`), et l'on ne doit pas la retrouver liste ouverte au retour.
  */
 export function StopsMenuView({ items, current, homeKey, currentName, currentColor, labels }: StopsMenuViewProps) {
   const [open, setOpen] = useState(false);
@@ -48,6 +49,9 @@ export function StopsMenuView({ items, current, homeKey, currentName, currentCol
   const listId = useId();
   // L'accueil n'est pas une escale de la liste : le bouton dit ce qu'il ouvre.
   const atHome = current === homeKey;
+
+  // Nettoyage synchrone quand la page est masquée par la navigation ou démontée : la liste ne réapparaît pas ouverte.
+  useLayoutEffect(() => () => setOpen(false), []);
 
   useEffect(() => {
     if (!open) return;

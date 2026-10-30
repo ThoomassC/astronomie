@@ -1,10 +1,11 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RailStop } from "@/components/journey/DistanceRail";
 import { setRealScale } from "@/components/journey/realScale";
 import { ScaleNote } from "@/components/journey/ScaleNote";
 import { StopsMenu } from "@/components/journey/StopsMenu";
+import { renderIn } from "@/components/modules/testUtils";
 import { journeyStore } from "@/lib/journey/store";
 
 const STOPS: readonly RailStop[] = [
@@ -117,5 +118,47 @@ describe("StopsMenu", () => {
     await user.keyboard("{Escape}");
     expect(toggle()).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByRole("button", { name: "Masquer la note" })).toBeInTheDocument();
+  });
+});
+
+describe("StopsMenu en anglais et en espagnol", () => {
+  it.each([
+    { locale: "en", home: "Stops, choose a stop" },
+    { locale: "es", home: "Escalas, elegir una escala" },
+  ] as const)("devrait proposer les escales à l'accueil, dans la langue de la page ($locale)", ({ locale, home }) => {
+    act(() => journeyStore.update("hero", "hero", 0));
+    renderIn(locale, <StopsMenu stops={STOPS} />);
+    expect(screen.getByRole("button", { name: home })).toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      locale: "en",
+      nav: "Stops",
+      toggle: "Mars, change stop",
+      sun: "Sun",
+      sunSub: "the centre",
+      marsSub: "1.52 AU",
+      beyond: "over 30 AU",
+    },
+    {
+      locale: "es",
+      nav: "Escalas",
+      toggle: "Marte, cambiar de escala",
+      sun: "Sol",
+      sunSub: "el centro",
+      marsSub: "1,52 UA",
+      beyond: "más de 30 UA",
+    },
+  ] as const)("devrait nommer les escales et leur distance au Soleil dans la langue ($locale)", async (t) => {
+    const user = userEvent.setup();
+    renderIn(t.locale, <StopsMenu stops={STOPS} />);
+    const menu = screen.getByRole("navigation", { name: t.nav });
+    await user.click(within(menu).getByRole("button", { name: t.toggle }));
+    const sun = within(menu).getByRole("link", { name: new RegExp(`^${t.sun}`) });
+    expect(sun).toHaveAttribute("href", "#soleil");
+    expect(within(sun).getByText(t.sunSub)).toBeInTheDocument();
+    expect(within(menu).getByText(t.marsSub)).toBeInTheDocument();
+    expect(within(menu).getByText(t.beyond)).toBeInTheDocument();
   });
 });

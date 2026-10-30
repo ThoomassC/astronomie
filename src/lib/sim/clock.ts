@@ -1,18 +1,22 @@
 import { useSyncExternalStore } from "react";
 import { DAY_MS } from "@/lib/astro/constants";
 
+/** Vitesse du temps : un jour, une semaine, un mois ou une année simulés par seconde. */
+export type SpeedId = "day" | "week" | "month" | "year";
+
 export interface Speed {
+  /** Clé des libellés, propres à chaque langue (`DOCK_STRINGS`). */
+  id: SpeedId;
+  /** Jours simulés par seconde. */
   days: number;
-  label: string;
-  short: string;
 }
 
-/** Vitesses de la machine à remonter le temps, en jours simulés par seconde. */
+/** Vitesses de la machine à remonter le temps, de la plus lente à la plus rapide. */
 export const SPEEDS: readonly Speed[] = [
-  { days: 1, label: "1 jour/s", short: "1 j/s" },
-  { days: 7, label: "1 semaine/s", short: "1 sem/s" },
-  { days: 30.44, label: "1 mois/s", short: "1 mois/s" },
-  { days: 365.25, label: "1 an/s", short: "1 an/s" },
+  { id: "day", days: 1 },
+  { id: "week", days: 7 },
+  { id: "month", days: 30.44 },
+  { id: "year", days: 365.25 },
 ];
 
 export interface ClockSnapshot {

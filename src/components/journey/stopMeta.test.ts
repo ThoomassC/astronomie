@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { railDistanceLabel, stopColor, stopName } from "@/components/journey/stopMeta";
+import { LOCALES } from "@/i18n/locales";
 import { PLANET_BY_KEY } from "@/lib/astro/planets";
 import { STOP_ORDER } from "@/lib/journey/camera";
 
@@ -83,5 +84,72 @@ describe("railDistanceLabel", () => {
   it("devrait situer la Voie lactée par la distance de son centre, en années-lumière entières", () => {
     // formatNumber sépare les milliers par une espace fine insécable (U+202F).
     expect(railDistanceLabel("galaxy", 27_000 * AU_PER_LY)).toBe("centre à 27\u202f000 al");
+  });
+});
+
+describe("stopName dans les trois langues", () => {
+  it.each(LOCALES)("devrait donner à chaque escale un nom affichable et distinct (%s)", (locale) => {
+    const names = STOP_ORDER.map((key) => stopName(key, locale));
+    expect(names.every((name) => name.trim() !== "")).toBe(true);
+    expect(new Set(names).size).toBe(STOP_ORDER.length);
+  });
+
+  it("devrait nommer les escales en anglais, dans l'ordre du voyage", () => {
+    expect(STOP_ORDER.map((key) => stopName(key, "en"))).toEqual([
+      "Overview",
+      "Sun",
+      "Mercury",
+      "Venus",
+      "Earth",
+      "Mars",
+      "Asteroids",
+      "Jupiter",
+      "Saturn",
+      "Uranus",
+      "Neptune",
+      "Beyond",
+      "Nearby stars",
+      "Milky Way",
+    ]);
+  });
+
+  it("devrait nommer les escales en espagnol, dans l'ordre du voyage", () => {
+    expect(STOP_ORDER.map((key) => stopName(key, "es"))).toEqual([
+      "Vista general",
+      "Sol",
+      "Mercurio",
+      "Venus",
+      "Tierra",
+      "Marte",
+      "Asteroides",
+      "Júpiter",
+      "Saturno",
+      "Urano",
+      "Neptuno",
+      "Más allá",
+      "Estrellas vecinas",
+      "Vía Láctea",
+    ]);
+  });
+});
+
+describe("railDistanceLabel en anglais et en espagnol", () => {
+  it.each([
+    ["sun", 0, "the centre", "el centro"],
+    ["belt", 2.7, "2.1 to 3.3 AU", "de 2,1 a 3,3 UA"],
+    ["beyond", 45, "over 30 AU", "más de 30 UA"],
+    ["earth", 1, "1 AU", "1 UA"],
+    ["mars", 1.524, "1.52 AU", "1,52 UA"],
+    ["neptune", 30.07, "30.1 AU", "30,1 UA"],
+    ["stars", 4.2465 * AU_PER_LY, "from 4.2 ly", "desde 4,2 al"],
+    ["galaxy", 27_000 * AU_PER_LY, "centre at 27,000 ly", "centro a 27.000 al"],
+  ] as const)("devrait situer l'escale %s, à %s UA, dans la langue (« %s », « %s »)", (key, au, en, es) => {
+    expect(railDistanceLabel(key, au, "en")).toBe(en);
+    expect(railDistanceLabel(key, au, "es")).toBe(es);
+  });
+
+  it("devrait garder le français par défaut, tant que la langue reste facultative", () => {
+    expect(railDistanceLabel("mars", 1.524)).toBe(railDistanceLabel("mars", 1.524, "fr"));
+    expect(stopName("hero")).toBe(stopName("hero", "fr"));
   });
 });

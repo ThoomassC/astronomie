@@ -1,7 +1,10 @@
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DOCK_STRINGS } from "@/components/journey/dock.strings";
 import { SpeedSelector } from "@/components/journey/SpeedSelector";
+import { renderIn } from "@/components/modules/testUtils";
+import { LOCALES } from "@/i18n/locales";
 import { SPEEDS } from "@/lib/sim/clock";
 
 /**
@@ -19,7 +22,11 @@ let resizeCallbacks: (() => void)[] = [];
 beforeEach(() => {
   trackWidth = TRACK_WIDTH;
   resizeCallbacks = [];
-  const labelIndex = (element: HTMLElement) => SPEEDS.findIndex((speed) => speed.label === element.dataset.label);
+  // Rang de la vitesse d'un bouton, d'après son libellé (`data-label`) dans l'une des trois langues.
+  const labelIndex = (element: HTMLElement) =>
+    SPEEDS.findIndex((speed) =>
+      LOCALES.some((locale) => DOCK_STRINGS[locale].speeds[speed.id].label === element.dataset.label),
+    );
   vi.spyOn(HTMLElement.prototype, "offsetLeft", "get").mockImplementation(function (this: HTMLElement) {
     const index = labelIndex(this);
     return index < 0 || trackWidth === 0 ? 0 : leftOf(index);
@@ -114,5 +121,41 @@ describe("SpeedSelector", () => {
     expect(group()).toHaveAttribute("data-ready", "true");
     // Le placement instantané ne laisse pas la piste figée : les changements suivants s'animent.
     expect(group()).not.toHaveAttribute("data-instant");
+  });
+});
+
+describe("SpeedSelector en anglais et en espagnol", () => {
+  it.each([
+    {
+      locale: "en",
+      group: "Speed of time",
+      visible: ["1 day/s", "1 week/s", "1 month/s", "1 year/s"],
+      spoken: ["1 day per second", "1 week per second", "1 month per second", "1 year per second"],
+    },
+    {
+      locale: "es",
+      group: "Velocidad del tiempo",
+      visible: ["1 día/s", "1 semana/s", "1 mes/s", "1 año/s"],
+      spoken: ["1 día por segundo", "1 semana por segundo", "1 mes por segundo", "1 año por segundo"],
+    },
+  ] as const)(
+    "devrait écrire les vitesses dans la langue de la page, nom accessible commençant par le texte visible ($locale)",
+    ({ locale, group: name, visible, spoken }) => {
+      renderIn(locale, <SpeedSelector value={7} onChange={() => {}} />);
+      const buttons = within(screen.getByRole("group", { name })).getAllByRole("button");
+      expect(buttons.map((button) => button.textContent)).toEqual(visible);
+      expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual(spoken);
+      // La largeur du gras se réserve sur le libellé de la langue (globals.css, `content: attr(data-label)`).
+      expect(buttons.map((button) => button.dataset.label)).toEqual(visible);
+    },
+  );
+
+  it("devrait placer la bulle sous la vitesse active en espagnol aussi", () => {
+    renderIn("es", <SpeedSelector value={7} onChange={() => {}} />);
+    expect(screen.getByRole("button", { name: "1 semana por segundo" })).toHaveAttribute("aria-pressed", "true");
+    const track = screen.getByRole("group", { name: "Velocidad del tiempo" });
+    expect([track.style.getPropertyValue("--bubble-left"), track.style.getPropertyValue("--bubble-right")]).toEqual(
+      edgesUnder(1),
+    );
   });
 });

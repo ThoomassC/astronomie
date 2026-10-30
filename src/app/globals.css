@@ -1403,6 +1403,24 @@ footer a {
   color: var(--brume);
 }
 
+/*
+ * Place de la plus longue date longue de l'année, pour que le dock ne change pas de largeur d'un mois à l'autre :
+ * 9,6rem tient « 30 septembre 2026 » ; l'anglais (« 30 September 2026 ») la dépasse de 2 px, l'espagnol
+ * (« 30 de septiembre de 2026 ») de 3rem. L'espagnol ne garde donc la date longue qu'au-delà de 900 px : en dessous,
+ * SimDate passe à la date courte (« 30 sept 2026 »), sans quoi le dock déborderait de sa capsule vers 770 px.
+ */
+@media (min-width: 47.5625rem) {
+  .date:lang(en) {
+    min-width: 9.75rem;
+  }
+}
+
+@media (min-width: 56.3125rem) {
+  .date:lang(es) {
+    min-width: 12.6rem;
+  }
+}
+
 .today {
   font-size: 0.8125rem;
   min-height: 40px;

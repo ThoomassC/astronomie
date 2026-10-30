@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Plate, type PlateSection } from "@/components/journey/Plate";
+import { renderIn } from "@/components/modules/testUtils";
 
 const SECTIONS: readonly PlateSection[] = [
   { key: "fiche", label: "Lire la fiche", content: <p>Texte de la fiche</p> },
@@ -257,5 +258,25 @@ describe("Plate", () => {
     const ids = screen.getAllByRole("button", { expanded: false }).map((button) => button.getAttribute("aria-controls"));
     expect(ids).toHaveLength(4);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("Plate en anglais et en espagnol", () => {
+  it.each([
+    { locale: "en", name: "Mars", fold: "Collapse, Mars" },
+    { locale: "es", name: "Marte", fold: "Plegar, Marte" },
+  ] as const)("devrait tout replier avec le bouton de la langue, nom de l'astre lu après lui ($locale)", async (t) => {
+    const user = userEvent.setup();
+    renderIn(
+      t.locale,
+      <section data-stop="mars">
+        <Plate id="mars" name={t.name} color="#DA6A43" header={<h2>{t.name}</h2>} sections={SECTIONS} />
+      </section>,
+    );
+    const fiche = screen.getByRole("button", { name: "Lire la fiche" });
+    await user.click(fiche);
+    await user.click(screen.getByRole("button", { name: t.fold }));
+    expect(fiche).toHaveAttribute("aria-expanded", "false");
+    expect(fiche).toHaveFocus();
   });
 });

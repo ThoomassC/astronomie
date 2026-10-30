@@ -1,9 +1,11 @@
 "use client";
 
+import { useLocale } from "@/i18n/LocaleProvider";
 import { AU_PER_LIGHT_YEAR } from "@/lib/astro/constants";
 import { RAIL_BREAK, railPercent, type StopKey } from "@/lib/journey/camera";
 import { journeyStore, useCurrentStop } from "@/lib/journey/store";
 import { RAIL_ID } from "./ids";
+import { JOURNEY_STRINGS } from "./journey.strings";
 import { RailView, type RailMarker, type RailTick } from "./RailView";
 import { railDistanceLabel, stopColor, stopName } from "./stopMeta";
 
@@ -40,22 +42,23 @@ const BREAK_MARKS = [(RAIL_BREAK.from + RAIL_BREAK.to) / 2] as const;
  * restent à leur position logarithmique ; les repères trop proches (Vénus et la Terre) s'écartent et un trait fin
  * les relie à leur vraie position. Entre le système solaire et les étoiles, l'axe s'interrompt (« ≈ ») : l'échelle
  * change d'unité, des UA aux années-lumière. L'accueil se place comme le Soleil. Le curseur suit la caméra par
- * `transform`, hors de React.
+ * `transform`, hors de React. Noms et distances dans la langue de la page.
  */
 export function DistanceRail({ stops }: { stops: readonly RailStop[] }) {
+  const locale = useLocale();
   const current = useCurrentStop();
   const markers: RailMarker[] = stops.map(({ key, au, href }) => ({
     key,
     href,
-    name: stopName(key),
-    sub: railDistanceLabel(key, au),
+    name: stopName(key, locale),
+    sub: railDistanceLabel(key, au, locale),
     color: stopColor(key),
     percent: railPercent(au),
   }));
   return (
     <RailView
       id={RAIL_ID}
-      label="Escales, du Soleil vers l'extérieur"
+      label={JOURNEY_STRINGS[locale].railLabel}
       markers={markers}
       ticks={TICKS}
       axis={AXIS}

@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Activity } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { StopsMenuView, type StopsMenuItem, type StopsMenuViewProps } from "@/components/journey/StopsMenuView";
 
@@ -113,5 +114,21 @@ describe("StopsMenuView", () => {
     await user.tab();
     expect(screen.getByRole("button", { name: "Comparer" })).toHaveFocus();
     expect(toggle()).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("devrait se refermer quand on quitte la page sans la recharger, pour ne pas la retrouver ouverte au retour", async () => {
+    // Next garde la page quittée, masquée sous <Activity> avec son état : le retour arrière la rend telle quelle.
+    const page = (mode: "visible" | "hidden") => (
+      <Activity mode={mode}>
+        <StopsMenuView {...props()} />
+      </Activity>
+    );
+    const user = userEvent.setup();
+    const { rerender } = render(page("visible"));
+    await user.click(toggle());
+    rerender(page("hidden"));
+    rerender(page("visible"));
+    expect(toggle()).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });
