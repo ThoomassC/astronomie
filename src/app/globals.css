@@ -1919,6 +1919,30 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     margin: 0 auto;
   }
+
+  /*
+   * Les commandes forment une colonne qui s'arrête au-dessus du dock fixé (sa réserve, --dock-clear : deux lignes sous
+   * 360 px) et défile quand elle ne tient pas (zoom à 400 %, 320 × 175 px). Le pavé y suit la barre et la lecture du
+   * jour, dans le flux : collé au-dessus du dock, il sortait par le haut de l'écran en recouvrant la barre, et le dock
+   * recouvrait la lecture. La colonne laisse passer les gestes vers la scène ailleurs que sur ses capsules ; la molette
+   * au-dessus d'elles, comme le focus qui avance, la fait défiler.
+   */
+  .explore-controls {
+    bottom: var(--dock-clear, calc(82px + env(safe-area-inset-bottom, 0px)));
+    padding-bottom: 0.5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .explore-bar,
+  .earth-reading,
+  .explore-pad {
+    flex: none;
+  }
+
+  .explore-pad {
+    position: static;
+  }
 }
 
 /* Couleurs forcées : les fonds disparaissent ; contours sur les capsules et la bascule enfoncée. */
