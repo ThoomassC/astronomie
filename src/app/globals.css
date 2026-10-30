@@ -1191,10 +1191,17 @@ main > section > * {
 }
 
 /* ---------- Pied de page ---------- */
+/*
+ * Fond de nuit, plein dès 3 rem sous le haut du pied de page, avant son premier texte (4 rem) : la scène 3D, toujours
+ * dessous (VY Canis Majoris au bas de Tailles, le multivers au bas du voyage), s'y efface en fondu, et le texte garde
+ * son contraste quoi qu'elle montre (--brume sur --nuit : 7,3:1). L'Accueil et À propos, sans scène, sont déjà sur la
+ * nuit : rien n'y change.
+ */
 footer {
   position: relative;
   z-index: 2;
   padding: 4rem calc(var(--gr) + var(--rail-w) + 1rem) 9rem var(--gl);
+  background: linear-gradient(rgba(6, 11, 24, 0), var(--nuit) 3rem);
   color: var(--brume);
   font-size: 0.875rem;
 }
