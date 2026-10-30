@@ -158,6 +158,14 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   quand regarder (« Le soir, à l'ouest après le coucher du Soleil », suivi de l'instrument pour Uranus et Neptune),
   chiffres tabulaires, recalculés avec la date simulée. Pas de région live : la lecture est annoncée une fois, à
   l'activation, unités en toutes lettres.
+- **Barre haute** : marque à gauche, capsule des onglets au centre, puis un bloc à droite (commandes de la page,
+  langue, menu replié), dans cet ordre de tabulation. Plus de 860 px, une grille `1fr auto 1fr` centre les onglets
+  dans la barre ; une colonne latérale ne descend jamais sous la largeur de son contenu, si bien que les onglets se
+  décalent vers la marque plutôt que de chevaucher les commandes, et retrouvent le centre dès que la place revient
+  (au Voyage, à 1 329 px au pire, à l'escale la plus longue en espagnol). Seuil vérifié au pire cas (espagnol,
+  Voyage) : 800 px de contenu pour 829 disponibles à 861 px en paysage ; en portrait, où le menu des escales remplace
+  l'escale, 860 px qui ne tiennent qu'à 892 px : la grille y attend 900 px, la ligne d'origine sert avant. Hauteur
+  inchangée, une seule ligne ; à 860 px et moins, les onglets passent dans « Menu ».
 - **Choix de la langue** : le bouton de la barre montre le drapeau de la langue de la page, puis son code (« FR ») et
   le chevron ; chaque ligne de la liste (et du menu replié), le drapeau puis le nom de la langue dans sa langue ; les
   pilules sans JavaScript, le drapeau puis le code. Drapeaux en SVG (pas d'emoji : Windows ne les dessine pas),

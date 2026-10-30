@@ -1,6 +1,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { SiteHeader } from "@/components/site/SiteHeader";
+import { SITE_STRINGS } from "@/components/site/site.strings";
 
 afterEach(() => {
   cleanup();
@@ -92,6 +93,30 @@ describe("SiteHeader", () => {
   it("ne devrait pas signaler de commandes quand la page n'en a pas", () => {
     render(<SiteHeader locale="fr" page="home" />);
     expect(screen.getByRole("banner")).not.toHaveAttribute("data-controls");
+  });
+
+  /*
+   * La mise en page centre les onglets (grille de trois colonnes) : l'ordre du DOM, qui est l'ordre de tabulation, ne
+   * doit pas en dépendre. Marque, onglets, commandes de la page, langue, puis menu replié.
+   */
+  it("devrait garder l'ordre de tabulation : marque, onglets, commandes de la page, langue, menu replié", () => {
+    render(
+      <SiteHeader locale="fr" page="voyage">
+        <button type="button">Tourner autour</button>
+      </SiteHeader>,
+    );
+    const banner = within(screen.getByRole("banner"));
+    const order = [
+      banner.getByRole("link", { name: SITE_STRINGS.fr.brandHome }),
+      banner.getByRole("link", { name: "Accueil" }),
+      banner.getByRole("link", { name: "À propos" }),
+      banner.getByRole("button", { name: "Tourner autour" }),
+      banner.getByRole("button", { name: `FR, ${SITE_STRINGS.fr.currentLanguage}` }),
+      banner.getByRole("button", { name: SITE_STRINGS.fr.menu }),
+    ];
+    for (const [before, after] of order.slice(1).map((element, i) => [order[i], element])) {
+      expect(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
   });
 
   it("devrait proposer le menu des langues et le menu replié des petits écrans, fermés", () => {

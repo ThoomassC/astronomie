@@ -13,17 +13,63 @@
   background: linear-gradient(rgba(6, 11, 24, 0.96) 62%, rgba(6, 11, 24, 0));
 }
 
-/* Commandes de la page : enfants directs de la ligne ; les règles existantes (.where, .stops-menu) s'appliquent. */
-.slot {
-  display: contents;
+/*
+ * Bloc de droite : commandes de la page (escale, menus, « Tourner autour »), langue et menu replié, à l'écart de la
+ * barre. Il prend la place que lui laissent la marque et les onglets ; les marges automatiques de ses enfants (.where,
+ * .stops-menu, la langue ou le menu replié des pages sans commandes) les poussent contre le bord droit, et l'escale ou
+ * le menu des escales rétrécissent quand la place manque. Sans `position` : les panneaux de la barre (liste des
+ * escales, menu replié) restent ancrés sur elle.
+ */
+.end {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: inherit;
+  min-width: 0;
+}
+
+/* Pages sans commandes : la langue, seule, part à droite (plus de 860 px). */
+.header:not([data-controls]) .langMenu {
+  margin-left: auto;
+}
+
+/*
+ * Plus de 860 px : une grille de trois colonnes, `1fr auto 1fr`, pose la marque à gauche, les onglets au centre de la
+ * barre et le bloc de droite contre le bord. Une colonne latérale ne descend jamais sous la largeur de son contenu
+ * (`min-width: auto`) : quand les commandes dépassent la moitié de la place restante, les onglets se décalent vers la
+ * marque au lieu de les chevaucher, et retrouvent le centre dès que la place revient.
+ *
+ * Seuil, au pire (espagnol, Voyage, escale « Universo observable » ; largeurs mesurées du design v2, drapeau compris),
+ * marges de 2 × 16 px déduites :
+ * - paysage, 861 à 1 100 px : marque 44 + onglets 311 + escale 149 + « Girar alrededor » 157 + langue 91 + 4 écarts
+ *   de 12 = 800 px, pour 829 disponibles à 861 px : la grille tient dès 861 px (53,8125 rem). Sans JavaScript, les
+ *   pilules des langues (215 px) remplacent le bouton et « Tourner autour » : 755 px ;
+ * - au-delà de 1 100 px : 157 + 311 + 197 (avec « Escala ») + 157 + 91 + 4 × 16 = 977 px, pour 1 069 à 1 101 px ;
+ * - portrait (tablette), 861 à 1 100 px : le menu des escales (209 px) remplace l'escale, soit 860 px qui ne tiennent
+ *   qu'à partir de 892 px. La grille y attend 900 px (56,25 rem) ; avant, la ligne d'origine, où ce menu rétrécit.
+ * Les onglets sont au centre exact sur l'Accueil et À propos dès 861 px ; au Voyage, dès que la moitié de la place
+ * libre contient les commandes (1 329 px au pire). Seuils en rem : avec un texte agrandi, la grille attend la place.
+ */
+@media (min-width: 53.8125rem) and (orientation: landscape), (min-width: 56.25rem) {
+  .header[data-page] {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+  }
+
+  .header :global(.brand) {
+    justify-self: start;
+  }
+
+  .end {
+    min-width: auto;
+  }
 }
 
 /* ---------- Onglets (plus de 860 px) ---------- */
 
-/* Seule marge automatique de la ligne : elle pousse les commandes et la langue vers la droite. */
+/* Les onglets ne rétrécissent jamais : la place se prend sur l'escale ou le menu des escales. */
 .tabs {
   flex: none;
-  margin-right: auto;
 }
 
 /* Capsule : décor (filet --filet), la cible est l'onglet. Onglets de 44 px, bord compris : 46 px. */
