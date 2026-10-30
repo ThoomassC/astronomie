@@ -2,6 +2,7 @@ import type * as Three from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeRenderer } from "@/components/scene/testRenderer";
 import { createSizesScene, type SizesSceneOptions } from "@/components/sizes/sizesEngine";
+import { sizesStore } from "@/lib/sizes/store";
 
 /*
  * Le moteur de la scène des tailles a besoin de WebGL. jsdom n'en a pas : un moteur de rendu factice
@@ -15,10 +16,13 @@ vi.mock("three", async (importOriginal) => {
   return { ...three, WebGLRenderer: Renderer };
 });
 
-/** Frontière navigateur : requêtes média lues par le moteur (pointeur, mouvement réduit, mise en page compacte). */
-function stubMatchMedia(): void {
+/**
+ * Frontière navigateur : requêtes média lues par le moteur (pointeur, mouvement réduit, mise en page compacte). Écran
+ * tactile si `coarse`.
+ */
+function stubMatchMedia(coarse = false): void {
   vi.stubGlobal("matchMedia", (query: string) => ({
-    matches: false,
+    matches: coarse && query === "(pointer: coarse)",
     media: query,
     addEventListener() {},
     removeEventListener() {},
@@ -58,6 +62,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  sizesStore.reset();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -89,5 +94,64 @@ describe("createSizesScene", () => {
     expect(renderer(1).calls.find((call) => call.startsWith("setSize"))).toBe(
       `setSize ${window.innerWidth}×${window.innerHeight}`,
     );
+  });
+});
+
+/*
+ * Sur téléphone, une supergéante remplit l'écran pendant les vols, et chaque pixel calcule sa surface : le rapport de
+ * pixels tombe à 1 pendant le vol, puis une image nette est rendue quand plus rien ne bouge.
+ */
+describe("rapport de pixels pendant les vols", () => {
+  /** Écran de rapport de pixels 3, dont le moteur garde 1,5 (MAX_PIXEL_RATIO). */
+  async function sceneOn(coarse: boolean) {
+    stubMatchMedia(coarse);
+    vi.stubGlobal("devicePixelRatio", 3);
+    const scene = createSizesScene(options());
+    if (!scene) throw new Error("Scène absente");
+    // Shaders compilés (compileAsync) : la première image peut partir.
+    await Promise.resolve();
+    scene.frame(1 / 60);
+    renderer().calls.length = 0;
+    return scene;
+  }
+
+  it("devrait rendre les vols en rapport de pixels 1 sur écran tactile", async () => {
+    const scene = await sceneOn(true);
+    sizesStore.update("intro", "proxima-centauri", 0.3);
+    scene.frame(1 / 60);
+    sizesStore.update("intro", "proxima-centauri", 0.6);
+    scene.frame(1 / 60);
+    expect(renderer().calls).toEqual(["setPixelRatio 1", "render", "render"]);
+    scene.dispose();
+  });
+
+  it("devrait rendre une image nette, une seule, quand le vol s'arrête", async () => {
+    const scene = await sceneOn(true);
+    sizesStore.update("intro", "proxima-centauri", 0.3);
+    scene.frame(1 / 60);
+    renderer().calls.length = 0;
+    scene.frame(1 / 60);
+    scene.frame(1 / 60);
+    expect(renderer().calls).toEqual(["setPixelRatio 1.5", "render"]);
+    scene.dispose();
+  });
+
+  it("devrait rendre net l'arrivée sur une escale, dès l'image où le vol se pose", async () => {
+    const scene = await sceneOn(true);
+    sizesStore.update("intro", "proxima-centauri", 0.6);
+    scene.frame(1 / 60);
+    renderer().calls.length = 0;
+    sizesStore.update("proxima-centauri", "proxima-centauri", 0);
+    scene.frame(1 / 60);
+    expect(renderer().calls).toEqual(["setPixelRatio 1.5", "render"]);
+    scene.dispose();
+  });
+
+  it("devrait garder le rapport de pixels de l'écran pendant les vols, avec une souris", async () => {
+    const scene = await sceneOn(false);
+    sizesStore.update("intro", "proxima-centauri", 0.3);
+    scene.frame(1 / 60);
+    expect(renderer().calls).toEqual(["render"]);
+    scene.dispose();
   });
 });
