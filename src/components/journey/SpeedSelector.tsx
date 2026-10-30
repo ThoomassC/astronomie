@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { SPEEDS, type Speed } from "@/lib/sim/clock";
-
-/** « 1 jour/s » → « 1 jour par seconde » : le nom accessible commence par le texte visible. */
-const spokenSpeed = (speed: Speed) => speed.label.replace("/s", " par seconde");
+import { useLocale } from "@/i18n/LocaleProvider";
+import { SPEEDS } from "@/lib/sim/clock";
+import { DOCK_STRINGS } from "./dock.strings";
 
 const speedIndex = (days: number) => Math.max(0, SPEEDS.findIndex((speed) => speed.days === days));
 
@@ -31,8 +30,10 @@ interface SpeedSelectorProps {
  * premier et l'arrière suit (`data-dir`), elle s'étire en chemin puis se resserre. Une copie
  * sombre des libellés, découpée à sa forme, inverse le texte exactement là où elle passe.
  * La position passe par des variables CSS posées hors du rendu : rien ne se re-rend en chemin.
+ * Libellés dans la langue de la page ; le nom accessible de chaque bouton commence par son texte visible.
  */
 export function SpeedSelector({ value, onChange }: SpeedSelectorProps) {
+  const t = DOCK_STRINGS[useLocale()];
   const trackRef = useRef<HTMLDivElement>(null);
   const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const previousIndex = useRef<number | null>(null);
@@ -67,26 +68,26 @@ export function SpeedSelector({ value, onChange }: SpeedSelectorProps) {
   }, []);
 
   return (
-    <div className="seg speed" id="speedSeg" role="group" aria-label="Vitesse du temps" ref={trackRef}>
+    <div className="seg speed" id="speedSeg" role="group" aria-label={t.speedGroup} ref={trackRef}>
       <span className="seg-bubble" aria-hidden="true" />
       <span className="seg-ink" aria-hidden="true">
         {SPEEDS.map((speed) => (
-          <span key={speed.days}>{speed.label}</span>
+          <span key={speed.id}>{t.speeds[speed.id].label}</span>
         ))}
       </span>
       {SPEEDS.map((speed, i) => (
         <button
-          key={speed.days}
+          key={speed.id}
           ref={(element) => {
             buttonsRef.current[i] = element;
           }}
           type="button"
           aria-pressed={speed.days === value}
-          aria-label={spokenSpeed(speed)}
-          data-label={speed.label}
+          aria-label={t.speeds[speed.id].spoken}
+          data-label={t.speeds[speed.id].label}
           onClick={() => onChange(speed.days)}
         >
-          <span>{speed.label}</span>
+          <span>{t.speeds[speed.id].label}</span>
         </button>
       ))}
     </div>
