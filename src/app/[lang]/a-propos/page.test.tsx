@@ -21,7 +21,7 @@ describe("route /[lang]/a-propos", () => {
     await expect(generateMetadata(props("en"))).resolves.toEqual(pageMetadata("about", "en"));
   });
 
-  it("devrait poser, dans l'ordre, le lien d'évitement, la barre, le contenu et le plan du site", async () => {
+  it("devrait poser, dans l'ordre, le lien d'évitement, la barre, le contenu et le pied de page", async () => {
     render(await AboutRoute(props("es")));
     const skip = screen.getByRole("link", { name: SITE_STRINGS.es.skipToContent });
     const header = screen.getByRole("banner");

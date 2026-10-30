@@ -31,9 +31,10 @@ interface SiteHeaderProps {
 /**
  * Barre haute commune aux quatre pages, rendue par chaque page : l'onglet courant est connu sans `usePathname`, et
  * chaque page y glisse ses commandes. Dans l'ordre du DOM, qui est l'ordre de tabulation : marque (retour à
- * l'accueil), onglets (plus de 860 px), commandes de la page, langue (plus de 860 px), menu replié (860 px et moins).
- * `data-page` et `data-controls` (commandes présentes) règlent la mise en page ; la barre s'efface pendant
- * l'exploration du voyage (`data-hide-on-explore`).
+ * l'accueil), onglets (plus de 860 px), puis un bloc à droite : commandes de la page, langue (plus de 860 px), menu
+ * replié (860 px et moins). Ces trois parties sont les trois colonnes de la grille qui centre les onglets dans la
+ * barre (SiteHeader.module.css). `data-page` et `data-controls` (commandes présentes) règlent la mise en page ; la
+ * barre s'efface pendant l'exploration du voyage (`data-hide-on-explore`).
  */
 export function SiteHeader({ locale, page, children }: SiteHeaderProps) {
   const t = SITE_STRINGS[locale];
@@ -53,9 +54,11 @@ export function SiteHeader({ locale, page, children }: SiteHeaderProps) {
       <nav className={styles.tabs} aria-label={t.tabsLabel}>
         <SiteTabs locale={locale} page={page} />
       </nav>
-      {hasControls ? <div className={`bar-slot ${styles.slot}`}>{children}</div> : null}
-      <LanguageMenu locale={locale} page={page} />
-      <SiteMenu locale={locale} page={page} />
+      <div className={styles.end}>
+        {children}
+        <LanguageMenu locale={locale} page={page} />
+        <SiteMenu locale={locale} page={page} />
+      </div>
     </header>
   );
 }

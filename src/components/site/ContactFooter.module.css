@@ -1,0 +1,89 @@
+/*
+ * Pied de page commun (ContactFooter), dans le `footer` de chaque page : signature, adresses de l'auteur, droit
+ * d'auteur. Sous un filet de laiton ; sur une ligne quand elle tient (la mention de droit d'auteur poussée à droite),
+ * empilé sur téléphone. Les règles globales `footer p` et `footer a` (pied du voyage, globals.css) sont écartées ici.
+ */
+.contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.5rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--filet);
+  color: var(--brume);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.contact p {
+  max-width: none;
+  margin: 0;
+}
+
+/* Les coordonnées de l'auteur, sans l'italique par défaut d'`address`. */
+.address {
+  font-style: normal;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Cible de 44 px de haut : pictogramme en laiton, puis libellé ivoire souligné de laiton. */
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  color: var(--ivoire);
+  text-decoration: none;
+}
+
+.icon {
+  flex: none;
+  color: var(--laiton);
+}
+
+/* Le soulignement porte sur le libellé seul, pas sur le pictogramme ; l'adresse e-mail se coupe si la place manque. */
+.label {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--laiton);
+  text-underline-offset: 0.2em;
+  overflow-wrap: anywhere;
+}
+
+@media (hover: hover) {
+  .link:hover .label {
+    text-decoration-thickness: 2px;
+    text-decoration-color: var(--ivoire);
+  }
+}
+
+/* Seule marge automatique de la ligne : la mention part à droite, ou en tête de la ligne suivante si elle passe. */
+.contact .copyright {
+  margin-left: auto;
+  font-size: 0.8125rem;
+}
+
+/* Téléphone : l'un sous l'autre, un lien par ligne. */
+@media (max-width: 640px) {
+  .contact {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .links {
+    flex-direction: column;
+  }
+
+  .contact .copyright {
+    margin-left: 0;
+  }
+}

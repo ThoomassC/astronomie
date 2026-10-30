@@ -1,10 +1,11 @@
 import type { Locale } from "@/i18n/locales";
 import type { PageKey } from "@/i18n/routes";
+import { AUTHOR } from "./author";
 
 /** Nom du site, le même dans les trois langues : marque de la barre, suffixe des titres, `og:site_name`. */
 export const SITE_NAME = "Astronomie";
 
-/** Textes de la barre commune, du menu replié, du plan du site et du lien d'évitement. */
+/** Textes de la barre commune, du menu replié, du pied de page commun et du lien d'évitement. */
 export interface SiteStrings {
   /** Nom accessible de la marque, son texte visible en tête (critère 2.5.3) : « Astronomie, accueil ». */
   brandHome: string;
@@ -21,8 +22,13 @@ export interface SiteStrings {
    * de la langue suit l'usage de chacune : minuscule en français et en espagnol, majuscule en anglais.
    */
   currentLanguage: string;
-  /** Plan du site, en pied de page : « Plan du site ». */
-  siteMap: string;
+  /**
+   * Signature du pied de page commun : « Astronomie — un site de Thomas Caron ». Une espace insécable avant le tiret
+   * le garde sur la ligne du nom du site.
+   */
+  signature: string;
+  /** Précision lue après le nom d'un lien vers un autre site, derrière une virgule : « site externe ». */
+  externalSite: string;
   /** Lien d'évitement vers le contenu : « Aller au contenu ». */
   skipToContent: string;
 }
@@ -35,7 +41,8 @@ export const SITE_STRINGS: Readonly<Record<Locale, SiteStrings>> = {
     menu: "Menu",
     language: "Langue",
     currentLanguage: "langue : français",
-    siteMap: "Plan du site",
+    signature: `${SITE_NAME}\u00a0— un site de ${AUTHOR.name}`,
+    externalSite: "site externe",
     skipToContent: "Aller au contenu",
   },
   en: {
@@ -45,7 +52,8 @@ export const SITE_STRINGS: Readonly<Record<Locale, SiteStrings>> = {
     menu: "Menu",
     language: "Language",
     currentLanguage: "language: English",
-    siteMap: "Site map",
+    signature: `${SITE_NAME}\u00a0— a site by ${AUTHOR.name}`,
+    externalSite: "external site",
     skipToContent: "Skip to content",
   },
   es: {
@@ -55,7 +63,8 @@ export const SITE_STRINGS: Readonly<Record<Locale, SiteStrings>> = {
     menu: "Menú",
     language: "Idioma",
     currentLanguage: "idioma: español",
-    siteMap: "Mapa del sitio",
+    signature: `${SITE_NAME}\u00a0— un sitio de ${AUTHOR.name}`,
+    externalSite: "sitio externo",
     skipToContent: "Ir al contenido",
   },
 };

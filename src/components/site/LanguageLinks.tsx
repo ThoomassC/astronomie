@@ -4,6 +4,7 @@ import type { ComponentPropsWithoutRef, MouseEvent } from "react";
 import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE_S, LOCALE_NAMES, LOCALES, type Locale } from "@/i18n/locales";
 import { pathFor, type PageKey } from "@/i18n/routes";
 import { currentFragment } from "@/lib/site/fragment";
+import { Flag } from "./flags";
 
 type LanguageLinksProps = { locale: Locale; page: PageKey } & Omit<ComponentPropsWithoutRef<"ul">, "children">;
 
@@ -22,11 +23,11 @@ function opensElsewhere(event: MouseEvent): boolean {
 }
 
 /**
- * Les trois langues, chacune nommée dans sa langue (`lang`) et menant à la même page dans cette langue (`hrefLang`) ;
- * celle de la page porte `aria-current="true"`. Liens `<a>` simples : changer de langue change le paramètre racine,
- * la page se recharge. Au clic, le cookie retient le choix et le lien reçoit, juste avant d'être suivi, le fragment de
- * la position affichée (`currentFragment`, « #saturne ») : on arrive au même endroit. Choisir la langue affichée ne
- * recharge rien. Sans JavaScript, les liens mènent au haut de la page.
+ * Les trois langues, chacune nommée dans sa langue (`lang`) derrière son drapeau, décoratif, et menant à la même page
+ * dans cette langue (`hrefLang`) ; celle de la page porte `aria-current="true"`. Liens `<a>` simples : changer de
+ * langue change le paramètre racine, la page se recharge. Au clic, le cookie retient le choix et le lien reçoit,
+ * juste avant d'être suivi, le fragment de la position affichée (`currentFragment`, « #saturne ») : on arrive au même
+ * endroit. Choisir la langue affichée ne recharge rien. Sans JavaScript, les liens mènent au haut de la page.
  */
 export function LanguageLinks({ locale, page, ...list }: LanguageLinksProps) {
   const choose = (target: Locale) => (event: MouseEvent<HTMLAnchorElement>) => {
@@ -48,6 +49,7 @@ export function LanguageLinks({ locale, page, ...list }: LanguageLinksProps) {
             aria-current={target === locale ? "true" : undefined}
             onClick={choose(target)}
           >
+            <Flag locale={target} />
             {LOCALE_NAMES[target]}
           </a>
         </li>

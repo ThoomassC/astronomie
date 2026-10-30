@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/a-propos">
 
 /**
  * À propos : une page de lecture, statique, sans scène. Dans l'ordre du DOM : lien d'évitement, barre commune,
- * contenu (`main#contenu`), plan du site. Les trois langues viennent du layout `[lang]` (`generateStaticParams`) ;
+ * contenu (`main#contenu`), pied de page. Les trois langues viennent du layout `[lang]` (`generateStaticParams`) ;
  * une langue inconnue n'arrive pas jusqu'ici, la garde reste par prudence (D4).
  */
 export default async function AboutRoute({ params }: PageProps<"/[lang]/a-propos">) {

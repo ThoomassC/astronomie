@@ -1,8 +1,8 @@
 # À propos — surcharge du MASTER
 
-> Page de lecture : la notice gravée sous l'instrument. Sobre, très lisible, digne de confiance ; on y trouve vite
-> les sources, les crédits, l'accessibilité et la confidentialité. Aucun effet : la typographie, l'espace et les
-> filets de laiton font le rythme. Tout ce qui n'est pas écrit ici suit `../MASTER.md`.
+> Page de lecture : la notice gravée sous l'instrument. Sobre, très lisible, digne de confiance ; deux informations
+> seulement, pourquoi ce site existe et d'où viennent ses chiffres, sur toute la largeur de la page. Aucun effet : la
+> typographie, l'espace et les filets de laiton font le rythme. Tout ce qui n'est pas écrit ici suit `../MASTER.md`.
 
 Code : `src/components/about/AboutPage.tsx` (composant serveur, aucun script) et `AboutPage.module.css`.
 Textes : `src/content/about/` (`fr.ts`, `en.ts`, `es.ts` ; ancres et adresses dans `structure.ts`).
@@ -11,15 +11,18 @@ Textes : `src/content/about/` (`fr.ts`, `en.ts`, `es.ts` ; ancres et adresses da
 
 | Largeur | Disposition |
 |---|---|
-| < 64 rem (1 024 px) | Une colonne de 42 rem au plus, centrée. Le sommaire, replié dans un `<details>`, ouvre la page. |
-| ≥ 64 rem | Grille `13rem minmax(0, 42rem)`, écart de 4 rem, centrée (59 rem). Sommaire ouvert et collant à gauche. |
-| ≥ 64 rem et hauteur ≤ 30 rem | Même grille, sommaire non collant (il dépasserait de la vue). |
+| < 64 rem (1 024 px) | Une colonne, pleine largeur entre les marges du site (`--gl`, `--gr`) : le titre, l'accroche, « Pourquoi ce site », puis « Sources ». |
+| ≥ 64 rem | Grille `minmax(0, 1fr) minmax(0, 2fr)`, écart de 4 rem, sur toute la largeur utile : « Pourquoi ce site » à gauche, « Sources » à droite ; le titre et l'accroche couvrent les deux colonnes. |
 
-- Haut de page : 6,75 rem sous le bord (barre fixe de 4,75 rem, plus 2 rem), zone sûre comprise ; le sommaire
-  collant s'arrête à la même hauteur, si bien que le titre et le sommaire partent alignés. Bas : 6 rem.
+- Haut de page : 6,75 rem sous le bord (barre fixe de 4,75 rem, plus 2 rem), zone sûre comprise. Bas : 4 rem avant le
+  pied de page.
 - Le `main` global du voyage laisse passer les clics vers la scène et réserve la place de la règle : la page
   rétablit `pointer-events` et des marges symétriques (`--gl`, `--gr`).
-- Les ancres se posent sous la barre grâce au `scroll-padding` global (5 rem).
+- Les paragraphes gardent une colonne de lecture de 42 rem au plus, même dans une section plus large.
+- Liste des sources : colonnes de 18 rem au moins (`repeat(auto-fill, minmax(min(100%, 18rem), 1fr))`, écart de
+  2 rem) qui se partagent la largeur de la section : une sur téléphone, deux sur tablette comme à 1 440 px, trois sur
+  les écrans plus larges. Les filets s'alignent d'une colonne à l'autre.
+- Les ancres (`#pourquoi`, `#sources`) se posent sous la barre grâce au `scroll-padding` global (5 rem).
 
 ## Typographie
 
@@ -28,65 +31,45 @@ Textes : `src/content/about/` (`fr.ts`, `en.ts`, `es.ts` ; ancres et adresses da
 | h1 | Bodoni 450, `opsz` auto | `clamp(2.25rem, 1.5rem + 3.2vw, 3.5rem)`, interligne 1,05 | ivoire |
 | Accroche | Bodoni italique | `clamp(1.1875rem, 1.0625rem + 0.5vw, 1.375rem)`, interligne 1,3 | ivoire |
 | h2 | Bodoni 450 | 2 rem, interligne 1,1 | ivoire |
-| Paragraphes, définitions | Atkinson 400 | 1,0625 rem, interligne 1,6, 1 rem entre paragraphes | `#D9D3C4` |
-| Termes, noms des liens | Atkinson 600 | 1,0625 rem | ivoire |
-| Descriptions des liens | Atkinson 400 | 0,9375 rem, interligne 1,5 | `--brume` |
-| Sommaire | Atkinson 400 | 0,9375 rem (titre : 0,8125 rem) | `--brume`, ivoire au survol |
+| Paragraphes | Atkinson 400 | 1,0625 rem, interligne 1,6, 1 rem entre paragraphes | `#D9D3C4` |
+| Noms des sources (liens) | Atkinson 600 | 1 rem | ivoire |
+| Descriptions des sources | Atkinson 400 | 0,9375 rem, interligne 1,5 | `--brume` |
 
 ## Composants
 
-- **Sommaire** (`nav` nommée « Sur cette page ») : les neuf sections dans l'ordre. Rendu deux fois, la feuille de
-  style n'en affiche qu'un (l'autre est en `display: none`, donc hors de l'arbre d'accessibilité) :
-  - replié : `<details>` natif, fermé au départ, bord `--filet-fort`, `--r-md` ; `summary` de 44 px avec un chevron
-    de laiton dessiné en CSS (pointe en bas, en haut une fois ouvert, 200 ms) ; lignes de 44 px ;
-  - ouvert : titre « Sur cette page » masqué aux lecteurs d'écran (la `nav` porte déjà ce nom), lignes de 36 px.
-  Statique : pas de suivi du défilement, pas de triangle `--soleil`.
-  Pourquoi deux rendus : un `<details>` fermé ne laisse pas toujours afficher son contenu par CSS
-  (`::details-content` n'est pas partout) ; deux rendus évitent tout script.
-- **Section** : `section[aria-labelledby]` vers son `h2` (`<ancre>-titre`), `tabindex="-1"` pour recevoir le focus
-  quand on suit le sommaire (sans contour : c'est une cible de lecture). Elle s'ouvre sur un filet `--filet`, 3 rem
-  sous la précédente et 2 rem au-dessus du titre.
-- **Liste filetée de liens** (sources, crédits, signalements, code) : `ul` sans puces, `role="list"` (Safari
-  retire sinon le rôle de liste) ; chaque entrée sous un filet `--filet`, 0,75 rem de marge ; le nom est le lien,
-  la description suit. Licences en toutes lettres dans les descriptions (CC BY 4.0, OFL, MIT).
-- **Liens de texte** : ivoire, soulignés de laiton (1 px, décalage 0,2 em) ; au survol, soulignement ivoire de 2 px.
-  Vers un autre site : même onglet, « ↗ » collé au nom par une espace insécable et masqué aux lecteurs d'écran, qui
-  entendent à la place « , site externe » (texte `.sr`, convention des compléments de nom du site). Les noms trop
-  longs se coupent (`overflow-wrap: anywhere`).
-- **Accessibilité** : `dl` en six couples (clavier, lecteurs d'écran, mouvement réduit, contrastes, textes
-  équivalents, limites connues), filetés comme la fiche des plaques ; puis le lien de signalement.
-- **Encart de confidentialité** : premier élément de sa section, `--r-md`, bord 1 px `--filet-fort` (le laiton,
-  pas le soleil : ce n'est pas une alerte), fond `--plaque-a`, marge 1 rem × 1,25 rem, texte ivoire.
-- **Langues** : cette page dans les trois langues, sur une ligne (« Français · English · Español »), avec les liens
-  de langue de la barre (`LanguageLinks`, lot S1) : `lang` et `hreflang` sur chaque lien, choix retenu par le cookie
-  au clic, comme partout sur le site. Cible de 44 px de haut ; le point qui les sépare est dessiné (rien à lire). La
-  langue de la page porte `aria-current="true"`, en gras et sans soulignement : elle ne se distingue pas que par la
-  couleur.
-- **Pied de page** : le plan du site (`SiteNavFooter`, lot S1) dans un `footer` de la largeur de la colonne, ou de
-  toute la grille (59 rem) sur grand écran ; la classe de la page écarte les marges du `footer` global, faites pour
-  la règle et le dock du voyage.
+- **Section** : `section[aria-labelledby]` vers son `h2` (`<ancre>-titre`). Elle s'ouvre sur un filet `--filet`, 3 rem
+  sous ce qui la précède et 2 rem au-dessus du titre. Pas de sommaire : deux sections se voient d'un coup d'œil.
+- **Liste filetée des sources** : `ul` sans puces, `role="list"` (Safari retire sinon le rôle de liste) ; chaque entrée
+  sous un filet `--filet` ; le nom est le lien, la description suit. Toutes les sources du site, dans l'ordre du
+  voyage, dont celles des chiffres clés de l'accueil.
+- **Liens vers les sources** : ivoire, soulignés de laiton (1 px, décalage 0,2 em) ; au survol, soulignement ivoire de
+  2 px. Cible de 44 px de haut (bloc en ligne, 0,5 rem au-dessus et au-dessous du texte). Vers un autre site : même
+  onglet, « ↗ » collé au nom par une espace insécable et masqué aux lecteurs d'écran, qui entendent à la place
+  « , site externe » (texte `.sr`, convention des compléments de nom du site). Les noms trop longs se coupent
+  (`overflow-wrap: anywhere`).
+- **Pied de page** : le pied de page commun (`ContactFooter` : signature, contacts de l'auteur, droit d'auteur) dans un
+  `footer` entre les marges de la page ; la classe de la page écarte les marges du `footer` global, faites pour la
+  règle et le dock du voyage.
 
 ## Accessibilité
 
-- Ordre du DOM = ordre de lecture : lien d'évitement, barre, puis dans `main#contenu` le sommaire, le h1, l'accroche
-  et les neuf sections, enfin le plan du site. Un seul h1, un h2 par section. Le titre et l'accroche sont dans un
+- Ordre du DOM = ordre de lecture : lien d'évitement, barre, puis dans `main#contenu` le h1, l'accroche, « Pourquoi ce
+  site » et « Sources », enfin le pied de page. Un seul h1, un h2 par section. Le titre et l'accroche sont dans un
   `div`, pas un `header` : dans `main`, il ne nommerait rien.
-- Sans JavaScript : tout se lit ; le sommaire replié s'ouvre nativement. Aucun script sur la page.
-- Mouvement réduit : seul le chevron bouge, et la règle globale coupe sa transition.
-- Couleurs forcées : les filets et bords passent en `CanvasText` d'eux-mêmes ; le point entre les langues (un fond)
-  disparaît, la langue courante reste en gras.
-- Contrastes (design-v2 § 5.1) : ivoire 15,64:1, `#D9D3C4` 13,16:1 et `--brume` 7,33:1 sur `--nuit` ; ivoire sur
-  l'encart 14,56:1. Bords des commandes en `--filet-fort` (3,54:1).
+- Sans JavaScript : tout se lit. Aucun script sur la page.
+- Couleurs forcées : les filets passent en `CanvasText` d'eux-mêmes.
+- Contrastes (design-v2 § 5.1) : ivoire 15,64:1, `#D9D3C4` 13,16:1 et `--brume` 7,33:1 sur `--nuit`.
 
 ## Textes
 
-- Titres de section : Pourquoi ce site · Pour qui · La démarche · Sources · Crédits · Accessibilité · Confidentialité
-  · Langues · Code source (en : … Data sources …, pour ne pas recopier « Sources »).
-- Ancres communes aux trois langues (`#accessibilite`) : un changement de langue garde le fragment.
+- Titres de section : Pourquoi ce site · Sources (en : Why this site · Data sources, pour ne pas recopier « Sources » ;
+  es : Por qué este sitio · Fuentes).
+- Ancres communes aux trois langues (`#sources`) : un changement de langue garde le fragment.
 - Typographie : en français, espace insécable dans « » et avant « : » et « ; » ; en anglais “ ” ; en espagnol « »
-  collés. L'exemple de nombres de la section Langues sort des formateurs du site (`numberSample`).
+  collés.
 - Les sources citées sont celles des plaques et des données (README, `stars.ts`, `localGroup.ts`, `universe.ts`) ;
   RECONS, sans adresse https valide, est nommé sans lien.
-- Les chiffres clés de l'accueil renvoient à la section Sources : chacun y figure à côté de sa source (NASA pour les
-  109 Terres, UAI 2012 pour les 8 min 19 s, Gaia DR3 pour Proxima, Wittkowski et al. 2012 pour VY Canis Majoris),
-  écrit par `sourcedFigures` avec les mêmes données et les mêmes formateurs que l'accueil.
+- Les chiffres clés de l'accueil renvoient à cette page : chacun figure à côté de sa source (NASA pour les 109 Terres,
+  UAI 2012 pour les 8 min 19 s, Gaia DR3 pour Proxima, Wittkowski et al. 2012 pour VY Canis Majoris), écrit par
+  `sourcedFigures` avec les mêmes données et les mêmes formateurs que l'accueil.
+- Le crédit des cartes (Solar System Scope, CC BY 4.0) reste au pied de page du voyage, où les cartes s'affichent.

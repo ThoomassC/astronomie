@@ -12,7 +12,7 @@
   pointer-events: auto;
 }
 
-/* Pied de page : le plan du site (2 rem au-dessus de son filet), dans la colonne de la page. La règle globale
+/* Pied de page : le pied de page commun (2 rem au-dessus de son filet), dans la colonne de la page. La règle globale
    `footer` sert le voyage (place de la règle des distances et du dock) : l'accueil reprend ses marges. */
 .footer {
   width: 100%;

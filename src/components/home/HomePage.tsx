@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MAIN_ID } from "@/components/journey/ids";
-import { SiteNavFooter } from "@/components/site/SiteNavFooter";
+import { ContactFooter } from "@/components/site/ContactFooter";
 import { getHomeContent } from "@/content/home/content";
 import type { Locale } from "@/i18n/locales";
 import { pathFor } from "@/i18n/routes";
@@ -13,8 +13,8 @@ import styles from "./HomePage.module.css";
 /**
  * Corps de l'accueil, rendu par le serveur dans la langue de la page : le titre, la promesse et le seul bouton plein
  * (vers le voyage), puis le planétaire du jour (seule feuille client), les trois cartes et les chiffres clés ; en pied
- * de page, le plan du site. Pas de scène 3D : la page s'affiche tout de suite. La route pose avant lui le script des
- * anciens liens, le lien d'évitement et la barre.
+ * de page, la signature et les contacts de l'auteur. Pas de scène 3D : la page s'affiche tout de suite. La route pose
+ * avant lui le script des anciens liens, le lien d'évitement et la barre.
  */
 export function HomePage({ locale }: { locale: Locale }) {
   const { intro, cards, figures } = getHomeContent(locale);
@@ -36,7 +36,7 @@ export function HomePage({ locale }: { locale: Locale }) {
         <KeyFigures locale={locale} content={figures} />
       </main>
       <footer className={styles.footer}>
-        <SiteNavFooter locale={locale} page="home" />
+        <ContactFooter locale={locale} />
       </footer>
     </>
   );

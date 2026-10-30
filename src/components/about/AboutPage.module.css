@@ -1,107 +1,15 @@
-/* À propos : la notice gravée sous l'instrument (design-v2 § 3). Une colonne de lecture de 42 rem ; à partir de
-   64 rem de large, le sommaire collant à sa gauche (13 rem, écart de 4 rem), le tout centré. Aucun effet : la
-   typographie, l'espace et les filets de laiton font le rythme. Rien n'y bouge, sauf le chevron du sommaire replié. */
+/* À propos : la notice gravée sous l'instrument (design-v2 § 3), réduite à deux sections, « Pourquoi ce site » et
+   « Sources », sur toute la largeur de la page entre les marges du site. À partir de 64 rem, côte à côte (un tiers,
+   deux tiers) ; plus étroit, l'une sous l'autre. Aucun effet : la typographie, l'espace et les filets de laiton font
+   le rythme. */
 
 /* Le `main` du voyage (globals.css) laisse passer les clics vers la scène et réserve la place de la règle des
    distances : ici, ni scène ni règle. En haut, la place de la barre fixe (4,75 rem) plus 2 rem ; en bas, 4 rem
-   avant le plan du site, qui ajoute son filet. */
+   avant le pied de page, qui ajoute son filet. */
 .page {
   pointer-events: auto;
   padding-block: calc(env(safe-area-inset-top, 0px) + 6.75rem) 4rem;
   padding-inline: var(--gl) var(--gr);
-}
-
-.toc,
-.column {
-  max-width: 42rem;
-  margin-inline: auto;
-}
-
-/* ---------- Sommaire ---------- */
-
-.tocList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tocList a {
-  display: flex;
-  align-items: center;
-  min-height: 2.25rem;
-  color: var(--brume);
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  text-decoration: none;
-}
-
-.tocList a:hover {
-  color: var(--ivoire);
-}
-
-/* Téléphone et tablette : replié en tête, natif (s'ouvre sans JavaScript), lignes de 44 px. */
-.tocFolded {
-  margin-bottom: 2rem;
-  border: 1px solid var(--filet-fort);
-  border-radius: var(--r-md);
-}
-
-/* `display: block` retire le marqueur natif (Safari : -webkit-details-marker) ; le chevron le remplace. */
-.tocFolded summary {
-  position: relative;
-  display: block;
-  min-height: 2.75rem;
-  padding: 0.625rem 3rem 0.625rem 1rem;
-  border-radius: var(--r-md);
-  color: var(--ivoire);
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  cursor: pointer;
-}
-
-.tocFolded summary::-webkit-details-marker {
-  display: none;
-}
-
-/* Chevron dessiné en laiton : pointe en bas replié, en haut déplié. */
-.tocFolded summary::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: 1.25rem;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-right: 1.5px solid var(--laiton);
-  border-bottom: 1.5px solid var(--laiton);
-  transform: translateY(-70%) rotate(45deg);
-  transition: transform 200ms ease;
-}
-
-.tocFolded[open] summary::after {
-  transform: translateY(-30%) rotate(225deg);
-}
-
-.tocFolded .tocList {
-  padding: 0.25rem 0.5rem 0.5rem;
-  border-top: 1px solid var(--filet);
-}
-
-.tocFolded .tocList a {
-  min-height: 2.75rem;
-  padding-inline: 0.5rem;
-}
-
-/* Grand écran : toujours ouvert, lignes de 36 px (pointeur précis). Masqué ailleurs, donc hors de l'arbre
-   d'accessibilité. */
-.tocOpen {
-  display: none;
-}
-
-.tocTitle {
-  margin: 0 0 0.5rem;
-  color: var(--brume);
-  font-size: 0.8125rem;
-  line-height: 1.5;
 }
 
 /* ---------- Titre et accroche ---------- */
@@ -129,16 +37,12 @@
 
 /* ---------- Sections ---------- */
 
-/* Chaque section s'ouvre sur un filet, 3 rem sous la précédente ; l'ancre se pose sous la barre (scroll-padding). */
+/* Chaque section s'ouvre sur un filet, 3 rem sous ce qui la précède ; son ancre se pose sous la barre
+   (scroll-padding). */
 .part {
   margin-top: 3rem;
   padding-top: 2rem;
   border-top: 1px solid var(--filet);
-}
-
-/* Cible de lecture du sommaire (focus programmatique), pas une commande : pas de contour. */
-.part:focus {
-  outline: none;
 }
 
 .part h2 {
@@ -151,7 +55,9 @@
   text-wrap: balance;
 }
 
+/* Colonne de lecture de 42 rem au plus (60 à 70 caractères), même quand la section s'étend sur toute la largeur. */
 .part > p {
+  max-width: 42rem;
   margin: 0 0 1rem;
   color: #d9d3c4;
   font-size: 1.0625rem;
@@ -163,166 +69,82 @@
   margin-bottom: 0;
 }
 
-/* Encart de confidentialité : laiton, pas soleil (ce n'est pas une alerte). */
-.part > .note {
-  padding: 1rem 1.25rem;
-  border: 1px solid var(--filet-fort);
-  border-radius: var(--r-md);
-  background: var(--plaque-a);
-  color: var(--ivoire);
-}
-
-/* Accessibilité : termes et définitions, filetés comme la fiche des plaques. */
-.entries {
-  margin: 0;
-}
-
-.entries div {
-  padding-block: 0.75rem;
-  border-top: 1px solid var(--filet);
-}
-
-.entries dt {
-  color: var(--ivoire);
-  font-size: 1.0625rem;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.entries dd {
-  margin: 0.25rem 0 0;
-  color: #d9d3c4;
-  font-size: 1.0625rem;
-  line-height: 1.6;
-}
-
-/* Liens vers d'autres sites : liste filetée, le nom (le lien) puis ce que le site en tire. */
+/*
+ * Sources : liste filetée, le nom (le lien) puis ce que le site en tire, en colonnes de 18 rem au moins qui se
+ * partagent la largeur de la section : une sur téléphone, deux sur tablette comme à 1 440 px, trois sur les écrans
+ * plus larges. Les filets s'alignent d'une colonne à l'autre ; l'ordre de lecture va de gauche à droite, puis vers le
+ * bas.
+ */
 .outbound {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  column-gap: 2rem;
   margin: 1.5rem 0 0;
   padding: 0;
   list-style: none;
 }
 
+/* En haut, 0,25 rem : la marge du lien complète le quart de rem jusqu'au 0,75 rem du rythme des filets. */
 .outbound li {
-  padding-block: 0.75rem;
+  padding-block: 0.25rem 0.75rem;
   border-top: 1px solid var(--filet);
 }
 
 .outbound p {
-  margin: 0.25rem 0 0;
+  margin: 0;
   color: var(--brume);
   font-size: 0.9375rem;
   line-height: 1.5;
 }
 
-/* Cette page dans chaque langue, sur une ligne, séparées par un point dessiné (décor : rien à lire). */
-.languages {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.languages li + li::before {
-  content: "";
+/*
+ * Liens de texte : ivoire, soulignés de laiton ; au survol, soulignement ivoire plus épais. Cible de 44 px de haut
+ * (bloc en ligne, 0,5 rem au-dessus et au-dessous du texte) ; les noms trop longs se coupent.
+ */
+.outbound a {
   display: inline-block;
-  width: 0.25rem;
-  height: 0.25rem;
-  margin-inline: 0.75rem;
-  border-radius: 50%;
-  background: var(--brume);
-  vertical-align: middle;
-}
-
-/* Liens de texte : ivoire, soulignés de laiton ; au survol, soulignement ivoire plus épais. */
-.outbound a,
-.languages a {
+  min-height: 2.75rem;
+  padding-block: 0.5rem;
   color: var(--ivoire);
+  font-weight: 600;
   text-decoration-line: underline;
   text-decoration-thickness: 1px;
   text-decoration-color: var(--laiton);
   text-underline-offset: 0.2em;
+  overflow-wrap: anywhere;
 }
 
-.outbound a:hover,
-.languages a:hover {
+.outbound a:hover {
   text-decoration-thickness: 2px;
   text-decoration-color: var(--ivoire);
-}
-
-.outbound a {
-  font-weight: 600;
-  overflow-wrap: anywhere;
 }
 
 .arrow {
   font-weight: 400;
 }
 
-/* Cible de 44 px de haut ; la langue de la page, en gras et sans soulignement, ne se distingue pas que par la
-   couleur. */
-.languages a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.75rem;
-  font-size: 1.0625rem;
-}
-
-.languages a[aria-current="true"] {
-  font-weight: 700;
-  text-decoration-line: none;
-}
-
 /* ---------- Pied de page ---------- */
 
-/* Le `footer` global est celui du voyage (place de la règle et du dock) : ici, la largeur de la colonne, ou de toute
-   la grille sur grand écran, entre les marges de la page. */
+/* Le `footer` global est celui du voyage (place de la règle et du dock) : ici, les marges de la page. */
 .footer {
-  width: min(100% - var(--gl) - var(--gr), 42rem);
-  margin-inline: auto;
-  padding: 0 0 3rem;
+  padding: 0 var(--gr) calc(3rem + env(safe-area-inset-bottom, 0px)) var(--gl);
 }
 
-/* ---------- Grand écran : deux colonnes, sommaire collant ---------- */
+/* ---------- Grand écran : les deux sections côte à côte ---------- */
 
+/*
+ * « Pourquoi ce site » à gauche (un tiers), « Sources » à droite (deux tiers), sur toute la largeur utile ; le titre et
+ * l'accroche les surplombent. Les deux filets partent à la même hauteur.
+ */
 @media (min-width: 64rem) {
   .page {
     display: grid;
-    grid-template-columns: 13rem minmax(0, 42rem);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
     column-gap: 4rem;
-    justify-content: center;
     align-items: start;
   }
 
-  .toc,
-  .column {
-    max-width: none;
-    margin-inline: 0;
-  }
-
-  .toc {
-    position: sticky;
-    top: calc(env(safe-area-inset-top, 0px) + 6.75rem);
-  }
-
-  .tocFolded {
-    display: none;
-  }
-
-  .tocOpen {
-    display: block;
-  }
-
-  .footer {
-    width: min(100% - var(--gl) - var(--gr), 59rem);
-  }
-}
-
-/* Écran bas (zoom, téléphone en paysage) : le sommaire défile avec la page plutôt que de dépasser de la vue. */
-@media (min-width: 64rem) and (max-height: 30rem) {
-  .toc {
-    position: static;
+  .head {
+    grid-column: 1 / -1;
   }
 }

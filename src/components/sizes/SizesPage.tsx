@@ -1,7 +1,7 @@
 import { MAIN_ID } from "@/components/journey/ids";
 import { SceneErrorBoundary } from "@/components/scene/SceneErrorBoundary";
 import { SiteHeader } from "@/components/site/SiteHeader";
-import { SiteNavFooter } from "@/components/site/SiteNavFooter";
+import { ContactFooter } from "@/components/site/ContactFooter";
 import { SkipToContent } from "@/components/site/SkipToContent";
 import type { Locale } from "@/i18n/locales";
 import { COMPARED_STARS } from "@/lib/astro/starSizes";
@@ -21,9 +21,10 @@ const LARGEST = COMPARED_STARS.length - 1;
 /**
  * Page « Tailles », dans la langue de l'adresse : une section par étoile, de la plus petite à la plus grande, une scène
  * 3D fixe derrière, la règle des tailles. Dans l'ordre du DOM, qui est l'ordre de lecture : lien d'évitement, barre
- * commune (étoile affichée, menu des étoiles), règle, contenu (`main#contenu` : introduction, dix plaques), plan du
- * site. La scène et ses étiquettes sont décoratives : les plaques portent les noms et les nombres. Statique ; tout ce
- * qui bouge vit dans des feuilles client. Sans dock : la plaque compacte se colle au bas de l'écran (`--dock-clear`).
+ * commune (étoile affichée, menu des étoiles), règle, contenu (`main#contenu` : introduction, dix plaques), pied de
+ * page commun (signature, contacts de l'auteur). La scène et ses étiquettes sont décoratives : les plaques portent les
+ * noms et les nombres. Statique ; tout ce qui bouge vit dans des feuilles client. Sans dock : la plaque compacte se
+ * colle au bas de l'écran (`--dock-clear`).
  */
 export function SizesPage({ locale }: { locale: Locale }) {
   return (
@@ -45,8 +46,8 @@ export function SizesPage({ locale }: { locale: Locale }) {
         ))}
       </main>
       <footer>
-        <div className={styles.siteMap}>
-          <SiteNavFooter locale={locale} page="sizes" />
+        <div className={styles.contact}>
+          <ContactFooter locale={locale} />
         </div>
       </footer>
       <SizesTracker />

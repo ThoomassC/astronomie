@@ -1,12 +1,11 @@
-import { SiteNavFooter } from "@/components/site/SiteNavFooter";
+import { ContactFooter } from "@/components/site/ContactFooter";
 import { getVoyageContent } from "@/content/voyage/content";
 import type { Locale } from "@/i18n/locales";
 import styles from "./SiteFooter.module.css";
 
 /**
  * Pied de page du voyage, dans la langue de la page : sources des données, avertissement sur l'échelle et crédit des
- * cartes des astres, puis le plan du site (rubriques et langues), comme au pied des autres pages. Le lien « Menu » de
- * la barre y mène sans JavaScript (`#plan-du-site`).
+ * cartes des astres, puis le pied de page commun (signature, contacts de l'auteur), comme au pied des autres pages.
  */
 export function SiteFooter({ locale }: { locale: Locale }) {
   const { sources, scale, textures } = getVoyageContent(locale).footer;
@@ -21,8 +20,8 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         <a href={textures.license.href}>{textures.license.label}</a>
         {textures.after}
       </p>
-      <div className={styles.siteMap}>
-        <SiteNavFooter locale={locale} page="voyage" />
+      <div className={styles.contact}>
+        <ContactFooter locale={locale} />
       </div>
     </footer>
   );
