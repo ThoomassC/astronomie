@@ -33,6 +33,13 @@ describe("route /[lang]/voyage", () => {
     await expect(generateMetadata(props("en"))).resolves.toEqual(pageMetadata("voyage", "en"));
   });
 
+  it("devrait poser la barre commune dans la langue de l'adresse, l'onglet du voyage en page courante", async () => {
+    await renderVoyage("es");
+    const tabs = within(screen.getByRole("navigation", { name: "Secciones" }));
+    expect(tabs.getByRole("link", { name: "Viaje" })).toHaveAttribute("href", "/es/voyage");
+    expect(tabs.getByRole("link", { name: "Viaje" })).toHaveAttribute("aria-current", "page");
+  });
+
   it("devrait poser une section par escale, dans l'ordre du voyage, à l'ancre de chacune", async () => {
     await renderVoyage("fr");
     const main = screen.getByRole("main");

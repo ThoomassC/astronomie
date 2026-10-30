@@ -45,7 +45,7 @@ export default async function VoyagePage({ params }: PageProps<"/[lang]/voyage">
       <SceneErrorBoundary>
         <SceneMount />
       </SceneErrorBoundary>
-      <TopBar stops={railStops} />
+      <TopBar locale={lang} stops={railStops} />
       <DistanceRail stops={railStops} />
       <main id={MAIN_ID} tabIndex={-1} data-hide-on-explore>
         <SolarStops locale={lang} sunHref={sunHref} />
