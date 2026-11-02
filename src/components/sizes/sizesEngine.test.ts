@@ -1,7 +1,7 @@
 import type * as Three from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeRenderer } from "@/components/scene/testRenderer";
-import { createSizesScene, type SizesSceneOptions } from "@/components/sizes/sizesEngine";
+import { SHARP_AFTER_STILL_FRAMES, createSizesScene, type SizesSceneOptions } from "@/components/sizes/sizesEngine";
 import { sizesStore } from "@/lib/sizes/store";
 
 /*
@@ -125,14 +125,43 @@ describe("rapport de pixels pendant les vols", () => {
     scene.dispose();
   });
 
-  it("devrait rendre une image nette, une seule, quand le vol s'arrête", async () => {
+  it("devrait rendre une image nette, une seule, quand le vol reste arrêté SHARP_AFTER_STILL_FRAMES images", async () => {
     const scene = await sceneOn(true);
     sizesStore.update("intro", "proxima-centauri", 0.3);
     scene.frame(1 / 60);
     renderer().calls.length = 0;
+    for (let i = 1; i < SHARP_AFTER_STILL_FRAMES; i++) scene.frame(1 / 60);
+    expect(renderer().calls).toEqual([]);
     scene.frame(1 / 60);
     scene.frame(1 / 60);
     expect(renderer().calls).toEqual(["setPixelRatio 1.5", "render"]);
+    scene.dispose();
+  });
+
+  /*
+   * Sur un écran à 120 Hz, un glissé lent ne fait avancer le défilement qu'une image sur deux : le rapport de pixels ne
+   * doit pas remonter à chaque image immobile, ce qui réallouerait le tampon et ferait alterner images nettes et floues.
+   */
+  it("devrait garder le rapport de pixels 1 pendant un glissé lent, immobile une image sur deux", async () => {
+    const scene = await sceneOn(true);
+    for (let i = 1; i <= 6; i++) {
+      sizesStore.update("intro", "proxima-centauri", i / 10);
+      scene.frame(1 / 120);
+      scene.frame(1 / 120);
+    }
+    expect(renderer().calls.filter((call) => call.startsWith("setPixelRatio"))).toEqual(["setPixelRatio 1"]);
+    scene.dispose();
+  });
+
+  it("ne devrait pas baisser le rapport de pixels d'une page ouverte entre deux escales, tant que rien ne bouge", async () => {
+    stubMatchMedia(true);
+    vi.stubGlobal("devicePixelRatio", 3);
+    sizesStore.update("intro", "proxima-centauri", 0.4);
+    const scene = createSizesScene(options());
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    for (let i = 0; i < 4; i++) scene.frame(1 / 60);
+    expect(renderer().calls.filter((call) => call.startsWith("setPixelRatio"))).toEqual(["setPixelRatio 1.5"]);
     scene.dispose();
   });
 

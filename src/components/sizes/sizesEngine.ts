@@ -72,10 +72,16 @@ const MAX_PIXEL_RATIO = 1.5;
 const MAX_PIXELS = 4_200_000;
 /**
  * Rapport de pixels des vols sur écran tactile : une supergéante y remplit l'écran, et chaque pixel calcule sa surface
- * (2,25 fois moins de pixels qu'à 1,5). L'image où le vol se pose, ou la première où plus rien ne bouge, repart au
- * rapport de l'écran.
+ * (2,25 fois moins de pixels qu'à 1,5). L'image où le vol se pose, ou la première d'une pause entre deux escales
+ * (SHARP_AFTER_STILL_FRAMES), repart au rapport de l'écran.
  */
 const FLIGHT_PIXEL_RATIO = 1;
+/**
+ * Images immobiles d'affilée, entre deux escales, avant de revenir au rapport de l'écran : un glissé lent, qui ne fait
+ * avancer le défilement qu'une image sur deux (écran à 120 Hz), ne réalloue pas le tampon d'image à chaque image et
+ * n'alterne pas images nettes et floues.
+ */
+export const SHARP_AFTER_STILL_FRAMES = 8;
 /** Fond de la scène : `--nuit`. */
 const NIGHT = 0x060b18;
 /** Plan proche, en part de la distance à la cible : aucune étoile n'en approche, au repos comme en vol. */
@@ -258,6 +264,10 @@ function setupScene(
   let layoutSettled = true;
   /** Rapport de pixels de l'écran, plafonné (resize) : celui de toute image hors des vols sur écran tactile. */
   let sharpPixelRatio = 1;
+  /** Vol en cours sur écran tactile, rendu à FLIGHT_PIXEL_RATIO (applyPixelRatio). */
+  let inFlight = false;
+  /** Images d'affilée où rien n'a bougé. */
+  let stillFrames = 0;
   let compiled = false;
   let compileWaitFrames = 0;
   let disposed = false;
@@ -304,10 +314,13 @@ function setupScene(
 
   /**
    * Rapport de pixels de l'image : FLIGHT_PIXEL_RATIO pendant un vol sur écran tactile (entre deux escales, `t` > 0,
-   * hors première image), sinon celui de l'écran. En changer impose une image.
+   * hors première image), jusqu'à l'arrivée ou SHARP_AFTER_STILL_FRAMES images immobiles ; sinon celui de l'écran.
+   * Seul un vol l'abaisse : une page ouverte entre deux escales reste nette. En changer impose une image.
    */
   function applyPixelRatio(flying: boolean, t: number): void {
-    const inFlight = coarsePointer && flying && t > 0 && lastFrom !== null;
+    stillFrames = flying ? 0 : stillFrames + 1;
+    if (!coarsePointer || !(t > 0) || lastFrom === null || stillFrames >= SHARP_AFTER_STILL_FRAMES) inFlight = false;
+    else if (flying) inFlight = true;
     const ratio = inFlight ? Math.min(FLIGHT_PIXEL_RATIO, sharpPixelRatio) : sharpPixelRatio;
     if (ratio === renderer.getPixelRatio()) return;
     renderer.setPixelRatio(ratio);
