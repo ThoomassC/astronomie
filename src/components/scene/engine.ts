@@ -109,6 +109,7 @@ import {
 } from "./extragalactic";
 import {
   anchoredBox,
+  clearanceShift,
   markerLayouts,
   placeLabel,
   placeMarkedLabel,
@@ -183,6 +184,8 @@ const ORBIT_FADE_EPSILON = 1e-3;
 const LABEL_PRIORITY: readonly BodyKey[] = ["sun", "earth", "jupiter", "saturn", "neptune", "uranus", "mars", "venus", "mercury"];
 /** Sous cette opacité, une étiquette est masquée. */
 const LABEL_MIN_ALPHA = 0.02;
+/** Écart entre le bord du disque d'une galaxie et son nom posé à côté, en px. */
+const GALAXY_LABEL_GAP_PX = 6;
 /** Plan lointain tant que le système solaire est dessiné : le ciel est à 2 730 unités. */
 const SOLAR_FAR = 7000;
 /**
@@ -295,6 +298,8 @@ interface LabelSlot {
   /** Texte à gauche du repère (`data-mirrored`), nom seul (`data-short`). */
   mirrored: boolean;
   short: boolean;
+  /** Nom d'une galaxie posé à côté de son disque, repère effacé (`data-beside`). */
+  beside: boolean;
   /** Étiquettes à repère seulement ; `null` pour les planètes, placées par leur bouton entier (décalage fixe). */
   marker: LabelMarker | null;
 }
@@ -309,6 +314,7 @@ const labelSlot = (element: HTMLElement): LabelSlot => ({
   opacity: element.style.opacity,
   mirrored: element.hasAttribute("data-mirrored"),
   short: element.hasAttribute("data-short"),
+  beside: element.hasAttribute("data-beside"),
   marker: null,
 });
 
@@ -328,6 +334,13 @@ function setLabelForm(slot: LabelSlot, mirrored: boolean, short: boolean): void 
     slot.short = short;
     slot.element.toggleAttribute("data-short", short);
   }
+}
+
+/** Nom posé à côté du disque de sa galaxie, repère effacé (`data-beside`), ou sur son repère. */
+function setLabelBeside(slot: LabelSlot, beside: boolean): void {
+  if (slot.beside === beside) return;
+  slot.beside = beside;
+  slot.element.toggleAttribute("data-beside", beside);
 }
 
 /**
@@ -691,6 +704,8 @@ function setupScene(
   const orbitPoint = new Vector3();
   const projected = new Vector3();
   const anchor = new Vector3();
+  /** Bord du disque d'une galaxie, sur l'axe horizontal de la caméra (discRadiusPx). */
+  const discEdge = new Vector3();
   const bodySlots = new Map<BodyKey, LabelSlot>([...labels].map(([key, element]) => [key, labelSlot(element)]));
   const deepSlots = new Map<DeepLabelKey | ExtragalacticLabelKey, LabelSlot>(
     [...deepLabels].map(([key, element]) => [key, labelSlot(element)]),
@@ -709,7 +724,9 @@ function setupScene(
   /** Galaxies, toile, fond diffus, univers, dans l'ordre de priorité : étiquette, ancre dans le repère de son groupe. */
   const extragalacticLabels = EXTRAGALACTIC_LABEL_ORDER.flatMap((key) => {
     const anchorOf = extragalactic.labelAnchors.get(key);
-    return anchorOf ? [{ key, slot: deepSlots.get(key), group: anchorOf.group, position: anchorOf.position }] : [];
+    return anchorOf
+      ? [{ key, slot: deepSlots.get(key), group: anchorOf.group, position: anchorOf.position, radius: anchorOf.radius }]
+      : [];
   });
   let obstacleBoxes: LabelBox[] = [];
   const occupied: LabelBox[] = [];
@@ -1321,8 +1338,64 @@ function setupScene(
     const halfHeight = marker.dotHeight / 2;
     occupied.push(anchoredBox(layout.box, x, y), [x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight]);
     setLabelForm(slot, layout.mirrored, layout.short);
+    setLabelBeside(slot, false);
     showLabel(slot, x - layout.dotX, y - marker.dotY, alpha);
     return true;
+  }
+
+  /** Rayon à l'écran (px) d'un disque de `radius` unités de scène centré en `at` : écart projeté de son bord. */
+  function discRadiusPx(at: Vector3, radius: number): number {
+    discEdge.setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(radius).add(at);
+    project(discEdge);
+    const edgeX = onScreen.x;
+    project(at);
+    return Math.abs(edgeX - onScreen.x);
+  }
+
+  /**
+   * Pose le nom d'une galaxie à côté de son disque, de `radius` px de rayon à l'écran : texte à GALAXY_LABEL_GAP_PX
+   * du bord, à droite ou à gauche (première disposition qui tient), repère effacé ; seul le texte est réservé.
+   * Renvoie faux sinon, sans rien changer.
+   */
+  function fitBesideSlot(slot: LabelSlot, at: Vector3, alpha: number, radius: number): boolean {
+    const { marker } = slot;
+    if (!marker) return false;
+    project(at);
+    const { x, y } = onScreen;
+    const clearance = radius + GALAXY_LABEL_GAP_PX;
+    const index = placeMarkedLabel(
+      { x, y, depth: projected.z },
+      marker.layouts,
+      view.width,
+      view.height,
+      occupied,
+      clearance,
+    );
+    if (index === null) return false;
+    const layout = marker.layouts[index];
+    const shift = clearanceShift(layout.box, clearance);
+    occupied.push(anchoredBox(layout.box, x + shift, y));
+    setLabelForm(slot, layout.mirrored, layout.short);
+    setLabelBeside(slot, true);
+    showLabel(slot, x + shift - layout.dotX, y - marker.dotY, alpha);
+    return true;
+  }
+
+  /**
+   * Étiquette d'une galaxie de rayon `radius` (unités de scène) : à côté de son disque dès qu'il déborde du repère,
+   * qui le couvrirait ; sinon, ou si aucun côté ne tient, sur son repère comme les autres ; masquée sous
+   * LABEL_MIN_ALPHA ou si rien ne tient.
+   */
+  function placeGalaxySlot(slot: LabelSlot | undefined, at: Vector3, alpha: number, radius: number): void {
+    if (!slot) return;
+    if (alpha < LABEL_MIN_ALPHA) {
+      setLabelShown(slot, false);
+      return;
+    }
+    const discPx = discRadiusPx(at, radius);
+    const covered = discPx > (slot.marker?.dotWidth ?? 0) / 2;
+    if (covered && fitBesideSlot(slot, at, alpha, discPx)) return;
+    if (!fitMarkedSlot(slot, at, alpha)) setLabelShown(slot, false);
   }
 
   /** Place le bouton d'étiquette sur son ancre s'il y tient ; sinon, ou sous LABEL_MIN_ALPHA, le masque. */
@@ -1416,10 +1489,12 @@ function setupScene(
     const center = anchor.copy(galacticCenterLy).multiplyScalar(lightYear);
     placeMarkedSlot(deepSlots.get("center"), center, weights.galaxyLabels);
     // Au-delà : galaxies, toile, fond diffus, univers, chacun dans le repère de son groupe.
-    for (const { key, slot, group, position } of extragalacticLabels) {
+    for (const { key, slot, group, position, radius } of extragalacticLabels) {
       const scale = group === "cosmos" ? lightYear : group === "localGroup" ? lightYear * 1e3 : lightYear * 1e9;
       const at = anchor.set(position.x, position.y, position.z).multiplyScalar(scale);
-      placeMarkedSlot(slot, at, extragalacticAlpha(key));
+      // Une galaxie est dessinée grossie (galaxyMagnification) : son nom se pose à côté du disque dessiné.
+      if (radius === undefined) placeMarkedSlot(slot, at, extragalacticAlpha(key));
+      else placeGalaxySlot(slot, at, extragalacticAlpha(key), radius * scale * magnification);
     }
     for (const { slot, position } of stars) {
       placeMarkedSlot(slot, anchor.set(position.x, position.y, position.z).multiplyScalar(lightYear), weights.stars);

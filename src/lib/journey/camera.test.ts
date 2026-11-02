@@ -584,7 +584,7 @@ describe("cameraFor au Groupe local, à l'Univers observable et au multivers", (
 
   // Distances recalculées hors du dépôt : rayon / sin(atan(tan)) dans la plus étroite des deux directions.
   it.each([
-    ["localGroup", 555.671224],
+    ["localGroup", 575.697149],
     ["universe", 755.630034],
     ["multiverse", 684.739061],
   ] as const)(
@@ -601,7 +601,7 @@ describe("cameraFor au Groupe local, à l'Univers observable et au multivers", (
   );
 
   it.each([
-    ["localGroup", 457.901746],
+    ["localGroup", 474.404141],
     ["universe", 622.678117],
     ["multiverse", 564.2603],
   ] as const)(
@@ -618,8 +618,8 @@ describe("cameraFor au Groupe local, à l'Univers observable et au multivers", (
   );
 
   it("devrait cadrer le Groupe local sur ses cinq galaxies principales, grossies (les naines lointaines peuvent sortir du cadre)", () => {
-    // 1 696 kly autour de la cible, jusqu'au bord du Triangle grossi 4 fois.
-    expect(SPHERE.localGroup / (unitsPerLy(9.7) * 1000)).toBeCloseTo(1695.378, 2);
+    // 1 756 kly autour de la cible, jusqu'au bord du Triangle grossi 6 fois (30,55 kly de rayon).
+    expect(SPHERE.localGroup / (unitsPerLy(9.7) * 1000)).toBeCloseTo(1756.478, 2);
   });
 
   /**

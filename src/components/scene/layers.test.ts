@@ -186,7 +186,7 @@ describe("galaxyMagnification", () => {
   });
 
   it("devrait les grossir de LOCAL_GROUP_MAGNIFICATION dès le zoom 9,3 : au Groupe local et au-delà", () => {
-    expect(LOCAL_GROUP_MAGNIFICATION).toBe(4);
+    expect(LOCAL_GROUP_MAGNIFICATION).toBe(6);
     for (const zoom of ALL_ZOOMS.filter((z) => z > 9.31)) expect(galaxyMagnification(zoom)).toBe(LOCAL_GROUP_MAGNIFICATION);
     expect(galaxyMagnification(9.7)).toBe(LOCAL_GROUP_MAGNIFICATION);
   });
@@ -197,6 +197,7 @@ describe("galaxyMagnification", () => {
     }
     const steps = stepsOf(ALL_ZOOMS.map(galaxyMagnification));
     expect(Math.min(...steps)).toBeGreaterThanOrEqual(0);
-    expect(Math.max(...steps)).toBeLessThan(0.3);
+    // Moins d'un dixième du grossissement gagné d'un échantillon de zoom au suivant.
+    expect(Math.max(...steps) / (LOCAL_GROUP_MAGNIFICATION - 1)).toBeLessThan(0.1);
   });
 });

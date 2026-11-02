@@ -4,6 +4,7 @@ import {
   LABEL_OFFSET_X,
   LABEL_OFFSET_Y,
   anchoredBox,
+  clearanceShift,
   markerLayouts,
   placeLabel,
   placeMarkedLabel,
@@ -191,6 +192,49 @@ describe("placeMarkedLabel", () => {
       const points = [pointBox(460, 300, 2), pointBox(340, 300, 2)];
       expect(placeMarkedLabel(at(400), BOTH, VIEW_W, VIEW_H, points)).toBeNull();
     });
+  });
+
+  describe("à côté d'un disque : texte éloigné de `clearance` px du centre", () => {
+    it("devrait poser le texte à droite du disque quand il y tient", () => {
+      expect(placeMarkedLabel(at(400), BOTH, VIEW_W, VIEW_H, [], 50)).toBe(0);
+    });
+
+    it("devrait passer à gauche du disque quand le texte, ainsi éloigné, déborderait à droite", () => {
+      // Texte à droite : [x + 50 ; x + 150], à 3 px du bord droit.
+      const x = VIEW_W - EDGE_MARGIN - 150 + 1;
+      expect(placeMarkedLabel(at(x), BOTH, VIEW_W, VIEW_H, [], 50)).toBe(1);
+      expect(placeMarkedLabel(at(x), BOTH, VIEW_W, VIEW_H, [])).toBe(0);
+    });
+
+    it("devrait chercher les chevauchements là où va le texte éloigné, pas là où il irait sans disque", () => {
+      // Recouvre [450 ; 550], le texte éloigné à droite, mais pas [410 ; 510], le texte collé au repère.
+      const obstacle: LabelBox = [520, 295, 530, 305];
+      expect(placeMarkedLabel(at(400), BOTH, VIEW_W, VIEW_H, [obstacle], 50)).toBe(1);
+      expect(placeMarkedLabel(at(400), BOTH, VIEW_W, VIEW_H, [obstacle])).toBe(0);
+    });
+
+    it("devrait renoncer quand le disque ne laisse la place au texte d'aucun côté", () => {
+      expect(placeMarkedLabel(at(640), BOTH, VIEW_W, VIEW_H, [], 560)).toBeNull();
+    });
+  });
+});
+
+describe("clearanceShift", () => {
+  it("devrait pousser vers la droite un texte à droite du repère, jusqu'à `clearance` px du centre", () => {
+    expect(clearanceShift(RIGHT, 50)).toBe(40);
+  });
+
+  it("devrait pousser vers la gauche un texte à gauche du repère (miroir)", () => {
+    expect(clearanceShift(LEFT, 50)).toBe(-40);
+  });
+
+  it("devrait laisser en place un texte déjà assez loin du centre", () => {
+    expect(clearanceShift(RIGHT, 6)).toBe(0);
+    expect(clearanceShift(LEFT, 6)).toBe(0);
+  });
+
+  it("devrait laisser en place un texte centré au-dessus ou en dessous de son repère", () => {
+    expect(clearanceShift([-60, 8, 60, 28], 50)).toBe(0);
   });
 });
 

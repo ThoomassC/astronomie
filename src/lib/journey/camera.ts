@@ -189,7 +189,7 @@ const LOCAL_GROUP_FRAMED: readonly LocalGroupGalaxyKey[] = [
 
 /**
  * Rayon de la sphère cadrée au Groupe local, en kly : la plus grande distance entre sa cible et le bord d'une des
- * cinq galaxies principales, grossies (LOCAL_GROUP_MAGNIFICATION) : ≈ 1 695 kly, le Triangle. Cadrer les treize
+ * cinq galaxies principales, grossies (LOCAL_GROUP_MAGNIFICATION) : ≈ 1 756 kly, le Triangle. Cadrer les treize
  * galaxies, WLM à 3 Mal comprise, rapetisserait toutes les galaxies d'un tiers.
  */
 const LOCAL_GROUP_FRAME_KLY = (() => {

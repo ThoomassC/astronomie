@@ -9,13 +9,13 @@ export const REAL_SCALE_PLANET_SHRINK = 0.012;
 export const REAL_SCALE_SUN_SHRINK = 0.05;
 
 /**
- * Grossissement des galaxies au Groupe local : les distances restent à l'échelle, les tailles sont multipliées par 4.
+ * Grossissement des galaxies au Groupe local : les distances restent à l'échelle, les tailles sont multipliées par 6.
  * À l'échelle, Andromède n'y ferait que 14 px de rayon sur grand écran et 7 sur téléphone, la Voie lactée 9 et 5, les
- * Nuages de Magellan un ou deux : quelques points épars, aucune forme. Grossies 4 fois, elles se lisent (spirales,
- * taches) et restent petites devant leurs écarts : Andromède grossie (300 000 al de rayon) est encore 8 fois plus
- * petite que sa distance.
+ * Nuages de Magellan un ou deux : quelques points épars, aucune forme. Grossies 6 fois, elles se lisent (spirales,
+ * taches), la Voie lactée comprise, et restent petites devant leurs écarts : Andromède grossie (456 000 al de rayon)
+ * est encore 5 fois plus petite que sa distance, et ne touche pas le Triangle à l'écran.
  */
-export const LOCAL_GROUP_MAGNIFICATION = 4;
+export const LOCAL_GROUP_MAGNIFICATION = 6;
 
 /** Rayon de scène en échelle compressée : 12 + 22·√r (r en UA). */
 export function compressedRadius(au: number): number {

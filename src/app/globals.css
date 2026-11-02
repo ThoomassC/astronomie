@@ -253,6 +253,11 @@ main > section:focus {
   height: 9px;
 }
 
+/* Nom posé à côté du disque de la galaxie (data-beside, posé par la scène) : le disque dessiné tient lieu de repère. */
+.lbl.deep.galaxy[data-beside] i {
+  visibility: hidden;
+}
+
 /* Autres univers : une hypothèse, dite dans l'étiquette ; le repère en pointillés ne désigne rien d'observé. */
 .lbl.deep.hypothesis i {
   width: 14px;

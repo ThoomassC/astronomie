@@ -32,7 +32,7 @@ import {
 import type { Uniform } from "@/components/scene/materials";
 import type { Vec3 } from "@/lib/astro/constants";
 import { COSMIC_WEB_SEED, cosmicWebCloud } from "@/lib/astro/cosmicWeb";
-import { galaxyCenterKly, galaxyLuminosity, type LocalGroupGalaxy } from "@/lib/astro/localGroup";
+import { galaxyCenterKly, galaxyLuminosity, galaxyRadiusKly, type LocalGroupGalaxy } from "@/lib/astro/localGroup";
 import { MULTIVERSE_SEED, multiverseBubbles } from "@/lib/astro/multiverse";
 import { OBSERVABLE_UNIVERSE_RADIUS_GLY } from "@/lib/astro/universe";
 
@@ -182,6 +182,14 @@ describe("createExtragalactic", () => {
       const anchor = anchorOf(body, galaxyLabelKey(galaxy.key));
       expect(anchor.group).toBe("localGroup");
       expect(anchor.position).toEqual(closeTo(galaxyCenterKly(galaxy), 9));
+    }
+  });
+
+  it("devrait donner à chaque galaxie le rayon de son disque, vraie taille, dans l'unité de son groupe", () => {
+    const body = create();
+    expect(anchorOf(body, "lg:milky-way").radius).toBeCloseTo(galaxyRadiusKly(GALAXIES[0]) * 1000, 9);
+    for (const galaxy of GALAXIES.slice(1)) {
+      expect(anchorOf(body, galaxyLabelKey(galaxy.key)).radius).toBe(galaxyRadiusKly(galaxy));
     }
   });
 

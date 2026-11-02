@@ -46,6 +46,8 @@ export type ExtragalacticLabelKey = `lg:${LocalGroupGalaxyKey}` | "web" | "cmb" 
 export interface ExtragalacticAnchor {
   group: "cosmos" | "localGroup" | "universe";
   position: Vec3;
+  /** Galaxies seulement : rayon de leur disque, vraie taille, dans l'unité du groupe ; leur nom se pose à côté. */
+  radius?: number;
 }
 
 /** Poids des couches extragalactiques, de 0 à 1 : galaxies du Groupe local, toile, fond diffus, autres bulles. */
@@ -97,9 +99,9 @@ export const LOCAL_GROUP_MIN_POINTS = 30;
 /**
  * Rayon apparent d'Andromède grossie (px CSS) à partir duquel le Groupe local brille à plein éclat, tous ses points
  * dessinés. En dessous, sa lumière suit (rayon / 80 px)^1,5 : portée par le gain jusqu'à LOCAL_GROUP_MIN_GAIN, puis
- * par la part des points dessinés (splitLight). À l'escale, Andromède grossie fait 53 px de rayon sur grand écran
- * (lumière 0,53, tous les points) et 27 sur téléphone (gain 0,35, 56 % des points) : cœur lumineux, disque et bras
- * visibles (banc logiciel).
+ * par la part des points dessinés (splitLight). À l'escale, Andromède grossie fait environ 77 px de rayon sur grand
+ * écran (lumière 0,94, tous les points) et 39 sur téléphone (gain 0,35, 98 % des points) : cœur lumineux, disque et
+ * bras visibles (banc logiciel, mesuré au grossissement 4 et ramené au cadrage du grossissement 6).
  */
 export const LOCAL_GROUP_FULL_LIGHT_PX = 80;
 /** Gain le plus bas des galaxies du Groupe local : au-dessus du demi-niveau qu'efface le tampon 8 bits. */
@@ -162,19 +164,25 @@ export function labelledBubbleIndex(): number {
 }
 
 /**
- * Ancres des étiquettes : chaque galaxie à son centre (la Voie lactée au centre galactique, en al, dans le groupe
- * du ciel profond où vit son nuage) ; la toile sur son nœud d'étiquette ; le fond diffus en haut de notre bulle,
- * « Notre univers observable » en bas ; « D'autres univers ? » au centre de la plus grande autre bulle.
+ * Ancres des étiquettes : chaque galaxie à son centre, avec le rayon de son disque (la Voie lactée au centre
+ * galactique, en al, dans le groupe du ciel profond où vit son nuage) ; la toile sur son nœud d'étiquette ; le fond
+ * diffus en haut de notre bulle, « Notre univers observable » en bas ; « D'autres univers ? » au centre de la plus
+ * grande autre bulle.
  */
 function labelAnchorsFor(galaxies: readonly LocalGroupGalaxy[]): Map<ExtragalacticLabelKey, ExtragalacticAnchor> {
   const anchors = new Map<ExtragalacticLabelKey, ExtragalacticAnchor>();
   for (const galaxy of galaxies) {
     const center = galaxyCenterKly(galaxy);
+    const radius = galaxyRadiusKly(galaxy);
     anchors.set(
       galaxyLabelKey(galaxy.key),
       galaxy.key === "milky-way"
-        ? { group: "cosmos", position: { x: center.x * 1000, y: center.y * 1000, z: center.z * 1000 } }
-        : { group: "localGroup", position: center },
+        ? {
+            group: "cosmos",
+            position: { x: center.x * 1000, y: center.y * 1000, z: center.z * 1000 },
+            radius: radius * 1000,
+          }
+        : { group: "localGroup", position: center, radius },
     );
   }
   const radius = OBSERVABLE_UNIVERSE_RADIUS_GLY;

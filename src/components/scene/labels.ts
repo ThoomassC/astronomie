@@ -114,9 +114,21 @@ export interface MarkerAnchor {
 }
 
 /**
+ * Décalage horizontal (px) qui éloigne le texte d'une disposition à `clearance` px au moins du centre de son repère :
+ * vers la droite pour un texte à droite, vers la gauche pour un texte à gauche (miroir). Nul pour un texte déjà assez
+ * loin, ou centré au-dessus ou en dessous de son repère. Sert à poser le nom d'une galaxie à côté de son disque.
+ */
+export function clearanceShift(box: LabelBox, clearance: number): number {
+  if (box[0] >= 0) return Math.max(0, clearance - box[0]);
+  if (box[2] <= 0) return Math.min(0, -clearance - box[2]);
+  return 0;
+}
+
+/**
  * Rang de la première disposition qui tient, ou `null`. Il faut l'astre devant la caméra et dans la vue ; le texte
  * entier à EDGE_MARGIN px au moins des bords, sous la barre haute et au-dessus du dock ; et aucune boîte occupée
- * recouverte (étiquettes plus prioritaires, points des étoiles, règle des distances).
+ * recouverte (étiquettes plus prioritaires, points des étoiles, règle des distances). Avec `clearance`, chaque texte
+ * est d'abord éloigné d'autant du centre du repère (clearanceShift) : le nom se pose à côté d'un disque, pas dessus.
  */
 export function placeMarkedLabel(
   anchor: MarkerAnchor,
@@ -124,6 +136,7 @@ export function placeMarkedLabel(
   viewWidth: number,
   viewHeight: number,
   occupied: readonly LabelBox[],
+  clearance = 0,
 ): number | null {
   const { x, y, depth } = anchor;
   if (depth > 1 || x < 0 || x > viewWidth || y < 0 || y > viewHeight) return null;
@@ -132,9 +145,10 @@ export function placeMarkedLabel(
   // Appelée à chaque image pour chaque étiquette : les boîtes essayées ne sont pas allouées.
   for (let i = 0; i < layouts.length; i++) {
     const { box } = layouts[i];
-    const left = x + box[0];
+    const shift = clearance > 0 ? clearanceShift(box, clearance) : 0;
+    const left = x + box[0] + shift;
     const top = y + box[1];
-    const right = x + box[2];
+    const right = x + box[2] + shift;
     const bottom = y + box[3];
     if (left < EDGE_MARGIN || right > viewWidth - EDGE_MARGIN || top < minTop || bottom > maxBottom) continue;
     if (isFree(left, top, right, bottom, occupied)) return i;

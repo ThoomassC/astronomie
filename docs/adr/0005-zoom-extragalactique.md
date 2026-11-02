@@ -1,7 +1,7 @@
 # ADR 0005 — Zoom extragalactique : du Groupe local au multivers
 
 - Statut : accepté
-- Date : 30/10/2026
+- Date : 30/10/2026 ; révisé le 02/11/2026 (galaxies grossies 6 fois au lieu de 4, noms à côté des disques)
 - Portée : escales « Le Groupe local », « L'Univers observable » et « Le multivers » (`localGroup`, `universe`,
   `multiverse`), après la Voie lactée ; prolonge l'ADR 0001
 
@@ -27,18 +27,26 @@ multivers est une hypothèse, jamais observée. Contraintes :
 - **Cadrage en sphère.** Les deux premières escales lointaines restent cadrées comme un disque. Les trois nouvelles le
   sont comme une sphère : `dist = rayon / sin(atan(tan))`, dans la bande libre du téléphone ou la zone libre du grand
   écran, avec les mêmes taux que pour le disque.
-  - Groupe local : la sphère couvre les cinq galaxies principales, grossies, soit environ 1 695 kly de rayon, jusqu'au
+  - Groupe local : la sphère couvre les cinq galaxies principales, grossies, soit environ 1 756 kly de rayon, jusqu'au
     bord du Triangle. Cadrer les treize galaxies réduirait chaque galaxie d'un tiers.
   - Univers : 46 Gal. Multivers : rayon des bulles (`multiverseRadius`).
-- **Galaxies grossies 4 fois au Groupe local, distances à l'échelle** (`LOCAL_GROUP_MAGNIFICATION`, comme les étoiles
+- **Galaxies grossies 6 fois au Groupe local, distances à l'échelle** (`LOCAL_GROUP_MAGNIFICATION`, comme les étoiles
   voisines, grossies elles aussi). À l'échelle, Andromède n'y faisait que 14 px de rayon sur grand écran et 7 sur
   téléphone, la Voie lactée 9 et 5 : quelques points épars, aucune forme.
-  - Le grossissement monte de 1 à 4 sur [8,5 ; 9,3], avec l'arrivée du Groupe local (`galaxyMagnification`). À son
+  - Le grossissement monte de 1 à 6 sur [8,5 ; 9,3], avec l'arrivée du Groupe local (`galaxyMagnification`). À son
     escale, la Voie lactée garde sa vraie taille.
   - Chaque galaxie grossit autour de son centre ; la Voie lactée autour du centre galactique, avec le point-Soleil et
     « Vous êtes ici », qui restent à leur place dans le disque dessiné.
-  - À l'escale : Andromède 53 px de rayon sur grand écran et 27 sur téléphone, la Voie lactée 32 et 17, le Triangle
-    21 et 11. La plaque le dit dans les trois langues (« les galaxies sont grossies 4 fois »).
+  - À l'escale : Andromède environ 77 px de rayon sur grand écran et 39 sur téléphone, la Voie lactée 46 et 25, le
+    Triangle 30 et 16 (mesures du grossissement 4, ramenées au nouveau cadrage). La plaque le dit dans les trois
+    langues (« les galaxies sont grossies 6 fois »).
+  - Révision du 02/11/2026 : grossies 4 fois, la Voie lactée restait invisible à l'escale, et l'étiquette de chaque
+    galaxie, posée sur son centre, couvrait le cœur et la moitié du disque. Grossies 6 fois, les trois grandes se
+    lisent, et Andromède ne touche pas le Triangle à l'écran ; le Grand Nuage de Magellan était déjà sur le disque de
+    la Voie lactée à 4 fois.
+  - Le nom d'une galaxie se pose à côté de son disque dès que celui-ci dépasse le repère (rayon apparent mesuré à
+    chaque image) : texte à 6 px du bord, à droite ou à gauche, repère effacé (`data-beside`). Si aucun côté ne tient,
+    il reprend la disposition ordinaire, repère sur le centre.
 - **Deux groupes de plus, chacun dans son unité.** `extragalactic.localGroup` est en kly, à l'échelle
   `unitsPerLightYear(zoom) × 1e3` (positions < 3 100). `extragalactic.universe` est en Gal, à l'échelle × 1e9
   (positions < 450). Comme à l'ADR 0001, l'échelle passe par la matrice du groupe, calculée en float64. La Voie lactée
@@ -111,8 +119,8 @@ multivers est une hypothèse, jamais observée. Contraintes :
 - **Cadrer les treize galaxies du Groupe local** : WLM, à 3 Mal, éloigne la caméra. Toutes les galaxies rapetissent
   d'un tiers, et les naines tombent à un ou deux pixels.
 - **Galaxies à leur vraie taille au Groupe local** (premier câblage) : quelques points épars, aucune forme lisible,
-  Voie lactée comprise. Grossir davantage que 4 fois rapprocherait le disque de la Voie lactée du Grand Nuage de
-  Magellan (à 160 000 al de son centre), déjà voisins à l'écran.
+  Voie lactée comprise. Au-delà de 6 fois, vue de l'escale, Andromède toucherait le Triangle, et le cadrage reculerait
+  d'autant (il suit le bord du Triangle grossi).
 - **Cadrer l'Univers de plus loin** pour qu'il tienne aussi en vol : au repos, il deviendrait petit pour rien. Le
   débord n'a lieu qu'à la fin du vol, quand la caméra sort de la coquille.
 - **Garder la règle sur un écran bas en serrant ses repères** : à 390 px de haut, ils n'auraient que 14,5 px entre eux,

@@ -122,7 +122,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Cadrage des escales lointaines : comme les astres, elles remplissent la bande libre en mise en page compacte
   (80 % de la largeur, 90 % de la bande) et la zone libre sur grand écran (90 % de sa largeur, 80 % de la
   hauteur), inclinaison et perspective comprises ; les étoiles jusqu'à 17 al, la galaxie jusqu'au bord de son disque.
-  Au-delà, les galaxies du Groupe local en points, grossies 4 fois (distances à l'échelle), puis la toile cosmique, le
+  Au-delà, les galaxies du Groupe local en points, grossies 6 fois (distances à l'échelle), leur nom posé à côté du
+  disque dès qu'il dépasse le repère (repère effacé, `data-beside`), puis la toile cosmique, le
   fond diffus et les bulles du multivers, stylisés, cadrés comme une sphère ; une coquille qui déborderait sur la
   plaque ou la règle s'efface sur les 24 px qui l'en séparent.
 - **Règle des distances** : sommaire vertical à échelle logarithmique, en trois segments : UA jusqu'à 50
