@@ -1,4 +1,5 @@
 import { act, cleanup, render } from "@testing-library/react";
+import { Activity } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getSectionRanges, scrollInstantly, setSectionRanges, takeSkipSmoothing } from "@/components/journey/navigation";
 import { useScrollTracker } from "@/components/journey/useScrollTracker";
@@ -41,9 +42,11 @@ let store: StopStore<Key>;
 let scrollY = 0;
 /** Plaque de chaque section, par clé. */
 const plates = new Map<string, HTMLElement>();
+/** Éléments que suit le ResizeObserver du suivi. */
+const observed: Element[] = [];
 
-/** Sections `[data-stop]` de la page, chacune avec sa plaque ; leurs boîtes suivent le défilement. */
-function buildPage(sections: readonly { key: string; top: number; height: number }[] = SECTIONS): void {
+/** Sections `[data-stop]` de la page, chacune avec sa plaque ; leurs boîtes suivent le défilement. Renvoie son <main>. */
+function buildPage(sections: readonly { key: string; top: number; height: number }[] = SECTIONS): HTMLElement {
   const main = document.createElement("main");
   for (const { key, top, height } of sections) {
     const section = document.createElement("section");
@@ -57,6 +60,7 @@ function buildPage(sections: readonly { key: string; top: number; height: number
     plates.set(key, plate);
   }
   document.body.append(main);
+  return main;
 }
 
 /** Frontière navigateur : préférence de mouvement réduit, lue par useReducedMotion. */
@@ -91,7 +95,9 @@ beforeEach(() => {
   vi.stubGlobal(
     "ResizeObserver",
     class {
-      observe() {}
+      observe(element: Element) {
+        observed.push(element);
+      }
       disconnect() {}
     },
   );
@@ -104,6 +110,7 @@ afterEach(() => {
   setSectionRanges([]);
   takeSkipSmoothing();
   plates.clear();
+  observed.length = 0;
   document.body.replaceChildren();
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -211,6 +218,17 @@ describe("useScrollTracker", () => {
     expect(getSectionRanges()[0].depart).toBe(300);
   });
 
+  it("devrait suivre la hauteur du <main> de la page affichée, pas celle d'une page masquée gardée dans le DOM", () => {
+    // Next garde dans le DOM, masquées (display: none), jusqu'à trois pages quittées, chacune avec son <main>.
+    const hidden = document.createElement("div");
+    hidden.style.display = "none";
+    hidden.append(document.createElement("main"));
+    document.body.append(hidden);
+    const main = buildPage();
+    render(<Tracker trackedStore={store} />);
+    expect(observed).toEqual([main]);
+  });
+
   it("devrait rendre le parcours à son état initial et oublier les plages au démontage de la page", () => {
     buildPage();
     scrollPageTo(1000);
@@ -222,5 +240,31 @@ describe("useScrollTracker", () => {
     expect(store.get()).toEqual({ from: "intro", to: "intro", t: 0, current: "intro" });
     expect(listener).toHaveBeenCalledTimes(1);
     expect(getSectionRanges()).toEqual([]);
+  });
+});
+
+/*
+ * Next 16, avec `cacheComponents`, garde la page quittée dans le DOM, masquée sous <Activity> : ses effets sont
+ * nettoyés, puis relancés au retour, ses refs gardés. Au retour, le défilement est remis en haut de la page.
+ */
+describe("useScrollTracker, page masquée puis affichée de nouveau (Activity)", () => {
+  const page = (mode: "visible" | "hidden") => (
+    <Activity mode={mode}>
+      <Tracker trackedStore={store} />
+    </Activity>
+  );
+
+  it("devrait repartir de la position du défilement au retour, sans balayer les escales depuis celle d'avant", () => {
+    buildPage();
+    scrollPageTo(1000);
+    const { rerender } = render(page("visible"));
+    runFrame();
+    expect(store.get().current).toBe("sun");
+    rerender(page("hidden"));
+    scrollPageTo(0);
+    rerender(page("visible"));
+    runFrame();
+    expect(store.get()).toEqual({ from: "intro", to: "intro", t: 0, current: "intro" });
+    expect(rest("intro")).toBe("0");
   });
 });

@@ -184,7 +184,7 @@ export interface SunBody {
   update: () => void;
 }
 
-/** Écran tactile (téléphone, tablette) : variante allégée de la surface, qui peut remplir l'écran. */
+/** Écran tactile (téléphone, tablette) : variantes allégées de la surface et de la couronne, qui peuvent remplir l'écran. */
 function coarsePointer(): boolean {
   return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
 }
@@ -216,10 +216,10 @@ export function createSun(date: () => number = () => getClock().now()): SunBody 
   const mesh = new Mesh(new SphereGeometry(SUN.displayRadius, 96, 64), material);
   orientAxis(mesh, SUN_ROTATION, J2000_JD, new Vector3());
 
-  const { material: coronaMaterial, uniforms } = createCoronaMaterial(surface, CORONA_SIZE[0], SUN.displayRadius);
+  const { material: coronaMaterial, uniforms } = createCoronaMaterial(surface, CORONA_SIZE[0], SUN.displayRadius, lite);
   // Du monde au repère du Soleil : la transposée (l'inverse) de l'orientation du maillage, fixe.
   uniforms.uStarFrame.value.setFromMatrix4(new Matrix4().makeRotationFromQuaternion(mesh.quaternion)).transpose();
-  // Disque plutôt que carré : les coins, invisibles, ne coûtent plus rien. Les jets se calculent par pixel.
+  // Disque plutôt que carré : les coins, invisibles, ne coûtent plus rien. Les jets se lisent dans une carte cuite.
   const corona = new Mesh(new RingGeometry(0.01, 1, 96, 1), coronaMaterial);
   // Disque orienté dans le shader : sa sphère englobante ne dit rien de sa taille réelle.
   corona.frustumCulled = false;

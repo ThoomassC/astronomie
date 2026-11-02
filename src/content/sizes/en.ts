@@ -52,7 +52,7 @@ export const SIZES_EN: SizesContent = {
       kind: "blue supergiant",
       hook: "Bluish, blazing hot and tens of thousands of times as luminous as the Sun.",
       lede: `Rigel is a supergiant, about 21 times as massive as the Sun, burning through its fuel at a furious pace. At ${n(12_100)} K, its surface is twice as hot as the Sun's, hence its bluish tint. In the Sun's place, it would almost graze Mercury's orbit. You can see it in winter, in Orion.`,
-      caveat: `Its distance is still debated: if it were ${n(1170)} light-years away rather than 860, its radius would be close to 106 R☉.`,
+      caveat: `Its distance is still debated: if it were ${n(1170)} light-years away rather than 860, its radius would be about 101 R☉.`,
     },
     "antares-a": {
       kind: "red supergiant",

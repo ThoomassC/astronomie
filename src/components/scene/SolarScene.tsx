@@ -2,8 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { cssVars } from "@/components/journey/cssVars";
-import { RAIL_ID } from "@/components/journey/ids";
-import { goTo, isStopKey, shownElements } from "@/components/journey/navigation";
+import { goTo } from "@/components/journey/navigation";
 import { useRealScale } from "@/components/journey/realScale";
 import { stopColor } from "@/components/journey/stopMeta";
 import { useLocale } from "@/i18n/LocaleProvider";
@@ -12,7 +11,6 @@ import { bodyName } from "@/i18n/names";
 import { PLANETS, SUN } from "@/lib/astro/planets";
 import { spectralColor } from "@/lib/astro/starMap";
 import { NEARBY_STARS } from "@/lib/astro/stars";
-import type { StopKey } from "@/lib/journey/camera";
 import { exploreStore } from "@/lib/journey/explore";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { DISTANCE_RINGS_LY, isDeepLabelKey, ringLabelKey, starLabelKey, type DeepLabelKey } from "./cosmos";
@@ -25,6 +23,7 @@ import {
   type ExtragalacticLabelKey,
 } from "./extragalactic";
 import { setSceneFallback } from "./fallback";
+import { shownJourneyLayout } from "./sceneElements";
 
 /** Astres étiquetés, couleur de leur repère ; leur nom vient de `bodyName`, dans la langue de la page. */
 const BODIES: readonly { key: BodyKey; color: string }[] = [
@@ -103,20 +102,16 @@ export default function SolarScene() {
       const key = element.dataset.deep;
       if (isDeepLabelKey(key) || isExtragalacticLabelKey(key)) deepLabelElements.set(key, element);
     }
-    const plates = new Map<StopKey, HTMLElement>();
-    for (const plate of shownElements("[data-stop] > .plate")) {
-      const key = plate.parentElement?.dataset.stop;
-      if (isStopKey(key)) plates.set(key, plate);
-    }
-    const rail = document.getElementById(RAIL_ID);
+    // Seulement la page affichée : Next garde dans le DOM, masquées, des pages quittées (Tailles et sa règle).
+    const { bar, rail, note, plates } = shownJourneyLayout();
     const engine = createSolarScene({
       canvas,
       labels,
       obstacles: rail ? [rail] : [],
       plates,
-      bar: document.querySelector(".bar"),
+      bar,
       rail,
-      note: document.querySelector<HTMLElement>(".scale-note"),
+      note,
       deepLabels: deepLabelElements,
       onPick: goTo,
     });

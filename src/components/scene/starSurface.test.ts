@@ -1,6 +1,7 @@
 import { Color, Vector3 } from "three";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSun } from "@/components/scene/bodies";
+import { coronaFieldData } from "@/components/scene/coronaField";
 import {
   SUN_SURFACE,
   createStarSurfaceMaterial,
@@ -171,6 +172,37 @@ describe("placeStarspots", () => {
 });
 
 describe("createSun (préréglage du Soleil branché sur le cycle solaire)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** Frontière navigateur : écran tactile (pointer: coarse) ou souris. */
+  function stubPointer(coarse: boolean): void {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: coarse && query === "(pointer: coarse)",
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+  }
+
+  it("devrait lire les jets et les protubérances de la couronne dans la carte cuite une fois (coronaField.ts)", () => {
+    const sun = createSun(() => Date.UTC(2024, 9, 15));
+    expect(sun.coronaUniforms.uField.value.image.data).toBe(coronaFieldData());
+    expect(sun.corona.material.uniforms.uField).toBe(sun.coronaUniforms.uField);
+  });
+
+  it("devrait alléger surface et couronne sur écran tactile : ni spicules ni fibres (CORONA_LITE), 8 cellules (STAR_LITE)", () => {
+    stubPointer(true);
+    const lite = createSun(() => Date.UTC(2024, 9, 15));
+    expect(lite.corona.material.defines.CORONA_LITE).toBe("");
+    expect(lite.mesh.material.defines.STAR_LITE).toBe("");
+    stubPointer(false);
+    const full = createSun(() => Date.UTC(2024, 9, 15));
+    expect(full.corona.material.defines.CORONA_LITE).toBeUndefined();
+    expect(full.mesh.material.defines.STAR_LITE).toBeUndefined();
+  });
+
   it("devrait poser le pôle du Soleil sur l'axe y local, à 7,25° du pôle de l'écliptique, et la couronne dans le même repère", () => {
     const sun = createSun(() => Date.UTC(2024, 9, 15));
     const pole = new Vector3(0, 1, 0).applyQuaternion(sun.mesh.quaternion);

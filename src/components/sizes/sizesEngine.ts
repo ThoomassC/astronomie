@@ -7,11 +7,12 @@ import {
   SRGBColorSpace,
   Scene,
   Vector3,
-  WebGLRenderer,
   type Material,
   type Object3D,
+  type WebGLRenderer,
 } from "three";
 import { anchoredBox, markerLayouts, placeMarkedLabel, pointBox, type LabelBox, type MarkerLayout } from "@/components/scene/labels";
+import { createRenderer, releaseRenderer } from "@/components/scene/renderer";
 import { COMPACT_LAYOUT_QUERY, createScreenLayout, type ScreenLayoutElements } from "@/components/scene/screenLayout";
 import { julianDate } from "@/lib/astro/ephemeris";
 import { solarActivity, sunspotLatitude } from "@/lib/astro/solarCycle";
@@ -69,6 +70,12 @@ const RESIZE_DEBOUNCE_MS = 120;
 /** Plafonds du rendu, ceux du Voyage : rapport de pixels, et pixels rendus en tout. */
 const MAX_PIXEL_RATIO = 1.5;
 const MAX_PIXELS = 4_200_000;
+/**
+ * Rapport de pixels des vols sur écran tactile : une supergéante y remplit l'écran, et chaque pixel calcule sa surface
+ * (2,25 fois moins de pixels qu'à 1,5). L'image où le vol se pose, ou la première où plus rien ne bouge, repart au
+ * rapport de l'écran.
+ */
+const FLIGHT_PIXEL_RATIO = 1;
 /** Fond de la scène : `--nuit`. */
 const NIGHT = 0x060b18;
 /** Plan proche, en part de la distance à la cible : aucune étoile n'en approche, au repos comme en vol. */
@@ -193,21 +200,17 @@ const emptyCam = (): SizesCam => ({ tx: 0, dist: 1, offX: 0, offY: 0 });
  * Scène 3D de la page « Tailles », légère et séparée du moteur du Voyage : les dix étoiles du comparateur à leur
  * taille vraie, côte à côte (placeStars), une caméra qui suit le défilement (sizesStore), leurs étiquettes et
  * l'échelle graphique. Elle ne rend une image que si quelque chose bouge (vol, mise en page, taille de la vue) ;
- * la surface des étoiles n'avance que pendant un vol, et jamais en mouvement réduit. Renvoie `null` sans WebGL 2 ou en
- * rendu logiciel : la page passe alors au repli sans scène.
+ * la surface des étoiles n'avance que pendant un vol, et jamais en mouvement réduit. Sur écran tactile, les vols se
+ * rendent en rapport de pixels 1, l'arrivée nette. Renvoie `null` sans WebGL 2 ou en
+ * rendu logiciel : la page passe alors au repli sans scène (createRenderer).
  */
 export function createSizesScene(options: SizesSceneOptions): SizesScene | null {
-  let renderer: WebGLRenderer;
-  try {
-    // Un rendu logiciel serait trop lent : le repli vaut mieux.
-    renderer = new WebGLRenderer({ canvas: options.canvas, antialias: true, failIfMajorPerformanceCaveat: true });
-  } catch {
-    return null;
-  }
+  const renderer = createRenderer(options.canvas);
+  if (!renderer) return null;
   try {
     return setupScene(renderer, options);
   } catch (error) {
-    renderer.dispose();
+    releaseRenderer(renderer);
     throw error;
   }
 }
@@ -253,6 +256,8 @@ function setupScene(
   let needsRender = true;
   /** Bandes du cadrage posées sur leur mesure : aucune image à rendre pour elles. */
   let layoutSettled = true;
+  /** Rapport de pixels de l'écran, plafonné (resize) : celui de toute image hors des vols sur écran tactile. */
+  let sharpPixelRatio = 1;
   let compiled = false;
   let compileWaitFrames = 0;
   let disposed = false;
@@ -288,11 +293,24 @@ function setupScene(
     view.width = Math.max(1, window.innerWidth);
     view.height = Math.max(1, window.innerHeight);
     const pixelBudget = Math.sqrt(MAX_PIXELS / (view.width * view.height));
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO, pixelBudget));
+    sharpPixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO, pixelBudget);
+    renderer.setPixelRatio(sharpPixelRatio);
     renderer.setSize(view.width, view.height, false);
     camera.aspect = view.width / view.height;
     camera.fov = camera.aspect < PORTRAIT_ASPECT ? 50 : 36;
     camera.updateProjectionMatrix();
+    needsRender = true;
+  }
+
+  /**
+   * Rapport de pixels de l'image : FLIGHT_PIXEL_RATIO pendant un vol sur écran tactile (entre deux escales, `t` > 0,
+   * hors première image), sinon celui de l'écran. En changer impose une image.
+   */
+  function applyPixelRatio(flying: boolean, t: number): void {
+    const inFlight = coarsePointer && flying && t > 0 && lastFrom !== null;
+    const ratio = inFlight ? Math.min(FLIGHT_PIXEL_RATIO, sharpPixelRatio) : sharpPixelRatio;
+    if (ratio === renderer.getPixelRatio()) return;
+    renderer.setPixelRatio(ratio);
     needsRender = true;
   }
 
@@ -522,6 +540,7 @@ function setupScene(
       const { from, to, t, current } = sizesStore.get();
       const reduced = reducedMotion.matches;
       const flying = from !== lastFrom || to !== lastTo || t !== lastT;
+      applyPixelRatio(flying, t);
       // Rien n'a bougé (défilement immobile, mise en page posée) : pas de nouvelle image.
       if (!needsRender && !flying && layoutSettled) return;
       if (!compiled) {
@@ -556,7 +575,7 @@ function setupScene(
       for (const slot of allSlots) slot.element.style.visibility = "hidden";
       scaleBar?.root.removeAttribute("data-visible");
       scene.traverse(disposeObject);
-      renderer.dispose();
+      releaseRenderer(renderer);
     },
   };
 }

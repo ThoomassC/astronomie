@@ -328,23 +328,32 @@ vec3 starHash(vec3 p) {
   p += dot(p, p.yxz + 33.33);
   return fract((p.xxy + p.yxx) * p.zyx);
 }
-// Distances au point le plus proche (x) et au deuxième (y) parmi les 27 cellules voisines, et phase propre de la
-// cellule la plus proche (z). Chaque point tourne dans sa cellule au rythme de boil (de 0 à 1, périodique) :
-// les parois glissent, la granulation bouillonne. Variante allégée : points figés, aucun sinus par cellule.
+// Distances au point le plus proche (x) et au deuxième (y), et phase propre de la cellule la plus proche (z).
+// Chaque point tourne dans sa cellule au rythme de boil (de 0 à 1, périodique) : les parois glissent, la granulation
+// bouillonne ; recherche parmi les 27 cellules voisines. Variante allégée : points figés, aucun sinus par cellule, peu
+// décalés (±0,3 au lieu de ±0,42) pour que la recherche parmi les 8 cellules les plus proches seulement, comme la
+// supergranulation, reste presque exacte (2 % des seconds plus proches manqués, sans effet visible) : 3,4 fois moins
+// de cellules visitées.
 vec3 starCells(vec3 x, float boil) {
   vec3 cell = floor(x);
   vec3 f = x - cell;
   float d1 = 8.0;
   float d2 = 8.0;
   float own = 0.0;
+#ifdef STAR_LITE
+  vec3 first = step(0.5, f) - 1.0;
+  for (int k = 0; k < 2; k++) {
+    for (int j = 0; j < 2; j++) {
+      for (int i = 0; i < 2; i++) {
+        vec3 g = first + vec3(float(i), float(j), float(k));
+        vec3 h = starHash(cell + g);
+        vec3 r = g + 0.5 + 0.3 * (2.0 * h - 1.0) - f;
+#else
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
         vec3 g = vec3(float(i), float(j), float(k));
         vec3 h = starHash(cell + g);
-#ifdef STAR_LITE
-        vec3 r = g + 0.5 + 0.42 * (2.0 * h - 1.0) - f;
-#else
         vec3 r = g + 0.5 + 0.42 * sin(6.2831853 * (boil + h)) - f;
 #endif
         float d = dot(r, r);
@@ -425,7 +434,7 @@ void main() {
  * - Assombrissement centre-bord d'Eddington-Barbier : T⁴(μ) ∝ 1 − k + kμ (k = uLimbDarkening).
  * Le temps (uTime, en secondes affichées) fait tourner la surface (uSpinRate, rad/s, rotation rigide à la vitesse
  * de l'équateur) et bouillonner la convection, sur une période de BOIL_PERIOD secondes. Variante STAR_LITE
- * (écrans tactiles) : cellules figées, ni détail fin ni réseau.
+ * (écrans tactiles) : cellules figées, cherchées parmi 8 voisines au lieu de 27, ni détail fin ni réseau.
  */
 export const STAR_SURFACE_FRAGMENT = /* glsl */ `
 // Détail fin : près de 190 cellules par rayon, il faut la pleine précision (téléphones compris).
@@ -453,9 +462,10 @@ ${STAR_CELLS_GLSL}
 const float TAU = 6.2831853;
 // Période du bouillonnement affiché, en secondes.
 const float BOIL_PERIOD = 90.0;
-// Moyennes des motifs (mesurées), retranchées pour que l'éclat moyen ne bouge pas quand un niveau apparaît.
+// Moyennes des motifs (mesurées), retranchées pour que l'éclat moyen ne bouge pas quand un niveau apparaît. Variante
+// allégée : 0,196 sur 27 cellules, + 0,031 sur 8 cellules aux points moins décalés (même tirage, banc logiciel).
 #ifdef STAR_LITE
-const float GRANULE_MEAN = 0.196;
+const float GRANULE_MEAN = 0.227;
 #else
 const float GRANULE_MEAN = 0.171;
 #endif
@@ -600,13 +610,16 @@ void main() {
 
 /**
  * Couronne, chromosphère et protubérances, le long du rayon de vue : b, distance du rayon au centre du Soleil (en
- * rayons), et n, direction du point du rayon le plus proche du centre, dans le repère de la surface qui tourne
- * (uStarFrame, puis la rotation de uSpinRate). Tout ce qui dépasse du bord est ainsi attaché au Soleil.
+ * rayons), et n, direction du point du rayon le plus proche du centre, dans le repère du Soleil (uStarFrame) ; la
+ * surface tourne autour de son pôle (uSpinRate). Tout ce qui dépasse du bord est ainsi attaché au Soleil.
  * - Couronne en 1/b³, jets (streamers) : bruit lent sur n, resserrés en hauteur ; ceinture équatoriale au minimum
  *   d'activité, tout autour au maximum (uActivity).
  * - Chromosphère : liseré rose (Hα) d'environ 0,008 rayon, hérissé de spicules quand un pixel descend sous
  *   0,004 rayon ; protubérances discrètes, plus nombreuses quand l'activité monte. Plus petit qu'un pixel, chaque
  *   détail s'élargit à éclat total conservé : rien ne scintille de loin.
+ * Jets et sites des protubérances ne dépendent que de n : ils sont lus dans une carte cuite une fois (uField,
+ * coronaField.ts), où la rotation n'est qu'un décalage en longitude, au lieu de trois bruits de valeur par pixel.
+ * Variante CORONA_LITE (écrans tactiles) : ni spicules ni fibres, plus aucun bruit calculé par pixel.
  * L'éblouissement (uGlare) garde sa formule : discret de près, il s'élargit quand la caméra s'éloigne.
  */
 export const CORONA_FRAGMENT = /* glsl */ `
@@ -617,6 +630,7 @@ uniform float uTime;
 uniform float uActivity;
 uniform float uSpinRate;
 uniform mat3 uStarFrame;
+uniform sampler2D uField;
 varying vec2 vOffset;
 varying vec3 vCenter;
 varying vec3 vDelta;
@@ -625,6 +639,15 @@ ${NOISE_GLSL}
 // Raie Hα de l'hydrogène : le rose-rouge de la chromosphère et des protubérances.
 const vec3 H_ALPHA = vec3(1.0, 0.16, 0.2);
 const float CHROMOSPHERE = 0.008;
+const float TAU = 6.2831853;
+#ifndef CORONA_LITE
+// La direction n dans le repère qui tourne avec la surface : turn tours autour du pôle, dans le sens direct.
+vec3 spun(vec3 n, float turn) {
+  float c = cos(TAU * turn);
+  float s = sin(TAU * turn);
+  return vec3(c * n.x - s * n.z, n.y, s * n.x + c * n.z);
+}
+#endif
 void main() {
   float d = length(vOffset);
   // Éblouissement et fondu du bord du disque : distance dans le plan du disque, comme avant.
@@ -640,8 +663,10 @@ void main() {
   float ud = dot(u, vDelta);
   vec3 radial = vDelta * (1.0 + ud / centerRadii) - u * (ud + dot(vDelta, vDelta) / centerRadii) + u * 1e-6;
   vec3 n = normalize(uStarFrame * (transpose(mat3(viewMatrix)) * radial));
-  float spin = 6.2831853 * fract(uTime * uSpinRate / 6.2831853);
-  n = vec3(cos(spin) * n.x - sin(spin) * n.z, n.y, sin(spin) * n.x + cos(spin) * n.z);
+  // Rotation propre, en tours.
+  float turn = fract(uTime * uSpinRate / TAU);
+  // Jets (r) et sites des protubérances (g) de la direction n, surface tournée : longitude (atan) et distance au pôle.
+  vec2 field = texture2D(uField, vec2(atan(n.z, n.x) / TAU + 0.5 + turn, acos(clamp(n.y, -1.0, 1.0)) / 3.1415927)).rg;
   float h = max(b - 1.0, 0.0);
   float bb = max(b, 1.0);
 
@@ -649,9 +674,8 @@ void main() {
   // plus rien à côté de l'éblouissement : sa structure moyenne suffit (0,79 à 0,83 selon l'activité).
   float structure = 0.81;
   if (h < 7.0) {
-    float field = 0.6 * vn(n * 3.2 + vec3(11.0, 0.0, 0.0)) + 0.4 * vn(n * 7.5 + vec3(23.0, 0.0, 0.0));
     float belt = mix(1.12 - smoothstep(0.15, 0.75, abs(n.y)), 1.0, uActivity);
-    float rays = pow(clamp(field * 1.6 - 0.3, 0.0, 1.0), 1.4 + 1.6 * smoothstep(0.0, 2.5, h)) * belt;
+    float rays = pow(clamp(field.r * 1.6 - 0.3, 0.0, 1.0), 1.4 + 1.6 * smoothstep(0.0, 2.5, h)) * belt;
     structure = mix(mix(0.3 + 1.9 * rays, 0.7 + 0.6 * rays, smoothstep(1.5, 6.0, h)), structure, smoothstep(5.0, 7.0, h));
   }
   float corona = .55 / (bb * bb * bb) * structure * vExposure;
@@ -660,18 +684,24 @@ void main() {
   if (h < 0.2) {
     float layer = max(CHROMOSPHERE, pixel);
     float chromosphere = CHROMOSPHERE / layer * exp(-h / layer);
+#ifndef CORONA_LITE
     float spicules = 1.0 - smoothstep(0.0015, 0.004, pixel);
     if (spicules > 0.0) {
-      float s = vn(n * 260.0 + vec3(0.0, uTime * 0.05, 0.0));
+      float s = vn(spun(n, turn) * 260.0 + vec3(0.0, uTime * 0.05, 0.0));
       float height = max(0.004 + 0.02 * s * s, pixel);
       chromosphere += spicules * 1.4 * s * CHROMOSPHERE / height * exp(-h / height);
     }
+#endif
     float threshold = mix(0.8, 0.66, uActivity);
-    float site = smoothstep(threshold, threshold + 0.1, vn(n * 4.0 + vec3(7.3, 0.0, 0.0)));
+    float site = smoothstep(threshold, threshold + 0.1, field.g);
     float prominence = 0.0;
     if (site > 0.0) {
       float height = 0.03 + 0.07 * site;
-      float fibers = mix(0.6, vn(n * 70.0 + vec3(0.0, h * 20.0, 0.0)), 1.0 - smoothstep(0.003, 0.008, pixel));
+#ifdef CORONA_LITE
+      float fibers = 0.6;
+#else
+      float fibers = mix(0.6, vn(spun(n, turn) * 70.0 + vec3(0.0, h * 20.0, 0.0)), 1.0 - smoothstep(0.003, 0.008, pixel));
+#endif
       prominence = site * exp(-h / (0.45 * height)) * (1.0 - smoothstep(height * 0.6, height * 1.4, h)) * fibers * 1.6;
       prominence *= min(1.0, 0.012 / max(pixel, 0.012));
     }

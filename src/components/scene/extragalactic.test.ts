@@ -285,6 +285,31 @@ describe("buildLocalGroup", () => {
     expect(countObjects(body.localGroup)).toBe(objects);
   });
 
+  /*
+   * Au retour sur le Voyage, Next rend la page gardée masquée et la scène se reconstruit : les galaxies (graines fixes)
+   * reprennent les tableaux déjà tirés au lieu de les tirer de nouveau.
+   */
+  it("devrait reprendre les nuages déjà tirés pour le même budget, au lieu de les tirer de nouveau", () => {
+    const first = create();
+    buildLocalGroup(first, LOCAL_BUDGET);
+    const second = create();
+    buildLocalGroup(second, LOCAL_BUDGET);
+    for (const [key, points] of galaxiesOf(second)) {
+      const before = galaxiesOf(first).get(key) ?? fail(key);
+      for (const name of ["position", "color", "size"]) {
+        expect(points.geometry.getAttribute(name).array).toBe(before.geometry.getAttribute(name).array);
+      }
+    }
+  });
+
+  it("devrait tirer d'autres nuages pour un autre budget", () => {
+    const body = create();
+    buildLocalGroup(body, LOCAL_BUDGET);
+    const smaller = create();
+    buildLocalGroup(smaller, LOCAL_GROUP_MIN_POINTS * 4);
+    for (const points of galaxiesOf(smaller).values()) expect(pointCount(points)).toBe(LOCAL_GROUP_MIN_POINTS);
+  });
+
   it("ne devrait construire ni la toile, ni le fond diffus, ni les bulles", () => {
     const body = create();
     buildLocalGroup(body, LOCAL_BUDGET);
@@ -306,6 +331,14 @@ describe("buildUniverse", () => {
     const { web } = universeOf(body);
     expect(web.material.uniforms.uPixelRatio).toBe(ratio);
     expect(web.material.uniforms.uGain).toBe(body.webGain);
+  });
+
+  it("devrait reprendre la toile déjà tirée pour le même nombre de points, au lieu de la tirer de nouveau", () => {
+    const first = universeOf(built()).web;
+    const second = universeOf(built()).web;
+    for (const name of ["position", "color", "size"]) {
+      expect(second.geometry.getAttribute(name).array).toBe(first.geometry.getAttribute(name).array);
+    }
   });
 
   it("devrait poser la sphère englobante de la toile sur l'Univers observable", () => {

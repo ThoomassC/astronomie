@@ -52,7 +52,7 @@ export const SIZES_ES: SizesContent = {
       kind: "supergigante azul",
       hook: "Azulada, ardiente y decenas de miles de veces más luminosa que el Sol.",
       lede: `Rigel es una supergigante, unas 21 veces más masiva que el Sol, que consume su combustible a toda velocidad. A ${n(12_100)} K, su superficie tiene el doble de temperatura que la del Sol, de ahí su tono azulado. En el lugar del Sol, casi rozaría la órbita de Mercurio. Puedes verla en invierno, en Orión.`,
-      caveat: `Su distancia aún se discute: si estuviera a ${n(1170)} años luz en lugar de 860, su radio rondaría los 106 R☉.`,
+      caveat: `Su distancia aún se discute: si estuviera a ${n(1170)} años luz en lugar de 860, su radio sería de unos 101 R☉.`,
     },
     "antares-a": {
       kind: "supergigante roja",
