@@ -38,6 +38,13 @@ describe("shownSceneLayout", () => {
     expect(rail).toHaveAttribute("data-owner", "tailles");
   });
 
+  it("devrait garder la règle de la page affichée, même masquée par la feuille de style (écran bas ou étroit)", () => {
+    document.body.innerHTML = `
+      <style>#rail { display: none; }</style>
+      <div data-page="tailles"><nav id="rail" data-owner="tailles"></nav></div>`;
+    expect(shownSceneLayout().rail).toHaveAttribute("data-owner", "tailles");
+  });
+
   it("devrait ne garder que les plaques de la page affichée, même sous une clé commune aux deux pages (« sun »)", () => {
     voyageHiddenThenSizes();
     const { plates } = shownSceneLayout();

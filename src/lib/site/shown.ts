@@ -21,3 +21,20 @@ export function isShown(element: Element): boolean {
 export function shownElements<E extends Element = HTMLElement>(selector: string): E[] {
   return Array.from(document.querySelectorAll<E>(selector)).filter(isShown);
 }
+
+/**
+ * L'élément est dans la page affichée, qu'il y soit visible ou non : seules les pages quittées sont écartées. React
+ * les masque par un `display: none` posé en ligne (<Activity>), quand la feuille de style ne fait que replier un
+ * élément de la page affichée (la règle des distances d'un écran bas, par exemple).
+ */
+export function inShownPage(element: Element): boolean {
+  for (let node: Element | null = element; node; node = node.parentElement) {
+    if ((node as HTMLElement).style?.display === "none") return false;
+  }
+  return true;
+}
+
+/** Éléments de la page affichée qui répondent au sélecteur, même repliés par la feuille de style. */
+export function pageElements<E extends Element = HTMLElement>(selector: string): E[] {
+  return Array.from(document.querySelectorAll<E>(selector)).filter(inShownPage);
+}

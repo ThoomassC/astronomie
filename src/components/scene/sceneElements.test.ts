@@ -47,6 +47,22 @@ describe("shownJourneyLayout", () => {
     expect(plates.get("sun")).toHaveAttribute("data-owner", "voyage");
   });
 
+  /*
+   * Sur un écran bas ou étroit, la feuille de style masque la règle (la liste des escales la remplace) : elle reste
+   * pourtant celle de la page affichée, et la scène en déduit que la zone libre va jusqu'au bord de l'écran.
+   */
+  it("devrait garder la règle et la note de la page affichée, même masquées par la feuille de style", () => {
+    document.body.innerHTML = `
+      <style>#rail, .scale-note { display: none; }</style>
+      <div data-page="voyage">
+        <nav id="rail" data-owner="voyage"></nav>
+        <aside class="scale-note" data-owner="voyage"></aside>
+      </div>`;
+    const { rail, note } = shownJourneyLayout();
+    expect(rail).toHaveAttribute("data-owner", "voyage");
+    expect(note).toHaveAttribute("data-owner", "voyage");
+  });
+
   it("devrait ignorer une note d'échelle restée dans une page masquée", () => {
     document.body.innerHTML = `<div style="display: none"><aside class="scale-note"></aside></div>`;
     expect(shownJourneyLayout().note).toBeNull();
