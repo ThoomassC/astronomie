@@ -660,53 +660,56 @@ void main() {
   vec3 u = vCenter / centerRadii;
   float b = length(cross(u, vDelta)) / length(u + vDelta / centerRadii);
   float pixel = fwidth(b);
-  float ud = dot(u, vDelta);
-  vec3 radial = vDelta * (1.0 + ud / centerRadii) - u * (ud + dot(vDelta, vDelta) / centerRadii) + u * 1e-6;
-  vec3 n = normalize(uStarFrame * (transpose(mat3(viewMatrix)) * radial));
-  // Rotation propre, en tours.
-  float turn = fract(uTime * uSpinRate / TAU);
-  // Jets (r) et sites des protubérances (g) de la direction n, surface tournée : longitude (atan) et distance au pôle.
-  vec2 field = texture2D(uField, vec2(atan(n.z, n.x) / TAU + 0.5 + turn, acos(clamp(n.y, -1.0, 1.0)) / 3.1415927)).rg;
   float h = max(b - 1.0, 0.0);
   float bb = max(b, 1.0);
 
   // Jets : structure marquée près du disque, halo plus lisse au loin. Au-delà de 6 rayons, la couronne ne pèse
-  // plus rien à côté de l'éblouissement : sa structure moyenne suffit (0,79 à 0,83 selon l'activité).
+  // plus rien à côté de l'éblouissement : sa structure moyenne suffit (0,79 à 0,83 selon l'activité), sans direction
+  // ni champ à lire, pour la plupart des pixels du halo.
   float structure = 0.81;
+  vec3 limb = vec3(0.0);
   if (h < 7.0) {
+    float ud = dot(u, vDelta);
+    vec3 radial = vDelta * (1.0 + ud / centerRadii) - u * (ud + dot(vDelta, vDelta) / centerRadii) + u * 1e-6;
+    vec3 n = normalize(uStarFrame * (transpose(mat3(viewMatrix)) * radial));
+    // Rotation propre, en tours.
+    float turn = fract(uTime * uSpinRate / TAU);
+    // Jets (r) et sites des protubérances (g) de la direction n, surface tournée : longitude (atan) et distance au
+    // pôle. Lue au niveau 0 (carte sans mipmap) : dans une branche, les dérivées implicites ne sont pas sûres.
+    vec2 field = textureLod(uField, vec2(atan(n.z, n.x) / TAU + 0.5 + turn, acos(clamp(n.y, -1.0, 1.0)) / 3.1415927), 0.0).rg;
     float belt = mix(1.12 - smoothstep(0.15, 0.75, abs(n.y)), 1.0, uActivity);
     float rays = pow(clamp(field.r * 1.6 - 0.3, 0.0, 1.0), 1.4 + 1.6 * smoothstep(0.0, 2.5, h)) * belt;
     structure = mix(mix(0.3 + 1.9 * rays, 0.7 + 0.6 * rays, smoothstep(1.5, 6.0, h)), structure, smoothstep(5.0, 7.0, h));
+
+    if (h < 0.2) {
+      float layer = max(CHROMOSPHERE, pixel);
+      float chromosphere = CHROMOSPHERE / layer * exp(-h / layer);
+#ifndef CORONA_LITE
+      float spicules = 1.0 - smoothstep(0.0015, 0.004, pixel);
+      if (spicules > 0.0) {
+        float s = vn(spun(n, turn) * 260.0 + vec3(0.0, uTime * 0.05, 0.0));
+        float height = max(0.004 + 0.02 * s * s, pixel);
+        chromosphere += spicules * 1.4 * s * CHROMOSPHERE / height * exp(-h / height);
+      }
+#endif
+      float threshold = mix(0.8, 0.66, uActivity);
+      float site = smoothstep(threshold, threshold + 0.1, field.g);
+      float prominence = 0.0;
+      if (site > 0.0) {
+        float height = 0.03 + 0.07 * site;
+#ifdef CORONA_LITE
+        float fibers = 0.6;
+#else
+        float fibers = mix(0.6, vn(spun(n, turn) * 70.0 + vec3(0.0, h * 20.0, 0.0)), 1.0 - smoothstep(0.003, 0.008, pixel));
+#endif
+        prominence = site * exp(-h / (0.45 * height)) * (1.0 - smoothstep(height * 0.6, height * 1.4, h)) * fibers * 1.6;
+        prominence *= min(1.0, 0.012 / max(pixel, 0.012));
+      }
+      limb = H_ALPHA * (1.2 * chromosphere + 0.8 * prominence);
+    }
   }
   float corona = .55 / (bb * bb * bb) * structure * vExposure;
-  vec3 color = vec3(1., .84, .62) * corona + vec3(1., .66, .38) * glare;
-
-  if (h < 0.2) {
-    float layer = max(CHROMOSPHERE, pixel);
-    float chromosphere = CHROMOSPHERE / layer * exp(-h / layer);
-#ifndef CORONA_LITE
-    float spicules = 1.0 - smoothstep(0.0015, 0.004, pixel);
-    if (spicules > 0.0) {
-      float s = vn(spun(n, turn) * 260.0 + vec3(0.0, uTime * 0.05, 0.0));
-      float height = max(0.004 + 0.02 * s * s, pixel);
-      chromosphere += spicules * 1.4 * s * CHROMOSPHERE / height * exp(-h / height);
-    }
-#endif
-    float threshold = mix(0.8, 0.66, uActivity);
-    float site = smoothstep(threshold, threshold + 0.1, field.g);
-    float prominence = 0.0;
-    if (site > 0.0) {
-      float height = 0.03 + 0.07 * site;
-#ifdef CORONA_LITE
-      float fibers = 0.6;
-#else
-      float fibers = mix(0.6, vn(spun(n, turn) * 70.0 + vec3(0.0, h * 20.0, 0.0)), 1.0 - smoothstep(0.003, 0.008, pixel));
-#endif
-      prominence = site * exp(-h / (0.45 * height)) * (1.0 - smoothstep(height * 0.6, height * 1.4, h)) * fibers * 1.6;
-      prominence *= min(1.0, 0.012 / max(pixel, 0.012));
-    }
-    color += H_ALPHA * (1.2 * chromosphere + 0.8 * prominence);
-  }
+  vec3 color = vec3(1., .84, .62) * corona + vec3(1., .66, .38) * glare + limb;
   gl_FragColor = vec4(color * edge, 1.);
   ${OUTPUT}
 }
