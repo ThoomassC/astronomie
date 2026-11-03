@@ -5,7 +5,7 @@ import { smootherstep } from "@/lib/journey/sections";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { cssVars } from "./cssVars";
 import { GoToLink } from "./GoToLink";
-import { spreadPositions } from "./railLayout";
+import { nearIndexes, separateLabels, spreadPositions } from "./railLayout";
 
 /** Repère d'une escale sur la règle : un lien vers sa section. */
 export interface RailMarker {
@@ -55,10 +55,15 @@ export interface RailViewProps {
   readFlight(): { from: string; to: string; t: number };
 }
 
-/** Écart minimal entre deux repères, en px (relevé à la hauteur réelle d'un repère si elle est plus grande). */
+/** Écart minimal entre deux repères, en px (relevé à la hauteur réelle d'une graduation si elle est plus grande). */
 const MIN_GAP_PX = 26;
-/** Petits écrans : le nom d'un repère devient une infobulle au survol et au focus (globals.css). */
+/** Petits écrans : le nom de chaque repère devient une infobulle au survol et au focus (globals.css). */
 const TIPS_QUERY = "(max-width: 860px)";
+/**
+ * Repère nommé : l'escale en cours et ses deux voisines montrent leur nom et leur précision ; les autres, réduits à une
+ * graduation, ne les montrent qu'en infobulle, au survol et au focus clavier (globals.css).
+ */
+const NEAR_ATTRIBUTE = "data-near";
 
 /**
  * Position en pourcentage, au millième : `Math.log` peut différer d'un bit entre Node et le navigateur,
@@ -73,14 +78,24 @@ interface RailMetrics {
   height: number;
   /** Écart minimal entre deux repères, en px. */
   gap: number;
+  /** Hauteur du texte de chaque repère nommé, dans l'ordre des repères (px) ; 0 pour une graduation. */
+  labels: readonly number[];
 }
+
+const sameMetrics = (a: RailMetrics, b: RailMetrics) =>
+  a.height === b.height &&
+  a.gap === b.gap &&
+  a.labels.length === b.labels.length &&
+  a.labels.every((height, i) => height === b.labels[i]);
 
 /**
  * Règle à repères : sommaire des escales (liens) et repère du vol, commune au voyage (distances) et à la page Tailles
  * (rayons). Les graduations restent à leur position ; les repères trop proches s'écartent et un trait fin les relie à
  * leur vraie position. L'axe peut s'interrompre (« ≈ ») là où l'échelle change. Le curseur suit la caméra par
- * `transform`, hors de React, lissé comme elle (smootherstep). Sur petit écran, le nom d'un repère devient une
- * infobulle, qu'Échap masque.
+ * `transform`, hors de React, lissé comme elle (smootherstep). Seuls l'escale en cours et ses deux voisines montrent
+ * leur nom et leur précision (`data-near`), leurs textes écartés l'un de l'autre s'ils se touchent ; les autres repères
+ * se réduisent à une graduation dont le texte, masqué à l'œil, reste dans le lien et paraît en infobulle. Sur petit
+ * écran, tout nom devient une infobulle. Échap masque l'infobulle affichée.
  */
 export function RailView({ id, label, markers, ticks, axis, breakMarks = [], current, readFlight }: RailViewProps) {
   const railRef = useRef<HTMLElement>(null);
@@ -92,19 +107,23 @@ export function RailView({ id, label, markers, ticks, axis, breakMarks = [], cur
   useEffect(() => {
     const rail = railRef.current;
     if (!rail) return;
+    const links = Array.from(rail.querySelectorAll<HTMLElement>("a"));
     const measure = () => {
       let tallest = 0;
-      for (const link of rail.querySelectorAll<HTMLElement>("a")) tallest = Math.max(tallest, link.offsetHeight);
-      const next = { height: rail.clientHeight, gap: Math.max(MIN_GAP_PX, tallest) };
-      setMetrics((previous) =>
-        previous && previous.height === next.height && previous.gap === next.gap ? previous : next,
-      );
+      const labels = links.map((link) => {
+        if (!link.hasAttribute(NEAR_ATTRIBUTE)) {
+          tallest = Math.max(tallest, link.offsetHeight);
+          return 0;
+        }
+        return link.querySelector<HTMLElement>(":scope > span")?.offsetHeight ?? 0;
+      });
+      const next = { height: rail.clientHeight, gap: Math.max(MIN_GAP_PX, tallest), labels };
+      setMetrics((previous) => (previous && sameMetrics(previous, next) ? previous : next));
     };
-    // La règle change de hauteur avec la vue, les repères avec les polices et le point de rupture.
+    // La règle change de hauteur avec la vue ; un repère, avec les polices et quand il se nomme ou se réduit.
     const observer = new ResizeObserver(measure);
     observer.observe(rail);
-    const firstLink = rail.querySelector("a");
-    if (firstLink) observer.observe(firstLink);
+    for (const link of links) observer.observe(link);
     return () => observer.disconnect();
   }, []);
 
@@ -123,16 +142,34 @@ export function RailView({ id, label, markers, ticks, axis, breakMarks = [], cur
     track.style.transform = transform;
   }, FRAME_ORDER.ui);
 
-  // Échap masque l'infobulle des petits écrans ; elle revient au prochain survol ou focus.
+  // Échap masque l'infobulle (petit écran, ou graduation du grand écran) ; elle revient au prochain survol ou focus.
   // Quand une infobulle était affichée, cet appui ne ferme qu'elle (pas la note d'échelle).
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== "Escape" || tipsDismissed) return;
     setTipsDismissed(true);
-    if (window.matchMedia(TIPS_QUERY).matches) event.preventDefault();
+    const link = event.target instanceof Element ? event.target.closest("a") : null;
+    const tip = window.matchMedia(TIPS_QUERY).matches || (link !== null && !link.hasAttribute(NEAR_ATTRIBUTE));
+    if (tip) event.preventDefault();
   };
 
   const idealPx = metrics ? markers.map((marker) => (marker.percent / 100) * metrics.height) : null;
   const placedPx = metrics && idealPx ? spreadPositions(idealPx, metrics.gap, metrics.height) : null;
+  // L'escale en cours et ses voisines, nommées ; leurs textes s'écartent l'un de l'autre une fois mesurés.
+  const currentIndex = markers.findIndex((marker) => marker.key === current);
+  const near = nearIndexes(markers.length, currentIndex);
+  const shifts =
+    metrics && placedPx
+      ? separateLabels(
+          near.map((i) => placedPx[i]),
+          near.map((i) => metrics.labels[i] ?? 0),
+          near.indexOf(Math.max(0, currentIndex)),
+        )
+      : null;
+  /** Décalage vertical du texte du repère `i` (px), s'il en a un. */
+  const shiftOf = (i: number) => {
+    const shift = shifts?.[near.indexOf(i)] ?? 0;
+    return shift !== 0 ? { "--shift": `${Number(shift.toFixed(1))}px` } : null;
+  };
 
   return (
     <nav
@@ -199,12 +236,14 @@ export function RailView({ id, label, markers, ticks, axis, breakMarks = [], cur
           stop={marker.key}
           href={marker.href}
           style={cssVars(
-            { "--pc": marker.color },
+            { "--pc": marker.color, ...shiftOf(i) },
             { top: placedPx ? `${placedPx[i]}px` : percent(marker.percent) },
           )}
           aria-label={`${marker.name}, ${marker.sub}`}
           aria-current={marker.key === current ? "step" : undefined}
+          data-near={near.includes(i) ? "" : undefined}
         >
+          {/* Masqué à l'œil sur une graduation (jamais `display: none`) : il paraît en infobulle. */}
           <span>
             {marker.name}
             <small>{marker.sub}</small>

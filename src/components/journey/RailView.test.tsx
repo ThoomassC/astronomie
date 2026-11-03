@@ -171,3 +171,74 @@ describe("RailView", () => {
     expect(rail()).not.toHaveAttribute("data-tips");
   });
 });
+
+/** Cinq repères : assez pour qu'une escale en cours ait des voisines et des repères lointains. */
+const FIVE: readonly RailMarker[] = [
+  { key: "a", href: "#a", name: "Alpha", sub: "1 al", color: "#111111", percent: 10 },
+  { key: "b", href: "#b", name: "Bêta", sub: "2 al", color: "#222222", percent: 30 },
+  { key: "c", href: "#c", name: "Gamma", sub: "3 al", color: "#333333", percent: 50 },
+  { key: "d", href: "#d", name: "Delta", sub: "4 al", color: "#444444", percent: 70 },
+  { key: "e", href: "#e", name: "Epsilon", sub: "5 al", color: "#555555", percent: 90 },
+];
+
+/** Repères dont la règle affiche le nom et la précision (`data-near`), dans l'ordre. */
+const nearOf = () => within(rail()).getAllByRole("link").map((link) => link.hasAttribute("data-near"));
+
+describe("RailView, repères nommés et graduations", () => {
+  it("devrait nommer l'escale en cours et ses deux voisines, et réduire les autres à une graduation", () => {
+    const { rerender } = render(<RailView {...props({ markers: FIVE, current: "c" })} />);
+    expect(nearOf()).toEqual([false, true, true, true, false]);
+    rerender(<RailView {...props({ markers: FIVE, current: "e" })} />);
+    expect(nearOf()).toEqual([false, false, false, true, true]);
+  });
+
+  it("devrait nommer le premier repère et son voisin quand l'escale affichée n'est pas sur la règle (introduction)", () => {
+    render(<RailView {...props({ markers: FIVE, current: "intro" })} />);
+    expect(nearOf()).toEqual([true, true, false, false, false]);
+  });
+
+  it("devrait garder à chaque graduation son nom accessible et son texte, masqué à l'œil seulement", () => {
+    render(<RailView {...props({ markers: FIVE, current: "a" })} />);
+    const far = marker("Epsilon, 5 al");
+    expect(far).not.toHaveAttribute("data-near");
+    expect(far).toHaveTextContent("Epsilon5 al");
+    expect(far.querySelector("small")).toHaveTextContent("5 al");
+  });
+
+  it("devrait écarter le texte d'une voisine qui toucherait celui de l'escale en cours, sans bouger le repère", () => {
+    // Frontière navigateur : règle de 100 px, graduations de 20 px, textes nommés de 30 px de haut.
+    vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(100);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.tagName === "SPAN" ? 30 : 20;
+    });
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(private readonly callback: () => void) {}
+        observe() {
+          this.callback();
+        }
+        disconnect() {}
+      },
+    );
+    render(<RailView {...props({ current: "sun" })} />);
+    // Repères posés à 21,5 et 47,5 px : le texte de Proxima (30 px) monte de 4 px, Bételgeuse (89,2 px) est dégagée.
+    expect(marker("Proxima du Centaure, 0,154 R☉").style.top).toBe("21.5px");
+    expect(marker("Proxima du Centaure, 0,154 R☉").style.getPropertyValue("--shift")).toBe("-4px");
+    expect(marker("Soleil, 1 R☉").style.getPropertyValue("--shift")).toBe("");
+    expect(marker("Bételgeuse, 764 R☉").style.getPropertyValue("--shift")).toBe("");
+  });
+
+  it("devrait masquer l'infobulle d'une graduation avec Échap sur grand écran, sans rien fermer d'autre", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query }));
+    render(<RailView {...props({ markers: FIVE, current: "a" })} />);
+    expect(fireEvent.keyDown(marker("Epsilon, 5 al"), { key: "Escape" })).toBe(false);
+    expect(rail()).toHaveAttribute("data-tips", "off");
+  });
+
+  it("devrait laisser passer Échap sur un repère nommé du grand écran, qui n'a pas d'infobulle", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query }));
+    render(<RailView {...props({ markers: FIVE, current: "a" })} />);
+    expect(fireEvent.keyDown(marker("Bêta, 2 al"), { key: "Escape" })).toBe(true);
+  });
+});

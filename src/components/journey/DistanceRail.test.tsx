@@ -230,13 +230,35 @@ describe("DistanceRail", () => {
     expect(rail()).not.toHaveAttribute("data-tips");
   });
 
-  it("devrait masquer les infobulles sur grand écran sans retenir Échap, et les rendre quand le pointeur quitte la règle", () => {
+  it("devrait masquer sur grand écran l'infobulle d'une graduation avec Échap, et la rendre quand le pointeur quitte la règle", () => {
     stubMatchMedia(null);
     render(<DistanceRail stops={STOPS} />);
-    expect(fireEvent.keyDown(marker("Mars, 1,52 UA"), { key: "Escape" })).toBe(true);
+    // À l'accueil, Mars n'est qu'une graduation : son nom paraît en infobulle, qu'Échap ferme seule.
+    expect(fireEvent.keyDown(marker("Mars, 1,52 UA"), { key: "Escape" })).toBe(false);
     expect(rail()).toHaveAttribute("data-tips", "off");
     fireEvent.pointerLeave(rail());
     expect(rail()).not.toHaveAttribute("data-tips");
+  });
+
+  it("devrait laisser passer Échap sur un repère nommé du grand écran, sans infobulle à fermer", () => {
+    stubMatchMedia(null);
+    render(<DistanceRail stops={STOPS} />);
+    expect(fireEvent.keyDown(marker("Mercure, 0,39 UA"), { key: "Escape" })).toBe(true);
+  });
+
+  it("devrait nommer l'escale en cours et ses deux voisines, et réduire les treize autres à une graduation", () => {
+    render(<DistanceRail stops={STOPS} />);
+    const named = () =>
+      within(rail())
+        .getAllByRole("link")
+        .filter((link) => link.hasAttribute("data-near"))
+        .map((link) => link.getAttribute("href"));
+    // À l'accueil, placé comme le Soleil : le Soleil et Mercure.
+    expect(named()).toEqual(["#soleil", "#mercure"]);
+    act(() => journeyStore.update("saturn", "saturn", 0));
+    expect(named()).toEqual(["#jupiter", "#saturne", "#uranus"]);
+    act(() => journeyStore.update("universe", "multiverse", 0.8));
+    expect(named()).toEqual(["#univers-observable", "#multivers"]);
   });
 });
 

@@ -100,9 +100,12 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   repliée : encadré de 1 px en pointillés de la couleur de l'escale, `--r-sm`, 0,875 rem ivoire, interligne 1,45.
   Pointillés comme le repère des autres univers dans la scène, dont l'étiquette dit aussi « hypothèse ». La ligne de
   ce que la vue simplifie commence par « Rendu artistique » : jamais de mot qui donnerait l'image pour observée.
-- **Étiquettes du ciel profond** : repère creux posé exactement sur l'astre (couleur de l'étoile), texte (nom et
-  distance) sur une pilule `--plaque-a` filetée `--filet` : lisible sur les points les plus clairs de la galaxie
-  (sur du blanc pur, ivoire 11,8:1, laiton 6,2:1). Placées après les astres, sans que leurs textes se
+- **Étiquettes du ciel profond** : repère creux posé exactement sur l'astre (couleur de l'étoile), texte à nu, sans
+  pastille qui cacherait les astres, détaché du ciel par un halo `--nuit` serré autour des lettres (ombres empilées
+  de 1 à 14 px) : lisible jusque sur les points les plus clairs de la galaxie, où chaque lettre garde la nuit pour
+  fond (ivoire 15,6:1, brume 7,3:1, laiton 8,2:1). Aux étoiles voisines, six étoiles remarquables (Proxima et Alpha du
+  Centaure, Barnard, Sirius, Procyon, Altaïr) ont leur nom en ivoire et leur distance en `--brume`, posées les
+  premières ; les autres, nom seul en `--brume`, repère atténué. Placées après les astres, sans que leurs textes se
   chevauchent ni recouvrent le point d'une étoile (point ± demi-taille + 2 px), jamais hors de l'écran (texte à
   4 px des bords au moins, astre dans la vue) : texte à droite du repère, sinon à gauche, sinon le nom seul (la
   distance reste dans la plaque), sinon rien. Non interactives (la plaque donne la liste). Dès que le Soleil
@@ -111,12 +114,13 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   nommés (Alpha du Centaure, collée à Proxima, cède). À la Voie lactée, « Vous êtes ici » se lit au-dessus
   d'un anneau `--soleil` de 14 px autour du point-Soleil, et remplace « Soleil » (l'une s'efface avant que l'autre
   n'apparaisse) ; « Centre de la Galaxie » se lit sous son repère : à la même hauteur à l'écran, les deux textes
-  ne se rencontrent jamais. Cercles de distance 5 et 10 al en laiton, étiquette 0,75 rem, posée au premier point
+  ne se rencontrent jamais. Cercles de distance 5 et 10 al en laiton, étiquette 0,8125 rem, posée au premier point
   libre du cercle (côté opposé au Soleil d'abord, puis les côtés), sur une graduation de laiton de 2 × 9 px :
-  jamais l'anneau d'une étoile. Au-delà de la Voie lactée, mêmes pilules : les galaxies du Groupe local par leur
+  jamais l'anneau d'une étoile. Au-delà de la Voie lactée, mêmes textes à halo : les galaxies du Groupe local par leur
   nom, puis « Toile cosmique », « Fond diffus cosmologique » et « Notre univers observable » ; les autres univers ont
   un repère en pointillés et un nom en italique qui dit l'hypothèse (« D'autres univers ? (hypothèse) »).
-- **Ciel profond (scène)** : étoiles voisines aux couleurs de leur classe ; Voie lactée en points additifs, bras
+- **Ciel profond (scène)** : étoiles voisines aux couleurs de leur classe, cœur de 3,5 à 10 px selon leur magnitude
+  absolue, entouré d'un halo de sa couleur 2,5 fois plus large ; Voie lactée en points additifs, bras
   bleus (étoiles jeunes), régions HII rouge rosé le long des bras majeurs, bulbe et barre jaune orangé, disque
   chaud et faible. L'éclat se règle à l'écran et s'atténue quand la galaxie rapetisse : jamais de blanc saturé.
   Cadrage des escales lointaines : comme les astres, elles remplissent la bande libre en mise en page compacte
@@ -126,17 +130,26 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   disque dès qu'il dépasse le repère (repère effacé, `data-beside`), puis la toile cosmique, le
   fond diffus et les bulles du multivers, stylisés, cadrés comme une sphère ; une coquille qui déborderait sur la
   plaque ou la règle s'efface sur les 24 px qui l'en séparent.
+- **Astre visité (scène)** : au repos sur une planète, son orbite s'estompe autour d'elle (effacée jusqu'à 2,5 rayons
+  affichés, entière dès 6) et les autres planètes tombent à 35 % de leur éclat affiché ; le repos se défait sur le
+  premier cinquième du vol et se refait sur le dernier ; en plein vol et aux escales sans planète, rien ne change. Une
+  carte photographique qui arrive se fond en 400 ms dans la couleur unie de l'astre, en mouvement réduit compris
+  (fondu enchaîné, sans mouvement).
 - **Règle des distances** : sommaire vertical à échelle logarithmique, en trois segments : UA jusqu'à 50
   (les planètes), grand vide comprimé jusqu'à 1 al, puis années-lumière jusqu'à 10¹¹ al, au-delà de l'Univers
   observable (fin de l'axe à 98 %). Le multivers, à l'infini, se pose après l'axe, hors échelle (99,4 %).
   Entre le système solaire et les étoiles, l'axe s'interrompt de 87 à 88,5 % : signe « ≈ » en laiton,
   0,875 rem, centré sur l'axe. Graduations d'UA, puis une par puissance de dix d'années-lumière (majeures : 1 al,
   1 million et 1 milliard d'al). Sous les repères lointains : « dès 4,2 al », « centre à 27 000 al », « Andromède à
-  2,5 millions d'al », « rayon de 46 milliards d'al », « hypothèse ». Seize repères, 24 px au moins entre leurs
-  centres (WCAG 2.5.8). Curseur suivant la caméra.
-  Infobulles au survol (appareils qui survolent) et au focus clavier ; au doigt, le nom de l'escale
-  en cours reste affiché. Là où elle n'a plus que des pastilles (860 px et moins), en mise en page compacte et sur
-  écran bas (546 px de haut et moins : téléphone en paysage, zoom à 400 %), elle laisse sa place au menu
+  2,5 millions d'al », « rayon de 46 milliards d'al », « hypothèse » (distances en 0,8125 rem). Seize repères, cibles
+  de 24 px, 24 px au moins entre leurs centres (WCAG 2.5.8). Curseur suivant la caméra.
+  Sur grand écran, seuls l'escale en cours et ses deux voisines (`data-near`) montrent nom et distance, à la ligne
+  plutôt que tronqués (9 rem au plus) ; un texte qui toucherait celui d'à côté s'en écarte, sa pastille restant sur
+  l'axe. Les autres repères se réduisent à une graduation : pastille de 7 px de leur couleur, texte masqué à l'œil mais
+  lu, qui paraît en infobulle au survol (appareils qui survolent) et au focus clavier ; Échap la ferme seule.
+  Apparitions en fondu bref ; en couleurs forcées, axe, graduations, curseur et pastilles en couleurs du système. La
+  règle des tailles suit le même modèle. Là où elle n'a plus que des pastilles (860 px et moins), en mise en page
+  compacte et sur écran bas (546 px de haut et moins : téléphone en paysage, zoom à 400 %), elle laisse sa place au menu
   **Escales** : le nom de l'escale en cours (« Escales » à l'accueil), dans la barre, ouvre la liste des escales
   (pastille creuse, pleine pour l'escale en cours, nom, distance, lignes de 44 px). Sur écran bas, la barre suit la
   page et la liste s'ouvre en haut de page. Sans JavaScript, la règle reste.
@@ -146,8 +159,11 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   un chevron (ou un toucher sur le texte) l'affiche en entier, une croix la masque. Échap la masque (après avoir fermé une infobulle de la règle ou
   le menu des escales, s'il y en a).
 - **Machine à remonter le temps** : dock bas en capsule, vitesse 1 jour à 1 an par seconde, retour à
-  aujourd'hui. La vitesse active est une bulle ivoire qui glisse d'un choix à l'autre : le bord avant
-  part le premier, l'arrière suit, léger rebond à l'arrivée ; instantanée en mouvement réduit. Une copie
+  aujourd'hui. Sur grand écran, un fondu fixe de 140 px, de transparent à `--nuit`, passe sous lui au bas de l'écran
+  (au-dessus du contenu, sous la règle, sans intercepter un clic) : une plaque qui glisse dessous s'efface au lieu
+  d'être tranchée ; absent en mise en page compacte et sur écran bas, effacé pendant l'exploration. La vitesse
+  active est une bulle ivoire qui glisse d'un choix à l'autre : le bord avant part le premier, l'arrière suit, léger
+  rebond à l'arrivée ; instantanée en mouvement réduit. Une copie
   sombre des libellés, découpée à la forme de la bulle, inverse le texte exactement là où elle passe
   (jamais de texte sombre sur fond sombre). Le dock ne passe jamais à la ligne au-dessus de 360 px :
   complet au-delà de 900 px, boutons de droite réduits à leur icône jusqu'à 761 px, compact en dessous

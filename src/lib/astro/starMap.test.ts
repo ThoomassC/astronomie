@@ -56,13 +56,19 @@ describe("absoluteMagnitude", () => {
 
 describe("starPointSize", () => {
   it.each([
-    [1, 9],
-    [-3, 9],
-    [5, 7],
-    [15, 2],
-    [30, 2],
-  ])("devrait suivre 9 − 0,5 × (M − 1), borné à [2, 9] px (M = %f → %f px)", (magnitude, px) => {
+    [1, 10],
+    [-3, 10],
+    [5, 8],
+    [11, 5],
+    [14, 3.5],
+    [30, 3.5],
+  ])("devrait suivre 10 − 0,5 × (M − 1), borné à [3,5 ; 10] px (M = %f → %f px)", (magnitude, px) => {
     expect(starPointSize(magnitude)).toBeCloseTo(px, 12);
+  });
+
+  it("devrait garder plus gros le point de l'étoile la plus lumineuse en réalité", () => {
+    expect(starPointSize(1.4)).toBeGreaterThan(starPointSize(4.4));
+    expect(starPointSize(4.4)).toBeGreaterThan(starPointSize(13.2));
   });
 });
 

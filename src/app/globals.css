@@ -183,10 +183,9 @@ main > section:focus {
 
 /*
  * Ciel profond (étoiles voisines, « Vous êtes ici », centre galactique, cercles) : repères à lire, pas à toucher.
- * Le texte est posé sur une pastille de plaque presque opaque : lisible sur les points les plus clairs de la
- * galaxie (sur du blanc pur, ivoire 11,8:1 et laiton 6,2:1). Le moteur mesure le repère et le pose exactement
- * sur l'astre ; seul le texte occupe la place face aux autres étiquettes, jamais hors de l'écran ni sur le point
- * d'une étoile : à droite du repère, sinon à gauche, sinon le nom seul (la distance est dans la plaque).
+ * Le moteur mesure le repère et le pose exactement sur l'astre ; seul le texte occupe la place face aux autres
+ * étiquettes, jamais hors de l'écran ni sur le point d'une étoile : à droite du repère, sinon à gauche, sinon le nom
+ * seul (la distance est dans la plaque). À Tailles, le texte reste sur une pastille de plaque presque opaque.
  */
 .lbl.deep {
   gap: 0.3rem;
@@ -206,6 +205,43 @@ main > section:focus {
   line-height: 1.4;
   opacity: 1;
   text-shadow: none;
+}
+
+/*
+ * Voyage (`data-deep`) : texte à nu, sans pastille qui cacherait les astres. Un halo de nuit serré autour des lettres
+ * (ombres empilées de 1 à 14 px) le détache du ciel jusque sur les points les plus clairs de la galaxie : chaque lettre
+ * y garde la nuit pour fond (ivoire 15,6:1, brume 7,3:1, laiton 8,2:1). Couleurs forcées : les ombres tombent, le
+ * navigateur pose un fond sous le texte.
+ */
+.lbl.deep[data-deep] {
+  gap: 0.4rem;
+}
+
+.lbl.deep[data-deep] > span {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-shadow:
+    0 0 1px var(--nuit),
+    0 0 2px var(--nuit),
+    0 0 3px var(--nuit),
+    0 0 6px var(--nuit),
+    0 1px 10px var(--nuit),
+    0 0 14px rgba(6, 11, 24, 0.8);
+}
+
+/*
+ * Étoiles voisines (étiquettes du voyage, `data-deep`) : les remarquables en ivoire, leur distance en brume ; les autres
+ * (`minor`), leur nom seul en brume, repère atténué : la carte ne se lit plus comme un nuage d'étiquettes.
+ */
+.lbl.deep[data-deep] .dist,
+.lbl.deep.minor > span {
+  color: var(--brume);
+}
+
+.lbl.deep.minor i {
+  opacity: 0.7;
 }
 
 /*
@@ -232,7 +268,7 @@ main > section:focus {
 
 .lbl.deep.ring {
   color: var(--laiton);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 /* Sur le cercle, une graduation de laiton et non un anneau : on n'y croit pas voir une étoile de plus. */
@@ -452,17 +488,25 @@ body::before {
   pointer-events: none;
 }
 
+/*
+ * Repère d'une escale : un lien, cible de 24 px au moins, pastille sur l'axe. L'escale en cours et ses deux voisines
+ * (`data-near`, posé par la règle) montrent leur nom et leur distance ; sur grand écran, les autres se réduisent à une
+ * graduation (plus bas).
+ */
 .rail a {
   position: absolute;
   right: -6px;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
+  min-width: 24px;
+  min-height: 24px;
   padding: 0.2rem 0 0.2rem 0.4rem;
   color: var(--brume);
   font-size: 0.8125rem;
-  line-height: 1.1;
+  line-height: 1.15;
   text-decoration: none;
   white-space: nowrap;
   text-shadow:
@@ -473,6 +517,7 @@ body::before {
 
 .rail a i {
   order: 2;
+  flex: none;
   width: 11px;
   height: 11px;
   border-radius: 50%;
@@ -482,8 +527,8 @@ body::before {
 
 .rail a small {
   display: block;
-  font-size: 0.6875rem;
-  opacity: 0.8;
+  font-size: 0.8125rem;
+  opacity: 0.85;
   font-variant-numeric: tabular-nums;
 }
 
@@ -496,9 +541,132 @@ body::before {
   color: var(--ivoire);
 }
 
+/* Le repère survolé ou au focus passe devant ses voisins : son infobulle ne se glisse pas dessous. */
+.rail a:hover,
+.rail a:focus-visible {
+  z-index: 1;
+}
+
 .rail a[aria-current="step"] i {
   background: var(--pc);
   box-shadow: 0 0 0 4px rgba(236, 229, 211, 0.08);
+}
+
+/*
+ * Grand écran : l'escale en cours et ses deux voisines gardent nom et distance, à la ligne plutôt que tronqués ; un
+ * texte qui toucherait celui d'à côté s'en écarte (`--shift`, mesuré par la règle), sa pastille restant sur l'axe. Les
+ * autres repères se réduisent à une graduation, petite pastille de leur couleur : leur texte, masqué à l'œil mais lu
+ * (jamais `display: none`), paraît en infobulle au survol et au focus clavier ; Échap la masque jusqu'au prochain survol
+ * ou focus (`data-tips`). Apparitions brèves, en fondu ; en mouvement réduit, ni fondu ni glissement (règle globale).
+ */
+@media (min-width: 861px) {
+  .rail a[data-near] > span {
+    max-width: calc(var(--rail-w) - 0.5rem);
+    white-space: normal;
+    text-wrap: balance;
+    transform: translateY(var(--shift, 0px));
+    transition: transform 0.15s ease-out;
+    animation: rail-label-in 0.2s ease-out;
+  }
+
+  /* Même centre que la grande pastille : 3,5 px + 2 px de marge = 5,5 px du bord droit. */
+  .rail a:not([data-near]) i {
+    width: 7px;
+    height: 7px;
+    margin-right: 2px;
+  }
+
+  .rail a:not([data-near]) > span {
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  /* Collée à la cible : le pointeur passe de la pastille à l'infobulle sans la perdre. */
+  .rail:not([data-tips="off"]) a:not([data-near]):is(:hover, :focus-visible) > span {
+    width: max-content;
+    max-width: 12rem;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--filet-fort);
+    border-radius: var(--r-md);
+    background: rgba(8, 14, 32, 0.94);
+    color: var(--ivoire);
+    white-space: normal;
+    text-shadow: none;
+    transform: translateY(-50%);
+    animation: rail-tip-in 0.15s ease-out;
+  }
+
+  .rail:not([data-tips="off"]) a:not([data-near]):is(:hover, :focus-visible) i {
+    width: 11px;
+    height: 11px;
+    margin-right: 0;
+  }
+
+  /* Au doigt, sans survol : l'infobulle d'une graduation touchée ne reste pas posée pendant le saut vers l'escale. */
+  @media (hover: none) {
+    .rail a:not([data-near]):hover:not(:focus-visible) > span {
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      padding: 0;
+      border: 0;
+    }
+  }
+}
+
+@keyframes rail-label-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rail-tip-in {
+  from {
+    opacity: 0;
+    transform: translate(0.25rem, -50%);
+  }
+}
+
+/*
+ * Couleurs forcées : les fonds disparaissent. Axe, graduations, curseur et pastilles sont redessinés en couleurs du
+ * système ; l'escale en cours garde une pastille pleine (Highlight).
+ */
+@media (forced-colors: active) {
+  .rail .axis,
+  .rail .tick {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .rail .cursor {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+
+  .rail .cursor::after {
+    forced-color-adjust: none;
+    border-right-color: Highlight;
+  }
+
+  .rail a i {
+    forced-color-adjust: none;
+    background: Canvas;
+    border-color: CanvasText;
+  }
+
+  .rail a[aria-current="step"] i {
+    background: Highlight;
+    border-color: Highlight;
+  }
 }
 
 /* Repère écarté de sa vraie position : équerre fine depuis la graduation jusqu'à la pastille. */
@@ -1233,6 +1401,23 @@ footer a {
 }
 
 /* ---------- Machine à remonter le temps ---------- */
+/*
+ * Fondu sous le dock : le bas d'une plaque qui passe sous le dock s'efface au lieu d'être tranché. Au-dessus du contenu
+ * et du pied de page (2), sous la règle (4) et le dock (6) ; une bande de 140 px au bas de l'écran, rien au-dessus, sans
+ * intercepter un clic. Il s'efface avec la page pendant l'exploration (data-hide-on-explore). En mise en page compacte,
+ * où la plaque est collée au-dessus du dock, et sur écran bas, où le dock suit la page, il n'a pas lieu d'être (plus bas).
+ */
+.dock-fade {
+  position: fixed;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(140px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(rgba(6, 11, 24, 0), rgba(6, 11, 24, 0.72) 55%, var(--nuit));
+  pointer-events: none;
+}
+
 .dock {
   position: fixed;
   z-index: 6;
@@ -2127,6 +2312,11 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     margin-bottom: max(0px, calc(12vh - var(--dock-clear)));
   }
 
+  /* La plaque se pose au-dessus du dock : le fondu voilerait ses boutons. */
+  .dock-fade {
+    display: none;
+  }
+
   .plate {
     position: sticky;
     bottom: var(--dock-clear);
@@ -2681,6 +2871,11 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     bottom: auto;
     width: fit-content;
     margin: 0 auto calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Le dock suit la page : plus rien ne passe dessous. */
+  .dock-fade {
+    display: none;
   }
 
   .scale-note {

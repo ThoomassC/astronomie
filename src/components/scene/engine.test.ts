@@ -1,8 +1,9 @@
-import type * as Three from "three";
+import * as Three from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSolarScene, type SolarSceneOptions } from "@/components/scene/engine";
 import type { ExtragalacticLabelKey } from "@/components/scene/extragalactic";
 import { FakeRenderer } from "@/components/scene/testRenderer";
+import type { TextureKey } from "@/components/scene/textureSet";
 import { journeyStore } from "@/lib/journey/store";
 
 /*
@@ -15,10 +16,23 @@ vi.mock("three", async (importOriginal) => {
   return { ...three, WebGLRenderer: Renderer };
 });
 
+/** Cartes photographiques « arrivées », rendues une à une par le flux (frontière réseau : rien ne se télécharge ici). */
+const arrivals = vi.hoisted(() => ({ queue: [] as { key: TextureKey; texture: Three.Texture }[] }));
+
+vi.mock("@/components/scene/textureLoader", () => ({
+  createTextureStream: () => ({
+    pump: () => undefined,
+    take: () => arrivals.queue.shift() ?? null,
+    dispose: () => {
+      arrivals.queue.length = 0;
+    },
+  }),
+}));
+
 /** Frontière navigateur : requêtes média lues par le moteur (pointeur, mouvement réduit, mise en page compacte). */
-function stubMatchMedia(): void {
+function stubMatchMedia(reducedMotion = false): void {
   vi.stubGlobal("matchMedia", (query: string) => ({
-    matches: false,
+    matches: reducedMotion && query === "(prefers-reduced-motion: reduce)",
     media: query,
     addEventListener() {},
     removeEventListener() {},
@@ -177,5 +191,73 @@ describe("noms des galaxies au Groupe local", () => {
     expect(cloud.style.visibility).toBe("visible");
     expect(cloud).not.toHaveAttribute("data-beside");
     scene.dispose();
+  });
+});
+
+/*
+ * Arrivée d'une carte photographique : la couleur unie de l'astre cède à la carte en 400 ms (textureFade), au lieu de
+ * la laisser surgir d'un coup, en mouvement réduit compris (un fondu enchaîné, sans mouvement).
+ */
+describe("fondu des cartes photographiques", () => {
+  afterEach(() => {
+    journeyStore.update("hero", "hero", 0);
+    arrivals.queue.length = 0;
+  });
+
+  /** Mélange couleur unie → carte de la surface de Jupiter, lu dans la scène rendue (couleur de base de Jupiter). */
+  function jupiterMix(scene: Three.Object3D): () => number {
+    const base = new Three.Color("#D8A878");
+    let mix: { value: number } | null = null;
+    scene.traverse((object) => {
+      if (!(object instanceof Three.Mesh) || !(object.material instanceof Three.ShaderMaterial)) return;
+      const { uniforms } = object.material;
+      if (uniforms.uMapMix && uniforms.uBaseColor?.value instanceof Three.Color && uniforms.uBaseColor.value.equals(base)) {
+        mix = uniforms.uMapMix;
+      }
+    });
+    if (!mix) throw new Error("Surface de Jupiter absente");
+    const found: { value: number } = mix;
+    return () => found.value;
+  }
+
+  /** Au repos sur Jupiter, sa carte arrivée : mélanges lus image après image (60 i/s) pendant une demi-seconde. */
+  async function fadeAtJupiter(): Promise<number[]> {
+    journeyStore.update("jupiter", "jupiter", 0);
+    const render = vi.spyOn(FakeRenderer.prototype, "render");
+    const scene = createSolarScene(options());
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    // Première image : la caméra se pose (aucune carte envoyée au GPU pendant un vol).
+    scene.frame(1 / 60);
+    const sceneRoot = render.mock.calls[0]?.[0];
+    if (!(sceneRoot instanceof Three.Object3D)) throw new Error("Aucune image rendue");
+    const mix = jupiterMix(sceneRoot);
+    arrivals.queue.push({ key: "jupiter", texture: new Three.Texture() });
+    const mixes: number[] = [];
+    for (let i = 0; i < 30; i++) {
+      scene.frame(1 / 60);
+      mixes.push(mix());
+    }
+    scene.dispose();
+    return mixes;
+  }
+
+  it("devrait passer de la couleur unie à la carte en 400 ms, en douceur", async () => {
+    stubMatchMedia();
+    const mixes = await fadeAtJupiter();
+    expect(mixes[0]).toBeGreaterThan(0);
+    expect(mixes[0]).toBeLessThan(0.05);
+    expect(mixes.slice(1).every((mix, i) => mix >= mixes[i])).toBe(true);
+    // 24 images à 60 i/s : 400 ms.
+    expect(mixes[22]).toBeLessThan(1);
+    expect(mixes[23]).toBe(1);
+  });
+
+  it("devrait fondre la carte aussi en mouvement réduit, au lieu de la faire surgir", async () => {
+    stubMatchMedia(true);
+    const mixes = await fadeAtJupiter();
+    expect(mixes[0]).toBeLessThan(0.05);
+    expect(mixes[11]).toBeCloseTo(0.5, 1);
+    expect(mixes[23]).toBe(1);
   });
 });

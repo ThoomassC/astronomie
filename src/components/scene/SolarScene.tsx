@@ -38,27 +38,30 @@ interface DeepLabel {
   text: string;
   /** Précision qui suit le nom (« · 4,2 al ») ; la scène la retire quand le nom seul tient. */
   detail?: string;
-  variant?: "here" | "center" | "ring" | "galaxy" | "hypothesis";
+  /** `minor` : étoile peu connue, son nom seul, plus discret (la plaque donne sa distance). */
+  variant?: "here" | "center" | "ring" | "galaxy" | "hypothesis" | "minor";
   /** Couleur du repère (`--lc`) : celle du point de l'étoile, ou celle de l'escale au-delà de la Voie lactée. */
   color?: string;
 }
 
 /**
- * Étiquettes du ciel profond, dans la langue de la page : étoiles voisines (nom et distance, repère de la couleur
- * du point), « Vous êtes ici », centre galactique, galaxies cadrées au Groupe local, toile, fond diffus, notre
- * univers et les autres (une hypothèse, dite dans l'étiquette), cercles de distance. Non interactives : les plaques
- * des étoiles et du Groupe local en donnent la liste.
+ * Étiquettes du ciel profond, dans la langue de la page : étoiles voisines (repère de la couleur du point ; nom et
+ * distance des remarquables, nom seul et plus discret des autres), « Vous êtes ici », centre galactique, galaxies
+ * cadrées au Groupe local, toile, fond diffus, notre univers et les autres (une hypothèse, dite dans l'étiquette),
+ * cercles de distance. Non interactives : les plaques des étoiles et du Groupe local en donnent la liste.
  */
 function deepLabels(locale: Locale): DeepLabel[] {
   const { starNames, galaxyNames, labels, ring, starDistance } = DEEP_SKY_STRINGS[locale];
   const universe = stopColor("universe");
   return [
-    ...NEARBY_STARS.map((star) => ({
-      key: starLabelKey(star.key),
-      text: starNames[star.key],
-      detail: starDistance(star.distanceLy),
-      color: spectralColor(star.spectralType),
-    })),
+    ...NEARBY_STARS.map(
+      (star): DeepLabel => ({
+        key: starLabelKey(star.key),
+        text: starNames[star.key],
+        ...(star.notable ? { detail: starDistance(star.distanceLy) } : { variant: "minor" }),
+        color: spectralColor(star.spectralType),
+      }),
+    ),
     { key: "here", text: labels.here, variant: "here" },
     { key: "center", text: labels.center, variant: "center" },
     ...LABELLED_GALAXIES.map((galaxy) => ({

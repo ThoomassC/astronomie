@@ -77,14 +77,30 @@ describe("SolarScene, étiquettes du ciel profond", () => {
     ).toEqual([labels.here, labels.center, labels.web, labels.cmb, labels.ourUniverse, labels.otherUniverses]);
   });
 
-  it.each(LOCALES)("devrait nommer chaque étoile et donner sa distance dans la langue de la page (%s)", (locale) => {
+  it.each(LOCALES)("devrait nommer chaque étoile remarquable et donner sa distance dans la langue de la page (%s)", (locale) => {
     renderScene(locale);
     const { starNames, starDistance } = DEEP_SKY_STRINGS[locale];
-    for (const star of NEARBY_STARS) {
+    const notable = NEARBY_STARS.filter((star) => star.notable);
+    expect(notable).toHaveLength(6);
+    for (const star of notable) {
       const label = deepLabel(starLabelKey(star.key));
       expect(textOf(label)).toBe(`${starNames[star.key]}${starDistance(star.distanceLy)}`);
       // La distance seule se retire quand le nom seul tient (data-short).
       expect(label.querySelector(".dist")?.textContent).toBe(starDistance(star.distanceLy));
+      expect(label).not.toHaveClass("minor");
+    }
+  });
+
+  it.each(LOCALES)("devrait ne donner que leur nom, plus discret, aux autres étoiles (%s)", (locale) => {
+    renderScene(locale);
+    const { starNames } = DEEP_SKY_STRINGS[locale];
+    const others = NEARBY_STARS.filter((star) => !star.notable);
+    expect(others.length).toBeGreaterThan(0);
+    for (const star of others) {
+      const label = deepLabel(starLabelKey(star.key));
+      expect(textOf(label)).toBe(starNames[star.key]);
+      expect(label.querySelector(".dist")).toBeNull();
+      expect(label).toHaveClass("lbl", "deep", "minor");
     }
   });
 
