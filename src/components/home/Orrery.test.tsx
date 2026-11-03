@@ -136,10 +136,24 @@ describe("Orrery, après le montage", () => {
     expect(document.querySelector('[data-leader="venus"]')).not.toBeNull();
     expect(document.querySelector("svg [data-leader]")?.closest("svg")).toBe(screen.getByRole("img"));
   });
+
+  it("ne devrait pas montrer la légende quand chaque planète a son étiquette : elle la répéterait", async () => {
+    measureLabels();
+    const { container } = render(inLocale("fr"));
+    await waitFor(() => expect(document.querySelectorAll("[data-placed]")).toHaveLength(8));
+    expect(container.firstElementChild).not.toHaveAttribute("data-legend");
+  });
+
+  it("devrait montrer la légende quand une étiquette ne trouve pas de place (texte très agrandi)", async () => {
+    measureLabels(400);
+    const { container } = render(inLocale("fr"));
+    await waitFor(() => expect(container.firstElementChild).toHaveAttribute("data-legend"));
+    expect(legendEntries(container)).toHaveLength(8);
+  });
 });
 
-/** Boîte du dessin de 544 px et étiquettes de 60 × 16 px, observées dès le montage. */
-function measureLabels() {
+/** Boîte du dessin de 544 px et étiquettes de `width` × 16 px, observées dès le montage. */
+function measureLabels(width = 60) {
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -151,6 +165,6 @@ function measureLabels() {
     },
   );
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(544);
-  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(60);
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(width);
   vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(16);
 }

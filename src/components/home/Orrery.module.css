@@ -202,6 +202,30 @@
   color: var(--ivoire);
 }
 
+/* Les étiquettes du dessin nomment les planètes : la légende les répéterait. Elle reste lue (où est chaque planète,
+   comme l'heure d'un cadran) et ne se montre que si une étiquette manque (`data-legend`) ou sans JavaScript. */
+.orrery:not([data-legend]) .legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (scripting: none) {
+  .orrery:not([data-legend]) .legend {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 1rem 0 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
 .legend li {
   display: flex;
   align-items: center;

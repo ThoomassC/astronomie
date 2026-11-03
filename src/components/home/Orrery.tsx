@@ -200,9 +200,11 @@ export function Orrery() {
 
   const placed = new Map(layout?.labels.map((label) => [label.key, label]));
   const hours = planets ? new Map(planets.map((planet) => [planet.key, clockHour(planet.longitudeDeg)])) : null;
+  // Une étiquette sans place (texte très agrandi sur un petit dessin) : la légende se montre pour nommer les planètes.
+  const missingLabel = layout !== null && planets !== null && layout.labels.length < planets.length;
 
   return (
-    <div className={styles.orrery}>
+    <div className={styles.orrery} data-legend={missingLabel ? "" : undefined}>
       <figure className={styles.figure}>
         <div className={styles.box} ref={boxRef}>
           <svg className={styles.drawing} viewBox={VIEW_BOX} role="img" aria-labelledby={`${titleId} ${dateId}`}>
