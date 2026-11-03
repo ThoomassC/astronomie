@@ -1365,6 +1365,23 @@ footer a {
 }
 
 /* ---------- Machine à remonter le temps ---------- */
+/*
+ * Fondu sous le dock : le bas d'une plaque qui passe sous le dock s'efface au lieu d'être tranché. Au-dessus du contenu
+ * et du pied de page (2), sous la règle (4) et le dock (6) ; une bande de 140 px au bas de l'écran, rien au-dessus, sans
+ * intercepter un clic. Il s'efface avec la page pendant l'exploration (data-hide-on-explore). En mise en page compacte,
+ * où la plaque est collée au-dessus du dock, et sur écran bas, où le dock suit la page, il n'a pas lieu d'être (plus bas).
+ */
+.dock-fade {
+  position: fixed;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(140px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(rgba(6, 11, 24, 0), rgba(6, 11, 24, 0.72) 55%, var(--nuit));
+  pointer-events: none;
+}
+
 .dock {
   position: fixed;
   z-index: 6;
@@ -2259,6 +2276,11 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     margin-bottom: max(0px, calc(12vh - var(--dock-clear)));
   }
 
+  /* La plaque se pose au-dessus du dock : le fondu voilerait ses boutons. */
+  .dock-fade {
+    display: none;
+  }
+
   .plate {
     position: sticky;
     bottom: var(--dock-clear);
@@ -2813,6 +2835,11 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     bottom: auto;
     width: fit-content;
     margin: 0 auto calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Le dock suit la page : plus rien ne passe dessous. */
+  .dock-fade {
+    display: none;
   }
 
   .scale-note {

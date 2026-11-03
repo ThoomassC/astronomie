@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { screen, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -64,5 +66,38 @@ describe("route /[lang]/voyage", () => {
   it("devrait répondre par une 404 à une langue que le site ne parle pas", async () => {
     await expect(VoyagePage(props("de"))).rejects.toMatchObject(NOT_FOUND);
     await expect(generateMetadata(props("de"))).rejects.toMatchObject(NOT_FOUND);
+  });
+
+  it("devrait poser sous le dock un fondu décoratif, ignoré des lecteurs d'écran et effacé pendant l'exploration", async () => {
+    await renderVoyage("fr");
+    const fade = document.querySelector(".dock-fade");
+    expect(fade).not.toBeNull();
+    expect(fade).toHaveAttribute("aria-hidden", "true");
+    expect(fade).toHaveAttribute("data-hide-on-explore");
+    expect(fade).toBeEmptyDOMElement();
+    // Avant le dock dans le DOM : il passe sous lui à l'écran.
+    const dock = screen.getByRole("region", { name: "Machine à remonter le temps" });
+    expect(fade?.compareDocumentPosition(dock)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+});
+
+/*
+ * Fondu sous le dock (globals.css, lu tel quel) : le bas d'une plaque qui passe sous le dock s'efface au lieu d'être
+ * tranché, sans intercepter un clic ni assombrir la scène au-delà d'une bande de 120 à 160 px.
+ */
+describe("fondu sous le dock", () => {
+  const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+  const rule = /\n\.dock-fade \{([^}]*)\}/.exec(css)?.[1] ?? "";
+
+  it("devrait laisser passer les clics vers la scène et la page", () => {
+    expect(rule).toMatch(/pointer-events: none;/);
+  });
+
+  it("devrait couvrir une bande de 120 à 160 px au bas de l'écran, de transparent à la nuit", () => {
+    const height = Number(/height: calc\((\d+)px \+ env\(safe-area-inset-bottom, 0px\)\);/.exec(rule)?.[1]);
+    expect(height).toBeGreaterThanOrEqual(120);
+    expect(height).toBeLessThanOrEqual(160);
+    expect(rule).toMatch(/bottom: 0;/);
+    expect(rule).toMatch(/linear-gradient\(rgba\(6, 11, 24, 0\)[^;]*var\(--nuit\)\)/);
   });
 });

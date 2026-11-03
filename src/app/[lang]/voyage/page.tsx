@@ -55,6 +55,8 @@ export default async function VoyagePage({ params }: PageProps<"/[lang]/voyage">
       <ScaleNote />
       {/* Avant le dock, sous lui à l'écran (z-index) : au clavier, la barre et le pavé d'exploration, puis le dock. */}
       <ExploreMode />
+      {/* Fondu décoratif sous le dock : le bas d'une plaque qui passe dessous s'efface au lieu d'être tranché. */}
+      <div className="dock-fade" aria-hidden="true" data-hide-on-explore />
       <TimeDock />
       <ClockDriver />
       <JourneyTracker />
