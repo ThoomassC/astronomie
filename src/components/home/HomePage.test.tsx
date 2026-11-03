@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import HomeRoute, { generateMetadata } from "@/app/[lang]/page";
 import { HomePage } from "@/components/home/HomePage";
 import { legacyRedirectScript } from "@/components/home/legacyRedirect";
+import { stubMatchMedia } from "@/components/modules/testUtils";
 import { getHomeContent } from "@/content/home/content";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { LOCALES, type Locale } from "@/i18n/locales";
@@ -34,11 +35,14 @@ const routeProps = (lang: string) => ({ params: Promise.resolve({ lang }), searc
 
 beforeEach(() => {
   vi.spyOn(performance, "timeOrigin", "get").mockReturnValue(Date.UTC(2026, 9, 29, 12));
+  // Le planétaire suit la préférence de mouvement réduit : jsdom n'a pas matchMedia.
+  stubMatchMedia({ reduced: false });
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("HomePage", () => {

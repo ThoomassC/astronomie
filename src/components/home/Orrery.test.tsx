@@ -1,9 +1,10 @@
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HOME_STRINGS } from "@/components/home/home.strings";
 import { Orrery } from "@/components/home/Orrery";
+import { stubMatchMedia } from "@/components/modules/testUtils";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import type { Locale } from "@/i18n/locales";
 import { julianDate } from "@/lib/astro/ephemeris";
@@ -52,6 +53,13 @@ function rotationOf(container: ParentNode, key: PlanetKey): number {
   return Number(match[1]);
 }
 
+/** Groupe dessiné d'une planète, celui qui glisse. */
+function planetOf(container: ParentNode, key: PlanetKey): Element {
+  const planet = container.querySelector(`[data-planet="${key}"]`);
+  if (!planet) throw new Error(`Planète absente : ${key}`);
+  return planet;
+}
+
 /** Longitudes (°) des huit planètes à un instant. */
 function longitudesAt(ms: number): Map<PlanetKey, number> {
   return new Map(orreryPlanets(julianDate(ms)).map((planet) => [planet.key, planet.longitudeDeg]));
@@ -61,6 +69,7 @@ beforeEach(() => {
   // Node relit TZ à chaque affectation : Date et Intl passent à ce fuseau, jusqu'à la restauration.
   vi.stubEnv("TZ", FAR_TIME_ZONE);
   vi.spyOn(performance, "timeOrigin", "get").mockReturnValue(LOAD_TIME);
+  stubMatchMedia({ reduced: false });
 });
 
 afterEach(() => {
@@ -152,6 +161,57 @@ describe("Orrery, à l'hydratation", () => {
   it("ne devrait rien faire glisser quand la page est chargée à l'heure de sa génération", async () => {
     const { container, root } = await hydrated(LOAD_TIME);
     expect(container.querySelector("[data-glide]")).toBeNull();
+    act(() => root.unmount());
+  });
+
+  it("devrait finir le glissement quand une planète finit sa transition : plus rien ne l'attend ensuite", async () => {
+    const { container, root } = await hydrated();
+    expect(container.querySelector("[data-glide]")).not.toBeNull();
+    act(() => {
+      fireEvent.transitionEnd(planetOf(container, "earth"));
+    });
+    expect(container.querySelector("[data-glide]")).toBeNull();
+    act(() => root.unmount());
+  });
+
+  it("devrait finir le glissement au bout de 1,2 s, même sans fin de transition (transition qui n'a pas lieu)", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const { container, root } = await hydrated();
+      act(() => {
+        vi.advanceTimersByTime(1199);
+      });
+      expect(container.querySelector("[data-glide]")).not.toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(container.querySelector("[data-glide]")).toBeNull();
+      act(() => root.unmount());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("ne devrait montrer les étiquettes et leurs filets qu'à la fin du glissement, posés à l'arrivée", async () => {
+    measureLabels();
+    const { container, root } = await hydrated();
+    // Mesurées et placées pendant le glissement, mais pas encore montrées.
+    await waitFor(() => expect(screen.getByText("Vous êtes ici").getAttribute("style") ?? "").toContain("left"));
+    expect(container.querySelectorAll("[data-placed], [data-leader]")).toHaveLength(0);
+    act(() => {
+      fireEvent.transitionEnd(planetOf(container, "earth"));
+    });
+    expect(container.querySelectorAll("[data-placed]")).toHaveLength(8);
+    expect(container.querySelector("[data-leader]")).not.toBeNull();
+    act(() => root.unmount());
+  });
+
+  it("ne devrait rien faire glisser en mouvement réduit : les étiquettes se posent d'emblée", async () => {
+    stubMatchMedia({ reduced: true });
+    measureLabels();
+    const { container, root } = await hydrated();
+    expect(container.querySelector("[data-glide]")).toBeNull();
+    await waitFor(() => expect(container.querySelectorAll("[data-placed]")).toHaveLength(8));
     act(() => root.unmount());
   });
 });
