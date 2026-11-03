@@ -24,9 +24,9 @@ describe("SizesIntro", () => {
     ["fr", "Commencer par le plus petit"],
     ["en", "Start with the smallest"],
     ["es", "Empezar por el más pequeño"],
-  ] as const)("devrait conduire au plus petit astre, à l'ancre #proxima-du-centaure (%s)", (locale, start) => {
+  ] as const)("devrait conduire au plus petit astre, Cygnus X-1, à l'ancre #cygnus-x-1 (%s)", (locale, start) => {
     render(<SizesIntro locale={locale} />);
-    expect(screen.getByRole("link", { name: start })).toHaveAttribute("href", "#proxima-du-centaure");
+    expect(screen.getByRole("link", { name: start })).toHaveAttribute("href", "#cygnus-x-1");
   });
 
   it("devrait dire ce qui est à l'échelle, et ce qui ne l'est pas (ligne discrète)", () => {

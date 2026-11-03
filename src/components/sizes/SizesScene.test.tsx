@@ -33,16 +33,26 @@ describe("SizesScene sans WebGL", () => {
     expect(children.every((child) => child.getAttribute("aria-hidden") === "true")).toBe(true);
   });
 
-  it("devrait nommer chaque étoile dans la langue de la page, rayon compris (es : « Sirio A · 1,711 R☉ »)", () => {
+  it("devrait nommer chaque astre dans la langue de la page, taille comprise (es : « Sirio A · 1,711 R☉ »)", () => {
     const { container } = render(
       <LocaleProvider locale="es">
         <SizesScene />
       </LocaleProvider>,
     );
     const texts = Array.from(container.querySelectorAll("[data-ring] > span"), (label) => label.textContent);
-    expect(texts).toHaveLength(10);
+    expect(texts).toHaveLength(14);
     expect(texts).toContain("Sirio A · 1,711 R☉");
     expect(texts).toContain("Próxima Centauri · 0,154 R☉");
+    expect(texts).toContain("Sagitario A* · 47,4 R☉");
+    expect(texts).toContain("Cygnus X-1 · 163 km");
+  });
+
+  it("devrait donner à chaque astre une étiquette de limbe, quatorze (fr)", () => {
+    const { container } = render(<SizesScene />);
+    expect(container.querySelectorAll("[data-limb]")).toHaveLength(14);
+    expect(container.querySelector('[data-limb="m87-star"] > span')).toHaveTextContent("M87* · 72\u202f000 R☉", {
+      normalizeWhitespace: false,
+    });
   });
 
   it("devrait écrire la taille de l'étiquette de limbe à part (`.dist`), que la forme courte masque (en : « Rigel · 74 R☉ »)", () => {

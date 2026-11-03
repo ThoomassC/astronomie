@@ -30,15 +30,18 @@ describe("SizesMenu", () => {
     expect(screen.getByRole("button", { name: "Pólux, cambiar de astro" })).toBeInTheDocument();
   });
 
-  it("devrait lister les dix étoiles avec leur rayon et marquer celle où l'on est (es)", async () => {
+  it("devrait lister les quatorze astres avec leur taille et marquer celui où l'on est (es)", async () => {
     const user = userEvent.setup();
     renderIn("es");
     act(() => sizesStore.update("sirius-a", "sirius-a", 0));
     await user.click(screen.getByRole("button", { name: "Sirio A, cambiar de astro" }));
     const links = screen.getAllByRole("link");
-    expect(links).toHaveLength(10);
+    expect(links).toHaveLength(14);
     expect(screen.getByRole("link", { name: /Sirio A/ })).toHaveAttribute("aria-current", "location");
     expect(screen.getByRole("link", { name: /Sirio A/ })).toHaveAttribute("href", "#sirius-a");
     expect(screen.getByRole("link", { name: /Próxima Centauri/ })).toHaveTextContent("0,154 R☉");
+    // Un trou noir se mesure à son ombre.
+    expect(screen.getByRole("link", { name: /Sagitario A\*/ })).toHaveTextContent("47,4 R☉");
+    expect(screen.getByRole("link", { name: /Sagitario A\*/ })).toHaveAttribute("href", "#sagittarius-a-etoile");
   });
 });

@@ -13,12 +13,12 @@ import {
 import { markerLayouts, type LabelBox } from "@/components/scene/labels";
 import { createRenderer, releaseRenderer } from "@/components/scene/renderer";
 import { COMPACT_LAYOUT_QUERY, createScreenLayout, type ScreenLayoutElements } from "@/components/scene/screenLayout";
+import { createStarfieldBackground } from "@/components/scene/starfield";
 import { julianDate } from "@/lib/astro/ephemeris";
 import { solarActivity, sunspotLatitude } from "@/lib/astro/solarCycle";
-import { COMPARED_STARS, type SizeStarKey } from "@/lib/astro/starSizes";
 import { smootherstep } from "@/lib/journey/sections";
 import { placeObjects } from "@/lib/sizes/layout";
-import { layoutInput } from "@/lib/sizes/objects";
+import { COMPARED_OBJECTS, layoutInput, type SizeObjectKey } from "@/lib/sizes/objects";
 import {
   SCALE_BAR_CHROME_PX,
   pixelsPerSolarRadius,
@@ -31,6 +31,8 @@ import {
 } from "@/lib/sizes/scaleBar";
 import {
   SIZES_VIEW_ELEV_DEG,
+  railSideFade,
+  rightEdgePx,
   screenDisc,
   sizesFlightCamera,
   sizesRestCamera,
@@ -40,7 +42,7 @@ import {
   type SizesFrameContext,
 } from "@/lib/sizes/sizesCamera";
 import { sizesStore } from "@/lib/sizes/store";
-import { sizeStarIndex, type SizeStopKey } from "@/lib/sizes/stops";
+import { sizeObjectIndex, type SizeStopKey } from "@/lib/sizes/stops";
 import {
   frameBoxes,
   layoutSizeLabels,
@@ -50,7 +52,7 @@ import {
   type RingMarker,
   type StarLabelMode,
 } from "./sizesLabels";
-import { createStarMeshes, showStars } from "./starMeshes";
+import { createSizesObjects, showObjects, updateBlackHoles } from "./sizesObjects";
 
 /** Échelle graphique (DOM, `aria-hidden`) : conteneur, Soleil à l'échelle, trait, texte. */
 export interface ScaleBarElements {
@@ -62,13 +64,13 @@ export interface ScaleBarElements {
 
 export interface SizesSceneOptions {
   canvas: HTMLCanvasElement;
-  /** Étiquette de chaque étoile sur un anneau à sa couleur (petite à l'écran) : repère `<i>` et texte `<span>`. */
-  ringLabels: ReadonlyMap<SizeStarKey, HTMLElement>;
+  /** Étiquette de chaque astre sur un anneau à sa couleur (petit à l'écran) : repère `<i>` et texte `<span>`. */
+  ringLabels: ReadonlyMap<SizeObjectKey, HTMLElement>;
   /**
-   * Étiquette de chaque étoile posée au-dessus de son limbe (grande à l'écran) : texte seul, le nom puis sa taille dans
-   * un `.dist`, que la forme courte masque (`data-short`).
+   * Étiquette de chaque astre posée au-dessus de son limbe (grand à l'écran) : texte seul, le nom puis sa taille dans un
+   * `.dist`, que la forme courte masque (`data-short`).
    */
-  limbLabels: ReadonlyMap<SizeStarKey, HTMLElement>;
+  limbLabels: ReadonlyMap<SizeObjectKey, HTMLElement>;
   /** Le Soleil devenu un point : anneau « ici » en `--soleil` (`.lbl.deep.here`). */
   sunMarker: HTMLElement | null;
   scaleBar: ScaleBarElements | null;
@@ -112,8 +114,8 @@ const NEAR_SHARE = 0.01;
 const FAR_MARGIN = 1.05;
 /** Images d'attente au plus pour la compilation des shaders, avant de rendre quand même. */
 const MAX_COMPILE_WAIT_FRAMES = 30;
-/** Rang du Soleil parmi les étoiles comparées. */
-const SUN_INDEX = COMPARED_STARS.findIndex((star) => star.key === "sun");
+/** Rang du Soleil parmi les astres comparés. */
+const SUN_INDEX = COMPARED_OBJECTS.findIndex((object) => object.key === "sun");
 
 /** Étiquette DOM placée par le moteur : seules les valeurs qui changent sont écrites. */
 interface LabelSlot {
@@ -124,7 +126,7 @@ interface LabelSlot {
   short: boolean;
 }
 
-/** Les deux étiquettes d'une étoile, telles que le DOM les donne. */
+/** Les deux étiquettes d'un astre, telles que le DOM les donne. */
 interface StarSlots {
   ring: LabelSlot | null;
   limb: LabelSlot | null;
@@ -231,12 +233,13 @@ function rectBox(element: Element): LabelBox {
 const emptyCam = (): SizesCam => ({ tx: 0, dist: 1, offX: 0, offY: 0 });
 
 /**
- * Scène 3D de la page « Tailles », légère et séparée du moteur du Voyage : les dix étoiles du comparateur à leur
- * taille vraie, côte à côte (placeObjects), une caméra qui suit le défilement (sizesStore), leurs étiquettes et
- * l'échelle graphique. Elle ne rend une image que si quelque chose bouge (vol, mise en page, taille de la vue) ;
- * la surface des étoiles n'avance que pendant un vol, et jamais en mouvement réduit. Sur écran tactile, les vols se
- * rendent en rapport de pixels 1, l'arrivée nette. Renvoie `null` sans WebGL 2 ou en
- * rendu logiciel : la page passe alors au repli sans scène (createRenderer).
+ * Scène 3D de la page « Tailles », légère et séparée du moteur du Voyage : les quatorze astres du comparateur (dix
+ * étoiles, quatre trous noirs) à leur taille vraie, côte à côte (placeObjects), sur un fond étoilé que les trous noirs
+ * dévient, une caméra qui suit le défilement (sizesStore), leurs étiquettes et l'échelle graphique. Sur grand écran, un
+ * astre qui déborde vers la règle s'efface. Elle ne rend une image que si quelque chose bouge (vol, mise en page,
+ * taille de la vue) ; la surface des étoiles et le disque des trous noirs n'avancent que pendant un vol, et jamais en
+ * mouvement réduit. Sur écran tactile, les vols se rendent en rapport de pixels 1, l'arrivée nette. Renvoie `null`
+ * sans WebGL 2 ou en rendu logiciel : la page passe alors au repli sans scène (createRenderer).
  */
 export function createSizesScene(options: SizesSceneOptions): SizesScene | null {
   const renderer = createRenderer(options.canvas);
@@ -266,14 +269,18 @@ function setupScene(
   const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const compact = window.matchMedia(COMPACT_LAYOUT_QUERY);
-  const placed = placeObjects(COMPARED_STARS.map(layoutInput));
-  /** Temps affiché de la surface des étoiles, en secondes : il n'avance que pendant un vol. */
+  const placed = placeObjects(COMPARED_OBJECTS.map(layoutInput));
+  /** Temps affiché de la surface des étoiles et des disques des trous noirs, en secondes : il n'avance que pendant un vol. */
   const time = { value: 0 };
   const today = julianDate(Date.now());
-  const { group, meshes } = createStarMeshes(COMPARED_STARS, placed, {
+  // Fond étoilé : dessiné avant tout le reste, il sort en --nuit et prête son ciel à chaque trou noir.
+  const starfield = createStarfieldBackground();
+  scene.add(starfield.mesh);
+  const { group, items } = createSizesObjects(COMPARED_OBJECTS, placed, {
     time,
     lite: coarsePointer,
     sunSpots: { activity: solarActivity(today), latitude: sunspotLatitude(today) * DEG },
+    starfield: starfield.uniforms,
   });
   scene.add(group);
   const screenLayout = createScreenLayout({ ...layout, note: null }, compact);
@@ -302,9 +309,9 @@ function setupScene(
   let lastFrom: SizeStopKey | null = null;
   let lastTo: SizeStopKey | null = null;
   let lastT = Number.NaN;
-  const slots: StarSlots[] = COMPARED_STARS.map((star) => {
-    const ring = ringLabels.get(star.key);
-    const limb = limbLabels.get(star.key);
+  const slots: StarSlots[] = COMPARED_OBJECTS.map((object) => {
+    const ring = ringLabels.get(object.key);
+    const limb = limbLabels.get(object.key);
     return { ring: ring ? labelSlot(ring) : null, limb: limb ? labelSlot(limb) : null };
   });
   /** Mesures des étiquettes dans leur forme normale (measureLayout), et disposition de chacune à l'image précédente. */
@@ -327,6 +334,9 @@ function setupScene(
   /** Disques à l'écran des astres dessinés à cette image (screenDisc), un par astre, réutilisés d'une image à l'autre. */
   const discs: ScreenDisc[] = placed.map(() => ({ x: 0, y: 0, radius: 0 }));
   const drawnDiscs: ScreenDisc[] = [];
+  /** Rayon apparent de l'encombrement de chaque astre, en px (Infinity : non dessiné), et sa part visible près de la règle. */
+  const radiiPx: number[] = placed.map(() => Infinity);
+  const fits: number[] = placed.map(() => 1);
   /** Rapport et champ de la caméra de l'image, pour la projection des disques. */
   const lens = { aspect: 1, fovDeg: 36 };
 
@@ -410,15 +420,19 @@ function setupScene(
   };
   canvas.addEventListener("webglcontextrestored", onContextRestored);
 
-  // Compilation des shaders hors du premier rendu, toutes les étoiles visibles (le Soleil a son propre programme, à
-  // cause de ses taches) : aucune saccade quand une étoile paraît. En cas d'échec, elle se fera au premier rendu.
-  for (const star of meshes) star.body.visible = true;
+  // Compilation des shaders hors du premier rendu, tous les astres visibles et le fond (le Soleil a son propre
+  // programme, à cause de ses taches ; les trous noirs, le leur) : aucune saccade quand un astre paraît. En cas
+  // d'échec, elle se fera au premier rendu.
+  for (const item of items) {
+    if (item.kind === "star") item.body.visible = item.halo.visible = true;
+    else item.hole.mesh.visible = true;
+  }
   const onCompiled = () => {
     compiled = true;
     needsRender = true;
   };
   renderer.compileAsync(scene, camera).then(onCompiled, onCompiled);
-  showStars(meshes, 0, 0, 0);
+  showObjects(items, 0, 0, 0);
 
   // ---------- Caméra ----------
   function frameContext(stop: SizeStopKey, out: SizesFrameContext): SizesFrameContext {
@@ -439,11 +453,11 @@ function setupScene(
     const elevation = SIZES_VIEW_ELEV_DEG * DEG;
     camera.position.set(shown.tx, shown.dist * Math.sin(elevation), shown.dist * Math.cos(elevation));
     camera.lookAt(shown.tx, 0, 0);
-    // Plan lointain : au-delà de l'étoile dessinée la plus éloignée de la caméra.
+    // Plan lointain : au-delà de l'astre dessiné le plus éloigné de la caméra, encombrement compris.
     let farthest = shown.dist;
     for (let i = 0; i < visible; i++) {
-      const star = placed[i];
-      farthest = Math.max(farthest, Math.hypot(star.x - shown.tx, shown.dist) + star.extent);
+      const object = placed[i];
+      farthest = Math.max(farthest, Math.hypot(object.x - shown.tx, shown.dist) + object.extent);
     }
     camera.near = NEAR_SHARE * shown.dist;
     camera.far = FAR_MARGIN * farthest;
@@ -471,7 +485,7 @@ function setupScene(
     const placements = layoutSizeLabels({
       discs: drawnDiscs,
       count: slots.length,
-      current: sizeStarIndex(current),
+      current: sizeObjectIndex(current),
       sun: SUN_INDEX,
       metrics,
       sunMarker: sunRing,
@@ -488,14 +502,31 @@ function setupScene(
     }
   }
 
-  // ---------- Échelle graphique ----------
-  /** Disques à l'écran des astres dessinés (les `visible` premiers), vus par la caméra de l'image. */
+  // ---------- Astres à l'écran ----------
+  /**
+   * Disques à l'écran des astres dessinés (les `visible` premiers), vus par la caméra de l'image ; et, sur grand écran,
+   * la part visible de chacun près de la règle : un astre dont la silhouette déborde de la zone libre vers la règle
+   * s'efface sur 24 px (railSideFade), au lieu de passer dessous ou d'être coupé par le bord de l'écran.
+   */
   function updateDiscs(visible: number): void {
     lens.aspect = camera.aspect;
     lens.fovDeg = camera.fov;
     drawnDiscs.length = 0;
-    for (let i = 0; i < visible; i++) drawnDiscs.push(screenDisc(placed[i], shown, lens, view, discs[i]));
+    const zone = screenLayout.zone();
+    for (let i = 0; i < placed.length; i++) {
+      if (i >= visible) {
+        radiiPx[i] = Infinity;
+        fits[i] = 1;
+        continue;
+      }
+      const disc = screenDisc(placed[i], shown, lens, view, discs[i]);
+      drawnDiscs.push(disc);
+      radiiPx[i] = disc.radius;
+      fits[i] = zone ? railSideFade(rightEdgePx(placed[i], shown, lens, view.width), zone.right * view.width) : 1;
+    }
   }
+
+  // ---------- Échelle graphique ----------
 
   /**
    * Échelle graphique : en Soleils côte à côte quand le Soleil fait 24 px ou moins à l'écran, trait de n × 2 × px par R☉
@@ -602,14 +633,18 @@ function setupScene(
       lastTo = to;
       lastT = t;
       layoutSettled = screenLayout.settle(dt, reduced);
-      const fromIndex = sizeStarIndex(from);
-      const toIndex = sizeStarIndex(to);
+      const fromIndex = sizeObjectIndex(from);
+      const toIndex = sizeObjectIndex(to);
       const visible = visibleObjectCount(fromIndex, toIndex, t);
       updateCamera(from, to, t, visible);
-      showStars(meshes, fromIndex, toIndex, t);
+      // Caméra posée à cette image : ses matrices suivent avant de projeter et de placer les trous noirs.
+      camera.updateMatrixWorld();
+      updateDiscs(visible);
+      showObjects(items, fromIndex, toIndex, t, fits, radiiPx);
+      starfield.setLenses(updateBlackHoles(items, camera, radiiPx));
+      starfield.update(camera, view.height);
       renderer.render(scene, camera);
       const pxPerSolarRadius = pixelsPerSolarRadius(view.height, shown.dist, camera.fov);
-      updateDiscs(visible);
       updateLabels(current, updateScaleBar(pxPerSolarRadius));
     },
     dispose() {

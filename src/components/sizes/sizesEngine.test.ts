@@ -1,7 +1,11 @@
+import { Mesh, type Object3D, type ShaderMaterial } from "three";
 import type * as Three from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BLACK_HOLE_RENDER_ORDER } from "@/components/scene/blackHole";
+import { STARFIELD_RENDER_ORDER } from "@/components/scene/starfield";
 import { FakeRenderer } from "@/components/scene/testRenderer";
 import { SHARP_AFTER_STILL_FRAMES, createSizesScene, type SizesSceneOptions } from "@/components/sizes/sizesEngine";
+import { COMPARED_BLACK_HOLE_BY_KEY, type BlackHoleKey } from "@/lib/astro/blackHoles";
 import { sizesStore } from "@/lib/sizes/store";
 
 /*
@@ -207,5 +211,50 @@ describe("échelle graphique", () => {
     expect(scaleBar.text.textContent).toMatch(/^\d+ km$/);
     scene.dispose();
     expect(scaleBar.root).not.toHaveAttribute("data-visible");
+  });
+});
+
+describe("astres de la scène", () => {
+  /** Maillages de la scène que le moteur a rendue en dernier (le moteur factice reçoit la scène à chaque rendu). */
+  async function renderedMeshes(): Promise<{ meshes: Mesh[]; dispose(): void }> {
+    const render = vi.spyOn(FakeRenderer.prototype, "render");
+    const scene = createSizesScene(options());
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    scene.frame(1 / 60);
+    const drawn = render.mock.calls.at(-1)?.[0] as Object3D | undefined;
+    const meshes: Mesh[] = [];
+    drawn?.traverse((object) => {
+      if (object instanceof Mesh) meshes.push(object);
+    });
+    return { meshes, dispose: () => scene.dispose() };
+  }
+
+  /** Rectangle du trou noir `key`, reconnu à son rayon d'horizon. */
+  const blackHole = (meshes: readonly Mesh[], key: BlackHoleKey) =>
+    meshes.find(
+      (mesh) =>
+        mesh.renderOrder === BLACK_HOLE_RENDER_ORDER &&
+        (mesh.material as ShaderMaterial).uniforms.uRadius.value === COMPARED_BLACK_HOLE_BY_KEY[key].radiusSolar,
+    );
+
+  it("devrait poser dans la scène le fond étoilé, quatre trous noirs et dix étoiles avec leur halo", async () => {
+    const { meshes, dispose } = await renderedMeshes();
+    expect(meshes.filter((mesh) => mesh.renderOrder === STARFIELD_RENDER_ORDER)).toHaveLength(1);
+    expect(meshes.filter((mesh) => mesh.renderOrder === BLACK_HOLE_RENDER_ORDER)).toHaveLength(4);
+    expect(meshes).toHaveLength(1 + 4 + 2 * 10);
+    dispose();
+  });
+
+  it("devrait dessiner Cygnus X-1 dès l'introduction, et Sagittarius A* au repos sur son escale", async () => {
+    const atIntro = await renderedMeshes();
+    expect(blackHole(atIntro.meshes, "cygnus-x-1")?.visible).toBe(true);
+    expect(blackHole(atIntro.meshes, "sagittarius-a-star")?.visible).toBe(false);
+    atIntro.dispose();
+    sizesStore.update("sagittarius-a-star", "sagittarius-a-star", 0);
+    const atRest = await renderedMeshes();
+    expect(blackHole(atRest.meshes, "sagittarius-a-star")?.visible).toBe(true);
+    expect(blackHole(atRest.meshes, "m87-star")?.visible).toBe(false);
+    atRest.dispose();
   });
 });

@@ -1,4 +1,4 @@
-import { AdditiveBlending, Color, Group, Mesh, PlaneGeometry, ShaderMaterial, SphereGeometry } from "three";
+import { AdditiveBlending, Color, Mesh, ShaderMaterial, type PlaneGeometry, type SphereGeometry } from "three";
 import type { Uniform } from "@/components/scene/materials";
 import { clamp, lerp, smoothstep } from "@/components/scene/math";
 import {
@@ -9,8 +9,6 @@ import {
   type StarSurfaceUniforms,
 } from "@/components/scene/starSurface";
 import type { ComparedStar, SizeStarKey } from "@/lib/astro/starSizes";
-import type { PlacedObject } from "@/lib/sizes/layout";
-import { haloOpacity, visibleObjectCount } from "@/lib/sizes/sizesCamera";
 
 /*
  * Seul module de la page « Tailles » qui lit le matériau d'étoile de la scène (starSurface) : il l'adapte aux étoiles
@@ -144,68 +142,53 @@ function createHaloMaterial(look: HaloLook, opacity: Uniform<number>): ShaderMat
   });
 }
 
-/**
- * Étoiles du comparateur, alignées comme `placed` (même ordre que `stars`) : une sphère de rayon 1 mise à l'échelle
- * du rayon (en R☉, l'unité de la scène), un halo de 1,25 rayon, la surface au temps partagé `time`. Le Soleil porte
- * les taches de l'activité du jour si `sunSpots` est donné. Au départ, seule la plus petite est dessinée.
- */
-export function createStarMeshes(
-  stars: readonly ComparedStar[],
-  placed: readonly PlacedObject[],
-  { time, lite, sunSpots }: { time: Uniform<number>; lite: boolean; sunSpots: SunSpots | null },
-): { group: Group; meshes: SizesStarMesh[] } {
-  const group = new Group();
-  // Une sphère et un carré partagés par toutes les étoiles : seuls les matériaux diffèrent.
-  const sphere = new SphereGeometry(1, 96, 64);
-  const square = new PlaneGeometry(2, 2);
-  const meshes = placed.map((place, i) => {
-    const star = stars[i];
-    const spots = star.key === "sun" && sunSpots !== null;
-    const { material, uniforms: surface } = createStarSurfaceMaterial({
-      ...starLook(star),
-      spotGroups: spots ? SUN_SPOT_GROUPS : 0,
-      activity: spots ? sunSpots.activity : 0,
-      time,
-      lite,
-    });
-    const body = new Mesh(sphere, material);
-    if (spots) {
-      // Taches au temps affiché, recalculées juste avant le dessin du Soleil, seulement si ce temps a avancé.
-      const field = { time: Number.NaN, activity: sunSpots.activity, latitude: sunSpots.latitude, spin: () => SUN_SURFACE.spin };
-      const placeSpots = () => {
-        if (field.time === time.value) return;
-        field.time = time.value;
-        placeStarspots(surface, field);
-      };
-      placeSpots();
-      body.onBeforeRender = placeSpots;
-    }
-    body.position.x = place.x;
-    body.scale.setScalar(place.radius);
-    const opacity: Uniform<number> = { value: 1 };
-    const glow = haloLook(star);
-    const halo = new Mesh(square, createHaloMaterial(glow, opacity));
-    halo.position.x = place.x;
-    halo.scale.setScalar(glow.extent * place.radius);
-    // Disque orienté dans le shader : sa sphère englobante ne dit rien de ce qu'il couvre à l'écran.
-    halo.frustumCulled = false;
-    group.add(body, halo);
-    return { key: star.key, body, halo, haloOpacity: opacity, surface };
-  });
-  showStars(meshes, 0, 0, 0);
-  return { group, meshes };
-}
+/** Ordres de dessin : le corps d'une étoile, puis son halo additif (les trous noirs passent avant, blackHole.ts). */
+export const STAR_BODY_RENDER_ORDER = 0;
+export const STAR_HALO_RENDER_ORDER = 1;
 
 /**
- * Étoiles dessinées pendant le vol `fromIndex` → `toIndex` à l'avancement `t` (visibleObjectCount) et opacité de leur
- * halo (haloOpacity) ; un halo éteint n'est pas dessiné.
+ * Une étoile du comparateur, posée en `place` (centre x, rayon en R☉, l'unité de la scène) : une sphère de rayon 1 mise
+ * à l'échelle, un halo de son étendue (haloLook), la surface au temps partagé `time`. Le Soleil porte les taches de
+ * l'activité du jour si `sunSpots` est donné. Le corps est transparent : son opacité (`surface.uOpacity`) l'efface près
+ * de la règle. `sphere` et `square` sont partagés par toutes les étoiles : seuls les matériaux diffèrent.
  */
-export function showStars(meshes: readonly SizesStarMesh[], fromIndex: number, toIndex: number, t: number): void {
-  const count = visibleObjectCount(fromIndex, toIndex, t);
-  meshes.forEach((star, i) => {
-    const visible = i < count;
-    star.body.visible = visible;
-    star.haloOpacity.value = visible ? haloOpacity(i, fromIndex, toIndex, t) : 0;
-    star.halo.visible = star.haloOpacity.value > 0;
+export function createStarMesh(
+  star: ComparedStar,
+  place: { x: number; radius: number },
+  options: { time: Uniform<number>; lite: boolean; sunSpots: SunSpots | null; sphere: SphereGeometry; square: PlaneGeometry },
+): SizesStarMesh {
+  const { time, lite, sunSpots, sphere, square } = options;
+  const spots = star.key === "sun" && sunSpots !== null;
+  const { material, uniforms: surface } = createStarSurfaceMaterial({
+    ...starLook(star),
+    spotGroups: spots ? SUN_SPOT_GROUPS : 0,
+    activity: spots ? sunSpots.activity : 0,
+    time,
+    lite,
   });
+  material.transparent = true;
+  const body = new Mesh(sphere, material);
+  body.renderOrder = STAR_BODY_RENDER_ORDER;
+  if (spots) {
+    // Taches au temps affiché, recalculées juste avant le dessin du Soleil, seulement si ce temps a avancé.
+    const field = { time: Number.NaN, activity: sunSpots.activity, latitude: sunSpots.latitude, spin: () => SUN_SURFACE.spin };
+    const placeSpots = () => {
+      if (field.time === time.value) return;
+      field.time = time.value;
+      placeStarspots(surface, field);
+    };
+    placeSpots();
+    body.onBeforeRender = placeSpots;
+  }
+  body.position.x = place.x;
+  body.scale.setScalar(place.radius);
+  const opacity: Uniform<number> = { value: 1 };
+  const glow = haloLook(star);
+  const halo = new Mesh(square, createHaloMaterial(glow, opacity));
+  halo.renderOrder = STAR_HALO_RENDER_ORDER;
+  halo.position.x = place.x;
+  halo.scale.setScalar(glow.extent * place.radius);
+  // Disque orienté dans le shader : sa sphère englobante ne dit rien de ce qu'il couvre à l'écran.
+  halo.frustumCulled = false;
+  return { key: star.key, body, halo, haloOpacity: opacity, surface };
 }

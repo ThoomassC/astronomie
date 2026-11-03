@@ -35,7 +35,7 @@ describe("route /[lang]/tailles", () => {
     await expect(generateMetadata(props("es"))).resolves.toEqual(pageMetadata("sizes", "es"));
   });
 
-  it("devrait poser l'introduction puis une section par étoile, dans l'ordre des tailles, à l'ancre de chacune", async () => {
+  it("devrait poser l'introduction puis une section par astre, dans l'ordre des tailles, à l'ancre de chacun", async () => {
     await renderSizes("fr");
     const main = screen.getByRole("main");
     expect(main).toHaveAttribute("id", MAIN_ID);
@@ -43,16 +43,15 @@ describe("route /[lang]/tailles", () => {
     expect(sections).toEqual(SIZE_STOP_ORDER.map((key) => ["SECTION", SIZE_STOP_IDS[key], key]));
   });
 
-  it("devrait finir par la plus grande étoile, une escale comme les autres, qui ramène à la plus petite", async () => {
+  it("devrait finir par le plus grand astre, le trou noir du Fer à cheval cosmique, qui ramène au plus petit", async () => {
     await renderSizes("fr");
+    const sections = screen.getByRole("main").children;
+    expect(sections).toHaveLength(15);
     const last = screen.getByRole("main").lastElementChild;
     expect(last).toHaveClass("stop");
-    expect(last?.id).toBe("vy-canis-majoris");
+    expect(last?.id).toBe("fer-a-cheval-cosmique");
     if (!(last instanceof HTMLElement)) throw new Error("Dernière section absente");
-    expect(within(last).getByRole("link", { name: "Revenir au plus petit" })).toHaveAttribute(
-      "href",
-      "#proxima-du-centaure",
-    );
+    expect(within(last).getByRole("link", { name: "Revenir au plus petit" })).toHaveAttribute("href", "#cygnus-x-1");
   });
 
   it("devrait suivre l'ordre de lecture : évitement, barre, règle, contenu, pied de page", async () => {

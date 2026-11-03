@@ -1,19 +1,17 @@
-import { Color } from "three";
+import { Color, PlaneGeometry, SphereGeometry } from "three";
 import { describe, expect, it } from "vitest";
 import { wienCoefficients } from "@/components/scene/starSurface";
 import { neutralToneMap } from "@/components/scene/toneMapping.testUtils";
-import { createStarMeshes, haloLook, showStars, starLook } from "@/components/sizes/starMeshes";
+import { createStarMesh, haloLook, starLook } from "@/components/sizes/starMeshes";
 import { COMPARED_STARS, type ComparedStar, type SizeStarKey } from "@/lib/astro/starSizes";
-import { placeObjects } from "@/lib/sizes/layout";
-import { layoutInput } from "@/lib/sizes/objects";
 
 /*
- * Étoiles 3D de la page « Tailles », construites sans WebGL (Three crée maillages et matériaux sans rendu) :
- * positions et tailles de la disposition, étoiles dessinées et halo de celle qui arrive pendant un vol.
+ * Étoiles 3D de la page « Tailles », construites sans WebGL (Three crée maillages et matériaux sans rendu) : aspect de
+ * chaque étoile, sphère, halo et surface. Leur pose dans la scène et leur affichage pendant les vols se testent dans
+ * sizesObjects.test.ts.
  */
 
-const PLACED = placeObjects(COMPARED_STARS.map(layoutInput));
-const INDICES = COMPARED_STARS.map((_, i) => i);
+const PLACE = { x: -42, radius: 8.97 };
 
 function star(key: SizeStarKey): ComparedStar {
   const found = COMPARED_STARS.find((candidate) => candidate.key === key);
@@ -21,76 +19,49 @@ function star(key: SizeStarKey): ComparedStar {
   return found;
 }
 
-const build = () => createStarMeshes(COMPARED_STARS, PLACED, { time: { value: 0 }, lite: false, sunSpots: null });
-
-describe("createStarMeshes", () => {
-  it("devrait poser une sphère par étoile, à la position x de la disposition, mise à l'échelle de son rayon", () => {
-    const { meshes } = build();
-    expect(meshes.map((mesh) => [mesh.key, mesh.body.position.x, mesh.body.scale.x])).toEqual(
-      PLACED.map((placed) => [placed.key, placed.x, placed.radius]),
-    );
+/** Étoile 3D d'une étoile des données, posée en PLACE. */
+const build = (key: SizeStarKey, options: { sunSpots?: { activity: number; latitude: number }; time?: { value: number } } = {}) =>
+  createStarMesh(star(key), PLACE, {
+    time: options.time ?? { value: 0 },
+    lite: false,
+    sunSpots: options.sunSpots ?? null,
+    sphere: new SphereGeometry(1, 8, 6),
+    square: new PlaneGeometry(2, 2),
   });
 
-  it("devrait entourer chaque étoile d'un halo de son étendue (1,25 rayon, 1,7 pour les chaudes), centré sur elle", () => {
-    const { meshes } = build();
-    expect(meshes.map((mesh) => [mesh.halo.position.x, mesh.halo.scale.x])).toEqual(
-      PLACED.map((placed, i) => [placed.x, expect.closeTo(haloLook(COMPARED_STARS[i]).extent * placed.radius, 12)]),
-    );
+describe("createStarMesh", () => {
+  it("devrait poser une sphère à la place donnée, mise à l'échelle du rayon", () => {
+    const mesh = build("pollux");
+    expect(mesh.key).toBe("pollux");
+    expect([mesh.body.position.x, mesh.body.scale.x]).toEqual([-42, 8.97]);
   });
 
-  it("devrait ranger sphères et halos dans un seul groupe, à ajouter à la scène", () => {
-    const { group, meshes } = build();
-    expect(group.children).toHaveLength(2 * meshes.length);
+  it("devrait l'entourer d'un halo de son étendue (1,25 rayon, 1,7 pour les chaudes), centré sur elle", () => {
+    expect(build("pollux").halo.scale.x).toBeCloseTo(1.25 * 8.97, 12);
+    expect(build("rigel").halo.scale.x).toBeCloseTo(1.7 * 8.97, 12);
+    expect(build("rigel").halo.position.x).toBe(-42);
   });
 
-  it("devrait faire partager à toutes les surfaces le même temps affiché", () => {
+  it("devrait faire partager à sa surface le temps affiché donné", () => {
     const time = { value: 0 };
-    const { meshes } = createStarMeshes(COMPARED_STARS, PLACED, { time, lite: false, sunSpots: null });
-    expect(meshes.every((mesh) => mesh.surface.uTime === time)).toBe(true);
+    expect(build("sun", { time }).surface.uTime).toBe(time);
   });
 
   it("devrait réserver les taches au Soleil quand on lui donne l'activité du jour", () => {
-    const { meshes } = createStarMeshes(COMPARED_STARS, PLACED, {
-      time: { value: 0 },
-      lite: false,
-      sunSpots: { activity: 0.6, latitude: 0.25 },
-    });
-    expect(meshes.filter((mesh) => mesh.surface.uSpotA.value.length > 0).map((mesh) => mesh.key)).toEqual(["sun"]);
+    const sunSpots = { activity: 0.6, latitude: 0.25 };
+    expect(build("sun", { sunSpots }).surface.uSpotA.value.length).toBeGreaterThan(0);
+    expect(build("arcturus", { sunSpots }).surface.uSpotA.value).toHaveLength(0);
   });
 
-  it("devrait ne montrer au départ que la plus petite étoile (repos sur l'introduction)", () => {
-    const { meshes } = build();
-    expect(meshes.map((mesh) => mesh.body.visible)).toEqual(INDICES.map((i) => i === 0));
-  });
-});
-
-describe("showStars", () => {
-  it("devrait dessiner les étoiles 0 à 3 au repos sur l'étoile 3, halos pleins", () => {
-    const { meshes } = build();
-    showStars(meshes, 3, 3, 0);
-    expect(meshes.map((mesh) => mesh.body.visible)).toEqual(INDICES.map((i) => i <= 3));
-    expect(meshes.slice(0, 4).map((mesh) => mesh.haloOpacity.value)).toEqual([1, 1, 1, 1]);
+  it("devrait rendre son corps transparent, pleinement opaque au départ, pour l'effacer près de la règle", () => {
+    const mesh = build("rigel");
+    expect(mesh.body.material.transparent).toBe(true);
+    expect(mesh.surface.uOpacity.value).toBe(1);
   });
 
-  it("devrait dessiner l'étoile suivante dès le départ du vol, son halo en fondu (3 → 4 à t = 0,15 : 0,5)", () => {
-    const { meshes } = build();
-    showStars(meshes, 3, 4, 0.15);
-    expect(meshes.map((mesh) => mesh.body.visible)).toEqual(INDICES.map((i) => i <= 4));
-    expect(meshes[4].haloOpacity.value).toBeCloseTo(0.5, 12);
-    expect(meshes[3].haloOpacity.value).toBe(1);
-  });
-
-  it("devrait éteindre le halo de l'étoile qui repart à la fin d'un vol retour (4 → 3 à t = 0,85 : 0,5)", () => {
-    const { meshes } = build();
-    showStars(meshes, 4, 3, 0.85);
-    expect(meshes[4].body.visible).toBe(true);
-    expect(meshes[4].haloOpacity.value).toBeCloseTo(0.5, 12);
-  });
-
-  it("devrait cacher le halo d'une étoile cachée, et celui d'une étoile dont le halo est éteint", () => {
-    const { meshes } = build();
-    showStars(meshes, 3, 4, 0);
-    expect(meshes.map((mesh) => mesh.halo.visible)).toEqual(INDICES.map((i) => i <= 3));
+  it("devrait dessiner le corps, puis le halo additif", () => {
+    const mesh = build("sun");
+    expect(mesh.body.renderOrder).toBeLessThan(mesh.halo.renderOrder);
   });
 });
 
