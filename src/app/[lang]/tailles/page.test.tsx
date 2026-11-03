@@ -49,7 +49,7 @@ describe("route /[lang]/tailles", () => {
     expect(last).toHaveClass("stop");
     expect(last?.id).toBe("vy-canis-majoris");
     if (!(last instanceof HTMLElement)) throw new Error("Dernière section absente");
-    expect(within(last).getByRole("link", { name: "Revenir à la plus petite étoile" })).toHaveAttribute(
+    expect(within(last).getByRole("link", { name: "Revenir au plus petit" })).toHaveAttribute(
       "href",
       "#proxima-du-centaure",
     );
@@ -82,7 +82,7 @@ describe("route /[lang]/tailles", () => {
 
   it("devrait parler la langue de l'adresse, des plaques à la règle (es)", async () => {
     await renderSizes("es");
-    expect(screen.getByRole("heading", { level: 1, name: "Diez estrellas, en fila." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Estrellas y agujeros negros, en fila." })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Sirio A" })).toBeInTheDocument();
     expect(
       screen.getByRole("navigation", { name: "Escala de tamaños, del astro más pequeño al más grande" }),

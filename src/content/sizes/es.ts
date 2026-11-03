@@ -1,21 +1,26 @@
+import { SHADOW_RADIUS_RS } from "@/lib/astro/schwarzschild";
 import { formatNumber } from "@/lib/format";
 import type { SizesContent } from "./types";
 
 /** Nombre écrit comme Intl l'écrit en espagnol d'Espagne (point dès 5 chiffres, aucun séparateur à 4). */
 const n = (value: number) => formatNumber(value, 0, "es");
 
+/** L'ombre, √27/2 ≈ 2,6 fois l'horizon (schwarzschild.ts). */
+const shadowTimes = formatNumber(SHADOW_RADIUS_RS, 1, "es");
+
 /*
- * Même contenu que le français (valeurs et comparaisons des données v2, § 1 ; introduction et mots de couleur du
- * design v2, § 4), rédigé en espagnol d'Espagne, en tutoyant, pour un public de 12 ans et plus.
+ * Même contenu que le français (valeurs et comparaisons des données v2, § 1, et de la fiche des trous noirs ;
+ * introduction et mots de couleur du design v2, § 4), rédigé en espagnol d'Espagne, en tutoyant, pour un public de
+ * 12 ans et plus. Les milliards se disent en milliers de millions (« 6500 millones »).
  */
 export const SIZES_ES: SizesContent = {
   intro: {
-    title: "Diez estrellas, en fila.",
-    text: "Desplázate: cada estrella es más grande que la anterior y todas están a la misma escala. El tamaño se cuenta en radios solares (R☉): 764 R☉ es 764 veces el radio del Sol.",
-    note: "Los tamaños están a escala; las estrellas, en realidad muy lejos unas de otras, aparecen aquí en fila.",
+    title: "Estrellas y agujeros negros, en fila.",
+    text: `Desplázate: cada astro es más grande que el anterior y todos están a la misma escala. El tamaño se cuenta en radios solares (R☉): 764 R☉ es 764 veces el radio del Sol. Un agujero negro no tiene superficie: se mide por su sombra, el disco negro que dibuja la luz que desvía, ${shadowTimes} veces más ancho que su horizonte.`,
+    note: "Los tamaños están a escala; los astros, en realidad muy lejos unos de otros, aparecen aquí en fila. Los agujeros negros son representaciones calculadas: la luz sigue la curvatura del espacio.",
     sceneDescription:
-      "Al fondo, una vista en 3D alinea las diez estrellas con sus tamaños relativos reales; la cámara se aleja de una estrella a otra a medida que te desplazas.",
-    start: "Empezar por la más pequeña",
+      "Al fondo, una vista en 3D alinea diez estrellas y cuatro agujeros negros con sus tamaños relativos reales; la cámara se aleja de un astro a otro a medida que te desplazas.",
+    start: "Empezar por el más pequeño",
   },
   stars: {
     "proxima-centauri": {
@@ -73,6 +78,39 @@ export const SIZES_ES: SizesContent = {
       caveat: `Antes de 2012, las estimaciones iban de 600 a ${n(3000)} R☉. Puede que otras estrellas sean más grandes, pero su tamaño aún es demasiado incierto para compararlas.`,
     },
   },
+  blackHoles: {
+    "cygnus-x-1": {
+      kind: "agujero negro estelar",
+      hook: "Más de veinte veces la masa del Sol, en una sombra de unos pocos cientos de kilómetros.",
+      lede: "Cygnus X-1 fue el primer objeto que los astrónomos reconocieron como un agujero negro, a principios de los años setenta. Gira cada 5,6 días alrededor de una estrella supergigante azul y se traga su viento. En 1974, el físico Stephen Hawking apostó a que no era un agujero negro; reconoció su derrota en 1990. Su horizonte mide solo unos 125 km de diámetro: la Tierra es cien veces más ancha.",
+      simplification:
+        "Representación calculada: la luz sigue la curvatura del espacio alrededor de un agujero negro sin rotación. El disco, que brilla sobre todo en rayos X, toma el color de un cuerpo negro a varios millones de grados; se ve más inclinado que en la realidad, para mostrar su imagen desviada por encima de la sombra.",
+      caveat: "Su masa se discute: un estudio de 2025 lo encuentra bastante más ligero que la medida de 2021 que se usa aquí.",
+    },
+    "sagittarius-a-star": {
+      kind: "agujero negro supermasivo",
+      hook: "4,3 millones de veces la masa del Sol, y una sombra apenas más ancha que Aldebarán.",
+      lede: `Sagitario A* es el agujero negro del centro de nuestra galaxia, a ${n(27_000)} años luz. Los astrónomos lo pesaron siguiendo las estrellas que giran a su alrededor: la estrella S2 le da la vuelta en 16 años. Ese seguimiento les valió el premio Nobel de Física de 2020 a Reinhard Genzel y Andrea Ghez. Es muy tranquilo: en total, solo brilla más o menos como unos cientos de soles. Su primera imagen se publicó en 2022.`,
+      simplification:
+        "Representación calculada: la luz sigue la curvatura del espacio alrededor de un agujero negro sin rotación. El anillo, tenue y visto casi de frente, está en falso color, como la imagen del Event Horizon Telescope tomada en ondas de radio: en luz visible, el polvo de la Galaxia lo oculta.",
+    },
+    "m87-star": {
+      kind: "agujero negro supermasivo",
+      hook: "El primer agujero negro fotografiado: su sombra engulliría todo el sistema solar.",
+      lede: `M87* está en el corazón de la galaxia gigante M87, a 55 millones de años luz. Su imagen, publicada el 10 de abril de 2019 por el Event Horizon Telescope, fue la primera de un agujero negro: hubo que conectar radiotelescopios de toda la Tierra para verlo con tanto detalle. Tiene unas ${n(1500)} veces la masa del de nuestra galaxia y lanza un chorro de partículas casi a la velocidad de la luz, de unos ${n(5000)} años luz de largo. Aun así, solo se traga más o menos el equivalente de un planeta Júpiter al año.`,
+      simplification:
+        "Representación calculada: la luz sigue la curvatura del espacio alrededor de un agujero negro sin rotación. El anillo está en falso color, como la imagen del Event Horizon Telescope tomada en ondas de radio; el chorro, azulado como en las imágenes del Hubble, es mucho más corto que en la realidad.",
+      caveat: `Su masa depende del método: el anillo del Event Horizon Telescope da ${n(6500)} millones de masas solares; el movimiento de las estrellas de su galaxia, unos ${n(5400)} millones.`,
+    },
+    "cosmic-horseshoe": {
+      kind: "agujero negro ultramasivo",
+      hook: "Uno de los agujeros negros más masivos jamás pesados, quizá el récord.",
+      lede: `Este agujero negro duerme en el corazón de la galaxia LRG 3-757, cuya masa desvía la luz de una galaxia más lejana en un arco casi cerrado: la «Herradura Cósmica». En 2025, unos astrónomos lo pesaron de dos maneras, por esa desviación y por la velocidad de las estrellas cercanas a su centro, cerca de 400 km/s. Resultado: unas ${n(36_000)} millones de veces la masa del Sol, más de ${n(8000)} veces la del de nuestra galaxia. No se traga casi nada, así que no brilla. Su luz ha viajado casi ${n(5000)} millones de años para llegar hasta nosotros.`,
+      simplification:
+        "Representación calculada: la luz sigue la curvatura del espacio alrededor de un agujero negro sin rotación. No se traga nada: ni disco ni chorro, solo su sombra sobre la luz desviada de las viejas estrellas amarillo anaranjadas de su galaxia. La herradura, producida por toda la galaxia y mucho más grande, no está dibujada.",
+      caveat: `Solo un estudio lo ha pesado, y su masa depende del modelo. A menudo se presenta a TON 618 como el agujero negro más grande conocido, hasta ${n(66_000)} millones de soles, pero su masa solo se estima a partir de la luz de su cuásar y podría ser mucho menor.`,
+    },
+  },
   facts: {
     radius: "Radio",
     type: "Tipo",
@@ -80,6 +118,10 @@ export const SIZES_ES: SizesContent = {
     distance: "Distancia a la Tierra",
     comparison: "Para comparar",
     sunDistance: "8,3 minutos luz",
+    shadow: "Radio de la sombra",
+    horizon: "Radio del horizonte",
+    mass: "Masa",
+    blackHoleType: "Tipo",
   },
   tints: { orange: "anaranjada", "pale-orange": "naranja pálido", white: "blanca", "bluish-white": "blanco azulado" },
   vsSun: {
@@ -88,5 +130,5 @@ export const SIZES_ES: SizesContent = {
     reference: "nuestra referencia",
   },
   thermo: { cooler: "más fría", hotter: "más caliente" },
-  plate: { story: "Leer la ficha", restart: "Volver a la estrella más pequeña", sources: "Fuentes:" },
+  plate: { story: "Leer la ficha", restart: "Volver al más pequeño", sources: "Fuentes:" },
 };

@@ -170,6 +170,6 @@ describe("StarPlate, arrondis et lien de retour", () => {
 
   it("devrait proposer de revenir à la plus petite étoile quand la page le demande", () => {
     render(<StarPlate star={star("vy-canis-majoris")} locale="fr" restartTo="proxima-centauri" />);
-    expect(screen.getByRole("link", { name: "Revenir à la plus petite étoile" })).toHaveAttribute("href", "#proxima-du-centaure");
+    expect(screen.getByRole("link", { name: "Revenir au plus petit" })).toHaveAttribute("href", "#proxima-du-centaure");
   });
 });
