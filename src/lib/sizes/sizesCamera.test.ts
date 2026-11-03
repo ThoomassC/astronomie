@@ -214,14 +214,18 @@ const OBJECTS = placeObjects(COMPARED_OBJECTS.map(layoutInput));
 /**
  * Vues de référence, champ réglé comme au voyage (50° sous un rapport largeur / hauteur de 0,9, 36° au-dessus) :
  * grand écran avec zone libre ; téléphone et tablette en portrait, bande libre entre la barre haute et la plaque
- * repliée ; téléphone en paysage, sans bande ni zone (écran bas, cas le plus exigeant). `hiddenLeftOf` : bord gauche
- * de ce qui est visible.
+ * repliée ; téléphone en paysage, sans bande ni zone (écran bas, cas le plus exigeant), puis avec la zone étroite que
+ * la page lui laisse. `hiddenLeftOf` : bord gauche de ce qui est visible.
  */
 const VIEWS = [
   { name: "1 440 × 900, zone 0,45–0,85", hiddenLeftOf: 0.45, ctx: { aspect: 1440 / 900, fovDeg: 36, band: null, zone: { left: 0.45, right: 0.85 } } },
   { name: "375 × 812, bande 0,09–0,62", hiddenLeftOf: 0, ctx: { aspect: 375 / 812, fovDeg: 50, band: { top: 0.09, bottom: 0.62 }, zone: null } },
   { name: "820 × 1 180, bande 0,06–0,70", hiddenLeftOf: 0, ctx: { aspect: 820 / 1180, fovDeg: 50, band: { top: 0.06, bottom: 0.7 }, zone: null } },
   { name: "844 × 390, sans bande ni zone", hiddenLeftOf: 0, ctx: { aspect: 844 / 390, fovDeg: 36, band: null, zone: null } },
+  // Vues de la demande, telles que la page les borde : iPhone 390 × 844 ; téléphone en paysage, zone libre étroite à
+  // droite des plaques (la règle cède la place au menu).
+  { name: "390 × 844, bande 0,085–0,628", hiddenLeftOf: 0, ctx: { aspect: 390 / 844, fovDeg: 50, band: { top: 0.085, bottom: 0.628 }, zone: null } },
+  { name: "844 × 390, zone 0,656–0,972", hiddenLeftOf: 0.656, ctx: { aspect: 844 / 390, fovDeg: 36, band: null, zone: { left: 0.656, right: 0.972 } } },
 ] as const satisfies readonly { name: string; hiddenLeftOf: number; ctx: SizesFrameContext }[];
 
 /*
