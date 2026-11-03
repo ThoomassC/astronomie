@@ -43,6 +43,18 @@ export const TEXTURE_KEYS = Object.keys(FILES) as TextureKey[];
 /** Rayons couverts par la texture des anneaux de Saturne, en rayons équatoriaux (mesurés sur l'image). */
 export const SATURN_RING = { inner: 1.159, outer: 2.337 } as const;
 
+/** Durée du fondu de la couleur unie d'un astre à sa carte photographique, à l'arrivée de celle-ci, en secondes. */
+export const TEXTURE_FADE_SECONDS = 0.4;
+
+/**
+ * Mélange de la couleur unie à la carte, `elapsed` secondes après l'installation de la carte : 0 à l'arrivée, 1 au bout
+ * de TEXTURE_FADE_SECONDS, en douceur aux deux bouts (smoothstep) : la texture se dévoile au lieu de surgir.
+ */
+export function textureFade(elapsed: number): number {
+  const t = Math.min(1, Math.max(0, elapsed / TEXTURE_FADE_SECONDS));
+  return t * t * (3 - 2 * t);
+}
+
 export interface DeviceHints {
   /** Pointeur principal tactile. */
   coarsePointer: boolean;

@@ -127,7 +127,7 @@ import { DEG, TAU, clamp, easeFactor, lerp, smoothstep } from "./math";
 import { createRenderer, releaseRenderer } from "./renderer";
 import { createScreenLayout } from "./screenLayout";
 import { createTextureStream } from "./textureLoader";
-import { pickTextureTier, textureLoadOrder, type TextureKey } from "./textureSet";
+import { TEXTURE_FADE_SECONDS, pickTextureTier, textureFade, textureLoadOrder, type TextureKey } from "./textureSet";
 
 export type BodyKey = "sun" | PlanetKey;
 
@@ -247,8 +247,6 @@ const RING_LABEL_ANGLES: readonly number[] = [
 ];
 /** Ceintures, dans l'ordre de `belts` : leur opacité de référence est pondérée par le zoom cosmique. */
 const BELT_SPECS = [ASTEROID_BELT, KUIPER_BELT] as const;
-/** Durée du passage de la couleur unie à la carte photographique. */
-const TEXTURE_FADE_SECONDS = 0.6;
 /** Dérive des nuages terrestres par rapport au sol, en tours par seconde (temps en marche). */
 const CLOUD_DRIFT = 0.005;
 /** Si la compilation asynchrone des shaders traîne, on rend quand même (compilation au premier rendu). */
@@ -558,14 +556,19 @@ function setupScene(
     texture.anisotropy = slot.sharp ? anisotropy : 1;
   }
   let textures = createTextureStream(tier, configureTexture);
-  const fading = new Set<Uniform<number>>();
+  /** Fondus en cours : mélange de chaque carte arrivée, et temps écoulé depuis son installation (s). */
+  const fading = new Map<Uniform<number>, number>();
   let loadStop: StopKey | null = null;
   let loadOrder: TextureKey[] = [];
   /** Images à attendre avant d'envoyer la carte suivante au GPU (quelques ms pour une 2K). */
   let installCooldown = 0;
 
-  /** Demande les cartes suivantes, installe au plus une carte arrivée, avance les fondus. */
-  function updateTextures(journey: JourneyState, dt: number, reduced: boolean): void {
+  /**
+   * Demande les cartes suivantes, installe au plus une carte arrivée, avance les fondus : la couleur unie de l'astre
+   * cède à sa carte en TEXTURE_FADE_SECONDS (textureFade). En mouvement réduit aussi : c'est un fondu enchaîné, sans
+   * mouvement, et sans lui la texture surgissait d'un coup. Seule la carte d'un objet caché se pose d'emblée.
+   */
+  function updateTextures(journey: JourneyState, dt: number): void {
     if (journey.current !== loadStop) {
       loadStop = journey.current;
       loadOrder = textureLoadOrder(journey.current);
@@ -584,17 +587,19 @@ function setupScene(
         // ni d'image à rendre. La carte est déjà sur le GPU quand l'objet réapparaît.
         const hidden = arrived.key === "milkyWay" ? !sky.group.visible : !solarRoot.visible;
         for (const mix of slot.mixes) {
-          if (reduced || hidden) mix.value = 1;
-          else fading.add(mix);
+          mix.value = hidden ? 1 : textureFade(0);
+          if (!hidden) fading.set(mix, 0);
         }
         installCooldown = tier === "2k" ? 4 : 2;
         if (!hidden) needsRender = true;
       }
     }
     if (fading.size === 0) return;
-    for (const mix of fading) {
-      mix.value = Math.min(1, mix.value + dt / TEXTURE_FADE_SECONDS);
-      if (mix.value === 1) fading.delete(mix);
+    for (const [mix, elapsed] of fading) {
+      const next = elapsed + dt;
+      mix.value = textureFade(next);
+      if (next >= TEXTURE_FADE_SECONDS) fading.delete(mix);
+      else fading.set(mix, next);
     }
     needsRender = true;
   }
@@ -1523,7 +1528,7 @@ function setupScene(
       if (disposed) return;
       const journey = journeyStore.get();
       const reduced = reducedMotion.matches;
-      updateTextures(journey, dt, reduced);
+      updateTextures(journey, dt);
       if (!compiled) {
         if (++compileWaitFrames < MAX_COMPILE_WAIT_FRAMES) return;
         compiled = true;
