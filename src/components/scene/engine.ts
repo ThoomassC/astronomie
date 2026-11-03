@@ -112,6 +112,8 @@ import {
   type ScreenBox,
 } from "./extragalactic";
 import {
+  LABEL_GAP_PX,
+  LABEL_HALO_PX,
   anchoredBox,
   clearanceShift,
   markerLayouts,
@@ -119,6 +121,7 @@ import {
   placeMarkedLabel,
   pointBox,
   type LabelBox,
+  type MarkedPlacement,
   type MarkerLayout,
 } from "./labels";
 import { SOLAR_HIDDEN_ZOOM, galaxyMagnification, layerWeights } from "./layers";
@@ -363,7 +366,10 @@ function showLabel(slot: LabelSlot, left: number, top: number, alpha: number): v
   setLabelShown(slot, true);
 }
 
-/** Repère et texte d'une étiquette, mesurés dans sa forme normale ; `null` s'il lui manque l'un ou l'autre. */
+/**
+ * Repère et texte d'une étiquette, mesurés dans sa forme normale ; `null` s'il lui manque l'un ou l'autre. Les étiquettes
+ * du ciel profond (`data-deep`), posées à nu, portent un halo de nuit, réservé autour de leur texte (LABEL_HALO_PX).
+ */
 function measureMarker(element: HTMLElement): LabelMarker | null {
   // L'étiquette est positionnée : les décalages de ses enfants lui sont relatifs.
   const dot = element.querySelector<HTMLElement>(":scope > i");
@@ -380,6 +386,7 @@ function measureMarker(element: HTMLElement): LabelMarker | null {
       textWidth: text.offsetWidth,
       textHeight: text.offsetHeight,
       detailWidth: text.querySelector<HTMLElement>(".dist")?.offsetWidth ?? 0,
+      halo: element.hasAttribute("data-deep") ? LABEL_HALO_PX : 0,
     }),
     dotY,
     dotWidth: dot.offsetWidth,
@@ -743,7 +750,12 @@ function setupScene(
       : [];
   });
   let obstacleBoxes: LabelBox[] = [];
+  /** Boîtes déjà prises : règle des distances, étiquettes posées et leurs repères. */
   const occupied: LabelBox[] = [];
+  /** Points visibles (point-Soleil, étoiles) : ni le texte d'une étiquette à repère ni son halo ne les recouvrent. */
+  const points: LabelBox[] = [];
+  /** Étiquettes à repère : points évités halo compris, et air entre voisines. Partagé : rien n'est alloué par image. */
+  const markedPlacement: MarkedPlacement = { points, gap: LABEL_GAP_PX };
   /** Position projetée de la dernière ancre, en px (la profondeur reste dans `projected.z`). */
   const onScreen = { x: 0, y: 0 };
 
@@ -1350,7 +1362,15 @@ function setupScene(
     if (!marker) return false;
     project(at);
     const { x, y } = onScreen;
-    const index = placeMarkedLabel({ x, y, depth: projected.z }, marker.layouts, view.width, view.height, occupied);
+    const index = placeMarkedLabel(
+      { x, y, depth: projected.z },
+      marker.layouts,
+      view.width,
+      view.height,
+      occupied,
+      0,
+      markedPlacement,
+    );
     if (index === null) return false;
     const layout = marker.layouts[index];
     const halfWidth = marker.dotWidth / 2;
@@ -1389,6 +1409,7 @@ function setupScene(
       view.height,
       occupied,
       clearance,
+      markedPlacement,
     );
     if (index === null) return false;
     const layout = marker.layouts[index];
@@ -1429,10 +1450,13 @@ function setupScene(
     if (alpha < LABEL_MIN_ALPHA || !fitMarkedSlot(slot, at, alpha)) setLabelShown(slot, false);
   }
 
-  /** Réserve le point de `size` px posé en `at` (coordonnées monde) : nulle étiquette du ciel profond ne le recouvre. */
+  /**
+   * Réserve le point de `size` px posé en `at` (coordonnées monde) : nulle étiquette du ciel profond ne le recouvre, ni
+   * son texte ni le halo de nuit qui l'entoure (markedPlacement).
+   */
   function reservePoint(at: Vector3, size: number): void {
     project(at);
-    if (projected.z <= 1) occupied.push(pointBox(onScreen.x, onScreen.y, size));
+    if (projected.z <= 1) points.push(pointBox(onScreen.x, onScreen.y, size));
   }
 
   /**
@@ -1477,6 +1501,7 @@ function setupScene(
     const sunFade = weights.sunLabel;
     occupied.length = 0;
     occupied.push(...obstacleBoxes);
+    points.length = 0;
     for (const key of LABEL_PRIORITY) {
       if (key !== "sun") {
         placeSlot(bodySlots.get(key), anchor.copy(bodyOf(key).position).multiplyScalar(solarScale), alpha * weights.planetLabels);
@@ -1489,8 +1514,8 @@ function setupScene(
       }
     }
     /*
-     * Points visibles : nul texte du ciel profond ne les recouvre. « Soleil », texte à nu qui ne masque aucun point,
-     * est placé avant eux : sur téléphone, les points qui serrent le Soleil (Lacaille 9352,
+     * Points visibles : nul texte du ciel profond ne les recouvre, ni son halo de nuit. « Soleil », texte sans ce halo
+     * qui ne masque aucun point, est placé avant eux : sur téléphone, les points qui serrent le Soleil (Lacaille 9352,
      * Lalande 21185, Epsilon Indi, Luyten 726-8) ne lui laisseraient aucune place.
      */
     if (weights.sunPoint > 0) {
