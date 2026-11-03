@@ -10,7 +10,7 @@ import {
 } from "@/components/scene/starSurface";
 import type { ComparedStar, SizeStarKey } from "@/lib/astro/starSizes";
 import type { PlacedObject } from "@/lib/sizes/layout";
-import { haloOpacity, visibleStarCount } from "@/lib/sizes/sizesCamera";
+import { haloOpacity, visibleObjectCount } from "@/lib/sizes/sizesCamera";
 
 /*
  * Seul module de la page « Tailles » qui lit le matériau d'étoile de la scène (starSurface) : il l'adapte aux étoiles
@@ -156,11 +156,11 @@ export function createStarMeshes(
 }
 
 /**
- * Étoiles dessinées pendant le vol `fromIndex` → `toIndex` à l'avancement `t` (visibleStarCount) et opacité de leur
+ * Étoiles dessinées pendant le vol `fromIndex` → `toIndex` à l'avancement `t` (visibleObjectCount) et opacité de leur
  * halo (haloOpacity) ; un halo éteint n'est pas dessiné.
  */
 export function showStars(meshes: readonly SizesStarMesh[], fromIndex: number, toIndex: number, t: number): void {
-  const count = visibleStarCount(fromIndex, toIndex, t);
+  const count = visibleObjectCount(fromIndex, toIndex, t);
   meshes.forEach((star, i) => {
     const visible = i < count;
     star.body.visible = visible;

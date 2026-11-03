@@ -3,7 +3,7 @@ import type { PlacedObject } from "@/lib/sizes/layout";
 import type { SizeObjectKey } from "@/lib/sizes/objects";
 
 const D2R = Math.PI / 180;
-/** Part du vol pendant laquelle le halo de l'étoile qui arrive entre en fondu (ou s'éteint, au retour). */
+/** Part du vol pendant laquelle le halo de l'astre qui arrive entre en fondu (ou s'éteint, au retour). */
 const HALO_FADE = 0.3;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -17,8 +17,8 @@ const emptyCam = (): SizesCam => ({ tx: 0, dist: 1, offX: 0, offY: 0 });
 
 /**
  * Caméra de la scène des tailles. Elle regarde la cible (tx, 0, 0) depuis le côté +z, élevée de SIZES_VIEW_ELEV_DEG,
- * x croissant vers la droite de l'écran : l'étoile précédente, plus petite, apparaît à droite de la courante.
- * Le regard étant perpendiculaire à l'axe x, les centres des étoiles sont tous à la profondeur `dist`.
+ * x croissant vers la droite de l'écran : l'astre précédent, plus petit, apparaît à droite du courant.
+ * Le regard étant perpendiculaire à l'axe x, les centres des astres sont tous à la profondeur `dist`.
  */
 export interface SizesCam {
   /** Cible (tx, 0, 0), en R☉. */
@@ -33,15 +33,25 @@ export interface SizesCam {
 
 /** Élévation de la caméra au-dessus du plan des étoiles, en degrés : un peu de relief, sans effet sur le cadrage. */
 export const SIZES_VIEW_ELEV_DEG = 5;
-/** Recul de l'introduction sur le repos de la plus petite étoile. */
+/** Recul de l'introduction sur le repos du plus petit astre. */
 export const SIZES_INTRO_PULLBACK = 1.6;
 /**
  * Part du cadre que peut occuper ce que la caméra cadre au repos, en largeur et en hauteur :
  * - zone libre du grand écran : 90 % de la largeur de la zone, 80 % de la hauteur de l'écran ;
- * - bande libre de la mise en page compacte : 80 % de la largeur de l'écran, 90 % de la hauteur de la bande ;
+ * - bande libre de la mise en page compacte : 80 % de la largeur de l'écran, 90 % de la hauteur de la bande ; l'astre
+ *   courant seul y prend 65 % de la largeur quand la paire le ferait plus petit (`bandCurrentWidth`) ;
  * - ni l'une ni l'autre : 70 % de la largeur et de la hauteur de l'écran.
  */
-export const SIZES_FILL = { zoneWidth: 0.9, zoneHeight: 0.8, bandWidth: 0.8, bandHeight: 0.9, plainWidth: 0.7, plainHeight: 0.7 } as const;
+export const SIZES_FILL = {
+  zoneWidth: 0.9,
+  zoneHeight: 0.8,
+  bandWidth: 0.8,
+  bandHeight: 0.9,
+  /** Bande : part de la largeur que prend l'astre courant, cadré seul, quand la paire le ferait plus petit. */
+  bandCurrentWidth: 0.65,
+  plainWidth: 0.7,
+  plainHeight: 0.7,
+} as const;
 
 export interface SizesFrameContext {
   /** Largeur / hauteur de la vue. */
@@ -55,16 +65,18 @@ export interface SizesFrameContext {
 }
 
 /**
- * Caméra au repos sur une escale. Sur l'étoile i : cadre la paire (i, i − 1), l'étoile seule pour i = 0 ;
- * boîte [xᵢ − rᵢ ; xᵢ₋₁ + rᵢ₋₁] × [−rᵢ ; rᵢ] ; tx = centre de la boîte ;
- * dist = max(demi-largeur / tanW, rᵢ / sin(atan(tanH))), la plus contraignante gagne : la demi-largeur est prise
- * au plan de la cible, et la sphère de rayon rᵢ, à la profondeur dist, a le demi-angle apparent atan(tanH).
+ * Caméra au repos sur une escale, cadrée sur les encombrements (e). Sur l'astre i : cadre la paire (i, i − 1), l'astre
+ * seul pour i = 0 ; boîte [xᵢ − eᵢ ; xᵢ₋₁ + eᵢ₋₁] × [−eᵢ ; eᵢ] ; tx = centre de la boîte ;
+ * dist = max(demi-largeur / tanW, eᵢ / sin(atan(tanH))), la plus contraignante gagne : la demi-largeur est prise
+ * au plan de la cible, et la sphère de rayon eᵢ, à la profondeur dist, a le demi-angle apparent atan(tanH).
  * - Bande (prioritaire, comme au voyage) : tanW = 0,8 × aspect × tan(fov/2), tanH = 0,9 × hauteur de bande × tan(fov/2),
- *   offX = 0, offY = milieu de bande − 0,5.
+ *   offX = 0, offY = milieu de bande − 0,5. L'astre courant d'abord : cadré seul (tx = xᵢ), il prendrait 65 % de la
+ *   largeur à dist = max(eᵢ / (0,65 × aspect × tan(fov/2)), eᵢ / sin(atan(tanH))) ; si c'est plus près que la paire, il
+ *   l'emporte. La précédente sort alors par la droite et se compare pendant le vol ; la suivante reste hors champ.
  * - Zone : tanW = 0,9 × largeur de zone × aspect × tan(fov/2), tanH = 0,8 × tan(fov/2), offX = milieu de zone − 0,5, offY = 0.
  * - Sinon : 0,7 et 0,7, décalages nuls.
- * « intro » : repos de l'étoile 0, dist × SIZES_INTRO_PULLBACK.
- * Lève une erreur si l'étoile de l'escale (l'étoile 0 pour « intro ») n'est pas posée.
+ * « intro » : repos de l'astre 0, dist × SIZES_INTRO_PULLBACK.
+ * Lève une erreur si l'astre de l'escale (l'astre 0 pour « intro ») n'est pas posé.
  */
 export function sizesRestCamera(
   placed: readonly PlacedObject[],
@@ -72,12 +84,12 @@ export function sizesRestCamera(
   ctx: SizesFrameContext,
   out: SizesCam = emptyCam(),
 ): SizesCam {
-  const index = stop === "intro" ? 0 : placed.findIndex((star) => star.key === stop);
-  const star: PlacedObject | undefined = placed[index];
-  if (!star) throw new Error(`Étoile absente de la disposition : ${stop}`);
-  const previous = index > 0 ? placed[index - 1] : star;
-  const left = star.x - star.radius;
-  const right = previous.x + previous.radius;
+  const index = stop === "intro" ? 0 : placed.findIndex((object) => object.key === stop);
+  const current: PlacedObject | undefined = placed[index];
+  if (!current) throw new Error(`Astre absent de la disposition : ${stop}`);
+  const previous = index > 0 ? placed[index - 1] : current;
+  const left = current.x - current.extent;
+  const right = previous.x + previous.extent;
   const tanHalf = Math.tan((ctx.fovDeg * D2R) / 2);
   let tanWidth: number;
   let tanHeight: number;
@@ -95,8 +107,17 @@ export function sizesRestCamera(
     tanWidth = SIZES_FILL.plainWidth * ctx.aspect * tanHalf;
     tanHeight = SIZES_FILL.plainHeight * tanHalf;
   }
-  const dist = Math.max((right - left) / 2 / tanWidth, star.radius / Math.sin(Math.atan(tanHeight)));
-  out.tx = (left + right) / 2;
+  const heightDist = current.extent / Math.sin(Math.atan(tanHeight));
+  let dist = Math.max((right - left) / 2 / tanWidth, heightDist);
+  let tx = (left + right) / 2;
+  if (ctx.band) {
+    const alone = Math.max(current.extent / (SIZES_FILL.bandCurrentWidth * ctx.aspect * tanHalf), heightDist);
+    if (alone < dist) {
+      dist = alone;
+      tx = current.x;
+    }
+  }
+  out.tx = tx;
   out.dist = stop === "intro" ? dist * SIZES_INTRO_PULLBACK : dist;
   out.offX = offX;
   out.offY = offY;
@@ -126,21 +147,83 @@ export function sizesFlightCamera(a: SizesCam, b: SizesCam, s: number, out: Size
 }
 
 /**
- * Nombre d'étoiles dessinées, les plus petites d'abord (indices dans la disposition) : fromIndex + 1 au repos (t = 0) ;
- * max(fromIndex, toIndex) + 1 pendant un vol (t > 0). L'étoile suivante n'est dessinée qu'une fois le vol commencé,
- * hors champ à cet instant, et la plus grande des deux le reste jusqu'au repos au retour.
+ * Nombre d'astres dessinés, les plus petits d'abord (indices dans la disposition) : fromIndex + 1 au repos (t = 0) ;
+ * max(fromIndex, toIndex) + 1 pendant un vol (t > 0). L'astre suivant n'est dessiné qu'une fois le vol commencé,
+ * hors champ à cet instant, et le plus grand des deux le reste jusqu'au repos au retour.
  */
-export function visibleStarCount(fromIndex: number, toIndex: number, t: number): number {
+export function visibleObjectCount(fromIndex: number, toIndex: number, t: number): number {
   return (t > 0 ? Math.max(fromIndex, toIndex) : fromIndex) + 1;
 }
 
 /**
- * Opacité du halo de l'étoile `index`. Seule change celle de l'étoile qui arrive (la plus grande des deux du vol) :
- * smoothstep(0 ; 0,3 ; t) vers l'avant (toIndex > fromIndex, étoile toIndex), smoothstep(0 ; 0,3 ; 1 − t) en retour
- * (étoile fromIndex) ; 1 pour toutes les autres, et au repos.
+ * Opacité du halo de l'astre `index` (fondu d'arrivée d'un trou noir). Seule change celle de l'astre qui arrive (le plus
+ * grand des deux du vol) : smoothstep(0 ; 0,3 ; t) vers l'avant (toIndex > fromIndex, astre toIndex),
+ * smoothstep(0 ; 0,3 ; 1 − t) en retour (astre fromIndex) ; 1 pour tous les autres, et au repos.
  */
 export function haloOpacity(index: number, fromIndex: number, toIndex: number, t: number): number {
   if (toIndex > fromIndex && index === toIndex) return smoothstep(0, HALO_FADE, t);
   if (toIndex < fromIndex && index === fromIndex) return smoothstep(0, HALO_FADE, 1 - t);
   return 1;
+}
+
+/** Disque d'un astre à l'écran, en px depuis le coin haut gauche de la vue : centre, rayon apparent de son encombrement. */
+export interface ScreenDisc {
+  x: number;
+  y: number;
+  radius: number;
+}
+
+/** Pixels par unité de tangente au centre de l'image : hauteur de la vue / (2 tan(champ / 2)). */
+const pixelsPerTangent = (viewHeight: number, fovDeg: number) => viewHeight / (2 * Math.tan((fovDeg * D2R) / 2));
+
+/**
+ * Disque de l'astre (centre x sur l'axe, encombrement e) vu par la caméra `cam` dans la vue `view` (px CSS). Le regard
+ * étant perpendiculaire à l'axe x, son centre est à la profondeur cam.dist, sur la ligne horizontale de la cible :
+ * x = (0,5 + offX) × largeur + (x − tx) / dist × f, y = (0,5 + offY) × hauteur, f = hauteur / (2 tan(champ / 2)).
+ * Rayon apparent : f × tan(asin(e / d)), d la distance de la caméra au centre ; infini quand la caméra est dedans. Même
+ * calcul que la projection de three pour ces points (décalage de vue compris), sans allocation.
+ */
+export function screenDisc(
+  object: { x: number; extent: number },
+  cam: SizesCam,
+  ctx: SizesFrameContext,
+  view: { width: number; height: number },
+  out: ScreenDisc = { x: 0, y: 0, radius: 0 },
+): ScreenDisc {
+  const f = pixelsPerTangent(view.height, ctx.fovDeg);
+  const dx = object.x - cam.tx;
+  const distance = Math.hypot(dx, cam.dist);
+  out.x = (0.5 + cam.offX) * view.width + (dx / cam.dist) * f;
+  out.y = (0.5 + cam.offY) * view.height;
+  out.radius =
+    distance > object.extent ? (f * object.extent) / Math.sqrt(distance * distance - object.extent * object.extent) : Infinity;
+  return out;
+}
+
+/**
+ * Bord droit de la silhouette de l'astre à l'écran, en px depuis la gauche de la vue de largeur `viewWidth` : le rayon
+ * tangent droit à sa sphère d'encombrement fait avec l'axe de visée l'angle atan2(x − tx, dist) + asin(e / d) ; plafonné
+ * à 90° (une sphère qui déborde sur le côté de la caméra a son bord à l'infini, à droite).
+ */
+export function rightEdgePx(object: { x: number; extent: number }, cam: SizesCam, ctx: SizesFrameContext, viewWidth: number): number {
+  const dx = object.x - cam.tx;
+  const angle = Math.atan2(dx, cam.dist) + Math.asin(Math.min(1, object.extent / Math.hypot(dx, cam.dist)));
+  const tanHalf = Math.tan((ctx.fovDeg * D2R) / 2);
+  return (0.5 + cam.offX + Math.tan(Math.min(angle, Math.PI / 2)) / (2 * ctx.aspect * tanHalf)) * viewWidth;
+}
+
+/**
+ * Rampe d'effacement près de la règle, en px CSS : la marge entre la zone libre et la règle (celle des coquilles du
+ * Voyage, ADR 0005).
+ */
+export const RAIL_FADE_PX = 24;
+
+/**
+ * Part visible d'un astre qui déborde de la zone libre du grand écran vers la règle : 1 − smoothstep(0 ; 24 ; débord), le
+ * débord étant l'écart, en px CSS, entre le bord droit de sa silhouette et celui de la zone. Il s'efface avant de
+ * passer sous la règle ou d'être coupé par le bord de l'écran, d'un seul côté : le suivant entre toujours par la
+ * gauche, sous la plaque.
+ */
+export function railSideFade(rightEdge: number, zoneRight: number): number {
+  return 1 - smoothstep(0, RAIL_FADE_PX, rightEdge - zoneRight);
 }

@@ -25,7 +25,7 @@ import {
   SIZES_VIEW_ELEV_DEG,
   sizesFlightCamera,
   sizesRestCamera,
-  visibleStarCount,
+  visibleObjectCount,
   type SizesCam,
   type SizesFrameContext,
 } from "@/lib/sizes/sizesCamera";
@@ -411,7 +411,7 @@ function setupScene(
     let farthest = shown.dist;
     for (let i = 0; i < visible; i++) {
       const star = placed[i];
-      farthest = Math.max(farthest, Math.hypot(star.x - shown.tx, shown.dist) + star.radius);
+      farthest = Math.max(farthest, Math.hypot(star.x - shown.tx, shown.dist) + star.extent);
     }
     camera.near = NEAR_SHARE * shown.dist;
     camera.far = FAR_MARGIN * farthest;
@@ -461,7 +461,7 @@ function setupScene(
     const band = screenLayout.band(current);
     if (band) occupied.push([0, band.bottom * view.height, view.width, view.height]);
     for (let i = 0; i < visible; i++) {
-      const diameter = 2 * placed[i].radius * pxPerSolarRadius;
+      const diameter = 2 * placed[i].extent * pxPerSolarRadius;
       if (diameter >= RESERVED_DISC_PX) continue;
       project(i);
       if (projected.z <= 1) occupied.push(pointBox(onScreen.x, onScreen.y, diameter));
@@ -485,7 +485,7 @@ function setupScene(
         continue;
       }
       project(i);
-      const diameter = 2 * placed[i].radius * pxPerSolarRadius;
+      const diameter = 2 * placed[i].extent * pxPerSolarRadius;
       if (i === SUN_INDEX && sunSlot && sunRinged(diameter)) {
         setShown(star.ring, false);
         setShown(star.limb, false);
@@ -570,7 +570,7 @@ function setupScene(
       layoutSettled = screenLayout.settle(dt, reduced);
       const fromIndex = sizeStarIndex(from);
       const toIndex = sizeStarIndex(to);
-      const visible = visibleStarCount(fromIndex, toIndex, t);
+      const visible = visibleObjectCount(fromIndex, toIndex, t);
       updateCamera(from, to, t, visible);
       showStars(meshes, fromIndex, toIndex, t);
       renderer.render(scene, camera);

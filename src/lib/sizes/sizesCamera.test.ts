@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { COMPARED_STARS } from "@/lib/astro/starSizes";
 import { placeObjects, type PlacedObject } from "@/lib/sizes/layout";
-import { layoutInput } from "@/lib/sizes/objects";
+import { COMPARED_OBJECTS, layoutInput } from "@/lib/sizes/objects";
 import {
+  RAIL_FADE_PX,
+  SIZES_FILL,
   haloOpacity,
+  railSideFade,
+  rightEdgePx,
+  screenDisc,
   sizesFlightCamera,
   sizesRestCamera,
-  visibleStarCount,
+  visibleObjectCount,
   type SizesCam,
   type SizesFrameContext,
 } from "@/lib/sizes/sizesCamera";
@@ -14,9 +18,9 @@ import {
 const DEG = Math.PI / 180;
 
 /**
- * Trois étoiles fictives (rayons 1, 2 et 8 R☉) aux positions du plan, calculées avec un écart de 2,4 rayons de la
- * plus petite : x = 0 ; −5,4 ; −20,2. Positions figées ici : les attentes de caméra ne dépendent pas du réglage de
- * SIZE_GAP_RATIO.
+ * Trois étoiles fictives (rayons 1, 2 et 8 R☉, encombrement égal au rayon) aux positions du plan, calculées avec un
+ * écart de 2,4 rayons de la plus petite : x = 0 ; −5,4 ; −20,2. Positions figées ici : les attentes de caméra ne
+ * dépendent pas du réglage des écarts.
  */
 const PLACED: readonly PlacedObject[] = [
   { key: "proxima-centauri", radius: 1, extent: 1, x: 0 },
@@ -112,13 +116,42 @@ describe("sizesRestCamera", () => {
   });
 
   describe("téléphone (bande libre)", () => {
-    it("devrait centrer la paire dans la bande, sur 80 % de la largeur (bande 0,09–0,62, champ 50° : offY −0,145, dist 24,3788)", () => {
+    /*
+     * L'astre courant d'abord : la paire, cadrée sur 80 % de la largeur, ferait l'astre courant plus petit que s'il
+     * était cadré seul sur 65 % ; il est alors cadré seul, centré dans la bande. La précédente sort par la droite et se
+     * compare pendant le vol ; le suivant reste hors champ, à gauche.
+     */
+    it("devrait cadrer seule l'étoile courante sur 65 % de la largeur quand la paire la ferait plus petite (Soleil : tx −5,4, dist 14,2879)", () => {
       const cam = sizesRestCamera(PLACED, "sun", PHONE);
-      expect(cam.tx).toBeCloseTo(-3.2, 9);
+      expect(cam.tx).toBeCloseTo(-5.4, 9);
       expect(cam.offX).toBe(0);
       expect(cam.offY).toBeCloseTo(-0.145, 9);
-      expect(cam.dist).toBeCloseTo(24.3788, 4);
-      expect(widthShare(PAIR_HALF_WIDTH, cam.dist, PHONE)).toBeCloseTo(0.8, 9);
+      expect(cam.dist).toBeCloseTo(14.2879, 4);
+      expect(widthShare(2, cam.dist, PHONE)).toBeCloseTo(SIZES_FILL.bandCurrentWidth, 9);
+    });
+
+    it("devrait cadrer seule la plus grande étoile de la fixture de même (Sirius : tx −20,2, dist 57,1517)", () => {
+      const cam = sizesRestCamera(PLACED, "sirius-a", PHONE);
+      expect(cam.tx).toBeCloseTo(-20.2, 9);
+      expect(cam.dist).toBeCloseTo(57.1517, 4);
+    });
+
+    it("devrait cadrer la plus petite étoile seule sur 80 % de la largeur (dist 5,8045), plus grande qu'à 65 %", () => {
+      const cam = sizesRestCamera(PLACED, "proxima-centauri", PHONE);
+      expect(cam.tx).toBe(0);
+      expect(cam.dist).toBeCloseTo(5.8045, 4);
+      expect(widthShare(1, cam.dist, PHONE)).toBeCloseTo(0.8, 9);
+    });
+
+    it("devrait garder la paire, sur 80 % de la largeur, quand la précédente est minuscule et collée (tx −11,75, dist 68,7829)", () => {
+      const tiny: readonly PlacedObject[] = [
+        { key: "cygnus-x-1", radius: 0.05, extent: 0.1, x: 0 },
+        { key: "proxima-centauri", radius: 10, extent: 10, x: -13.6 },
+      ];
+      const cam = sizesRestCamera(tiny, "proxima-centauri", PHONE);
+      expect(cam.tx).toBeCloseTo(-11.75, 9);
+      expect(cam.dist).toBeCloseTo(68.7829, 4);
+      expect(widthShare(11.85, cam.dist, PHONE)).toBeCloseTo(0.8, 9);
     });
 
     it("devrait limiter l'étoile à 90 % de la hauteur de la bande quand la bande est basse", () => {
@@ -147,6 +180,11 @@ describe("sizesRestCamera", () => {
     expect(sun.tx).toBeCloseTo(-3.2, 9);
   });
 
+  it("devrait cadrer l'encombrement, et non la seule taille comparée (trou noir de rayon 1 et d'encombrement 10)", () => {
+    const hole: readonly PlacedObject[] = [{ key: "m87-star", radius: 1, extent: 10, x: 0 }];
+    expect(heightShare(10, sizesRestCamera(hole, "m87-star", PLAIN).dist, PLAIN)).toBeCloseTo(0.7, 9);
+  });
+
   it("devrait lever une erreur quand l'étoile de l'escale n'est pas posée", () => {
     expect(() => sizesRestCamera(PLACED, "betelgeuse", PLAIN)).toThrow(/betelgeuse/);
   });
@@ -157,44 +195,121 @@ describe("sizesRestCamera", () => {
 });
 
 /**
- * Bord droit de la silhouette d'une étoile à l'écran, en fraction de la largeur (0 à gauche), vue par la caméra au
- * repos `cam` : la cible est à 0,5 + offX (décalage d'écran de setViewOffset). Le regard est perpendiculaire à l'axe x,
- * quelle que soit l'élévation : les centres sont dans le plan horizontal de la caméra, à la profondeur cam.dist, et le
- * rayon tangent droit à la sphère fait avec l'axe de visée l'angle atan2(x − tx, dist) + asin(r / √((x − tx)² + dist²)).
- * Plafonné à 90° : une sphère qui déborde sur le côté de la caméra a son bord à l'infini, à droite.
+ * Bord droit de la silhouette d'un astre (son encombrement) à l'écran, en fraction de la largeur (0 à gauche), vue par
+ * la caméra au repos `cam` : la cible est à 0,5 + offX (décalage d'écran de setViewOffset). Le regard est
+ * perpendiculaire à l'axe x, quelle que soit l'élévation : les centres sont dans le plan horizontal de la caméra, à la
+ * profondeur cam.dist, et le rayon tangent droit à la sphère fait avec l'axe de visée l'angle
+ * atan2(x − tx, dist) + asin(e / √((x − tx)² + dist²)). Plafonné à 90° : une sphère qui déborde sur le côté de la
+ * caméra a son bord à l'infini, à droite. Écrit ici sans le module testé, pour ne pas le vérifier avec lui-même.
  */
-function rightEdgeOnScreen(star: PlacedObject, cam: SizesCam, ctx: SizesFrameContext): number {
-  const dx = star.x - cam.tx;
-  const angle = Math.atan2(dx, cam.dist) + Math.asin(star.radius / Math.hypot(dx, cam.dist));
+function rightEdgeOnScreen(object: PlacedObject, cam: SizesCam, ctx: SizesFrameContext): number {
+  const dx = object.x - cam.tx;
+  const angle = Math.atan2(dx, cam.dist) + Math.asin(Math.min(1, object.extent / Math.hypot(dx, cam.dist)));
   return 0.5 + cam.offX + Math.tan(Math.min(angle, Math.PI / 2)) / (2 * ctx.aspect * tanHalf(ctx));
 }
 
-/*
- * Invariant de non-apparition : au repos sur l'étoile i, l'étoile i + 1, qui sera dessinée dès que le vol
- * commence, est entièrement à gauche du bord gauche de la zone libre (sous la plaque), ou de l'écran sans zone.
- * Le bord est celui de la silhouette projetée, pas du point (x + r, 0, 0) : une grande sphère proche de la caméra
- * déborde nettement de ce point. En cas d'échec, élargir SIZE_GAP_RATIO, ne pas affaiblir le test.
+/** Les quatorze astres du comparateur, posés comme dans la scène. */
+const OBJECTS = placeObjects(COMPARED_OBJECTS.map(layoutInput));
+
+/**
+ * Vues de référence, champ réglé comme au voyage (50° sous un rapport largeur / hauteur de 0,9, 36° au-dessus) :
+ * grand écran avec zone libre ; téléphone et tablette en portrait, bande libre entre la barre haute et la plaque
+ * repliée ; téléphone en paysage, sans bande ni zone (écran bas, cas le plus exigeant). `hiddenLeftOf` : bord gauche
+ * de ce qui est visible.
  */
-describe("invariant de non-apparition, sur les dix étoiles du comparateur", () => {
-  const STARS = placeObjects(COMPARED_STARS.map(layoutInput));
-  /**
-   * Vues de référence, champ réglé comme au voyage (50° sous un rapport largeur / hauteur de 0,9, 36° au-dessus) :
-   * grand écran avec zone libre ; téléphone et tablette en portrait, bande libre entre la barre haute et la plaque
-   * repliée ; téléphone en paysage, sans bande ni zone (écran bas). `hiddenLeftOf` : bord gauche de ce qui est visible.
-   */
-  const VIEWS = [
-    { name: "1 440 × 900, zone 0,45–0,85", hiddenLeftOf: 0.45, ctx: { aspect: 1440 / 900, fovDeg: 36, band: null, zone: { left: 0.45, right: 0.85 } } },
-    { name: "375 × 812, bande 0,09–0,62", hiddenLeftOf: 0, ctx: { aspect: 375 / 812, fovDeg: 50, band: { top: 0.09, bottom: 0.62 }, zone: null } },
-    { name: "820 × 1 180, bande 0,06–0,70", hiddenLeftOf: 0, ctx: { aspect: 820 / 1180, fovDeg: 50, band: { top: 0.06, bottom: 0.7 }, zone: null } },
-    { name: "844 × 390, sans bande ni zone", hiddenLeftOf: 0, ctx: { aspect: 844 / 390, fovDeg: 36, band: null, zone: null } },
-  ] as const satisfies readonly { name: string; hiddenLeftOf: number; ctx: SizesFrameContext }[];
+const VIEWS = [
+  { name: "1 440 × 900, zone 0,45–0,85", hiddenLeftOf: 0.45, ctx: { aspect: 1440 / 900, fovDeg: 36, band: null, zone: { left: 0.45, right: 0.85 } } },
+  { name: "375 × 812, bande 0,09–0,62", hiddenLeftOf: 0, ctx: { aspect: 375 / 812, fovDeg: 50, band: { top: 0.09, bottom: 0.62 }, zone: null } },
+  { name: "820 × 1 180, bande 0,06–0,70", hiddenLeftOf: 0, ctx: { aspect: 820 / 1180, fovDeg: 50, band: { top: 0.06, bottom: 0.7 }, zone: null } },
+  { name: "844 × 390, sans bande ni zone", hiddenLeftOf: 0, ctx: { aspect: 844 / 390, fovDeg: 36, band: null, zone: null } },
+] as const satisfies readonly { name: string; hiddenLeftOf: number; ctx: SizesFrameContext }[];
+
+/*
+ * Invariant de non-apparition : au repos sur l'astre i, l'astre i + 1, qui sera dessiné dès que le vol commence, est
+ * entièrement à gauche du bord gauche de la zone libre (sous la plaque), ou de l'écran sans zone. Le bord est celui de
+ * la silhouette projetée de son encombrement, pas du point (x + e, 0, 0) : une grande sphère proche de la caméra
+ * déborde nettement de ce point. En cas d'échec, élargir les écarts (layout.ts), ne pas affaiblir le test.
+ */
+describe("invariant de non-apparition, sur les quatorze astres du comparateur", () => {
   const CASES = VIEWS.flatMap((view) =>
-    STARS.slice(0, -1).map((star, i) => [view.name, star.key, STARS[i + 1].key, view, i] as const),
+    OBJECTS.slice(0, -1).map((object, i) => [view.name, object.key, OBJECTS[i + 1].key, view, i] as const),
   );
 
-  it.each(CASES)("devrait garder l'étoile suivante hors champ (%s, repos sur %s : %s cachée)", (_name, stop, _next, view, i) => {
-    const cam = sizesRestCamera(STARS, stop, view.ctx);
-    expect(rightEdgeOnScreen(STARS[i + 1], cam, view.ctx)).toBeLessThan(view.hiddenLeftOf);
+  it.each(CASES)("devrait garder l'astre suivant hors champ (%s, repos sur %s : %s caché)", (_name, stop, _next, view, i) => {
+    const cam = sizesRestCamera(OBJECTS, stop, view.ctx);
+    expect(rightEdgeOnScreen(OBJECTS[i + 1], cam, view.ctx)).toBeLessThan(view.hiddenLeftOf);
+  });
+});
+
+/*
+ * Invariant d'extériorité : pendant chaque vol vers l'astre suivant, la caméra reste hors de tout trou noir dessiné, à
+ * plus de 1,05 encombrement de son centre : elle ne traverse jamais ce qu'il éclaire. Les retours suivent les mêmes
+ * positions, en sens inverse.
+ */
+describe("invariant d'extériorité des trous noirs pendant les vols", () => {
+  const HOLES = OBJECTS.map((object, index) => ({ object, index })).filter(({ index }) => COMPARED_OBJECTS[index].kind === "black-hole");
+  const CASES = VIEWS.flatMap((view) => OBJECTS.slice(0, -1).map((object, i) => [view.name, object.key, view, i] as const));
+
+  it.each(CASES)("devrait garder la caméra hors des trous noirs dessinés (%s, vol depuis %s)", (_name, stop, view, i) => {
+    const from = sizesRestCamera(OBJECTS, stop, view.ctx);
+    const to = sizesRestCamera(OBJECTS, OBJECTS[i + 1].key, view.ctx);
+    const drawn = visibleObjectCount(i, i + 1, 0.5);
+    for (let step = 0; step <= 100; step++) {
+      const cam = sizesFlightCamera(from, to, step / 100);
+      for (const { object, index } of HOLES) {
+        if (index >= drawn) continue;
+        expect(Math.hypot(object.x - cam.tx, cam.dist) / object.extent, `${object.key}, s = ${step / 100}`).toBeGreaterThan(1.05);
+      }
+    }
+  });
+});
+
+describe("screenDisc", () => {
+  const VIEW = { width: 1440, height: 900 };
+  const CAM: SizesCam = { tx: -3, dist: 20, offX: 0.15, offY: -0.1 };
+  /** Pixels par unité de tangente au centre de l'image : hauteur / (2 tan(champ / 2)). */
+  const PX_PER_TANGENT = 900 / (2 * Math.tan(18 * DEG));
+
+  it("devrait projeter le centre d'un astre sur la ligne de la cible, décalée comme la vue (offX, offY)", () => {
+    const disc = screenDisc({ x: -1, extent: 2 }, CAM, DESK, VIEW);
+    expect(disc.x).toBeCloseTo(1440 * 0.65 + (2 / 20) * PX_PER_TANGENT, 9);
+    expect(disc.y).toBeCloseTo(900 * 0.4, 9);
+  });
+
+  it("devrait donner le rayon apparent de la sphère d'encombrement : tan(asin(e / d)) à la distance d du centre", () => {
+    const disc = screenDisc({ x: -1, extent: 2 }, CAM, DESK, VIEW);
+    expect(disc.radius).toBeCloseTo(PX_PER_TANGENT * Math.tan(Math.asin(2 / Math.hypot(2, 20))), 9);
+  });
+
+  it("devrait donner un rayon infini quand la caméra est dans la sphère", () => {
+    expect(screenDisc({ x: -3, extent: 25 }, CAM, DESK, VIEW).radius).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("devrait écrire dans out et le renvoyer quand out est fourni", () => {
+    const out = { x: 0, y: 0, radius: 0 };
+    expect(screenDisc({ x: -1, extent: 2 }, CAM, DESK, VIEW, out)).toBe(out);
+  });
+});
+
+describe("rightEdgePx", () => {
+  it.each(OBJECTS.slice(0, 6).map((object, i) => [object.key, object, i] as const))(
+    "devrait donner en px le bord droit de la silhouette de %s, au repos sur l'astre suivant (grand écran)",
+    (_key, object, i) => {
+      const cam = sizesRestCamera(OBJECTS, OBJECTS[i + 1].key, DESK);
+      expect(rightEdgePx(object, cam, DESK, 1440)).toBeCloseTo(1440 * rightEdgeOnScreen(object, cam, DESK), 6);
+    },
+  );
+});
+
+describe("railSideFade", () => {
+  it.each([
+    [-50, 1],
+    [0, 1],
+    [12, 0.5],
+    [RAIL_FADE_PX, 0],
+    [200, 0],
+  ])("devrait effacer un astre qui déborde de la zone libre vers la règle, sur 24 px (débord %f px → %f)", (overflow, fit) => {
+    expect(railSideFade(1200 + overflow, 1200)).toBeCloseTo(fit, 12);
   });
 });
 
@@ -269,15 +384,15 @@ describe("sizesFlightCamera", () => {
   });
 });
 
-describe("visibleStarCount", () => {
+describe("visibleObjectCount", () => {
   it.each([
     [0, 0, 0, 1],
     [3, 3, 0, 4],
     [3, 4, 0.01, 5],
     [3, 4, 1, 5],
     [4, 3, 0.5, 5],
-  ])("devrait dessiner, du repos ou du vol %i → %i à t = %f, %i étoiles", (fromIndex, toIndex, t, expected) => {
-    expect(visibleStarCount(fromIndex, toIndex, t)).toBe(expected);
+  ])("devrait dessiner, du repos ou du vol %i → %i à t = %f, %i astres", (fromIndex, toIndex, t, expected) => {
+    expect(visibleObjectCount(fromIndex, toIndex, t)).toBe(expected);
   });
 });
 
