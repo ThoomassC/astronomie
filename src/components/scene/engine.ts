@@ -88,6 +88,7 @@ import {
   magnifyGalaxy,
   ringLabelKey,
   starLabelKey,
+  starLabelOrder,
   sunPointPosition,
   weighCosmos,
   type DeepLabelKey,
@@ -720,12 +721,14 @@ function setupScene(
   /** Étiquettes à repère : tout le ciel profond, et « Soleil », qui en prend la disposition quand le Soleil devient un point. */
   const sunSlot = bodySlots.get("sun");
   const markedSlots = [...(sunSlot ? [sunSlot] : []), ...deepSlots.values()];
-  /** Étoiles, dans l'ordre des données (distance croissante) : étiquette, position (al), taille du point (px). */
-  const stars = [...cosmos.starPositions].map(([key, position]) => ({
-    slot: deepSlots.get(starLabelKey(key)),
-    position,
-    size: cosmos.starSizes.get(key) ?? 0,
-  }));
+  /**
+   * Étoiles, dans l'ordre de pose de leurs étiquettes (les remarquables d'abord, puis par distance croissante) :
+   * étiquette, position (al), taille du point (px).
+   */
+  const stars = starLabelOrder(NEARBY_STARS).flatMap((key) => {
+    const position = cosmos.starPositions.get(key);
+    return position ? [{ slot: deepSlots.get(starLabelKey(key)), position, size: cosmos.starSizes.get(key) ?? 0 }] : [];
+  });
   const ringLabels = DISTANCE_RINGS_LY.map((radius) => ({ slot: deepSlots.get(ringLabelKey(radius)), radius }));
   /** Galaxies, toile, fond diffus, univers, dans l'ordre de priorité : étiquette, ancre dans le repère de son groupe. */
   const extragalacticLabels = EXTRAGALACTIC_LABEL_ORDER.flatMap((key) => {

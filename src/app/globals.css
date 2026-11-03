@@ -209,6 +209,19 @@ main > section:focus {
 }
 
 /*
+ * Étoiles voisines (étiquettes du voyage, `data-deep`) : les remarquables en ivoire, leur distance en brume ; les autres
+ * (`minor`), leur nom seul en brume, repère atténué : la carte ne se lit plus comme un nuage d'étiquettes.
+ */
+.lbl.deep[data-deep] .dist,
+.lbl.deep.minor > span {
+  color: var(--brume);
+}
+
+.lbl.deep.minor i {
+  opacity: 0.7;
+}
+
+/*
  * Voie lactée : « Vous êtes ici » au-dessus de son repère, « Centre de la Galaxie » en dessous du sien. Le Soleil et
  * le centre sont presque à la même hauteur à l'écran : les deux textes ne se rencontrent jamais, même serrés.
  */

@@ -42,6 +42,15 @@ export const ringLabelKey = (radius: DistanceRingLy): DeepLabelKey => `ring-${ra
 /** Étiquette de l'étoile de clé `key` (NearbyStar.key). */
 export const starLabelKey = (key: string): DeepLabelKey => `star:${key}`;
 
+/**
+ * Ordre de pose des étiquettes des étoiles (clés) : les remarquables d'abord, nommées avec leur distance, puis les
+ * autres, chacune dans l'ordre des données (distance croissante). Les premières gagnent la place quand elles se
+ * chevauchent : une étoile peu connue ne chasse jamais Sirius ni Procyon.
+ */
+export function starLabelOrder(stars: readonly NearbyStar[]): string[] {
+  return [...stars.filter((star) => star.notable), ...stars.filter((star) => !star.notable)].map((star) => star.key);
+}
+
 const RING_LABEL_KEYS: readonly string[] = DISTANCE_RINGS_LY.map(ringLabelKey);
 
 /** Clé d'étiquette du ciel profond lue dans le DOM (`data-deep`). */
