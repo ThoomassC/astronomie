@@ -20,3 +20,15 @@ describe("next.config, en-têtes HTTP", () => {
     expect(values.filter((value) => value.includes("immutable"))).toEqual([]);
   });
 });
+
+/*
+ * L'accueil, prérendu, dessine son planétaire aux positions du jour où il a été construit : cette heure est fixée une
+ * fois, quand Next charge la configuration au début du build, puis inscrite dans le code compilé (`env`).
+ */
+describe("next.config, heure du build", () => {
+  it("devrait fixer BUILD_TIME, une date ISO en temps universel, à l'instant où la configuration est chargée", () => {
+    const builtAt = nextConfig.env?.BUILD_TIME ?? "";
+    expect(builtAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(Math.abs(Date.parse(builtAt) - Date.now())).toBeLessThan(60_000);
+  });
+});

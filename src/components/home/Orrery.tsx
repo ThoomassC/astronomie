@@ -177,8 +177,8 @@ function LegendMark({ planetKey }: { planetKey: PlanetKey }) {
 
 interface OrreryProps {
   /**
-   * Instant où le serveur a produit la page (ms) : ses positions dessinent les planètes dès le HTML, et la ligne datée
-   * le dit, jusqu'à ce que le script les fasse glisser vers celles du chargement.
+   * Heure de génération de la page (ms), celle du build (`pageGenerationTime`) : ses positions dessinent les planètes
+   * dès le HTML, et la ligne datée le dit, jusqu'à ce que le script les fasse glisser vers celles du chargement.
    */
   generatedAt: number;
 }

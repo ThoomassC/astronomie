@@ -34,6 +34,8 @@ function renderHome(locale: Locale) {
 const routeProps = (lang: string) => ({ params: Promise.resolve({ lang }), searchParams: Promise.resolve({}) });
 
 beforeEach(() => {
+  // Heure du build, que next.config fixe et que Next inscrit dans le code : ici, le 29 octobre 2026 à midi UTC.
+  vi.stubEnv("BUILD_TIME", "2026-10-29T12:00:00.000Z");
   vi.spyOn(performance, "timeOrigin", "get").mockReturnValue(Date.UTC(2026, 9, 29, 12));
   // Le planétaire suit la préférence de mouvement réduit : jsdom n'a pas matchMedia.
   stubMatchMedia({ reduced: false });
@@ -43,6 +45,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("HomePage", () => {
@@ -117,7 +120,9 @@ describe("HomePage", () => {
     expect(within(footer).queryByRole("navigation")).not.toBeInTheDocument();
   });
 
-  it("devrait dessiner le planétaire dès le HTML du serveur, planètes comprises, à la date de la génération", () => {
+  it("devrait dessiner le planétaire dès le HTML du serveur, planètes comprises, à la date du build", () => {
+    // Build le 1er octobre, chargement le 29 : le HTML dit le jour du build, pas l'horloge du serveur.
+    vi.stubEnv("BUILD_TIME", "2026-10-01T12:00:00.000Z");
     const html = renderToString(
       <LocaleProvider locale="fr">
         <HomePage locale="fr" />
@@ -125,8 +130,7 @@ describe("HomePage", () => {
     );
     const page = new DOMParser().parseFromString(html, "text/html");
     expect(page.querySelectorAll("[data-planet]")).toHaveLength(8);
-    // Génération : l'origine des temps du processus serveur, ici le 29 octobre 2026 à midi UTC.
-    expect(page.querySelector("[data-date]")?.textContent).toBe("Positions réelles du 29 octobre 2026");
+    expect(page.querySelector("[data-date]")?.textContent).toBe("Positions réelles du 1 octobre 2026");
   });
 
   it("devrait être la cible du lien d'évitement (main#contenu, focalisable par script)", () => {
