@@ -8,7 +8,7 @@ export const COMMON_FR: CommonContent = {
     home: {
       title: "Astronomie · Le système solaire et au-delà",
       description:
-        "Le système solaire tel qu'il est aujourd'hui, puis trois chemins : un voyage jusqu'au multivers, la taille des étoiles et les coulisses du site.",
+        "Le système solaire d'aujourd'hui, puis trois chemins : un voyage jusqu'au multivers, la taille des étoiles et des trous noirs, les coulisses du site.",
     },
     voyage: {
       title: "Voyage du Soleil au multivers",
@@ -16,9 +16,9 @@ export const COMMON_FR: CommonContent = {
         "Du Soleil à l'hypothèse du multivers, un voyage en 3D au fil de la page : les planètes à leur place du jour, les étoiles voisines, la Voie lactée, les galaxies.",
     },
     sizes: {
-      title: "Tailles des étoiles",
+      title: "Tailles des étoiles et des trous noirs",
       description:
-        "De Proxima du Centaure à VY Canis Majoris, dix étoiles côte à côte et à la même échelle, Soleil compris : de la naine rouge à l'hypergéante.",
+        "De Cygnus X-1 au trou noir du Fer à cheval cosmique, dix étoiles et quatre trous noirs côte à côte, à la même échelle, Soleil compris.",
     },
     about: {
       title: "À propos du site",

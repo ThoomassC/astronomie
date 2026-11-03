@@ -18,14 +18,14 @@ export const ABOUT_ES: AboutContent = {
       heading: "Por qué este sitio",
       paragraphs: [
         "La Tierra está a casi 150 millones de kilómetros del Sol: una cifra exacta, pero imposible de imaginar. Este sitio te ayuda a sentir las distancias y los tamaños del espacio recorriéndolos.",
-        "El Viaje parte del Sol, pasa por cada planeta y se aleja hacia las estrellas vecinas, la Vía Láctea, otras galaxias y más allá. En el Sol y en cada planeta, una animación explica un fenómeno: las estaciones, las órbitas, la velocidad de la luz… La pestaña Tamaños compara diez estrellas, de la enana roja Próxima Centauri a la hipergigante VY Canis Majoris.",
+        "El Viaje parte del Sol, pasa por cada planeta y se aleja hacia las estrellas vecinas, la Vía Láctea, otras galaxias y más allá. En el Sol y en cada planeta, una animación explica un fenómeno: las estaciones, las órbitas, la velocidad de la luz… La pestaña Tamaños compara diez estrellas y cuatro agujeros negros, del agujero negro estelar Cygnus X-1 al de la Herradura Cósmica, uno de los más masivos jamás pesados.",
       ],
     },
     {
       id: "sources",
       heading: "Fuentes",
       paragraphs: [
-        "Las cifras proceden de agencias espaciales y de artículos científicos; estas son las principales fuentes, en inglés. Los radios de las estrellas de la pestaña Tamaños proceden de medidas publicadas, estrella por estrella.",
+        "Las cifras proceden de agencias espaciales y de artículos científicos; estas son las principales fuentes, en inglés. Los radios de las estrellas de la pestaña Tamaños proceden de medidas publicadas, estrella por estrella; las masas de sus agujeros negros, de órbitas de estrellas, de imágenes del Event Horizon Telescope y de una lente gravitatoria.",
       ],
       links: [
         {
@@ -63,9 +63,24 @@ export const ABOUT_ES: AboutContent = {
           description: `Radio de VY Canis Majoris, medido por interferometría: ${figures.vyCanisMajoris}.`,
         },
         {
+          label: "Miller-Jones et al., 2021",
+          href: ABOUT_URLS.millerJones2021,
+          description: "Masa de Cygnus X-1, el primer objeto reconocido como un agujero negro.",
+        },
+        {
+          label: "EHT Collaboration, 2019",
+          href: ABOUT_URLS.eht2019,
+          description: "La primera imagen de un agujero negro, M87*, y su masa.",
+        },
+        {
+          label: "Melo-Carneiro et al., 2025",
+          href: ABOUT_URLS.meloCarneiro2025,
+          description: "Masa del agujero negro de la Herradura Cósmica, uno de los más masivos jamás pesados.",
+        },
+        {
           label: "GRAVITY Collaboration, 2022",
           href: ABOUT_URLS.gravity2022,
-          description: "Distancia del Sol al centro de la Galaxia.",
+          description: "Distancia del Sol al centro de la Galaxia, y masa de Sagitario A*, el agujero negro que hay allí.",
         },
         { label: "Reid et al., 2019", href: ABOUT_URLS.reid2019, description: "Forma de los brazos de la Vía Láctea." },
         { label: "McConnachie, 2012", href: ABOUT_URLS.mcConnachie2012, description: "Galaxias del Grupo Local." },

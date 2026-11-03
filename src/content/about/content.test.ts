@@ -44,7 +44,7 @@ function shape(locale: Locale) {
   }));
 }
 
-/** Les sources du site, dans l'ordre du voyage : du Soleil à l'Univers observable. */
+/** Les sources du site, dans l'ordre du voyage : du Soleil à l'Univers observable ; celles des Tailles après VY Canis Majoris. */
 const SOURCES = [
   ABOUT_URLS.nasaSunFactSheet,
   ABOUT_URLS.nasaFactSheet,
@@ -53,6 +53,9 @@ const SOURCES = [
   ABOUT_URLS.gaiaDr3,
   ABOUT_URLS.simbad,
   ABOUT_URLS.wittkowski2012,
+  ABOUT_URLS.millerJones2021,
+  ABOUT_URLS.eht2019,
+  ABOUT_URLS.meloCarneiro2025,
   ABOUT_URLS.gravity2022,
   ABOUT_URLS.reid2019,
   ABOUT_URLS.mcConnachie2012,
@@ -191,5 +194,19 @@ describe("typographie de la page À propos", () => {
     expect(spanish).toMatch(/\S:/);
     expect(spanish).not.toMatch(/«\s|\s»/);
     expect(spanish).not.toMatch(/\s[:;]/);
+  });
+});
+
+describe("onglet Tailles dans la page À propos", () => {
+  /** Mots qui disent, dans chaque langue, que l'onglet compare aussi des trous noirs. */
+  const BLACK_HOLES: Readonly<Record<Locale, RegExp>> = { fr: /quatre trous noirs/, en: /four black holes/, es: /cuatro agujeros negros/ };
+
+  it.each(LOCALES)("devrait dire que l'onglet Tailles compare dix étoiles et quatre trous noirs (%s)", (locale) => {
+    expect(section(locale, "pourquoi").paragraphs.join(" ")).toMatch(BLACK_HOLES[locale]);
+  });
+
+  it.each(LOCALES)("devrait citer la masse de Sagittarius A* à la source GRAVITY (%s)", (locale) => {
+    const gravity = section(locale, "sources").links?.find((link) => link.href === ABOUT_URLS.gravity2022);
+    expect(gravity?.description).toContain(locale === "es" ? "Sagitario A*" : "Sagittarius A*");
   });
 });
