@@ -64,7 +64,7 @@ export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; loc
   const name = t.names[star.key];
   const id = SIZE_STOP_IDS[star.key];
   const titleId = `${id}-titre`;
-  const rank = t.rank(sizeStarIndex(star.key) + 1, COMPARED_STARS.length);
+  const rank = t.rank(sizeStarIndex(star.key) + 1, COMPARED_STARS.length, "feminine");
   const km = withUnit(formatNumber(roundSignificant(radiusKm(star.radiusSolar), KM_SIGNIFICANT_DIGITS), 0, locale), "km", locale);
   const tint = content.tints[temperatureTint(star.temperatureK)];
   const versusSun =

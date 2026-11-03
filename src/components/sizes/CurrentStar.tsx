@@ -15,7 +15,7 @@ export function CurrentStar() {
   const star = COMPARED_STARS[sizeStarIndex(useCurrentSizeStop())];
   return (
     <p className="where">
-      <span>{t.current}</span>
+      <span>{t.current[star.kind]}</span>
       <i aria-hidden="true" style={{ background: star.color }} />
       <b>{t.names[star.key]}</b>
     </p>

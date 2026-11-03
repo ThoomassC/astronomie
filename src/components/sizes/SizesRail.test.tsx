@@ -38,7 +38,7 @@ const renderIn = (locale: "fr" | "en" | "es") =>
 describe("SizesRail", () => {
   it("devrait nommer la règle et lister les dix étoiles, de la plus petite à la plus grande, avec leur ancre (es)", () => {
     renderIn("es");
-    const rail = screen.getByRole("navigation", { name: "Escala de tamaños, de la estrella más pequeña a la más grande" });
+    const rail = screen.getByRole("navigation", { name: "Escala de tamaños, del astro más pequeño al más grande" });
     expect(rail).toHaveAttribute("id", "rail");
     const links = within(rail).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual([

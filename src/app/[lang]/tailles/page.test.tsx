@@ -85,7 +85,7 @@ describe("route /[lang]/tailles", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Diez estrellas, en fila." })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Sirio A" })).toBeInTheDocument();
     expect(
-      screen.getByRole("navigation", { name: "Escala de tamaños, de la estrella más pequeña a la más grande" }),
+      screen.getByRole("navigation", { name: "Escala de tamaños, del astro más pequeño al más grande" }),
     ).toBeInTheDocument();
   });
 
