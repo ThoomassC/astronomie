@@ -194,7 +194,7 @@
 .figureList {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  row-gap: 2rem;
+  row-gap: 2.5rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -202,7 +202,7 @@
 
 .figure {
   position: relative;
-  padding: 1.25rem 2rem 0 0;
+  padding: 1.5rem 2rem 0 0;
   border-top: 1px solid var(--filet-fort);
 }
 
@@ -221,23 +221,39 @@
   margin: 0;
 }
 
+/*
+ * Valeur : le moment éditorial de la page. Les nombres en grand Bodoni, à la taille d'affichage des noms d'astres
+ * (2,5 à 3,5 rem), chiffres alignés ; le nombre et ses symboles ne se coupent pas, l'unité en mots peut passer dessous.
+ */
 .value {
   display: block;
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1.1;
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-variant-numeric: lining-nums;
+  font-optical-sizing: auto;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
   color: var(--ivoire);
+}
+
+.number,
+.word {
   white-space: nowrap;
 }
 
+/* Symboles (« min », « s ») et unité en mots : Atkinson, plus petits, sur la ligne de base des nombres. */
 .unit {
+  font-family: var(--f-text);
   font-size: 1.0625rem;
   font-weight: 600;
+  letter-spacing: 0;
 }
 
 .caption {
   display: block;
-  margin-top: 0.5rem;
+  max-width: 24rem;
+  margin-top: 0.75rem;
   font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--brume);
@@ -351,7 +367,7 @@
 
   .figureList {
     grid-template-columns: minmax(0, 1fr);
-    row-gap: 1.5rem;
+    row-gap: 2rem;
   }
 
   .figure {
