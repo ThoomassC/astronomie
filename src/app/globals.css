@@ -183,10 +183,9 @@ main > section:focus {
 
 /*
  * Ciel profond (étoiles voisines, « Vous êtes ici », centre galactique, cercles) : repères à lire, pas à toucher.
- * Le texte est posé sur une pastille de plaque presque opaque : lisible sur les points les plus clairs de la
- * galaxie (sur du blanc pur, ivoire 11,8:1 et laiton 6,2:1). Le moteur mesure le repère et le pose exactement
- * sur l'astre ; seul le texte occupe la place face aux autres étiquettes, jamais hors de l'écran ni sur le point
- * d'une étoile : à droite du repère, sinon à gauche, sinon le nom seul (la distance est dans la plaque).
+ * Le moteur mesure le repère et le pose exactement sur l'astre ; seul le texte occupe la place face aux autres
+ * étiquettes, jamais hors de l'écran ni sur le point d'une étoile : à droite du repère, sinon à gauche, sinon le nom
+ * seul (la distance est dans la plaque). À Tailles, le texte reste sur une pastille de plaque presque opaque.
  */
 .lbl.deep {
   gap: 0.3rem;
@@ -206,6 +205,30 @@ main > section:focus {
   line-height: 1.4;
   opacity: 1;
   text-shadow: none;
+}
+
+/*
+ * Voyage (`data-deep`) : texte à nu, sans pastille qui cacherait les astres. Un halo de nuit serré autour des lettres
+ * (ombres empilées de 1 à 14 px) le détache du ciel jusque sur les points les plus clairs de la galaxie : chaque lettre
+ * y garde la nuit pour fond (ivoire 15,6:1, brume 7,3:1, laiton 8,2:1). Couleurs forcées : les ombres tombent, le
+ * navigateur pose un fond sous le texte.
+ */
+.lbl.deep[data-deep] {
+  gap: 0.4rem;
+}
+
+.lbl.deep[data-deep] > span {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-shadow:
+    0 0 1px var(--nuit),
+    0 0 2px var(--nuit),
+    0 0 3px var(--nuit),
+    0 0 6px var(--nuit),
+    0 1px 10px var(--nuit),
+    0 0 14px rgba(6, 11, 24, 0.8);
 }
 
 /*
@@ -245,7 +268,7 @@ main > section:focus {
 
 .lbl.deep.ring {
   color: var(--laiton);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 /* Sur le cercle, une graduation de laiton et non un anneau : on n'y croit pas voir une étoile de plus. */

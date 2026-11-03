@@ -171,7 +171,7 @@ export function anchoredBox(box: LabelBox, x: number, y: number): LabelBox {
 
 /**
  * Boîte réservée autour du point d'une étoile (ou du point-Soleil) de `size` px de diamètre, centré en (x, y) :
- * centre ± (size / 2 + POINT_MARGIN). Les pastilles presque opaques du ciel profond ne la recouvrent jamais.
+ * centre ± (size / 2 + POINT_MARGIN). Les textes du ciel profond, et leur halo de nuit, ne la recouvrent jamais.
  */
 export function pointBox(x: number, y: number, size: number): LabelBox {
   const half = size / 2 + POINT_MARGIN;

@@ -1484,8 +1484,8 @@ function setupScene(
       }
     }
     /*
-     * Points visibles : nulle pastille du ciel profond ne les recouvre. « Soleil », texte sans pastille opaque qui ne
-     * masque aucun point, est placé avant eux : sur téléphone, les points qui serrent le Soleil (Lacaille 9352,
+     * Points visibles : nul texte du ciel profond ne les recouvre. « Soleil », texte à nu qui ne masque aucun point,
+     * est placé avant eux : sur téléphone, les points qui serrent le Soleil (Lacaille 9352,
      * Lalande 21185, Epsilon Indi, Luyten 726-8) ne lui laisseraient aucune place.
      */
     if (weights.sunPoint > 0) {
