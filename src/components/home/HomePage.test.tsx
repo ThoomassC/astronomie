@@ -65,6 +65,28 @@ describe("HomePage", () => {
     ]);
   });
 
+  it("devrait illustrer chaque carte d'un dessin caché aux lecteurs d'écran, son titre restant le seul lien", () => {
+    renderHome("fr");
+    const region = screen.getByRole("region", { name: getHomeContent("fr").cards.title });
+    const cards = within(region).getAllByRole("listitem");
+    expect(cards).toHaveLength(3);
+    for (const card of cards) {
+      expect(card.querySelector("svg[viewBox='0 0 240 100']")).toHaveAttribute("aria-hidden", "true");
+      card.querySelectorAll("svg").forEach((svg) => expect(svg).toHaveAttribute("aria-hidden", "true"));
+      expect(within(card).getAllByRole("link")).toHaveLength(1);
+    }
+  });
+
+  it("devrait mettre en avant la carte du Voyage, et elle seule", () => {
+    renderHome("fr");
+    const region = screen.getByRole("region", { name: getHomeContent("fr").cards.title });
+    const featured = within(region)
+      .getAllByRole("listitem")
+      .filter((card) => card.hasAttribute("data-featured"));
+    expect(featured).toHaveLength(1);
+    expect(within(featured[0]).getByRole("link")).toHaveAttribute("href", pathFor("voyage", "fr"));
+  });
+
   it("devrait hiérarchiser les titres : un h1, les sections en h2, les cartes en h3", () => {
     renderHome("fr");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
