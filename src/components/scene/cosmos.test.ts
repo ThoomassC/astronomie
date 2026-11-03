@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DISTANCE_RINGS_LY,
   GALAXY_BOUNDING_RADIUS_LY,
+  STAR_HALO,
   SUN_POINT_SIZE_PX,
   buildGalaxy,
   createCosmos,
@@ -123,6 +124,26 @@ describe("createCosmos", () => {
 
   it("ne devrait pas construire la galaxie à la création", () => {
     expect(createCosmos(STARS).galaxy).toBeNull();
+  });
+});
+
+describe("halo des étoiles voisines", () => {
+  it("devrait entourer le point de chaque étoile d'un halo doux, plus large que lui", () => {
+    const { defines } = createCosmos(STARS).stars.material;
+    expect(defines.STAR_HALO).toBe("");
+    expect(Number(defines.STAR_HALO_SCALE)).toBe(STAR_HALO.scale);
+    expect(Number(defines.STAR_HALO_STRENGTH)).toBe(STAR_HALO.strength);
+    expect(STAR_HALO.scale).toBeGreaterThan(1);
+    // Constantes GLSL flottantes : un entier (« 3 ») ne compilerait pas dans une expression flottante.
+    expect(defines.STAR_HALO_SCALE).toMatch(/\./);
+    expect(defines.STAR_HALO_STRENGTH).toMatch(/\./);
+  });
+
+  it("ne devrait toucher ni au point-Soleil ni à la galaxie, qui partagent le même programme", () => {
+    const cosmos = createCosmos(STARS);
+    buildGalaxy(cosmos, 100);
+    expect(cosmos.sunPoint.material.defines.STAR_HALO).toBeUndefined();
+    expect(galaxyOf(cosmos).material.defines.STAR_HALO).toBeUndefined();
   });
 });
 

@@ -731,7 +731,8 @@ void main() {
 
 /**
  * Taille fixe à l'écran (px CSS × rapport de pixels, sans perspective) ; la couleur (attribut `color`,
- * linéaire, éclat compris) est déclarée par Three quand `vertexColors` est actif.
+ * linéaire, éclat compris) est déclarée par Three quand `vertexColors` est actif. STAR_HALO (étoiles voisines) : le
+ * point dessiné englobe le halo, STAR_HALO_SCALE fois plus large que le cœur de `size` px.
  */
 export const POINT_CLOUD_VERTEX = /* glsl */ `
 attribute float size;
@@ -739,7 +740,11 @@ uniform float uPixelRatio;
 varying vec3 vColor;
 void main() {
   vColor = color;
+#ifdef STAR_HALO
+  gl_PointSize = size * uPixelRatio * STAR_HALO_SCALE;
+#else
   gl_PointSize = size * uPixelRatio;
+#endif
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
@@ -749,6 +754,8 @@ void main() {
  * sans tone mapping : les points se cumulent comme la lumière des étoiles ; uOpacity porte le fondu de la couche.
  * uGain multiplie la valeur affichée, après l'encodage sRGB, c'est-à-dire ce que le mélange additif cumule :
  * la galaxie l'abaisse quand elle rapetisse à l'écran, pour que ses points serrés ne partent pas au blanc.
+ * STAR_HALO : le même cœur, au centre d'un point plus large, et une lueur de sa couleur qui décroît jusqu'au bord
+ * ((1 − d)², STAR_HALO_STRENGTH au centre).
  */
 export const POINT_CLOUD_FRAGMENT = /* glsl */ `
 uniform float uOpacity;
@@ -757,7 +764,13 @@ varying vec3 vColor;
 void main() {
   float d = length(gl_PointCoord * 2.0 - 1.0);
   if (d > 1.0) discard;
+#ifdef STAR_HALO
+  float core = 1.0 - smoothstep(0.45, 1.0, d * STAR_HALO_SCALE);
+  float glow = STAR_HALO_STRENGTH * (1.0 - d) * (1.0 - d);
+  float falloff = core + glow;
+#else
   float falloff = 1.0 - smoothstep(0.45, 1.0, d);
+#endif
   gl_FragColor = vec4(vColor * falloff * uOpacity, 1.0);
   #include <colorspace_fragment>
   gl_FragColor.rgb *= uGain;

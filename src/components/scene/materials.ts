@@ -294,21 +294,36 @@ export interface PointCloudUniforms {
   uGain: Uniform<number>;
 }
 
+/** Halo autour du cœur d'un point : diamètre du point dessiné, en tailles du cœur, et éclat de la lueur à son bord. */
+export interface PointHalo {
+  scale: number;
+  strength: number;
+}
+
+/** Constante GLSL flottante (« 2.5 », « 3.0 ») : un entier ne se mêle pas aux flottants. */
+const glslFloat = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value));
+
 /**
  * Nuage de points ronds à bord doux, de taille fixe à l'écran (étoiles voisines, Soleil vu de loin, galaxie).
  * Attributs de la géométrie : position, color (linéaire, éclat compris), size (px CSS). Additif, sans écriture
- * de profondeur ni tone mapping. Les trois nuages partagent ce programme GPU, compilé avec la scène.
+ * de profondeur ni tone mapping. Les nuages partagent ce programme GPU, compilé avec la scène ; avec `halo` (étoiles
+ * voisines), une variante dessine autour du cœur une lueur de la même couleur (STAR_HALO).
  */
 export function createPointCloudMaterial(
   pixelRatio: Uniform<number>,
   gain: Uniform<number> = { value: 1 },
+  halo?: PointHalo,
 ): {
   material: ShaderMaterial;
   uniforms: PointCloudUniforms;
 } {
   const uniforms: PointCloudUniforms = { uOpacity: { value: 1 }, uPixelRatio: pixelRatio, uGain: gain };
+  const defines: Record<string, string> = halo
+    ? { STAR_HALO: "", STAR_HALO_SCALE: glslFloat(halo.scale), STAR_HALO_STRENGTH: glslFloat(halo.strength) }
+    : {};
   const material = new ShaderMaterial({
     uniforms: { ...uniforms },
+    defines,
     vertexShader: POINT_CLOUD_VERTEX,
     fragmentShader: POINT_CLOUD_FRAGMENT,
     vertexColors: true,
