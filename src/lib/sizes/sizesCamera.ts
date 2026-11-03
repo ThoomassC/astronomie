@@ -1,6 +1,6 @@
 import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
 import type { PlacedObject } from "@/lib/sizes/layout";
-import type { SizeObjectKey } from "@/lib/sizes/objects";
+import type { SizeStopKey } from "@/lib/sizes/stops";
 
 const D2R = Math.PI / 180;
 /** Part du vol pendant laquelle le halo de l'astre qui arrive entre en fondu (ou s'éteint, au retour). */
@@ -80,7 +80,7 @@ export interface SizesFrameContext {
  */
 export function sizesRestCamera(
   placed: readonly PlacedObject[],
-  stop: "intro" | SizeObjectKey,
+  stop: SizeStopKey,
   ctx: SizesFrameContext,
   out: SizesCam = emptyCam(),
 ): SizesCam {
