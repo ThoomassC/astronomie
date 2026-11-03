@@ -4,7 +4,7 @@
  * Le Soleil est à l'origine : la direction de la lumière se déduit de la position du fragment.
  */
 
-const OUTPUT = /* glsl */ `
+export const OUTPUT = /* glsl */ `
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 `;
@@ -19,7 +19,7 @@ const BRIGHTNESS = /* glsl */ `gl_FragColor.rgb *= uBrightness;`;
 const SUNLIGHT = /* glsl */ `const vec3 SUNLIGHT = vec3(1.0, 0.97, 0.92) * 1.35;`;
 
 /** Bruit de valeur 3D (moyenne 0,5) : marbrure, détail fin, taches, jets de la couronne. */
-const NOISE_GLSL = /* glsl */ `
+export const NOISE_GLSL = /* glsl */ `
 float hs(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float vn(vec3 x) {
   vec3 i = floor(x), f = fract(x);
