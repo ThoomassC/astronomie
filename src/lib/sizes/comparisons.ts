@@ -69,3 +69,36 @@ export function pickComparison(radiusSolar: number): SizeComparison {
   if (radiusSolar <= 1) return { kind: "earths", count: Math.round(earthDiameters(radiusSolar)) };
   return { kind: "suns", count: roundSignificant(sunVolumes(radiusSolar), 2) };
 }
+
+/**
+ * Comparaison parlante d'un trou noir, par son ombre (ce que l'on voit de lui), déjà arrondie comme elle s'affiche :
+ * - `km` : ombre plus petite que la Terre, son diamètre en kilomètres, à deux chiffres significatifs ;
+ * - `insideOrbit` : ombre mise à la place du Soleil, la planète la plus proche du Soleil dont l'orbite la contiendrait ;
+ * - `beyondNeptune` : ombre plus grande que l'orbite de Neptune, combien de fois son rayon, à l'unité.
+ */
+export type BlackHoleComparison =
+  | { kind: "km"; diameterKm: number }
+  | { kind: "insideOrbit"; planet: PlanetKey }
+  | { kind: "beyondNeptune"; times: number };
+
+/**
+ * Comparaison montrée pour une ombre de rayon `radiusSolar` (R☉) : Cygnus X-1 → 330 km ; Sagittarius A* → orbite de
+ * Mercure ; M87* → 11 fois l'orbite de Neptune ; Fer à cheval cosmique → 61 fois.
+ */
+export function pickBlackHoleComparison(radiusSolar: number): BlackHoleComparison {
+  const km = radiusKm(radiusSolar);
+  if (km < EARTH_EQUATORIAL_RADIUS_KM) return { kind: "km", diameterKm: roundSignificant(2 * km, 2) };
+  const reach = radiusAu(radiusSolar);
+  let inside: PlanetKey | null = null;
+  let nearest = Infinity;
+  let farthest = 0;
+  for (const planet of PLANETS) {
+    const semiMajorAxis = planet.elements[0];
+    farthest = Math.max(farthest, semiMajorAxis);
+    if (semiMajorAxis >= reach && semiMajorAxis < nearest) {
+      inside = planet.key;
+      nearest = semiMajorAxis;
+    }
+  }
+  return inside ? { kind: "insideOrbit", planet: inside } : { kind: "beyondNeptune", times: Math.round(reach / farthest) };
+}

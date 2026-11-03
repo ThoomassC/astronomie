@@ -18,14 +18,14 @@ export const ABOUT_EN: AboutContent = {
       heading: "Why this site",
       paragraphs: [
         "The Earth is nearly 150 million kilometres from the Sun: an accurate number, but impossible to picture. This site helps you feel the distances and sizes of space by travelling through them.",
-        "The Journey starts at the Sun, passes each planet, then heads out to the nearby stars, the Milky Way, other galaxies and beyond. At the Sun and at each planet, an animation explains a phenomenon: the seasons, orbits, the speed of light… The Sizes tab compares ten stars, from the red dwarf Proxima Centauri to the hypergiant VY Canis Majoris.",
+        "The Journey starts at the Sun, passes each planet, then heads out to the nearby stars, the Milky Way, other galaxies and beyond. At the Sun and at each planet, an animation explains a phenomenon: the seasons, orbits, the speed of light… The Sizes tab compares ten stars and four black holes, from the stellar black hole Cygnus X-1 to the one in the Cosmic Horseshoe, among the most massive ever weighed.",
       ],
     },
     {
       id: "sources",
       heading: "Data sources",
       paragraphs: [
-        "The numbers come from space agencies and scientific papers; here are the main sources. The radii of the stars in the Sizes tab come from published measurements, star by star.",
+        "The numbers come from space agencies and scientific papers; here are the main sources. The radii of the stars in the Sizes tab come from published measurements, star by star; the masses of its black holes, from stellar orbits, Event Horizon Telescope images and a gravitational lens.",
       ],
       links: [
         {
@@ -63,9 +63,24 @@ export const ABOUT_EN: AboutContent = {
           description: `Radius of VY Canis Majoris, measured by interferometry: ${figures.vyCanisMajoris}.`,
         },
         {
+          label: "Miller-Jones et al., 2021",
+          href: ABOUT_URLS.millerJones2021,
+          description: "Mass of Cygnus X-1, the first object recognised as a black hole.",
+        },
+        {
+          label: "EHT Collaboration, 2019",
+          href: ABOUT_URLS.eht2019,
+          description: "The first image of a black hole, M87*, and its mass.",
+        },
+        {
+          label: "Melo-Carneiro et al., 2025",
+          href: ABOUT_URLS.meloCarneiro2025,
+          description: "Mass of the Cosmic Horseshoe black hole, among the most massive ever weighed.",
+        },
+        {
           label: "GRAVITY Collaboration, 2022",
           href: ABOUT_URLS.gravity2022,
-          description: "Distance from the Sun to the centre of the Galaxy.",
+          description: "Distance from the Sun to the centre of the Galaxy, and mass of Sagittarius A*, the black hole there.",
         },
         { label: "Reid et al., 2019", href: ABOUT_URLS.reid2019, description: "Shape of the Milky Way's spiral arms." },
         { label: "McConnachie, 2012", href: ABOUT_URLS.mcConnachie2012, description: "Galaxies of the Local Group." },

@@ -4,21 +4,19 @@ import { useEffect, useRef } from "react";
 import { cssVars } from "@/components/journey/cssVars";
 import { setSceneFallback } from "@/components/scene/fallback";
 import { useLocale } from "@/i18n/LocaleProvider";
-import { COMPARED_STARS, type SizeStarKey } from "@/lib/astro/starSizes";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
+import { COMPARED_OBJECTS, isSizeObjectKey, type SizeObjectKey } from "@/lib/sizes/objects";
 import { shownSceneLayout } from "./sceneElements";
 import { SIZES_STRINGS } from "./sizes.strings";
 import { createSizesScene, type SizesScene as SceneEngine } from "./sizesEngine";
 import styles from "./SizesPage.module.css";
 
-const isStarKey = (value: string | undefined): value is SizeStarKey => COMPARED_STARS.some((star) => star.key === value);
-
-/** Éléments `[data-name]` de la couche, rangés par clé d'étoile. */
-function labelsBy(layer: HTMLElement, attribute: "ring" | "limb"): Map<SizeStarKey, HTMLElement> {
-  const labels = new Map<SizeStarKey, HTMLElement>();
+/** Éléments `[data-ring]` ou `[data-limb]` de la couche, rangés par clé d'astre. */
+function labelsBy(layer: HTMLElement, attribute: "ring" | "limb"): Map<SizeObjectKey, HTMLElement> {
+  const labels = new Map<SizeObjectKey, HTMLElement>();
   for (const element of layer.querySelectorAll<HTMLElement>(`[data-${attribute}]`)) {
     const key = element.dataset[attribute];
-    if (isStarKey(key)) labels.set(key, element);
+    if (isSizeObjectKey(key)) labels.set(key, element);
   }
   return labels;
 }
@@ -85,19 +83,21 @@ export default function SizesScene() {
       <canvas id="sky" ref={canvasRef} aria-hidden="true" />
       {/* Masquées (visibility) jusqu'à leur premier placement par le moteur. */}
       <div id="labels" ref={labelsRef} aria-hidden="true">
-        {COMPARED_STARS.map((star) => (
-          <span key={star.key} className="lbl deep" data-ring={star.key} style={cssVars({ "--lc": star.color })}>
+        {COMPARED_OBJECTS.map((object) => (
+          <span key={object.key} className="lbl deep" data-ring={object.key} style={cssVars({ "--lc": object.color })}>
             <i />
             <span>
-              {t.names[star.key]}
-              <span className="dist"> · {t.radius(star.radiusSolar)}</span>
+              {t.names[object.key]}
+              <span className="dist"> · {t.size(object)}</span>
             </span>
           </span>
         ))}
-        {COMPARED_STARS.map((star) => (
-          <span key={`${star.key}-limb`} className={`lbl deep ${styles.limbLabel}`} data-limb={star.key}>
+        {/* La forme courte (`data-short`) masque la taille (`.dist`) : le nom seul, quand la complète ne tient pas. */}
+        {COMPARED_OBJECTS.map((object) => (
+          <span key={`${object.key}-limb`} className={`lbl deep ${styles.limbLabel}`} data-limb={object.key}>
             <span>
-              {t.names[star.key]} · {t.radius(star.radiusSolar)}
+              {t.names[object.key]}
+              <span className="dist"> · {t.size(object)}</span>
             </span>
           </span>
         ))}
@@ -109,7 +109,7 @@ export default function SizesScene() {
           </span>
         </span>
       </div>
-      <div ref={scaleRef} className={styles.scaleBar} aria-hidden="true">
+      <div ref={scaleRef} className={styles.scaleBar} data-unit="suns" aria-hidden="true">
         <div className={styles.scaleRow}>
           <span className={styles.scaleSun} data-scale-sun="" data-mode="ring" />
           <span className={styles.scaleTrack}>

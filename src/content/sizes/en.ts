@@ -1,20 +1,24 @@
+import { SHADOW_RADIUS_RS } from "@/lib/astro/schwarzschild";
 import { formatNumber } from "@/lib/format";
 import type { SizesContent } from "./types";
 
 /** Nombre écrit comme Intl l'écrit en anglais britannique (virgule dès 4 chiffres). */
 const n = (value: number) => formatNumber(value, 0, "en");
 
+/** L'ombre, √27/2 ≈ 2,6 fois l'horizon (schwarzschild.ts). */
+const shadowTimes = formatNumber(SHADOW_RADIUS_RS, 1, "en");
+
 /*
- * Même contenu que le français (valeurs et comparaisons des données v2, § 1 ; introduction et mots de couleur du
- * design v2, § 4), rédigé en anglais britannique pour un public de 12 ans et plus.
+ * Même contenu que le français (valeurs et comparaisons des données v2, § 1, et de la fiche des trous noirs ;
+ * introduction et mots de couleur du design v2, § 4), rédigé en anglais britannique pour un public de 12 ans et plus.
  */
 export const SIZES_EN: SizesContent = {
   intro: {
-    title: "Ten stars, side by side.",
-    text: "Scroll down: each star is bigger than the last, and all of them are to the same scale. Sizes are counted in solar radii (R☉): 764 R☉ means 764 times the radius of the Sun.",
-    note: "Sizes are to scale; the stars, really very far apart, are lined up side by side here.",
+    title: "Stars and black holes, side by side.",
+    text: `Scroll down: each object is bigger than the last, and all of them are to the same scale. Sizes are counted in solar radii (R☉): 764 R☉ means 764 times the radius of the Sun. A black hole has no surface: we measure it by its shadow, the dark disc drawn by the light it bends, ${shadowTimes} times as wide as its event horizon.`,
+    note: "Sizes are to scale; the objects, really very far apart, are lined up side by side here. The black holes are computed renderings: light follows the curvature of space.",
     sceneDescription:
-      "In the background, a 3D view lines up the ten stars at their true relative sizes; the camera pulls back from one star to the next as you scroll.",
+      "In the background, a 3D view lines up ten stars and four black holes at their true relative sizes; the camera pulls back from one object to the next as you scroll.",
     start: "Start with the smallest",
   },
   stars: {
@@ -73,6 +77,41 @@ export const SIZES_EN: SizesContent = {
       caveat: `Before 2012, estimates ranged from 600 to ${n(3000)} R☉. Other stars may be larger, but their sizes are still too uncertain to compare.`,
     },
   },
+  blackHoles: {
+    "cygnus-x-1": {
+      kind: "stellar black hole",
+      hook: "More than twenty times the Sun's mass, packed into a shadow a few hundred kilometres across.",
+      lede: "Cygnus X-1 was the first object astronomers recognised as a black hole, in the early 1970s. It orbits a blue supergiant star every 5.6 days and swallows its wind. In 1974, the physicist Stephen Hawking bet that it was not a black hole; he admitted defeat in 1990. Its event horizon is only about 125 km across: the Earth is a hundred times wider.",
+      simplification:
+        "Computed rendering: light follows the curvature of space around a non-rotating black hole. The disc, which shines mostly in X-rays, takes the colour of a black body at several million degrees; it is shown more tilted than it really is, to reveal its bent image above the shadow.",
+      caveat: "Its mass is debated: a 2025 study finds it much lighter than the 2021 measurement used here.",
+    },
+    "sagittarius-a-star": {
+      kind: "supermassive black hole",
+      hook: "4.3 million times the Sun's mass, yet a shadow barely wider than Aldebaran.",
+      lede: `Sagittarius A* is the black hole at the centre of our galaxy, ${n(27_000)} light-years away. Astronomers weighed it by following the stars that orbit it: the star S2 goes round it every 16 years. This work earned Reinhard Genzel and Andrea Ghez the 2020 Nobel Prize in Physics. It is very quiet: in all, it shines only about as brightly as a few hundred Suns. Its first image was published in 2022.`,
+      simplification:
+        "Computed rendering: light follows the curvature of space around a non-rotating black hole. The faint ring, seen almost face-on, is in false colours, like the Event Horizon Telescope image taken in radio waves: in visible light, dust in the Galaxy hides it.",
+    },
+    "m87-star": {
+      kind: "supermassive black hole",
+      hook: "The first black hole ever photographed: its shadow would swallow the whole Solar System.",
+      lede: `M87* lies at the heart of the giant galaxy M87, 55 million light-years away. Its image, published on 10 April 2019 by the Event Horizon Telescope, was the first of a black hole: radio telescopes all over the Earth had to be linked to see it in such fine detail. It is about ${n(1500)} times as massive as the one in our galaxy and shoots out a jet of particles at nearly the speed of light, about ${n(5000)} light-years long. Yet it only swallows roughly one planet Jupiter's worth of matter each year.`,
+      simplification:
+        "Computed rendering: light follows the curvature of space around a non-rotating black hole. The ring is in false colours, like the Event Horizon Telescope image taken in radio waves; the jet, bluish as in Hubble's images, is far shorter than it really is.",
+      caveat:
+        "Its mass depends on the method: the Event Horizon Telescope's ring gives 6.5 billion solar masses, the motion of the stars in its galaxy about 5.4 billion.",
+    },
+    "cosmic-horseshoe": {
+      kind: "ultramassive black hole",
+      hook: "One of the most massive black holes ever weighed, possibly the record holder.",
+      lede: `This black hole sleeps at the heart of the galaxy LRG 3-757, whose mass bends the light of a more distant galaxy into an almost closed arc: the “Cosmic Horseshoe”. In 2025, astronomers weighed it in two ways, through this bending and through the speed of the stars near its centre, close to 400 km/s. The result: about 36 billion times the Sun's mass, more than ${n(8000)} times the one in our galaxy. It swallows almost nothing, so it does not shine. Its light travelled for nearly 5 billion years to reach us.`,
+      simplification:
+        "Computed rendering: light follows the curvature of space around a non-rotating black hole. It swallows nothing: no disc and no jet, only its shadow against the bent light of its galaxy's old, yellow-orange stars. The horseshoe itself, made by the whole galaxy and far larger, is not drawn.",
+      caveat:
+        "Only one study has weighed it, and its mass depends on the model. TON 618 is often called the biggest known black hole, up to 66 billion Suns, but its mass is only estimated from its quasar's light and could be much lower.",
+    },
+  },
   facts: {
     radius: "Radius",
     type: "Star type",
@@ -80,6 +119,10 @@ export const SIZES_EN: SizesContent = {
     distance: "Distance from Earth",
     comparison: "For scale",
     sunDistance: "8.3 light-minutes",
+    shadow: "Shadow radius",
+    horizon: "Event horizon radius",
+    mass: "Mass",
+    blackHoleType: "Black hole type",
   },
   tints: { orange: "orange", "pale-orange": "pale orange", white: "white", "bluish-white": "bluish white" },
   vsSun: {
@@ -88,5 +131,5 @@ export const SIZES_EN: SizesContent = {
     reference: "our reference",
   },
   thermo: { cooler: "cooler", hotter: "hotter" },
-  plate: { story: "Read the fact sheet", restart: "Back to the smallest star", sources: "Sources:" },
+  plate: { story: "Read the fact sheet", restart: "Back to the smallest", sources: "Sources:" },
 };

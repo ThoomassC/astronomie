@@ -5,10 +5,11 @@ import { getSizesContent } from "@/content/sizes/content";
 import type { SizesContent } from "@/content/sizes/types";
 import type { Locale } from "@/i18n/locales";
 import { withUnit } from "@/i18n/units";
-import { COMPARED_STARS, type ComparedStar } from "@/lib/astro/starSizes";
+import type { ComparedStar } from "@/lib/astro/starSizes";
 import { formatNumber } from "@/lib/format";
 import { radiusKm, roundSignificant } from "@/lib/sizes/comparisons";
-import { SIZE_STOP_IDS, sizeStarIndex, sizeStopAnchor, type SizeStopKey } from "@/lib/sizes/stops";
+import { COMPARED_OBJECTS } from "@/lib/sizes/objects";
+import { SIZE_STOP_IDS, sizeObjectIndex, sizeStopAnchor, type SizeStopKey } from "@/lib/sizes/stops";
 import { TEMPERATURE_SCALE_STOPS, temperatureScalePercent, temperatureTint } from "@/lib/sizes/temperature";
 import { SIZES_STRINGS } from "./sizes.strings";
 import styles from "./SizesPage.module.css";
@@ -51,11 +52,12 @@ function TemperatureScale({ star, words, sunName }: { star: ComparedStar; words:
 }
 
 /**
- * Escale d'une étoile de la page « Tailles » (design v2, § 4.4) : plaque de lecture (rang parmi les dix et catégorie,
+ * Escale d'une étoile de la page « Tailles » (design v2, § 4.4) : plaque de lecture (rang parmi les quatorze astres,
+ * accordé au féminin, et catégorie,
  * nom, accroche) et fiche : présentation ; rayon, avec ses kilomètres (4 chiffres significatifs) et sa fourchette
  * publiée s'il est débattu ; type ; température, sa couleur en mots et la réglette ; distance ; comparaison ; mise en
  * garde ; sources. Sur téléphone, la fiche se déplie à la demande, comme au voyage. `restartTo` ajoute sous la fiche
- * un lien vers cette escale (la plus petite étoile, sur la dernière plaque).
+ * un lien vers cette escale (le plus petit astre, sur la dernière plaque).
  */
 export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; locale: Locale; restartTo?: SizeStopKey }) {
   const content = getSizesContent(locale);
@@ -64,7 +66,7 @@ export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; loc
   const name = t.names[star.key];
   const id = SIZE_STOP_IDS[star.key];
   const titleId = `${id}-titre`;
-  const rank = t.rank(sizeStarIndex(star.key) + 1, COMPARED_STARS.length);
+  const rank = t.rank(sizeObjectIndex(star.key) + 1, COMPARED_OBJECTS.length, "feminine");
   const km = withUnit(formatNumber(roundSignificant(radiusKm(star.radiusSolar), KM_SIGNIFICANT_DIGITS), 0, locale), "km", locale);
   const tint = content.tints[temperatureTint(star.temperatureK)];
   const versusSun =

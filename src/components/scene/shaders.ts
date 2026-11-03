@@ -4,7 +4,7 @@
  * Le Soleil est à l'origine : la direction de la lumière se déduit de la position du fragment.
  */
 
-const OUTPUT = /* glsl */ `
+export const OUTPUT = /* glsl */ `
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 `;
@@ -19,7 +19,7 @@ const BRIGHTNESS = /* glsl */ `gl_FragColor.rgb *= uBrightness;`;
 const SUNLIGHT = /* glsl */ `const vec3 SUNLIGHT = vec3(1.0, 0.97, 0.92) * 1.35;`;
 
 /** Bruit de valeur 3D (moyenne 0,5) : marbrure, détail fin, taches, jets de la couronne. */
-const NOISE_GLSL = /* glsl */ `
+export const NOISE_GLSL = /* glsl */ `
 float hs(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float vn(vec3 x) {
   vec3 i = floor(x), f = fract(x);
@@ -443,7 +443,10 @@ void main() {
  * - Supergranulation (une cellule pour 6,5 granules) : modulation lente et réseau, dont les facules brillent vers
  *   le bord ; marbrure à grande échelle, visible de loin.
  * - Taches (STARSPOTS, placées par placeStarspots) : ombre, pénombre filamenteuse, plage de facules autour.
- * - Assombrissement centre-bord d'Eddington-Barbier : T⁴(μ) ∝ 1 − k + kμ (k = uLimbDarkening).
+ * - Assombrissement centre-bord d'Eddington-Barbier : T⁴(μ) ∝ 1 − k + kμ (k = uLimbDarkening) ; en plus, loi linéaire
+ *   en intensité I(μ)/I(1) = 1 − u(1 − μ) (u = uLimbIntensity, 0 par défaut), la même sur les trois canaux : le bord
+ *   des étoiles chaudes, dont la loi en température rougit à peine, s'assombrit sans virer au gris.
+ * - Alpha : uOpacity (1 par défaut), qui n'agit que si le matériau est transparent.
  * Le temps (uTime, en secondes affichées) fait tourner la surface (uSpinRate, rad/s, rotation rigide à la vitesse
  * de l'équateur) et bouillonner la convection, sur une période de BOIL_PERIOD secondes. Variante STAR_LITE
  * (écrans tactiles) : cellules figées, cherchées parmi 8 voisines au lieu de 27, ni détail fin ni réseau.
@@ -457,6 +460,8 @@ uniform vec3 uWien;
 uniform float uGranulation;
 uniform float uContrast;
 uniform float uLimbDarkening;
+uniform float uLimbIntensity;
+uniform float uOpacity;
 uniform float uActivity;
 uniform float uSpinRate;
 #if STARSPOTS > 0
@@ -591,7 +596,8 @@ void main() {
   t = mix(t, PENUMBRA_T + 0.2 * (filament - 0.5), penumbra);
   t = mix(t, UMBRA_T + 0.03 * (filament - 0.5), umbra);
   t *= pow(1.0 - uLimbDarkening + uLimbDarkening * mu, 0.25);
-  gl_FragColor = vec4(vExposure * uColor * exp(-uWien * (1.0 / t - 1.0)), 1.0);
+  vec3 light = vExposure * uColor * exp(-uWien * (1.0 / t - 1.0)) * (1.0 - uLimbIntensity * (1.0 - mu));
+  gl_FragColor = vec4(light, uOpacity);
   ${OUTPUT}
 }
 `;

@@ -1,22 +1,27 @@
+import { SHADOW_RADIUS_RS } from "@/lib/astro/schwarzschild";
 import { formatNumber } from "@/lib/format";
 import type { SizesContent } from "./types";
 
 /** Nombre écrit comme Intl l'écrit en français (espace fine insécable dès 4 chiffres). */
 const n = (value: number) => formatNumber(value, 0, "fr");
 
+/** L'ombre, √27/2 ≈ 2,6 fois l'horizon (schwarzschild.ts). */
+const shadowTimes = formatNumber(SHADOW_RADIUS_RS, 1, "fr");
+
 /*
  * Valeurs et comparaisons tirées des données v2 (§ 1), vérifiées ou recalculées : rayons, températures, masses,
- * luminosités, distances, orbites englouties, temps de traversée de la lumière. Introduction, mots de couleur et
- * réglette : design v2, § 4.
+ * luminosités, distances, orbites englouties, temps de traversée de la lumière. Trous noirs : fiche documentaire des
+ * trous noirs (novembre 2026), chaque nombre vérifié par content.test.ts. Introduction, mots de couleur et réglette :
+ * design v2, § 4.
  */
 export const SIZES_FR: SizesContent = {
   intro: {
-    title: "Dix étoiles, côte à côte.",
-    text: "Faites défiler : chaque étoile est plus grande que la précédente, et toutes sont à la même échelle. Leur taille se compte en rayons du Soleil (R☉) : 764 R☉, c'est 764 fois le rayon du Soleil.",
-    note: "Les tailles sont à l'échelle ; les étoiles, en vrai très éloignées les unes des autres, sont ici rangées côte à côte.",
+    title: "Étoiles et trous noirs, côte à côte.",
+    text: `Faites défiler : chaque astre est plus grand que le précédent, et tous sont à la même échelle. Leur taille se compte en rayons du Soleil (R☉) : 764 R☉, c'est 764 fois le rayon du Soleil. Un trou noir n'a pas de surface : on le mesure à son ombre, le disque noir que dessine la lumière qu'il dévie, ${shadowTimes} fois plus large que son horizon.`,
+    note: "Les tailles sont à l'échelle ; les astres, en vrai très éloignés les uns des autres, sont ici rangés côte à côte. Les trous noirs sont des rendus calculés : la lumière y suit la courbure de l'espace.",
     sceneDescription:
-      "En arrière-plan, une vue 3D aligne les dix étoiles à leurs tailles relatives réelles ; la caméra recule d'une étoile à l'autre au fil du défilement.",
-    start: "Commencer par la plus petite",
+      "En arrière-plan, une vue 3D aligne dix étoiles et quatre trous noirs à leurs tailles relatives réelles ; la caméra recule d'un astre à l'autre au fil du défilement.",
+    start: "Commencer par le plus petit",
   },
   stars: {
     "proxima-centauri": {
@@ -74,6 +79,41 @@ export const SIZES_FR: SizesContent = {
       caveat: `Avant 2012, les estimations allaient de 600 à ${n(3000)} R☉. D'autres étoiles sont peut-être plus grandes, mais leur taille reste trop incertaine pour les comparer.`,
     },
   },
+  blackHoles: {
+    "cygnus-x-1": {
+      kind: "trou noir stellaire",
+      hook: "Plus de vingt fois la masse du Soleil, dans une ombre de quelques centaines de kilomètres.",
+      lede: "Cygnus X-1 est le premier objet que les astronomes ont reconnu comme un trou noir, au début des années 1970. Il tourne en 5,6 jours autour d'une étoile supergéante bleue, dont il avale le vent. En 1974, le physicien Stephen Hawking avait parié que ce n'en était pas un ; il a reconnu sa défaite en 1990. Son horizon ne mesure qu'environ 125 km de diamètre : la Terre est cent fois plus large.",
+      simplification:
+        "Rendu calculé : la lumière suit la courbure de l'espace autour d'un trou noir sans rotation. Le disque, qui brille surtout en rayons X, prend la couleur d'un corps noir de plusieurs millions de degrés ; il est vu plus incliné qu'en réalité, pour montrer son image déviée au-dessus de l'ombre.",
+      caveat: "Sa masse fait débat : une étude de 2025 le trouve nettement plus léger que la mesure de 2021 retenue ici.",
+    },
+    "sagittarius-a-star": {
+      kind: "trou noir supermassif",
+      hook: "4,3 millions de fois la masse du Soleil, et une ombre à peine plus large qu'Aldébaran.",
+      lede: `Sagittarius A* est le trou noir du centre de notre galaxie, à ${n(27_000)} années-lumière. Les astronomes l'ont pesé en suivant les étoiles qui tournent autour de lui : l'étoile S2 en fait le tour en 16 ans. Ce suivi a valu le prix Nobel de physique 2020 à Reinhard Genzel et Andrea Ghez. Très calme, il ne brille en tout qu'à peu près comme quelques centaines de Soleils. Sa première image a été publiée en 2022.`,
+      simplification:
+        "Rendu calculé : la lumière suit la courbure de l'espace autour d'un trou noir sans rotation. L'anneau, ténu et vu presque de face, est en fausses couleurs, comme l'image de l'Event Horizon Telescope prise en ondes radio : en lumière visible, la poussière de la Galaxie le cache.",
+    },
+    "m87-star": {
+      kind: "trou noir supermassif",
+      hook: "Le premier trou noir photographié : son ombre engloutirait tout le système solaire.",
+      lede: `M87* est au cœur de la galaxie géante M87, à 55 millions d'années-lumière. Son image, publiée le 10 avril 2019 par l'Event Horizon Telescope, est la première d'un trou noir : il a fallu relier des radiotélescopes de toute la Terre pour obtenir une vue aussi fine. Il pèse environ ${n(1500)} fois plus que celui de notre galaxie et crache un jet de particules presque à la vitesse de la lumière, long d'environ ${n(5000)} années-lumière. Pourtant, il n'avale qu'à peu près l'équivalent d'une planète Jupiter par an.`,
+      simplification:
+        "Rendu calculé : la lumière suit la courbure de l'espace autour d'un trou noir sans rotation. L'anneau est en fausses couleurs, comme l'image de l'Event Horizon Telescope prise en ondes radio ; le jet, bleuté comme sur les images de Hubble, est bien plus court qu'en réalité.",
+      caveat:
+        "Sa masse varie selon la méthode : l'anneau de l'Event Horizon Telescope donne 6,5 milliards de masses solaires, le mouvement des étoiles de sa galaxie environ 5,4 milliards.",
+    },
+    "cosmic-horseshoe": {
+      kind: "trou noir ultramassif",
+      hook: "L'un des plus gros trous noirs jamais pesés, peut-être le record.",
+      lede: `Ce trou noir dort au cœur de la galaxie LRG 3-757, dont la masse dévie la lumière d'une galaxie plus lointaine en un arc presque fermé : le « Fer à cheval cosmique ». En 2025, des astronomes l'ont pesé de deux façons, par cette déviation et par la vitesse des étoiles proches de son centre, près de 400 km/s. Résultat : environ 36 milliards de fois la masse du Soleil, plus de ${n(8000)} fois celui de notre galaxie. Il n'avale presque rien, donc il ne brille pas. Sa lumière a voyagé près de 5 milliards d'années pour nous parvenir.`,
+      simplification:
+        "Rendu calculé : la lumière suit la courbure de l'espace autour d'un trou noir sans rotation. Il n'avale rien : ni disque ni jet, seulement son ombre sur la lumière déviée des vieilles étoiles jaune orangé de sa galaxie. Le fer à cheval, produit par toute la galaxie et bien plus grand, n'est pas dessiné.",
+      caveat:
+        "Une seule étude l'a pesé, et sa masse dépend du modèle. TON 618 est souvent présenté comme le plus gros trou noir connu, jusqu'à 66 milliards de Soleils ; mais sa masse n'est qu'estimée d'après la lumière de son quasar, et elle pourrait être bien plus faible.",
+    },
+  },
   facts: {
     radius: "Rayon",
     type: "Type",
@@ -81,6 +121,10 @@ export const SIZES_FR: SizesContent = {
     distance: "Distance de la Terre",
     comparison: "Pour comparer",
     sunDistance: "8,3 minutes-lumière",
+    shadow: "Rayon de l'ombre",
+    horizon: "Rayon de l'horizon",
+    mass: "Masse",
+    blackHoleType: "Type",
   },
   tints: { orange: "orangée", "pale-orange": "orange pâle", white: "blanche", "bluish-white": "blanc bleuté" },
   vsSun: {
@@ -89,5 +133,5 @@ export const SIZES_FR: SizesContent = {
     reference: "notre référence",
   },
   thermo: { cooler: "plus froide", hotter: "plus chaude" },
-  plate: { story: "Lire la fiche", restart: "Revenir à la plus petite étoile", sources: "Sources :" },
+  plate: { story: "Lire la fiche", restart: "Revenir au plus petit", sources: "Sources :" },
 };

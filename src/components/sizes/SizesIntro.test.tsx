@@ -9,9 +9,9 @@ afterEach(() => {
 
 describe("SizesIntro", () => {
   it.each([
-    ["fr", "Dix étoiles, côte à côte."],
-    ["en", "Ten stars, side by side."],
-    ["es", "Diez estrellas, en fila."],
+    ["fr", "Étoiles et trous noirs, côte à côte."],
+    ["en", "Stars and black holes, side by side."],
+    ["es", "Estrellas y agujeros negros, en fila."],
   ] as const)("devrait titrer la page (h1) et poser l'introduction à l'ancre #tailles, escale « intro » (%s)", (locale, title) => {
     render(<SizesIntro locale={locale} />);
     const section = screen.getByRole("region", { name: title });
@@ -21,12 +21,12 @@ describe("SizesIntro", () => {
   });
 
   it.each([
-    ["fr", "Commencer par la plus petite"],
+    ["fr", "Commencer par le plus petit"],
     ["en", "Start with the smallest"],
-    ["es", "Empezar por la más pequeña"],
-  ] as const)("devrait conduire à la plus petite étoile, à l'ancre #proxima-du-centaure (%s)", (locale, start) => {
+    ["es", "Empezar por el más pequeño"],
+  ] as const)("devrait conduire au plus petit astre, Cygnus X-1, à l'ancre #cygnus-x-1 (%s)", (locale, start) => {
     render(<SizesIntro locale={locale} />);
-    expect(screen.getByRole("link", { name: start })).toHaveAttribute("href", "#proxima-du-centaure");
+    expect(screen.getByRole("link", { name: start })).toHaveAttribute("href", "#cygnus-x-1");
   });
 
   it("devrait dire ce qui est à l'échelle, et ce qui ne l'est pas (ligne discrète)", () => {

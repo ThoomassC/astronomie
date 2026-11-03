@@ -16,8 +16,8 @@ export const HOME_EN: HomeContent = {
       },
       sizes: {
         title: "Sizes",
-        text: "Ten stars to the same scale, from tiny Proxima Centauri to enormous VY Canis Majoris.",
-        action: "Compare the stars",
+        text: "Ten stars and four black holes to the same scale, from tiny Cygnus X-1 to the giant black hole of the Cosmic Horseshoe.",
+        action: "Compare sizes",
       },
       about: {
         title: "About",

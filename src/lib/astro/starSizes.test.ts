@@ -27,6 +27,10 @@ describe("COMPARED_STARS", () => {
   });
 
   describe.each(COMPARED_STARS)("étoile $key", (star) => {
+    it("devrait être une étoile (kind), pas un trou noir", () => {
+      expect(star.kind).toBe("star");
+    });
+
     it("devrait avoir une température effective dans [2 000 ; 40 000] K", () => {
       expect(star.temperatureK).toBeGreaterThanOrEqual(2000);
       expect(star.temperatureK).toBeLessThanOrEqual(40_000);
