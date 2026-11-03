@@ -67,9 +67,9 @@ describe("SizesRail", () => {
     expect(screen.getByText("× 10 per mark")).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("devrait graduer la règle à chaque puissance de dix, de 0,1 à 1 000 R☉", () => {
+  it("devrait graduer la règle à chaque puissance de dix, de 10⁻⁴ à 10⁶ R☉", () => {
     const { container } = renderIn("fr");
-    expect(container.querySelectorAll(".tick")).toHaveLength(5);
+    expect(container.querySelectorAll(".tick")).toHaveLength(11);
     expect(container.querySelectorAll(".tick.maj")).toHaveLength(1);
   });
 });

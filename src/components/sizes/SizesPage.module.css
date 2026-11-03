@@ -187,6 +187,21 @@
   text-align: right;
 }
 
+/*
+ * Grand écran : quatorze repères sur dix décades, dont onze en quatre décades. La règle des tailles est plus longue que
+ * celle des distances (70 % de la hauteur, 640 px au plus) : ses repères s'écartent moins de leur position vraie.
+ * Centrée comme elle, elle reste sous la barre haute jusqu'aux écrans bas, où le menu la remplace.
+ */
+@media (min-width: 861px) {
+  .page :global(.rail) {
+    height: min(70vh, 640px);
+  }
+
+  .railLegend {
+    top: calc(50% + min(35vh, 320px) + 0.75rem);
+  }
+}
+
 /* ---------- Mise en page compacte (téléphone, tablette en portrait) ---------- */
 @media (max-width: 640px) {
   .contact {
