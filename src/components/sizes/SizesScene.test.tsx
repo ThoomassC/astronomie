@@ -45,6 +45,17 @@ describe("SizesScene sans WebGL", () => {
     expect(texts).toContain("Próxima Centauri · 0,154 R☉");
   });
 
+  it("devrait écrire la taille de l'étiquette de limbe à part (`.dist`), que la forme courte masque (en : « Rigel · 74 R☉ »)", () => {
+    const { container } = render(
+      <LocaleProvider locale="en">
+        <SizesScene />
+      </LocaleProvider>,
+    );
+    const limb = container.querySelector('[data-limb="rigel"] > span');
+    expect(limb).toHaveTextContent("Rigel · 74 R☉");
+    expect(limb?.querySelector(".dist")).toHaveTextContent("· 74 R☉");
+  });
+
   it("devrait donner au Soleil devenu un point l'anneau « ici », avec son nom et son rayon (fr : « Soleil · 1 R☉ »)", () => {
     const { container } = render(<SizesScene />);
     expect(container.querySelector("[data-sun-here]")).toHaveTextContent("Soleil · 1 R☉");

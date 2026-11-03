@@ -6,12 +6,11 @@ import {
   Points,
   SRGBColorSpace,
   Scene,
-  Vector3,
   type Material,
   type Object3D,
   type WebGLRenderer,
 } from "three";
-import { anchoredBox, markerLayouts, placeMarkedLabel, pointBox, type LabelBox, type MarkerLayout } from "@/components/scene/labels";
+import { markerLayouts, type LabelBox } from "@/components/scene/labels";
 import { createRenderer, releaseRenderer } from "@/components/scene/renderer";
 import { COMPACT_LAYOUT_QUERY, createScreenLayout, type ScreenLayoutElements } from "@/components/scene/screenLayout";
 import { julianDate } from "@/lib/astro/ephemeris";
@@ -20,7 +19,16 @@ import { COMPARED_STARS, type SizeStarKey } from "@/lib/astro/starSizes";
 import { smootherstep } from "@/lib/journey/sections";
 import { placeObjects } from "@/lib/sizes/layout";
 import { layoutInput } from "@/lib/sizes/objects";
-import { pixelsPerSolarRadius, scaleBarFor, scaleBarPlacement, scaleBarSun, type ScaleBar } from "@/lib/sizes/scaleBar";
+import {
+  SCALE_BAR_CHROME_PX,
+  pixelsPerSolarRadius,
+  scaleBarBox,
+  scaleBarFor,
+  scaleBarMaxPx,
+  scaleBarSpot,
+  scaleBarSun,
+  type ScaleBar,
+} from "@/lib/sizes/scaleBar";
 import {
   SIZES_VIEW_ELEV_DEG,
   screenDisc,
@@ -33,7 +41,15 @@ import {
 } from "@/lib/sizes/sizesCamera";
 import { sizesStore } from "@/lib/sizes/store";
 import { sizeStarIndex, type SizeStopKey } from "@/lib/sizes/stops";
-import { labelOrder, placeLimbLabel, starLabelMode, sunRinged, type StarLabelMode } from "./sizesLabels";
+import {
+  frameBoxes,
+  layoutSizeLabels,
+  type LabelPlacement,
+  type LimbLabelSize,
+  type ObjectLabelMetrics,
+  type RingMarker,
+  type StarLabelMode,
+} from "./sizesLabels";
 import { createStarMeshes, showStars } from "./starMeshes";
 
 /** Échelle graphique (DOM, `aria-hidden`) : conteneur, Soleil à l'échelle, trait, texte. */
@@ -48,7 +64,10 @@ export interface SizesSceneOptions {
   canvas: HTMLCanvasElement;
   /** Étiquette de chaque étoile sur un anneau à sa couleur (petite à l'écran) : repère `<i>` et texte `<span>`. */
   ringLabels: ReadonlyMap<SizeStarKey, HTMLElement>;
-  /** Étiquette de chaque étoile posée au-dessus de son limbe (grande à l'écran) : texte seul. */
+  /**
+   * Étiquette de chaque étoile posée au-dessus de son limbe (grande à l'écran) : texte seul, le nom puis sa taille dans
+   * un `.dist`, que la forme courte masque (`data-short`).
+   */
   limbLabels: ReadonlyMap<SizeStarKey, HTMLElement>;
   /** Le Soleil devenu un point : anneau « ici » en `--soleil` (`.lbl.deep.here`). */
   sunMarker: HTMLElement | null;
@@ -93,17 +112,6 @@ const NEAR_SHARE = 0.01;
 const FAR_MARGIN = 1.05;
 /** Images d'attente au plus pour la compilation des shaders, avant de rendre quand même. */
 const MAX_COMPILE_WAIT_FRAMES = 30;
-/** Longueur maximale du trait de l'échelle graphique, en px : grand écran, mise en page compacte. */
-const SCALE_BAR_MAX_PX = 240;
-const SCALE_BAR_MAX_PX_COMPACT = 112;
-/**
- * Largeur de la ligne de l'échelle graphique au plus long, hors trait : Soleil de 24 px, écart de 8 px, marges de
- * 12 px et bords de 1 px. La boîte réservée aux étiquettes prend cette largeur au moins : celle du trait change à
- * chaque image d'un vol, et la mesurer à chaque image forcerait une mise en page.
- */
-const SCALE_BAR_CHROME_PX = 24 + 8 + 2 * 12 + 2;
-/** Sous ce diamètre à l'écran, en px, le disque d'une étoile est réservé : aucune étiquette ne s'y pose. */
-const RESERVED_DISC_PX = 24;
 /** Rang du Soleil parmi les étoiles comparées. */
 const SUN_INDEX = COMPARED_STARS.findIndex((star) => star.key === "sun");
 
@@ -116,21 +124,10 @@ interface LabelSlot {
   short: boolean;
 }
 
-/** Repère et dispositions d'une étiquette à anneau, mesurés dans sa forme normale. */
-interface RingMarker {
-  layouts: MarkerLayout[];
-  dotY: number;
-  dotWidth: number;
-  dotHeight: number;
-}
-
-/** Les deux étiquettes d'une étoile et la disposition retenue à l'image précédente (hystérésis). */
-interface StarLabels {
+/** Les deux étiquettes d'une étoile, telles que le DOM les donne. */
+interface StarSlots {
   ring: LabelSlot | null;
   limb: LabelSlot | null;
-  marker: RingMarker | null;
-  limbSize: { width: number; height: number };
-  mode: StarLabelMode | null;
 }
 
 const labelSlot = (element: HTMLElement): LabelSlot => ({
@@ -167,6 +164,28 @@ function showAt(slot: LabelSlot, left: number, top: number): void {
     slot.element.style.transform = transform;
   }
   setShown(slot, true);
+}
+
+/** Étiquette de limbe, mesurée dans sa forme complète : sa taille, et la largeur du nom seul (sans le `.dist`). */
+function measureLimb(element: HTMLElement): LimbLabelSize {
+  const width = element.offsetWidth;
+  return { width, height: element.offsetHeight, shortWidth: width - (element.querySelector<HTMLElement>(".dist")?.offsetWidth ?? 0) };
+}
+
+/** Écrit dans les deux étiquettes d'un astre la disposition retenue pour l'image. */
+function applyPlacement(slots: StarSlots, placement: LabelPlacement): void {
+  if (placement.form === "limb" && slots.limb) {
+    setShown(slots.ring, false);
+    setForm(slots.limb, false, placement.short);
+    showAt(slots.limb, placement.left, placement.top);
+  } else if (placement.form === "ring" && slots.ring) {
+    setShown(slots.limb, false);
+    setForm(slots.ring, placement.mirrored, placement.short);
+    showAt(slots.ring, placement.left, placement.top);
+  } else {
+    setShown(slots.ring, false);
+    setShown(slots.limb, false);
+  }
 }
 
 /** Repère et texte d'une étiquette à anneau, mesurés dans sa forme normale ; null s'il lui manque l'un ou l'autre. */
@@ -283,33 +302,28 @@ function setupScene(
   let lastFrom: SizeStopKey | null = null;
   let lastTo: SizeStopKey | null = null;
   let lastT = Number.NaN;
-  const projected = new Vector3();
-  const onScreen = { x: 0, y: 0 };
-
-  const stars: StarLabels[] = COMPARED_STARS.map((star) => {
+  const slots: StarSlots[] = COMPARED_STARS.map((star) => {
     const ring = ringLabels.get(star.key);
     const limb = limbLabels.get(star.key);
-    return {
-      ring: ring ? labelSlot(ring) : null,
-      limb: limb ? labelSlot(limb) : null,
-      marker: null,
-      limbSize: { width: 0, height: 0 },
-      mode: null,
-    };
+    return { ring: ring ? labelSlot(ring) : null, limb: limb ? labelSlot(limb) : null };
   });
+  /** Mesures des étiquettes dans leur forme normale (measureLayout), et disposition de chacune à l'image précédente. */
+  const metrics: ObjectLabelMetrics[] = slots.map(() => ({ ring: null, limb: null }));
+  const modes: (StarLabelMode | null)[] = slots.map(() => null);
   const sunSlot = sunMarker ? labelSlot(sunMarker) : null;
   let sunRing: RingMarker | null = null;
-  /** Étiquettes à anneau : mesurées dans leur forme normale, puis remises dans la leur. */
-  const ringSlots = [...stars.map(({ ring }) => ring), sunSlot].filter((slot): slot is LabelSlot => slot !== null);
-  const allSlots = [...ringSlots, ...stars.map(({ limb }) => limb).filter((slot): slot is LabelSlot => slot !== null)];
-  let obstacleBoxes: LabelBox[] = [];
-  const occupied: LabelBox[] = [];
+  /** Toutes les étiquettes : mesurées dans leur forme normale, puis remises dans la leur. */
+  const allSlots = [...slots.flatMap(({ ring, limb }) => [ring, limb]), sunSlot].filter((slot): slot is LabelSlot => slot !== null);
+  /** Boîtes mesurées de la page, à éviter : barre et règle. */
+  let measuredBoxes: LabelBox[] = [];
+  /** Bas de la barre haute, en px : l'échelle graphique posée dans un coin se met dessous. */
+  let barBottom = 0;
   /**
    * Dernier état écrit de l'échelle graphique (unité, texte, longueur, forme et taille du Soleil, position) ; sa taille,
    * mesurée quand son texte ou son unité change, ou que la mise en page change (`measured` faux).
    */
   const scaleShown = { visible: false, unit: "", text: "", length: "", sunMode: "", sunSize: "", transform: "" };
-  const scaleSize = { measured: false, width: 0, height: 0, right: 0, top: 0 };
+  const scaleSize = { measured: false, width: 0, height: 0, right: 0, top: 0, bottom: 0 };
   /** Disques à l'écran des astres dessinés à cette image (screenDisc), un par astre, réutilisés d'une image à l'autre. */
   const discs: ScreenDisc[] = placed.map(() => ({ x: 0, y: 0, radius: 0 }));
   const drawnDiscs: ScreenDisc[] = [];
@@ -346,25 +360,25 @@ function setupScene(
   }
 
   /**
-   * Une passe de lecture : tailles des étiquettes (anneaux mesurés dans leur forme normale, puis remis dans la
-   * leur), boîtes à éviter (barre, règle, échelle graphique), bandes et zone libres.
+   * Une passe de lecture : tailles des étiquettes (mesurées dans leur forme normale, puis remises dans la leur), boîtes
+   * à éviter (barre, règle), bas de la barre, bandes et zone libres.
    */
   function measureLayout(): void {
-    const forms = ringSlots.map(({ mirrored, short }) => ({ mirrored, short }));
-    for (const slot of ringSlots) setForm(slot, false, false);
-    for (const star of stars) {
-      star.marker = star.ring ? measureMarker(star.ring.element) : null;
-      if (star.limb) star.limbSize = { width: star.limb.element.offsetWidth, height: star.limb.element.offsetHeight };
-    }
+    const forms = allSlots.map(({ mirrored, short }) => ({ mirrored, short }));
+    for (const slot of allSlots) setForm(slot, false, false);
+    slots.forEach(({ ring, limb }, i) => {
+      metrics[i] = { ring: ring ? measureMarker(ring.element) : null, limb: limb ? measureLimb(limb.element) : null };
+    });
     sunRing = sunSlot ? measureMarker(sunSlot.element) : null;
-    obstacleBoxes = [layout.bar, layout.rail]
+    measuredBoxes = [layout.bar, layout.rail]
       .filter((element): element is Element => element !== null)
       .map(rectBox)
       .filter(([left, top, right, bottom]) => right > left && bottom > top);
+    barBottom = layout.bar?.getBoundingClientRect().bottom ?? 0;
     screenLayout.measure(view);
     scaleSize.measured = false;
     layoutSettled = false;
-    ringSlots.forEach((slot, i) => setForm(slot, forms[i].mirrored, forms[i].short));
+    allSlots.forEach((slot, i) => setForm(slot, forms[i].mirrored, forms[i].short));
     needsRender = true;
   }
 
@@ -445,90 +459,33 @@ function setupScene(
   }
 
   // ---------- Étiquettes ----------
-  /** Position à l'écran (px) du centre de l'étoile `index`, dans `onScreen` ; sa profondeur NDC dans `projected.z`. */
-  function project(index: number): void {
-    projected.set(placed[index].x, 0, 0).project(camera);
-    onScreen.x = ((projected.x + 1) / 2) * view.width;
-    onScreen.y = ((1 - projected.y) / 2) * view.height;
-  }
-
-  /** Pose une étiquette à anneau sur le centre projeté ; renvoie faux, sans rien changer, si elle ne tient pas. */
-  function fitRing(slot: LabelSlot | null, marker: RingMarker | null): boolean {
-    if (!slot || !marker) return false;
-    const { x, y } = onScreen;
-    const index = placeMarkedLabel({ x, y, depth: projected.z }, marker.layouts, view.width, view.height, occupied);
-    if (index === null) return false;
-    const chosen = marker.layouts[index];
-    const halfWidth = marker.dotWidth / 2;
-    const halfHeight = marker.dotHeight / 2;
-    occupied.push(anchoredBox(chosen.box, x, y), [x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight]);
-    setForm(slot, chosen.mirrored, chosen.short);
-    showAt(slot, x - chosen.dotX, y - marker.dotY);
-    return true;
-  }
-
   /**
-   * Boîtes occupées d'avance : barre, règle, échelle graphique, et la place des plaques (à gauche de la zone libre
-   * sur grand écran, sous la bande libre de l'escale en mise en page compacte) ; puis le disque des petites étoiles.
+   * Étiquettes de l'image (layoutSizeLabels) : chaque astre dessiné réservé, puis posées dans l'ordre (astre affiché,
+   * précédent, Soleil, puis du plus grand au plus petit), au-dessus du limbe d'un astre grand à l'écran, sur un anneau
+   * pour un petit, anneau « ici » pour le Soleil devenu un point. Barre, règle, échelle graphique et place des plaques
+   * (à gauche de la zone libre sur grand écran, sous la bande libre de l'escale en mise en page compacte) sont réservées
+   * d'avance. Une étiquette qui ne tient nulle part n'est pas montrée.
    */
-  function reserve(current: SizeStopKey, visible: number, pxPerSolarRadius: number, scaleBox: LabelBox | null): void {
-    occupied.length = 0;
-    occupied.push(...obstacleBoxes);
-    if (scaleBox) occupied.push(scaleBox);
-    const zone = screenLayout.zone();
-    if (zone) occupied.push([0, 0, zone.left * view.width, view.height]);
-    const band = screenLayout.band(current);
-    if (band) occupied.push([0, band.bottom * view.height, view.width, view.height]);
-    for (let i = 0; i < visible; i++) {
-      const diameter = 2 * placed[i].extent * pxPerSolarRadius;
-      if (diameter >= RESERVED_DISC_PX) continue;
-      project(i);
-      if (projected.z <= 1) occupied.push(pointBox(onScreen.x, onScreen.y, diameter));
+  function updateLabels(current: SizeStopKey, scaleBox: LabelBox | null): void {
+    const reserved = frameBoxes(view, measuredBoxes, screenLayout.zone(), screenLayout.band(current), scaleBox);
+    const placements = layoutSizeLabels({
+      discs: drawnDiscs,
+      count: slots.length,
+      current: sizeStarIndex(current),
+      sun: SUN_INDEX,
+      metrics,
+      sunMarker: sunRing,
+      view,
+      reserved,
+      modes,
+    });
+    placements.objects.forEach((placement, i) => applyPlacement(slots[i], placement));
+    if (sunSlot && placements.sun.form === "ring") {
+      setForm(sunSlot, placements.sun.mirrored, placements.sun.short);
+      showAt(sunSlot, placements.sun.left, placements.sun.top);
+    } else {
+      setShown(sunSlot, false);
     }
-  }
-
-  /**
-   * Étiquettes, dans l'ordre de pose (étoile affichée, précédente, Soleil, puis de la plus grande à la plus petite) :
-   * au-dessus du limbe d'une étoile grande à l'écran, sur un anneau pour une petite, anneau « ici » pour le Soleil
-   * devenu un point. Une étiquette qui ne tient nulle part n'est pas montrée.
-   */
-  function updateLabels(current: SizeStopKey, visible: number, pxPerSolarRadius: number, scaleBox: LabelBox | null): void {
-    reserve(current, visible, pxPerSolarRadius, scaleBox);
-    let sunRingShown = false;
-    for (const i of labelOrder(sizeStarIndex(current), SUN_INDEX, stars.length)) {
-      const star = stars[i];
-      if (i >= visible) {
-        setShown(star.ring, false);
-        setShown(star.limb, false);
-        star.mode = null;
-        continue;
-      }
-      project(i);
-      const diameter = 2 * placed[i].extent * pxPerSolarRadius;
-      if (i === SUN_INDEX && sunSlot && sunRinged(diameter)) {
-        setShown(star.ring, false);
-        setShown(star.limb, false);
-        star.mode = null;
-        sunRingShown = fitRing(sunSlot, sunRing);
-        continue;
-      }
-      star.mode = starLabelMode(diameter, star.mode);
-      if (star.mode === "limb") {
-        setShown(star.ring, false);
-        const anchor = { x: onScreen.x, y: onScreen.y, radiusPx: diameter / 2, depth: projected.z };
-        const box = star.limb ? placeLimbLabel(anchor, star.limbSize, view, occupied) : null;
-        if (box && star.limb) {
-          occupied.push(box);
-          showAt(star.limb, box[0], box[1]);
-        } else {
-          setShown(star.limb, false);
-        }
-      } else {
-        setShown(star.limb, false);
-        if (!fitRing(star.ring, star.marker)) setShown(star.ring, false);
-      }
-    }
-    if (!sunRingShown) setShown(sunSlot, false);
   }
 
   // ---------- Échelle graphique ----------
@@ -543,15 +500,18 @@ function setupScene(
   /**
    * Échelle graphique : en Soleils côte à côte quand le Soleil fait 24 px ou moins à l'écran, trait de n × 2 × px par R☉
    * (`--len`, ses deux traits d'extrémité gardent leur épaisseur) et Soleil au bout, à l'échelle de 4 à 24 px, sinon un
-   * point dans un anneau ; en kilomètres au-delà, sans Soleil (`data-unit`). Grand écran : posée sous les astres,
-   * centrée sur la zone libre (scaleBarPlacement, transform écrit ici) ; mise en page compacte : en haut à droite, sous
-   * la barre (feuille de style). Renvoie la boîte qu'elle occupe, réservée avant les étiquettes. Écrit seulement ce qui
-   * change ; ne mesure la page que quand son texte, son unité ou la mise en page changent.
+   * point dans un anneau ; en kilomètres au-delà, sans Soleil (`data-unit`). Sa place (scaleBarSpot) : mise en page
+   * compacte, la feuille de style la met en haut à droite, sous la barre ; grand écran, posée sous les astres, centrée
+   * sur la zone libre ; zone étroite ou vue basse, dans le coin haut droit de l'espace libre (transform écrit ici).
+   * Renvoie la boîte qu'elle occupe, réservée avant les étiquettes. Écrit seulement ce qui change ; ne mesure la page
+   * que quand son texte, son unité ou la mise en page changent.
    */
   function updateScaleBar(pxPerSolarRadius: number): LabelBox | null {
     if (!scaleBar) return null;
-    const wide = !compact.matches;
-    const maxPx = wide ? SCALE_BAR_MAX_PX : SCALE_BAR_MAX_PX_COMPACT;
+    const zone = screenLayout.zone();
+    const free = zone ? { left: zone.left * view.width, right: zone.right * view.width } : null;
+    const spot = scaleBarSpot(compact.matches, free, view);
+    const maxPx = scaleBarMaxPx(spot);
     const bar = scaleBarFor(pxPerSolarRadius, maxPx);
     if (!scaleShown.visible) {
       scaleShown.visible = true;
@@ -587,33 +547,39 @@ function setupScene(
         else scaleBar.sun.style.removeProperty("--sun-size");
       }
     }
-    // Hors du grand écran, la feuille de style la place : aucun transform.
-    const transform = wide ? scaleShown.transform : "";
-    if (!wide && scaleShown.transform !== "") {
-      scaleShown.transform = "";
-      scaleBar.root.style.removeProperty("transform");
-    }
     if (!scaleSize.measured) {
       scaleSize.measured = true;
       const rect = scaleBar.root.getBoundingClientRect();
-      scaleSize.width = Math.max(scaleBar.root.offsetWidth, SCALE_BAR_CHROME_PX + maxPx);
+      scaleSize.width = scaleBar.root.offsetWidth;
       scaleSize.height = scaleBar.root.offsetHeight;
       scaleSize.right = rect.right;
       scaleSize.top = rect.top;
+      scaleSize.bottom = rect.bottom;
     }
-    const { width, height } = scaleSize;
-    if (width <= 0 || height <= 0) return null;
-    if (!wide) return [scaleSize.right - width, scaleSize.top, scaleSize.right, scaleSize.top + height];
-    const zone = screenLayout.zone();
-    const free = zone ? { left: zone.left * view.width, right: zone.right * view.width } : { left: 0, right: view.width };
-    const { left, top } = scaleBarPlacement(drawnDiscs, free, scaleSize, view);
-    // Centrée sur son milieu : sa largeur réelle suit le trait, la boîte réservée prend la plus grande.
-    const next = `translate3d(${(left + width / 2).toFixed(1)}px,${top.toFixed(1)}px,0) translateX(-50%)`;
-    if (next !== transform) {
-      scaleShown.transform = next;
-      scaleBar.root.style.transform = next;
+    // Mise en page compacte : la feuille de style la place, aucun transform ; sa boîte vient de sa mesure.
+    if (spot === "css") {
+      writeScaleTransform("");
+      if (scaleSize.bottom <= scaleSize.top) return null;
+      const width = Math.max(scaleSize.width, SCALE_BAR_CHROME_PX + maxPx);
+      return [scaleSize.right - width, scaleSize.top, scaleSize.right, scaleSize.bottom];
     }
-    return [left, top, left + width, top + height];
+    const measured = scaleSize.width > 0 && scaleSize.height > 0 ? scaleSize : null;
+    const box = scaleBarBox({ compact: false, zone: free, view, barBottom, discs: drawnDiscs, measured });
+    // Sa largeur réelle suit le trait : centrée sous les astres, alignée à droite dans le coin.
+    writeScaleTransform(
+      spot === "under"
+        ? `translate3d(${((box[0] + box[2]) / 2).toFixed(1)}px,${box[1].toFixed(1)}px,0) translateX(-50%)`
+        : `translate3d(${box[2].toFixed(1)}px,${box[1].toFixed(1)}px,0) translateX(-100%)`,
+    );
+    return box;
+  }
+
+  /** Écrit la position de l'échelle graphique, seulement si elle change ; vide : celle de la feuille de style. */
+  function writeScaleTransform(transform: string): void {
+    if (!scaleBar || transform === scaleShown.transform) return;
+    scaleShown.transform = transform;
+    if (transform) scaleBar.root.style.transform = transform;
+    else scaleBar.root.style.removeProperty("transform");
   }
 
   return {
@@ -644,8 +610,7 @@ function setupScene(
       renderer.render(scene, camera);
       const pxPerSolarRadius = pixelsPerSolarRadius(view.height, shown.dist, camera.fov);
       updateDiscs(visible);
-      const scaleBox = updateScaleBar(pxPerSolarRadius);
-      updateLabels(current, visible, pxPerSolarRadius, scaleBox);
+      updateLabels(current, updateScaleBar(pxPerSolarRadius));
     },
     dispose() {
       if (disposed) return;

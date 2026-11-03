@@ -94,10 +94,12 @@ export default function SizesScene() {
             </span>
           </span>
         ))}
+        {/* La forme courte (`data-short`) masque la taille (`.dist`) : le nom seul, quand la complète ne tient pas. */}
         {COMPARED_STARS.map((star) => (
           <span key={`${star.key}-limb`} className={`lbl deep ${styles.limbLabel}`} data-limb={star.key}>
             <span>
-              {t.names[star.key]} · {t.radius(star.radiusSolar)}
+              {t.names[star.key]}
+              <span className="dist"> · {t.radius(star.radiusSolar)}</span>
             </span>
           </span>
         ))}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pixelsPerSolarRadius, scaleBarFor, scaleBarPlacement, scaleBarSun } from "@/lib/sizes/scaleBar";
+import { pixelsPerSolarRadius, scaleBarBox, scaleBarFor, scaleBarPlacement, scaleBarSpot, scaleBarSun } from "@/lib/sizes/scaleBar";
 
 describe("pixelsPerSolarRadius", () => {
   it("devrait rapporter un rayon solaire à la hauteur de vue : h / (2 × dist × tan(champ / 2))", () => {
@@ -100,5 +100,56 @@ describe("scaleBarPlacement", () => {
   it("devrait s'arrêter à 24 px du bas de la vue sous un astre qui la remplit", () => {
     expect(scaleBarPlacement([{ x: 936, y: 450, radius: 600 }], ZONE, SIZE, VIEW).top).toBe(900 - 24 - 52);
     expect(scaleBarPlacement([{ x: 936, y: 450, radius: Infinity }], ZONE, SIZE, VIEW).top).toBe(900 - 24 - 52);
+  });
+});
+
+/*
+ * Où se pose l'échelle graphique : en mise en page compacte, la feuille de style la met en haut à droite, sous la
+ * barre ; sur grand écran, sous les astres quand l'espace libre est assez large (240 px de trait) et haut (600 px) ;
+ * sinon (zone étroite d'une tablette, téléphone en paysage), dans le coin haut droit de l'espace libre, trait court.
+ */
+describe("scaleBarSpot", () => {
+  it.each([
+    [true, { left: 648, right: 1224 }, { width: 1440, height: 900 }, "css"],
+    [false, { left: 648, right: 1224 }, { width: 1440, height: 900 }, "under"],
+    [false, null, { width: 1440, height: 900 }, "under"],
+    [false, { left: 584, right: 820 }, { width: 1024, height: 768 }, "corner"],
+    [false, { left: 554, right: 820 }, { width: 844, height: 390 }, "corner"],
+  ] as const)("devrait choisir sa place (compacte : %s, zone %o, vue %o → %s)", (compact, zone, view, spot) => {
+    expect(scaleBarSpot(compact, zone, view)).toBe(spot);
+  });
+});
+
+describe("scaleBarBox", () => {
+  const DISCS = [{ x: 900, y: 450, radius: 200 }];
+
+  it("devrait réserver, sous les astres, la place de l'échelle au trait le plus long (298 px), centrée sur la zone", () => {
+    expect(
+      scaleBarBox({ compact: false, zone: { left: 648, right: 1224 }, view: { width: 1440, height: 900 }, barBottom: 76, discs: DISCS, measured: null }),
+    ).toEqual([787, 666, 1085, 722]);
+  });
+
+  it("devrait prendre la largeur mesurée quand le texte est plus large que le trait", () => {
+    const box = scaleBarBox({
+      compact: false,
+      zone: { left: 648, right: 1224 },
+      view: { width: 1440, height: 900 },
+      barBottom: 76,
+      discs: DISCS,
+      measured: { width: 320, height: 60 },
+    });
+    expect(box).toEqual([776, 666, 1096, 726]);
+  });
+
+  it("devrait la poser dans le coin haut droit de l'espace libre, 8 px sous la barre, quand la zone est étroite", () => {
+    expect(
+      scaleBarBox({ compact: false, zone: { left: 554, right: 820 }, view: { width: 844, height: 390 }, barBottom: 76, discs: DISCS, measured: null }),
+    ).toEqual([650, 84, 820, 140]);
+  });
+
+  it("devrait réserver, en mise en page compacte, sa place en haut à droite, sous la barre (16 px du bord)", () => {
+    expect(scaleBarBox({ compact: true, zone: null, view: { width: 375, height: 812 }, barBottom: 76, discs: DISCS, measured: null })).toEqual([
+      189, 84, 359, 140,
+    ]);
   });
 });
