@@ -578,6 +578,8 @@ function setupScene(
         else scaleBar.sun.style.removeProperty("--sun-size");
       }
     }
+    // Mise en page compacte : la feuille de style la place, sans transform, effacé avant de la mesurer.
+    if (spot === "css") writeScaleTransform("");
     if (!scaleSize.measured) {
       scaleSize.measured = true;
       const rect = scaleBar.root.getBoundingClientRect();
@@ -587,9 +589,8 @@ function setupScene(
       scaleSize.top = rect.top;
       scaleSize.bottom = rect.bottom;
     }
-    // Mise en page compacte : la feuille de style la place, aucun transform ; sa boîte vient de sa mesure.
+    // Mise en page compacte : sa boîte vient de sa mesure.
     if (spot === "css") {
-      writeScaleTransform("");
       if (scaleSize.bottom <= scaleSize.top) return null;
       const width = Math.max(scaleSize.width, SCALE_BAR_CHROME_PX + maxPx);
       return [scaleSize.right - width, scaleSize.top, scaleSize.right, scaleSize.bottom];
