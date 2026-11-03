@@ -109,7 +109,7 @@ export default function SizesScene() {
           </span>
         </span>
       </div>
-      <div ref={scaleRef} className={styles.scaleBar} aria-hidden="true">
+      <div ref={scaleRef} className={styles.scaleBar} data-unit="suns" aria-hidden="true">
         <div className={styles.scaleRow}>
           <span className={styles.scaleSun} data-scale-sun="" data-mode="ring" />
           <span className={styles.scaleTrack}>

@@ -36,7 +36,7 @@ function options(canvas: HTMLCanvasElement = document.createElement("canvas")): 
     limbLabels: new Map(),
     sunMarker: null,
     scaleBar: null,
-    scaleText: (suns) => `${suns}`,
+    scaleText: (bar) => `${bar.count} ${bar.unit}`,
     layout: { bar: null, rail: null, plates: new Map() },
   };
 }
@@ -182,5 +182,30 @@ describe("rapport de pixels pendant les vols", () => {
     scene.frame(1 / 60);
     expect(renderer().calls).toEqual(["render"]);
     scene.dispose();
+  });
+});
+
+describe("échelle graphique", () => {
+  /** Échelle graphique dans le DOM, comme SizesScene la rend. */
+  function scaleBarElements() {
+    const root = document.createElement("div");
+    const sun = document.createElement("span");
+    const line = document.createElement("span");
+    const text = document.createElement("p");
+    root.append(sun, line, text);
+    return { root, sun, line, text };
+  }
+
+  it("devrait paraître dès la première image et compter en kilomètres quand le Soleil se voit assez lui-même", async () => {
+    const scaleBar = scaleBarElements();
+    const scene = createSizesScene({ ...options(), scaleBar });
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    scene.frame(1 / 60);
+    expect(scaleBar.root).toHaveAttribute("data-visible");
+    expect(scaleBar.root.dataset.unit).toBe("km");
+    expect(scaleBar.text.textContent).toMatch(/^\d+ km$/);
+    scene.dispose();
+    expect(scaleBar.root).not.toHaveAttribute("data-visible");
   });
 });

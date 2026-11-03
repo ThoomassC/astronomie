@@ -186,7 +186,7 @@ const pixelsPerTangent = (viewHeight: number, fovDeg: number) => viewHeight / (2
 export function screenDisc(
   object: { x: number; extent: number },
   cam: SizesCam,
-  ctx: SizesFrameContext,
+  ctx: Pick<SizesFrameContext, "fovDeg">,
   view: { width: number; height: number },
   out: ScreenDisc = { x: 0, y: 0, radius: 0 },
 ): ScreenDisc {
@@ -205,7 +205,12 @@ export function screenDisc(
  * tangent droit à sa sphère d'encombrement fait avec l'axe de visée l'angle atan2(x − tx, dist) + asin(e / d) ; plafonné
  * à 90° (une sphère qui déborde sur le côté de la caméra a son bord à l'infini, à droite).
  */
-export function rightEdgePx(object: { x: number; extent: number }, cam: SizesCam, ctx: SizesFrameContext, viewWidth: number): number {
+export function rightEdgePx(
+  object: { x: number; extent: number },
+  cam: SizesCam,
+  ctx: Pick<SizesFrameContext, "aspect" | "fovDeg">,
+  viewWidth: number,
+): number {
   const dx = object.x - cam.tx;
   const angle = Math.atan2(dx, cam.dist) + Math.asin(Math.min(1, object.extent / Math.hypot(dx, cam.dist)));
   const tanHalf = Math.tan((ctx.fovDeg * D2R) / 2);

@@ -4,8 +4,9 @@ import { plural, type PluralForms } from "@/i18n/plural";
 import { withUnit } from "@/i18n/units";
 import type { PlanetKey } from "@/lib/astro/planets";
 import type { ComparedStar, SizeStarKey } from "@/lib/astro/starSizes";
-import { formatNumber } from "@/lib/format";
-import { pickComparison } from "@/lib/sizes/comparisons";
+import { formatCompact, formatNumber } from "@/lib/format";
+import { pickComparison, roundSignificant } from "@/lib/sizes/comparisons";
+import type { ScaleBar } from "@/lib/sizes/scaleBar";
 
 /**
  * Chaînes de la page « Tailles » lues par les composants client (règle, menu, étoile affichée, étiquettes de la scène)
@@ -31,8 +32,8 @@ export interface SizesStrings {
   radiusRange(low: number, high: number): string;
   /** Comparaison parlante de l'étoile, en une phrase (règle de `pickComparison`). */
   comparison(star: ComparedStar): string;
-  /** Échelle graphique de la scène : « 10 Soleils côte à côte ». */
-  scaleBar(suns: number): string;
+  /** Échelle graphique de la scène : « 10 Soleils côte à côte », « 500 km », « 2 millions de km ». */
+  scaleBar(bar: ScaleBar): string;
   /**
    * Rang d'une étoile parmi `total`, de la plus petite à la plus grande : nombre, suffixe (en exposant en français),
    * total : « 9ᵉ sur 10 », « 9th of 10 », « 9.ª de 10 ».
@@ -60,6 +61,23 @@ const solarRadii = (value: number, locale: Locale) => withUnit(dataNumber(value,
 /** Nombre déjà arrondi suivi du nom accordé : « 109 Terres », « 1 Soleil ». */
 const counted = (count: number, forms: PluralForms, locale: Locale) =>
   `${formatNumber(count, 0, locale)} ${plural(locale, count, forms)}`;
+
+/** Dès ce nombre, il s'écrit en mots (Intl compact long) : « 2 millions », « 2 million », « 2 millones ». */
+const IN_WORDS_FROM = 1e6;
+
+/** Nombre de Soleils de l'échelle graphique, en chiffres, puis en mots dès le million, suivi de `millionsOf` (« de Soleils »). */
+const sunsIn = (count: number, forms: PluralForms, locale: Locale, millionsOf: string) =>
+  count >= IN_WORDS_FROM ? `${formatCompact(count, locale, 1)} ${millionsOf}` : counted(count, forms, locale);
+
+/**
+ * Longueur en km à `digits` chiffres significatifs : en chiffres, avec ses décimales, sous le million (« 62,6 km »,
+ * « 100 000 km ») ; en mots au-delà, suivie de `millionsOf` (« 12,7 millions de km », « 2 million km »).
+ */
+function kilometresIn(km: number, digits: number, locale: Locale, millionsOf: string): string {
+  const value = roundSignificant(km, digits);
+  if (value >= IN_WORDS_FROM) return `${formatCompact(value, locale, 2)} ${millionsOf}`;
+  return withUnit(formatNumber(value, writtenDigits(value), locale), "km", locale);
+}
 
 /** Sous cette distance, en années-lumière, une décimale (4,2) ; au-delà, entière (548). */
 const ONE_DECIMAL_BELOW_LY = 10;
@@ -140,7 +158,10 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
           `Il faudrait environ ${counted(count, { one: "Terre", other: "Terres" }, "fr")} côte à côte pour égaler son diamètre.`,
         suns: (count) => `Son volume contiendrait environ ${counted(count, { one: "Soleil", other: "Soleils" }, "fr")}.`,
       }),
-    scaleBar: (suns) => `${counted(suns, { one: "Soleil", other: "Soleils" }, "fr")} côte à côte`,
+    scaleBar: (bar) =>
+      bar.unit === "km"
+        ? kilometresIn(bar.count, 1, "fr", "de km")
+        : `${sunsIn(bar.count, { one: "Soleil", other: "Soleils" }, "fr", "de Soleils")} côte à côte`,
     rank: (position, total) => ({ value: String(position), suffix: position === 1 ? "re" : "e", superscript: true, total: ` sur ${total}` }),
     lightYears: (distanceLy) => lightYearsIn(distanceLy, { one: "année-lumière", other: "années-lumière" }, "fr"),
     labels: { sunMarker: bodyName("sun", "fr") },
@@ -171,7 +192,10 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
           `It would take about ${counted(count, { one: "Earth", other: "Earths" }, "en")} side by side to span its diameter.`,
         suns: (count) => `Its volume could hold about ${counted(count, { one: "Sun", other: "Suns" }, "en")}.`,
       }),
-    scaleBar: (suns) => `${counted(suns, { one: "Sun", other: "Suns" }, "en")} side by side`,
+    scaleBar: (bar) =>
+      bar.unit === "km"
+        ? kilometresIn(bar.count, 1, "en", "km")
+        : `${sunsIn(bar.count, { one: "Sun", other: "Suns" }, "en", "Suns")} side by side`,
     rank: (position, total) => ({
       value: String(position),
       suffix: EN_ORDINAL_SUFFIXES[enOrdinals.select(position)],
@@ -207,7 +231,10 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
           `Harían falta unas ${counted(count, { one: "Tierra", other: "Tierras" }, "es")} en fila para igualar su diámetro.`,
         suns: (count) => `Su volumen podría contener unos ${counted(count, { one: "sol", other: "soles" }, "es")}.`,
       }),
-    scaleBar: (suns) => `${counted(suns, { one: "sol", other: "soles" }, "es")} en fila`,
+    scaleBar: (bar) =>
+      bar.unit === "km"
+        ? kilometresIn(bar.count, 1, "es", "de km")
+        : `${sunsIn(bar.count, { one: "sol", other: "soles" }, "es", "de soles")} en fila`,
     // Ordinal féminin (« la 9.ª estrella »), sans exposant : l'indicateur ª l'est déjà.
     rank: (position, total) => ({ value: String(position), suffix: ".ª", superscript: false, total: ` de ${total}` }),
     lightYears: (distanceLy) => lightYearsIn(distanceLy, { one: "año luz", other: "años luz" }, "es"),

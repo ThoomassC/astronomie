@@ -101,12 +101,14 @@
 /*
  * Au rang des étiquettes de la scène (#labels, 1), après elles dans le DOM, donc au-dessus ; sous le contenu (main,
  * 2) : en mise en page compacte, où elle se pose sous la barre, une fiche dépliée qui passe dessous reste lisible.
+ * Grand écran : le moteur la pose sous les astres, centrée sur la zone libre (transform en ligne, depuis le coin haut
+ * gauche de la vue).
  */
 .scaleBar {
   position: fixed;
   z-index: 1;
-  right: calc(var(--gr) + var(--rail-w) + 1.5rem);
-  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  top: 0;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--filet);
   border-radius: var(--r-pill);
@@ -114,6 +116,7 @@
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
+  will-change: transform;
   transition:
     opacity 0.2s,
     visibility 0s 0.2s;
@@ -132,10 +135,14 @@
   min-height: 24px;
 }
 
-/* Soleil à l'échelle : disque de 4 à 24 px ; sinon un point de 1 px dans un anneau de 10 px. */
+/* Soleil à l'échelle : disque de 4 à 24 px ; sinon un point de 1 px dans un anneau de 10 px. En kilomètres, aucun. */
 .scaleSun {
   flex: none;
   border-radius: 50%;
+}
+
+.scaleBar[data-unit="km"] .scaleSun {
+  display: none;
 }
 
 .scaleSun[data-mode="disc"] {
@@ -162,7 +169,7 @@
 
 .scaleText {
   margin: 0.25rem 0 0;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--brume);
   white-space: nowrap;
 }
@@ -217,7 +224,11 @@
   .scaleBar {
     top: calc(env(safe-area-inset-top, 0px) + 4.75rem + 0.5rem);
     right: var(--gr);
-    bottom: auto;
+    left: auto;
+  }
+
+  .scaleText {
+    font-size: 0.75rem;
   }
 }
 

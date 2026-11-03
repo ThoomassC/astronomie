@@ -107,13 +107,30 @@ describe("SIZES_STRINGS, libellés de l'interface", () => {
 describe("SIZES_STRINGS.scaleBar", () => {
   it.each([
     ["fr", 10, "10 Soleils côte à côte"],
-    ["fr", 1000, "1\u202f000 Soleils côte à côte"],
+    ["fr", 1000, "1 000 Soleils côte à côte"],
+    ["fr", 500_000, "500 000 Soleils côte à côte"],
+    ["fr", 1_000_000, "1 million de Soleils côte à côte"],
     ["en", 2, "2 Suns side by side"],
     ["en", 1000, "1,000 Suns side by side"],
+    ["en", 1_000_000, "1 million Suns side by side"],
     ["es", 1000, "1000 soles en fila"],
     ["es", 2000, "2000 soles en fila"],
-  ] as const)("devrait dire ce que mesure l'échelle graphique (%s, %i Soleils)", (locale, suns, expected) => {
-    expect(SIZES_STRINGS[locale].scaleBar(suns)).toBe(expected);
+    ["es", 1_000_000, "1 millón de soles en fila"],
+  ] as const)("devrait dire ce que mesure l'échelle graphique en Soleils (%s, %i)", (locale, count, expected) => {
+    expect(SIZES_STRINGS[locale].scaleBar({ unit: "suns", count, lengthPx: 100 })).toBe(expected);
+  });
+
+  it.each([
+    ["fr", 500, "500 km"],
+    ["fr", 100_000, "100 000 km"],
+    ["fr", 2_000_000, "2 millions de km"],
+    ["en", 100_000, "100,000 km"],
+    ["en", 2_000_000, "2 million km"],
+    ["es", 5000, "5000 km"],
+    ["es", 100_000, "100.000 km"],
+    ["es", 2_000_000, "2 millones de km"],
+  ] as const)("devrait dire ce que mesure l'échelle graphique en kilomètres, en mots au-delà du million (%s, %i km)", (locale, count, expected) => {
+    expect(SIZES_STRINGS[locale].scaleBar({ unit: "km", count, lengthPx: 100 })).toBe(expected);
   });
 });
 

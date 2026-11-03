@@ -20,12 +20,14 @@ import { COMPARED_STARS, type SizeStarKey } from "@/lib/astro/starSizes";
 import { smootherstep } from "@/lib/journey/sections";
 import { placeObjects } from "@/lib/sizes/layout";
 import { layoutInput } from "@/lib/sizes/objects";
-import { pixelsPerSolarRadius, scaleBarFor, scaleBarSun } from "@/lib/sizes/scaleBar";
+import { pixelsPerSolarRadius, scaleBarFor, scaleBarPlacement, scaleBarSun, type ScaleBar } from "@/lib/sizes/scaleBar";
 import {
   SIZES_VIEW_ELEV_DEG,
+  screenDisc,
   sizesFlightCamera,
   sizesRestCamera,
   visibleObjectCount,
+  type ScreenDisc,
   type SizesCam,
   type SizesFrameContext,
 } from "@/lib/sizes/sizesCamera";
@@ -51,8 +53,8 @@ export interface SizesSceneOptions {
   /** Le Soleil devenu un point : anneau « ici » en `--soleil` (`.lbl.deep.here`). */
   sunMarker: HTMLElement | null;
   scaleBar: ScaleBarElements | null;
-  /** Texte de l'échelle graphique dans la langue de la page : « 10 Soleils côte à côte ». */
-  scaleText(suns: number): string;
+  /** Texte de l'échelle graphique dans la langue de la page : « 10 Soleils côte à côte », « 500 km ». */
+  scaleText(bar: ScaleBar): string;
   /** Ce qui borde la scène : barre haute, règle des tailles, plaques (bandes et zone libres). */
   layout: Omit<ScreenLayoutElements<SizeStopKey>, "note">;
 }
@@ -92,8 +94,14 @@ const FAR_MARGIN = 1.05;
 /** Images d'attente au plus pour la compilation des shaders, avant de rendre quand même. */
 const MAX_COMPILE_WAIT_FRAMES = 30;
 /** Longueur maximale du trait de l'échelle graphique, en px : grand écran, mise en page compacte. */
-const SCALE_BAR_MAX_PX = 160;
+const SCALE_BAR_MAX_PX = 240;
 const SCALE_BAR_MAX_PX_COMPACT = 112;
+/**
+ * Largeur de la ligne de l'échelle graphique au plus long, hors trait : Soleil de 24 px, écart de 8 px, marges de
+ * 12 px et bords de 1 px. La boîte réservée aux étiquettes prend cette largeur au moins : celle du trait change à
+ * chaque image d'un vol, et la mesurer à chaque image forcerait une mise en page.
+ */
+const SCALE_BAR_CHROME_PX = 24 + 8 + 2 * 12 + 2;
 /** Sous ce diamètre à l'écran, en px, le disque d'une étoile est réservé : aucune étiquette ne s'y pose. */
 const RESERVED_DISC_PX = 24;
 /** Rang du Soleil parmi les étoiles comparées. */
@@ -296,8 +304,17 @@ function setupScene(
   const allSlots = [...ringSlots, ...stars.map(({ limb }) => limb).filter((slot): slot is LabelSlot => slot !== null)];
   let obstacleBoxes: LabelBox[] = [];
   const occupied: LabelBox[] = [];
-  /** Dernier état écrit de l'échelle graphique : nombre de Soleils (0 : masquée), longueur, forme et taille du Soleil. */
-  const scaleShown = { suns: -1, length: "", sunMode: "", sunSize: "" };
+  /**
+   * Dernier état écrit de l'échelle graphique (unité, texte, longueur, forme et taille du Soleil, position) ; sa taille,
+   * mesurée quand son texte ou son unité change, ou que la mise en page change (`measured` faux).
+   */
+  const scaleShown = { visible: false, unit: "", text: "", length: "", sunMode: "", sunSize: "", transform: "" };
+  const scaleSize = { measured: false, width: 0, height: 0, right: 0, top: 0 };
+  /** Disques à l'écran des astres dessinés à cette image (screenDisc), un par astre, réutilisés d'une image à l'autre. */
+  const discs: ScreenDisc[] = placed.map(() => ({ x: 0, y: 0, radius: 0 }));
+  const drawnDiscs: ScreenDisc[] = [];
+  /** Rapport et champ de la caméra de l'image, pour la projection des disques. */
+  const lens = { aspect: 1, fovDeg: 36 };
 
   // ---------- Taille de la vue, mesures du DOM ----------
   function resize(): void {
@@ -340,11 +357,12 @@ function setupScene(
       if (star.limb) star.limbSize = { width: star.limb.element.offsetWidth, height: star.limb.element.offsetHeight };
     }
     sunRing = sunSlot ? measureMarker(sunSlot.element) : null;
-    obstacleBoxes = [layout.bar, layout.rail, scaleBar?.root ?? null]
+    obstacleBoxes = [layout.bar, layout.rail]
       .filter((element): element is Element => element !== null)
       .map(rectBox)
       .filter(([left, top, right, bottom]) => right > left && bottom > top);
     screenLayout.measure(view);
+    scaleSize.measured = false;
     layoutSettled = false;
     ringSlots.forEach((slot, i) => setForm(slot, forms[i].mirrored, forms[i].short));
     needsRender = true;
@@ -453,9 +471,10 @@ function setupScene(
    * Boîtes occupées d'avance : barre, règle, échelle graphique, et la place des plaques (à gauche de la zone libre
    * sur grand écran, sous la bande libre de l'escale en mise en page compacte) ; puis le disque des petites étoiles.
    */
-  function reserve(current: SizeStopKey, visible: number, pxPerSolarRadius: number): void {
+  function reserve(current: SizeStopKey, visible: number, pxPerSolarRadius: number, scaleBox: LabelBox | null): void {
     occupied.length = 0;
     occupied.push(...obstacleBoxes);
+    if (scaleBox) occupied.push(scaleBox);
     const zone = screenLayout.zone();
     if (zone) occupied.push([0, 0, zone.left * view.width, view.height]);
     const band = screenLayout.band(current);
@@ -473,8 +492,8 @@ function setupScene(
    * au-dessus du limbe d'une étoile grande à l'écran, sur un anneau pour une petite, anneau « ici » pour le Soleil
    * devenu un point. Une étiquette qui ne tient nulle part n'est pas montrée.
    */
-  function updateLabels(current: SizeStopKey, visible: number, pxPerSolarRadius: number): void {
-    reserve(current, visible, pxPerSolarRadius);
+  function updateLabels(current: SizeStopKey, visible: number, pxPerSolarRadius: number, scaleBox: LabelBox | null): void {
+    reserve(current, visible, pxPerSolarRadius, scaleBox);
     let sunRingShown = false;
     for (const i of labelOrder(sizeStarIndex(current), SUN_INDEX, stars.length)) {
       const star = stars[i];
@@ -513,39 +532,88 @@ function setupScene(
   }
 
   // ---------- Échelle graphique ----------
+  /** Disques à l'écran des astres dessinés (les `visible` premiers), vus par la caméra de l'image. */
+  function updateDiscs(visible: number): void {
+    lens.aspect = camera.aspect;
+    lens.fovDeg = camera.fov;
+    drawnDiscs.length = 0;
+    for (let i = 0; i < visible; i++) drawnDiscs.push(screenDisc(placed[i], shown, lens, view, discs[i]));
+  }
+
   /**
-   * « n Soleils côte à côte » : paraît quand le Soleil fait 24 px ou moins à l'écran ; trait de n × 2 × px par R☉
-   * (`--len`, ses deux traits d'extrémité gardent leur épaisseur), Soleil au bout, à l'échelle de 4 à 24 px, sinon un
-   * point dans un anneau. Écrit seulement ce qui change.
+   * Échelle graphique : en Soleils côte à côte quand le Soleil fait 24 px ou moins à l'écran, trait de n × 2 × px par R☉
+   * (`--len`, ses deux traits d'extrémité gardent leur épaisseur) et Soleil au bout, à l'échelle de 4 à 24 px, sinon un
+   * point dans un anneau ; en kilomètres au-delà, sans Soleil (`data-unit`). Grand écran : posée sous les astres,
+   * centrée sur la zone libre (scaleBarPlacement, transform écrit ici) ; mise en page compacte : en haut à droite, sous
+   * la barre (feuille de style). Renvoie la boîte qu'elle occupe, réservée avant les étiquettes. Écrit seulement ce qui
+   * change ; ne mesure la page que quand son texte, son unité ou la mise en page changent.
    */
-  function updateScaleBar(pxPerSolarRadius: number): void {
-    if (!scaleBar) return;
-    const maxPx = compact.matches ? SCALE_BAR_MAX_PX_COMPACT : SCALE_BAR_MAX_PX;
+  function updateScaleBar(pxPerSolarRadius: number): LabelBox | null {
+    if (!scaleBar) return null;
+    const wide = !compact.matches;
+    const maxPx = wide ? SCALE_BAR_MAX_PX : SCALE_BAR_MAX_PX_COMPACT;
     const bar = scaleBarFor(pxPerSolarRadius, maxPx);
-    const suns = bar?.suns ?? 0;
-    if (suns !== scaleShown.suns) {
-      scaleShown.suns = suns;
-      scaleBar.root.toggleAttribute("data-visible", bar !== null);
-      if (bar) scaleBar.text.textContent = scaleText(bar.suns);
+    if (!scaleShown.visible) {
+      scaleShown.visible = true;
+      scaleBar.root.setAttribute("data-visible", "");
     }
-    if (!bar) return;
+    if (bar.unit !== scaleShown.unit) {
+      scaleShown.unit = bar.unit;
+      scaleBar.root.dataset.unit = bar.unit;
+      scaleSize.measured = false;
+    }
+    const text = scaleText(bar);
+    if (text !== scaleShown.text) {
+      scaleShown.text = text;
+      scaleBar.text.textContent = text;
+      scaleSize.measured = false;
+    }
     const length = `${bar.lengthPx.toFixed(1)}px`;
     if (length !== scaleShown.length) {
       scaleShown.length = length;
       scaleBar.line.style.setProperty("--len", length);
     }
-    const sunDiameter = 2 * pxPerSolarRadius;
-    const sunMode = scaleBarSun(sunDiameter);
-    if (sunMode !== scaleShown.sunMode) {
-      scaleShown.sunMode = sunMode;
-      scaleBar.sun.dataset.mode = sunMode;
+    if (bar.unit === "suns") {
+      const sunDiameter = 2 * pxPerSolarRadius;
+      const sunMode = scaleBarSun(sunDiameter);
+      if (sunMode !== scaleShown.sunMode) {
+        scaleShown.sunMode = sunMode;
+        scaleBar.sun.dataset.mode = sunMode;
+      }
+      const sunSize = sunMode === "disc" ? `${sunDiameter.toFixed(1)}px` : "";
+      if (sunSize !== scaleShown.sunSize) {
+        scaleShown.sunSize = sunSize;
+        if (sunSize) scaleBar.sun.style.setProperty("--sun-size", sunSize);
+        else scaleBar.sun.style.removeProperty("--sun-size");
+      }
     }
-    const sunSize = sunMode === "disc" ? `${sunDiameter.toFixed(1)}px` : "";
-    if (sunSize !== scaleShown.sunSize) {
-      scaleShown.sunSize = sunSize;
-      if (sunSize) scaleBar.sun.style.setProperty("--sun-size", sunSize);
-      else scaleBar.sun.style.removeProperty("--sun-size");
+    // Hors du grand écran, la feuille de style la place : aucun transform.
+    const transform = wide ? scaleShown.transform : "";
+    if (!wide && scaleShown.transform !== "") {
+      scaleShown.transform = "";
+      scaleBar.root.style.removeProperty("transform");
     }
+    if (!scaleSize.measured) {
+      scaleSize.measured = true;
+      const rect = scaleBar.root.getBoundingClientRect();
+      scaleSize.width = Math.max(scaleBar.root.offsetWidth, SCALE_BAR_CHROME_PX + maxPx);
+      scaleSize.height = scaleBar.root.offsetHeight;
+      scaleSize.right = rect.right;
+      scaleSize.top = rect.top;
+    }
+    const { width, height } = scaleSize;
+    if (width <= 0 || height <= 0) return null;
+    if (!wide) return [scaleSize.right - width, scaleSize.top, scaleSize.right, scaleSize.top + height];
+    const zone = screenLayout.zone();
+    const free = zone ? { left: zone.left * view.width, right: zone.right * view.width } : { left: 0, right: view.width };
+    const { left, top } = scaleBarPlacement(drawnDiscs, free, scaleSize, view);
+    // Centrée sur son milieu : sa largeur réelle suit le trait, la boîte réservée prend la plus grande.
+    const next = `translate3d(${(left + width / 2).toFixed(1)}px,${top.toFixed(1)}px,0) translateX(-50%)`;
+    if (next !== transform) {
+      scaleShown.transform = next;
+      scaleBar.root.style.transform = next;
+    }
+    return [left, top, left + width, top + height];
   }
 
   return {
@@ -575,8 +643,9 @@ function setupScene(
       showStars(meshes, fromIndex, toIndex, t);
       renderer.render(scene, camera);
       const pxPerSolarRadius = pixelsPerSolarRadius(view.height, shown.dist, camera.fov);
-      updateLabels(current, visible, pxPerSolarRadius);
-      updateScaleBar(pxPerSolarRadius);
+      updateDiscs(visible);
+      const scaleBox = updateScaleBar(pxPerSolarRadius);
+      updateLabels(current, visible, pxPerSolarRadius, scaleBox);
     },
     dispose() {
       if (disposed) return;
@@ -588,6 +657,7 @@ function setupScene(
       canvas.removeEventListener("webglcontextrestored", onContextRestored);
       for (const slot of allSlots) slot.element.style.visibility = "hidden";
       scaleBar?.root.removeAttribute("data-visible");
+      scaleBar?.root.style.removeProperty("transform");
       scene.traverse(disposeObject);
       releaseRenderer(renderer);
     },
