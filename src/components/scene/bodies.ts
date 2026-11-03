@@ -362,6 +362,13 @@ export interface PlanetBody {
   mesh: Mesh<SphereGeometry, ShaderMaterial>;
   surface: SurfaceUniforms;
   atmosphere: AtmosphereUniforms | null;
+  /**
+   * Éclat affiché de la planète, de 0 à 1 (setPlanetBrightness) : uniforme partagé par sa surface, ses lunes, son
+   * atmosphère et les anneaux de Saturne.
+   */
+  brightness: Uniform<number>;
+  /** Anneaux dessinés sans shader (Uranus), atténués avec la planète par leur opacité ; `null` sinon. */
+  plainRing: MeshBasicMaterial | null;
   /** Vitesse de rotation affichée, en radians par seconde, négative pour une rotation rétrograde. */
   spin: number;
   /** Position de scène, mise à jour à chaque image. */
@@ -425,10 +432,12 @@ function createUranusRing(planet: Planet): Mesh<RingGeometry, MeshBasicMaterial>
   return ring;
 }
 
-function createMoon(spec: MoonSpec, placeholder: Texture): MoonBody {
+/** Lune de la planète, de son éclat (`brightness`, partagé). */
+function createMoon(spec: MoonSpec, placeholder: Texture, brightness: Uniform<number>): MoonBody {
   const { material, uniforms } = createSurfaceMaterial(
     { lighting: "airless", minnaert: 1, baseColor: new Color(spec.color), haze: new Color(0, 0, 0), ringShadow: false },
     placeholder,
+    brightness,
   );
   return {
     mesh: new Mesh(new SphereGeometry(spec.radius, 32, 24), material),
@@ -444,6 +453,7 @@ export function createPlanet(planet: Planet, placeholder: Texture): PlanetBody {
   const group = new Group();
   const tilt = new Group();
   group.add(tilt);
+  const brightness: Uniform<number> = { value: 1 };
 
   const { material, uniforms: surface } = createSurfaceMaterial(
     {
@@ -454,6 +464,7 @@ export function createPlanet(planet: Planet, placeholder: Texture): PlanetBody {
       ringShadow: planet.key === "saturn",
     },
     placeholder,
+    brightness,
   );
   const mesh = new Mesh(new SphereGeometry(planet.displayRadius, 64, 40), material);
   mesh.scale.y = look.polarRatio;
@@ -462,15 +473,19 @@ export function createPlanet(planet: Planet, placeholder: Texture): PlanetBody {
   let atmosphere: AtmosphereUniforms | null = null;
   if (look.atmosphere) {
     const { thickness, day, twilight, strength } = look.atmosphere;
-    const shell = createAtmosphereMaterial({ thickness, day: new Color(day), twilight: new Color(twilight), strength });
+    const shell = createAtmosphereMaterial(
+      { thickness, day: new Color(day), twilight: new Color(twilight), strength },
+      brightness,
+    );
     tilt.add(new Mesh(new SphereGeometry(planet.displayRadius * (1 + thickness), 48, 32), shell.material));
     atmosphere = shell.uniforms;
   }
   if (planet.key === "saturn") tilt.add(createSaturnRing(planet, surface, look.polarRatio));
-  if (planet.key === "uranus") tilt.add(createUranusRing(planet));
+  const uranusRing = planet.key === "uranus" ? createUranusRing(planet) : null;
+  if (uranusRing) tilt.add(uranusRing);
 
   const specs = MOONS[planet.key] ?? [];
-  const moons = specs.map((spec) => createMoon(spec, placeholder));
+  const moons = specs.map((spec) => createMoon(spec, placeholder, brightness));
   specs.forEach((spec, i) => (spec.equatorial ? tilt : group).add(moons[i].mesh));
 
   const orbitPositions = new BufferAttribute(new Float32Array((ORBIT_SEGMENTS + 1) * 3), 3);
@@ -500,6 +515,8 @@ export function createPlanet(planet: Planet, placeholder: Texture): PlanetBody {
     mesh,
     surface,
     atmosphere,
+    brightness,
+    plainRing: uranusRing?.material ?? null,
     spin: Math.sign(ROTATION[planet.key].w[1]) * clamp((0.25 * 24) / planet.rotationHours, 0.03, 0.6),
     position: new Vector3(),
     color: rawColor(planet.color),
@@ -533,6 +550,15 @@ export function fadeOrbitNear(body: PlanetBody, rest: number, radius: number): v
   Object.assign(state, { rest, radius, x, y, z, version });
   writeOrbitAlphas(body.orbitPositions.array, body.position, radius, rest, body.orbitColors.array);
   body.orbitColors.needsUpdate = true;
+}
+
+/**
+ * Éclat affiché de la planète, de 0 à 1 : surface, lunes, atmosphère et anneaux de Saturne par leur uniforme partagé,
+ * anneaux d'Uranus par leur opacité. Une planète non visitée s'efface ainsi au repos sur une autre (planetBrightness).
+ */
+export function setPlanetBrightness(body: PlanetBody, value: number): void {
+  body.brightness.value = value;
+  if (body.plainRing) body.plainRing.opacity = URANUS_RING.opacity * value;
 }
 
 /** Lune texturée de la planète (la Lune de la Terre), s'il y en a une. */

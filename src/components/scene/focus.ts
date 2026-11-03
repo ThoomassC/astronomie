@@ -1,10 +1,12 @@
 import type { Vec3 } from "@/lib/astro/constants";
+import { PLANETS, type PlanetKey } from "@/lib/astro/planets";
 import type { StopKey } from "@/lib/journey/camera";
 import { smoothstep } from "./math";
 
 /*
  * Mise en avant de l'astre visité, au repos de la caméra sur son escale : son orbite s'efface autour de lui (elle
- * barrerait le globe et les anneaux). Rien ne change en plein vol.
+ * barrerait le globe et les anneaux), les autres planètes s'assombrissent. Rien ne change en plein vol ni aux escales
+ * sans planète (vue d'ensemble, Soleil, ceinture, au-delà).
  */
 
 /** Vol publié par le suivi du défilement : escales de départ et d'arrivée, avancement brut (0 au repos). */
@@ -23,6 +25,10 @@ export const REST_RAMP = 0.2;
 export const ORBIT_CLEAR_RADII = 2.5;
 /** Rayons de l'astre au-delà desquels son orbite est entière. */
 export const ORBIT_FADE_RADII = 6;
+/** Éclat des planètes non visitées, au repos sur une escale planétaire (valeur affichée). */
+export const UNVISITED_BRIGHTNESS = 0.35;
+
+const PLANET_STOPS: ReadonlySet<StopKey> = new Set(PLANETS.map((planet) => planet.key));
 
 /**
  * Repos de la caméra sur l'escale `key`, de 0 à 1 : 1 posée dessus ; au départ, retombe à 0 sur les premiers REST_RAMP
@@ -60,4 +66,18 @@ export function writeOrbitAlphas(
     const distance = Math.hypot(positions[j] - center.x, positions[j + 1] - center.y, positions[j + 2] - center.z);
     colors[i + 3] = orbitNearAlpha(distance, radius, rest);
   }
+}
+
+/** Repos sur l'escale `stop` quand c'est une autre planète que `key`, 0 sinon. */
+const otherPlanetRest = (flight: RestFlight, stop: StopKey, key: PlanetKey) =>
+  stop !== key && PLANET_STOPS.has(stop) ? restWeight(flight, stop) : 0;
+
+/**
+ * Éclat de la planète `key` (valeur affichée, de UNVISITED_BRIGHTNESS à 1) : 1, sauf quand la caméra se repose sur
+ * une autre planète, où il tombe à UNVISITED_BRIGHTNESS en suivant ce repos. L'astre visité reste entier ; en plein vol
+ * et aux escales sans planète, rien ne change.
+ */
+export function planetBrightness(flight: RestFlight, key: PlanetKey): number {
+  const focus = Math.max(otherPlanetRest(flight, flight.from, key), otherPlanetRest(flight, flight.to, key));
+  return 1 - (1 - UNVISITED_BRIGHTNESS) * focus;
 }

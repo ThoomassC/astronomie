@@ -1,5 +1,5 @@
-import { Texture, Vector3, type Mesh, type SphereGeometry } from "three";
-import { describe, expect, it } from "vitest";
+import { Mesh, MeshBasicMaterial, ShaderMaterial, Texture, Vector3, type SphereGeometry } from "three";
+import { describe, expect, it, vi } from "vitest";
 import {
   ORBIT_SEGMENTS,
   createPlanet,
@@ -8,6 +8,7 @@ import {
   fadeOrbitNear,
   fadeSky,
   scaleSun,
+  setPlanetBrightness,
   type PlanetBody,
 } from "@/components/scene/bodies";
 import { sceneFromGalactic } from "@/lib/astro/galactic";
@@ -43,6 +44,55 @@ describe("orbite d'une planète", () => {
     expect(body.orbitColors.itemSize).toBe(4);
     expect(body.orbitColors.count).toBe(ORBIT_SEGMENTS + 1);
     expect(new Set(body.orbitColors.array)).toEqual(new Set([1]));
+  });
+});
+
+/** Matériaux à shaders d'une planète (surface, lunes, atmosphère, anneaux de Saturne), dans son groupe. */
+function shaderMaterials(body: PlanetBody): ShaderMaterial[] {
+  const materials: ShaderMaterial[] = [];
+  body.group.traverse((object) => {
+    if (object instanceof Mesh && object.material instanceof ShaderMaterial) materials.push(object.material);
+  });
+  return materials;
+}
+
+describe("setPlanetBrightness", () => {
+  it("devrait partir de la pleine lumière", () => {
+    expect(createPlanet(PLANET_BY_KEY.neptune, new Texture()).brightness.value).toBe(1);
+  });
+
+  it.each(["jupiter", "saturn", "neptune", "earth"] as const)(
+    "devrait assombrir d'un même geste la surface, les lunes, l'atmosphère et les anneaux (%s)",
+    (key) => {
+      const body = createPlanet(PLANET_BY_KEY[key], new Texture());
+      setPlanetBrightness(body, 0.35);
+      const materials = shaderMaterials(body);
+      // Surface et lunes, plus l'atmosphère de Neptune et de la Terre, plus les anneaux de Saturne.
+      expect(materials.length).toBeGreaterThan(1);
+      expect(materials.map((material) => material.uniforms.uBrightness?.value)).toEqual(materials.map(() => 0.35));
+      expect(body.surface.uBrightness.value).toBe(0.35);
+      expect(body.moons.map((moon) => moon.surface.uBrightness.value)).toEqual(body.moons.map(() => 0.35));
+    },
+  );
+
+  it("devrait atténuer avec Uranus ses anneaux, dessinés sans shader", () => {
+    // Frontière navigateur : jsdom ne dessine pas (`getContext` rend null) ; le profil des anneaux s'y peint.
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      fillStyle: "",
+      fillRect: () => undefined,
+    } as unknown as CanvasRenderingContext2D);
+    const uranus = createPlanet(PLANET_BY_KEY.uranus, new Texture());
+    const rings: MeshBasicMaterial[] = [];
+    uranus.group.traverse((object) => {
+      if (object instanceof Mesh && object.material instanceof MeshBasicMaterial) rings.push(object.material);
+    });
+    expect(rings).toHaveLength(1);
+    const full = rings[0].opacity;
+    setPlanetBrightness(uranus, 0.35);
+    expect(rings[0].opacity).toBeCloseTo(full * 0.35, 12);
+    setPlanetBrightness(uranus, 1);
+    expect(rings[0].opacity).toBeCloseTo(full, 12);
+    vi.restoreAllMocks();
   });
 });
 

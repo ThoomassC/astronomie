@@ -72,13 +72,14 @@ import {
   fadeOrbitNear,
   fadeSky,
   scaleSun,
+  setPlanetBrightness,
   texturedMoon,
   updateBelt,
   type PlanetBody,
 } from "./bodies";
 import { orientAxis, primeMeridianAngle } from "./axes";
 import { rawColor } from "./color";
-import { restWeight } from "./focus";
+import { planetBrightness, restWeight } from "./focus";
 import {
   DISTANCE_RINGS_LY,
   SUN_POINT_SIZE_PX,
@@ -1279,7 +1280,8 @@ function setupScene(
 
     // L'orbite de l'escale en cours ressort dans sa couleur, les autres s'effacent. Orbites et ceintures
     // s'éteignent ensuite avec le poids du système solaire : réduites, elles s'agglutineraient en une tache.
-    // Au repos sur une planète, son orbite s'estompe autour d'elle, sur quelques rayons affichés (fadeOrbitNear).
+    // Au repos sur une planète, son orbite s'estompe autour d'elle, sur quelques rayons affichés (fadeOrbitNear),
+    // et les autres planètes s'assombrissent (planetBrightness) ; en vol, rien ne change.
     const focus = journey.current;
     const focusOnPlanet = isPlanetKey(focus);
     const fade = easeFactor(dt, 4);
@@ -1296,6 +1298,7 @@ function setupScene(
       material.color.copy(on ? body.color : brass);
       body.orbit.visible = solarWeight > 0;
       fadeOrbitNear(body, restWeight(journey, body.planet.key), body.planet.displayRadius * shrink);
+      setPlanetBrightness(body, planetBrightness(journey, body.planet.key));
     });
     orbitsSettled = !fadingOrbits;
     belts.forEach((belt, i) => {

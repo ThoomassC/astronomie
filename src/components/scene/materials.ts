@@ -69,6 +69,11 @@ export interface SurfaceUniforms {
   uPlanetCenter: Uniform<Vector3>;
   uPlanetPole: Uniform<Vector3>;
   uPlanetRadius: Uniform<number>;
+  /**
+   * Éclat affiché, de 0 à 1, appliqué après le tone mapping : une planète non visitée s'efface au repos sur une autre.
+   * Partagé avec ses lunes, son atmosphère et ses anneaux.
+   */
+  uBrightness: Uniform<number>;
 }
 
 export interface SurfaceOptions {
@@ -82,9 +87,11 @@ export interface SurfaceOptions {
   ringShadow: boolean;
 }
 
+/** Surface d'une planète ou d'une lune ; `brightness` : éclat partagé avec sa planète (pleine lumière sinon). */
 export function createSurfaceMaterial(
   options: SurfaceOptions,
   placeholder: Texture,
+  brightness: Uniform<number> = { value: 1 },
 ): { material: ShaderMaterial; uniforms: SurfaceUniforms } {
   const uniforms: SurfaceUniforms = {
     uMap: { value: placeholder },
@@ -105,6 +112,7 @@ export function createSurfaceMaterial(
     uPlanetCenter: { value: new Vector3() },
     uPlanetPole: { value: new Vector3(0, 1, 0) },
     uPlanetRadius: { value: 1 },
+    uBrightness: brightness,
   };
   const defines: Record<string, string> = {};
   if (options.lighting === "airless") defines.LIGHTING_AIRLESS = "";
@@ -128,6 +136,8 @@ export interface AtmosphereUniforms {
   uDayColor: Uniform<Color>;
   uTwilightColor: Uniform<Color>;
   uStrength: Uniform<number>;
+  /** Éclat affiché, partagé avec la surface de la planète. */
+  uBrightness: Uniform<number>;
 }
 
 export interface AtmosphereOptions {
@@ -137,7 +147,11 @@ export interface AtmosphereOptions {
   strength: number;
 }
 
-export function createAtmosphereMaterial(options: AtmosphereOptions): {
+/** Halo d'atmosphère ; `brightness` : éclat partagé avec la surface de sa planète (pleine lumière sinon). */
+export function createAtmosphereMaterial(
+  options: AtmosphereOptions,
+  brightness: Uniform<number> = { value: 1 },
+): {
   material: ShaderMaterial;
   uniforms: AtmosphereUniforms;
 } {
@@ -148,6 +162,7 @@ export function createAtmosphereMaterial(options: AtmosphereOptions): {
     uDayColor: { value: options.day },
     uTwilightColor: { value: options.twilight },
     uStrength: { value: options.strength },
+    uBrightness: brightness,
   };
   const material = new ShaderMaterial({
     uniforms: { ...uniforms },
@@ -164,7 +179,7 @@ export function createAtmosphereMaterial(options: AtmosphereOptions): {
   return { material, uniforms };
 }
 
-/** Anneaux de Saturne : la texture, son mélange et le repère de la planète viennent de la surface. */
+/** Anneaux de Saturne : la texture, son mélange, le repère et l'éclat de la planète viennent de la surface. */
 export function createRingMaterial(surface: SurfaceUniforms, localRadius: number, polarRatio: number): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
@@ -174,6 +189,7 @@ export function createRingMaterial(surface: SurfaceUniforms, localRadius: number
       uPlanetCenter: surface.uPlanetCenter,
       uPlanetPole: surface.uPlanetPole,
       uPlanetRadius: surface.uPlanetRadius,
+      uBrightness: surface.uBrightness,
       uLocalRadius: { value: localRadius },
       uPolarRatio: { value: polarRatio },
     },

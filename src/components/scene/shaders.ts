@@ -9,6 +9,12 @@ const OUTPUT = /* glsl */ `
   #include <colorspace_fragment>
 `;
 
+/**
+ * Éclat affiché d'une planète non visitée (uBrightness, de 0 à 1), appliqué après le tone mapping et la conversion
+ * sRGB : 0,35 donne 35 % de la valeur affichée. Partagé par sa surface, ses lunes, son atmosphère et ses anneaux.
+ */
+const BRIGHTNESS = /* glsl */ `gl_FragColor.rgb *= uBrightness;`;
+
 /** Lumière du Soleil reçue par les astres (blanc chaud), sans atténuation avec la distance. */
 const SUNLIGHT = /* glsl */ `const vec3 SUNLIGHT = vec3(1.0, 0.97, 0.92) * 1.35;`;
 
@@ -66,6 +72,7 @@ void main() {
 export const SURFACE_FRAGMENT = /* glsl */ `
 uniform sampler2D uMap;
 uniform float uMapMix;
+uniform float uBrightness;
 uniform vec3 uBaseColor;
 uniform vec3 uHazeColor;
 uniform float uMinnaert;
@@ -163,6 +170,7 @@ void main() {
   color += albedo * vec3(0.026, 0.03, 0.04);
   gl_FragColor = vec4(color, 1.0);
   ${OUTPUT}
+  ${BRIGHTNESS}
 }
 `;
 
@@ -189,6 +197,7 @@ uniform float uThickness;
 uniform vec3 uDayColor;
 uniform vec3 uTwilightColor;
 uniform float uStrength;
+uniform float uBrightness;
 varying vec3 vWorldPos;
 void main() {
   vec3 D = normalize(vWorldPos - cameraPosition);
@@ -216,6 +225,7 @@ void main() {
   float forward = pow(max(dot(D, normalize(-uPlanetCenter)), 0.0), 6.0);
   gl_FragColor = vec4(tint * glow * lit * uStrength * (1.0 + 4.0 * forward), 1.0);
   ${OUTPUT}
+  ${BRIGHTNESS}
 }
 `;
 
@@ -242,6 +252,7 @@ uniform vec3 uPlanetCenter;
 uniform vec3 uPlanetPole;
 uniform float uPlanetRadius;
 uniform float uPolarRatio;
+uniform float uBrightness;
 varying vec3 vWorldPos;
 varying float vRadius;
 ${SUNLIGHT}
@@ -272,6 +283,7 @@ void main() {
   float shadow = along > 0.0 ? smoothstep(0.985, 1.015, closest) : 1.0;
   gl_FragColor = vec4(ring.rgb * (SUNLIGHT * lit * shadow + 0.01), coverage);
   ${OUTPUT}
+  ${BRIGHTNESS}
 }
 `;
 

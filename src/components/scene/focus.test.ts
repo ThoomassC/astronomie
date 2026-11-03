@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   ORBIT_CLEAR_RADII,
   ORBIT_FADE_RADII,
+  UNVISITED_BRIGHTNESS,
   orbitNearAlpha,
+  planetBrightness,
   restWeight,
   writeOrbitAlphas,
 } from "@/components/scene/focus";
@@ -80,5 +82,35 @@ describe("writeOrbitAlphas", () => {
     const colors = new Float32Array([1, 1, 1, 0, 1, 1, 1, 0.2]);
     writeOrbitAlphas(positions, { x: 0, y: 0, z: 0 }, 1, 0, colors);
     expect(Array.from(colors)).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+  });
+});
+
+describe("planetBrightness", () => {
+  it("devrait assombrir les autres planètes à 35 % d'éclat au repos sur une planète, et garder l'astre visité entier", () => {
+    expect(UNVISITED_BRIGHTNESS).toBe(0.35);
+    expect(planetBrightness(resting("saturn"), "neptune")).toBeCloseTo(0.35, 12);
+    expect(planetBrightness(resting("saturn"), "jupiter")).toBeCloseTo(0.35, 12);
+    expect(planetBrightness(resting("saturn"), "saturn")).toBe(1);
+  });
+
+  it.each<StopKey>(["hero", "sun", "belt", "beyond"])(
+    "ne devrait rien assombrir au repos sur une escale sans planète (%s)",
+    (stop) => {
+      expect(planetBrightness(resting(stop), "neptune")).toBe(1);
+      expect(planetBrightness(resting(stop), "earth")).toBe(1);
+    },
+  );
+
+  it("ne devrait rien assombrir en plein vol", () => {
+    expect(planetBrightness(flight("saturn", "uranus", 0.5), "neptune")).toBe(1);
+    expect(planetBrightness(flight("saturn", "uranus", 0.5), "saturn")).toBe(1);
+  });
+
+  it("devrait éclaircir en douceur au départ, puis assombrir de nouveau à l'arrivée sur la planète suivante", () => {
+    // À t = 0,1, Saturne n'est plus qu'à moitié au repos : Neptune remonte à mi-chemin, 1 − 0,65 × 0,5.
+    expect(planetBrightness(flight("saturn", "uranus", 0.1), "neptune")).toBeCloseTo(0.675, 12);
+    // À t = 0,9, Uranus est à moitié au repos : Saturne, qu'on vient de quitter, s'assombrit à son tour.
+    expect(planetBrightness(flight("saturn", "uranus", 0.9), "saturn")).toBeCloseTo(0.675, 12);
+    expect(planetBrightness(flight("saturn", "uranus", 0.9), "uranus")).toBe(1);
   });
 });
