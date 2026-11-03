@@ -57,6 +57,11 @@ export interface RailViewProps {
 
 /** Écart minimal entre deux repères, en px (relevé à la hauteur réelle d'une graduation si elle est plus grande). */
 const MIN_GAP_PX = 26;
+/**
+ * Air entre deux textes nommés voisins, en px. Un lien nommé (≈ 36 px) est plus haut que l'écart entre repères : la
+ * cible est son texte, écarté de ses voisins, et sa pastille, non la boîte du lien (globals.css).
+ */
+const LABEL_GAP_PX = 4;
 /** Petits écrans : le nom de chaque repère devient une infobulle au survol et au focus (globals.css). */
 const TIPS_QUERY = "(max-width: 860px)";
 /**
@@ -163,6 +168,7 @@ export function RailView({ id, label, markers, ticks, axis, breakMarks = [], cur
           near.map((i) => placedPx[i]),
           near.map((i) => metrics.labels[i] ?? 0),
           near.indexOf(Math.max(0, currentIndex)),
+          LABEL_GAP_PX,
         )
       : null;
   /** Décalage vertical du texte du repère `i` (px), s'il en a un. */

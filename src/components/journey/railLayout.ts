@@ -30,17 +30,24 @@ export function nearIndexes(count: number, current: number): number[] {
 /**
  * Décalages verticaux (px) des textes affichés sur la règle, pour qu'aucun ne chevauche son voisin : `centers`, centres
  * de leurs repères (px, croissants) ; `heights`, hauteurs des textes (px, 0 tant qu'ils ne sont pas mesurés) ;
- * `anchor`, rang du texte qui ne bouge pas (l'escale en cours). Les textes d'avant montent, ceux d'après descendent,
- * juste assez ; un texte déjà dégagé reste centré sur son repère.
+ * `anchor`, rang du texte qui ne bouge pas (l'escale en cours) ; `gap`, air laissé entre deux textes mesurés. Les
+ * textes d'avant montent, ceux d'après descendent, juste assez ; un texte déjà dégagé reste centré sur son repère.
  */
-export function separateLabels(centers: readonly number[], heights: readonly number[], anchor: number): number[] {
+export function separateLabels(
+  centers: readonly number[],
+  heights: readonly number[],
+  anchor: number,
+  gap = 0,
+): number[] {
   const shifts = centers.map(() => 0);
+  /** Air entre les textes `i` et `j`, s'ils sont mesurés tous deux. */
+  const air = (i: number, j: number) => (heights[i] > 0 && heights[j] > 0 ? gap : 0);
   for (let i = anchor - 1; i >= 0; i--) {
-    const ceiling = centers[i + 1] + shifts[i + 1] - heights[i + 1] / 2;
+    const ceiling = centers[i + 1] + shifts[i + 1] - heights[i + 1] / 2 - air(i, i + 1);
     shifts[i] = Math.min(0, ceiling - heights[i] / 2 - centers[i]);
   }
   for (let i = anchor + 1; i < centers.length; i++) {
-    const floor = centers[i - 1] + shifts[i - 1] + heights[i - 1] / 2;
+    const floor = centers[i - 1] + shifts[i - 1] + heights[i - 1] / 2 + air(i - 1, i);
     shifts[i] = Math.max(0, floor + heights[i] / 2 - centers[i]);
   }
   return shifts;

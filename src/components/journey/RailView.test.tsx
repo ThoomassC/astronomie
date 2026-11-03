@@ -222,9 +222,10 @@ describe("RailView, repères nommés et graduations", () => {
       },
     );
     render(<RailView {...props({ current: "sun" })} />);
-    // Repères posés à 21,5 et 47,5 px : le texte de Proxima (30 px) monte de 4 px, Bételgeuse (89,2 px) est dégagée.
+    // Repères posés à 21,5 et 47,5 px : le texte de Proxima (30 px) monte de 4 px, plus 4 px d'air ; Bételgeuse
+    // (89,2 px) est dégagée.
     expect(marker("Proxima du Centaure, 0,154 R☉").style.top).toBe("21.5px");
-    expect(marker("Proxima du Centaure, 0,154 R☉").style.getPropertyValue("--shift")).toBe("-4px");
+    expect(marker("Proxima du Centaure, 0,154 R☉").style.getPropertyValue("--shift")).toBe("-8px");
     expect(marker("Soleil, 1 R☉").style.getPropertyValue("--shift")).toBe("");
     expect(marker("Bételgeuse, 764 R☉").style.getPropertyValue("--shift")).toBe("");
   });

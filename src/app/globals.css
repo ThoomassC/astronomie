@@ -569,11 +569,33 @@ body::before {
     animation: rail-label-in 0.2s ease-out;
   }
 
-  /* Même centre que la grande pastille : 3,5 px + 2 px de marge = 5,5 px du bord droit. */
+  /*
+   * Un lien nommé (≈ 36 px) est plus haut que l'écart entre repères (26 px) : sa boîte passerait sous celle du lien
+   * suivant, peint par-dessus, et un clic sur le bas de son texte mènerait à l'escale d'après. La cible est donc son
+   * texte, déplacé avec lui et écarté de 4 px de ses voisins, et sa pastille ; la boîte du lien laisse passer.
+   */
+  .rail a[data-near] {
+    pointer-events: none;
+  }
+
+  .rail a[data-near] > span,
+  .rail a[data-near] > i {
+    pointer-events: auto;
+  }
+
+  /*
+   * Graduation : cible de 24 × 24 px centrée sur sa pastille (centre à 0,5 px de l'axe, comme la grande), à l'écart de
+   * la colonne des textes nommés, qui s'arrête 13 px avant l'axe.
+   */
+  .rail a:not([data-near]) {
+    right: -12.5px;
+    justify-content: center;
+    padding: 0;
+  }
+
   .rail a:not([data-near]) i {
     width: 7px;
     height: 7px;
-    margin-right: 2px;
   }
 
   .rail a:not([data-near]) > span {
@@ -607,7 +629,6 @@ body::before {
   .rail:not([data-tips="off"]) a:not([data-near]):is(:hover, :focus-visible) i {
     width: 11px;
     height: 11px;
-    margin-right: 0;
   }
 
   /* Au doigt, sans survol : l'infobulle d'une graduation touchée ne reste pas posée pendant le saut vers l'escale. */
