@@ -261,3 +261,48 @@ describe("fondu des cartes photographiques", () => {
     expect(mixes[23]).toBe(1);
   });
 });
+
+/*
+ * Obstacles des étiquettes (règle, fondus sous la barre et sous le dock) : la scène les mesure dans la page et n'y pose
+ * aucune étiquette, où son texte serait voilé ou coupé. Un fondu ne paraît qu'à certaines tailles d'écran : la mesure
+ * est reprise au redimensionnement.
+ */
+describe("étiquettes hors des obstacles", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    journeyStore.update("hero", "hero", 0);
+    document.body.replaceChildren();
+  });
+
+  it("devrait retirer une étiquette d'un fondu qui la couvre, relu au redimensionnement, et l'y rendre quand il part", async () => {
+    vi.useFakeTimers();
+    journeyStore.update("hero", "hero", 0);
+    // « Soleil », bouton de 60 × 24 px ; un fondu d'abord masqué par la feuille de style (boîte vide).
+    const sun = document.createElement("button");
+    measured(sun, { left: 0, top: 0, width: 60, height: 24 });
+    document.body.append(sun);
+    const fade = document.createElement("div");
+    let fadeBox = new DOMRect(0, 0, 0, 0);
+    vi.spyOn(fade, "getBoundingClientRect").mockImplementation(() => fadeBox);
+    const scene = createSolarScene({ ...options(), labels: new Map([["sun", sun]]), obstacles: [fade] });
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    const resizeTo = (box: DOMRect) => {
+      fadeBox = box;
+      window.dispatchEvent(new Event("resize"));
+      vi.advanceTimersByTime(120);
+      scene.frame(1 / 60);
+    };
+
+    scene.frame(1 / 60);
+    expect(sun.style.visibility).toBe("visible");
+    const top = Number(/translate3d\([-\d.]+px,([-\d.]+)px/.exec(sun.style.transform)?.[1]);
+    // Le fondu paraît (fenêtre élargie) et couvre le haut de l'écran jusque sous l'étiquette : elle s'efface.
+    resizeTo(new DOMRect(0, 0, window.innerWidth, top + 30));
+    expect(sun.style.visibility).toBe("hidden");
+    // Il repart (mise en page compacte) : l'étiquette revient.
+    resizeTo(new DOMRect(0, 0, 0, 0));
+    expect(sun.style.visibility).toBe("visible");
+    scene.dispose();
+  });
+});

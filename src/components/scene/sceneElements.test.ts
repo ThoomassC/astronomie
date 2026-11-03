@@ -74,6 +74,31 @@ describe("shownJourneyLayout", () => {
   });
 
   it("devrait se passer de barre, de règle et de note quand la page n'en a pas", () => {
-    expect(shownJourneyLayout()).toEqual({ bar: null, rail: null, note: null, plates: new Map() });
+    expect(shownJourneyLayout()).toEqual({ bar: null, rail: null, note: null, plates: new Map(), obstacles: [] });
+  });
+
+  /*
+   * Les étiquettes de la scène ne se posent ni sur la règle ni dans les fondus sous la barre et sous le dock, où leur
+   * texte serait voilé : ce sont les obstacles de la page affichée, mesurés par le moteur (boîte vide quand la feuille de
+   * style masque un fondu).
+   */
+  it("devrait donner pour obstacles la règle et les deux fondus de la page affichée, pas ceux d'une page masquée", () => {
+    document.body.innerHTML = `
+      <div style="display: none" data-page="voyage-quitte">
+        <nav id="rail" data-owner="ancienne"></nav>
+        <div class="bar-fade" data-owner="ancienne"></div>
+        <div class="dock-fade" data-owner="ancienne"></div>
+      </div>
+      <div data-page="voyage">
+        <nav id="rail" data-owner="voyage"></nav>
+        <div class="bar-fade" data-owner="voyage"></div>
+        <div class="dock-fade" data-owner="voyage"></div>
+      </div>`;
+    const { obstacles } = shownJourneyLayout();
+    expect(obstacles.map((element) => [element.id || element.className, element.getAttribute("data-owner")])).toEqual([
+      ["rail", "voyage"],
+      ["bar-fade", "voyage"],
+      ["dock-fade", "voyage"],
+    ]);
   });
 });

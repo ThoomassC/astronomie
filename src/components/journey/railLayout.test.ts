@@ -136,4 +136,10 @@ describe("separateLabels", () => {
     expect(centers).toEqual([100, 126, 152]);
     expect(heights).toEqual([30, 30, 30]);
   });
+
+  it("devrait laisser l'air demandé entre deux textes voisins, sans toucher à ceux qui l'ont déjà", () => {
+    // Repères à 26 px, textes de 30 px, 4 px d'air : 8 px d'écart de chaque côté.
+    expect(separateLabels([100, 126, 152], [30, 30, 30], 1, 4)).toEqual([-8, 0, 8]);
+    expect(separateLabels([0, 40, 80], [30, 30, 30], 1, 4)).toEqual([0, 0, 0]);
+  });
 });

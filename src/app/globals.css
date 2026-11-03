@@ -569,11 +569,33 @@ body::before {
     animation: rail-label-in 0.2s ease-out;
   }
 
-  /* Même centre que la grande pastille : 3,5 px + 2 px de marge = 5,5 px du bord droit. */
+  /*
+   * Un lien nommé (≈ 36 px) est plus haut que l'écart entre repères (26 px) : sa boîte passerait sous celle du lien
+   * suivant, peint par-dessus, et un clic sur le bas de son texte mènerait à l'escale d'après. La cible est donc son
+   * texte, déplacé avec lui et écarté de 4 px de ses voisins, et sa pastille ; la boîte du lien laisse passer.
+   */
+  .rail a[data-near] {
+    pointer-events: none;
+  }
+
+  .rail a[data-near] > span,
+  .rail a[data-near] > i {
+    pointer-events: auto;
+  }
+
+  /*
+   * Graduation : cible de 24 × 24 px centrée sur sa pastille (centre à 0,5 px de l'axe, comme la grande), à l'écart de
+   * la colonne des textes nommés, qui s'arrête 13 px avant l'axe.
+   */
+  .rail a:not([data-near]) {
+    right: -12.5px;
+    justify-content: center;
+    padding: 0;
+  }
+
   .rail a:not([data-near]) i {
     width: 7px;
     height: 7px;
-    margin-right: 2px;
   }
 
   .rail a:not([data-near]) > span {
@@ -607,7 +629,6 @@ body::before {
   .rail:not([data-tips="off"]) a:not([data-near]):is(:hover, :focus-visible) i {
     width: 11px;
     height: 11px;
-    margin-right: 0;
   }
 
   /* Au doigt, sans survol : l'infobulle d'une graduation touchée ne reste pas posée pendant le saut vers l'escale. */
@@ -1402,20 +1423,52 @@ footer a {
 
 /* ---------- Machine à remonter le temps ---------- */
 /*
- * Fondu sous le dock : le bas d'une plaque qui passe sous le dock s'efface au lieu d'être tranché. Au-dessus du contenu
- * et du pied de page (2), sous la règle (4) et le dock (6) ; une bande de 140 px au bas de l'écran, rien au-dessus, sans
- * intercepter un clic. Il s'efface avec la page pendant l'exploration (data-hide-on-explore). En mise en page compacte,
- * où la plaque est collée au-dessus du dock, et sur écran bas, où le dock suit la page, il n'a pas lieu d'être (plus bas).
+ * Fondus fixes du voyage (ScreenFades) : sous la barre haute, de la nuit vers le transparent, et sous le dock, du
+ * transparent vers la nuit. Le texte d'une plaque qui passe dessous s'efface au lieu de croiser la marque ou d'être
+ * tranché par le dock. Au-dessus du contenu et du pied de page (2), sous la règle (4), la barre et le dock (6), deux
+ * bandes et rien entre elles, sans intercepter un clic ; effacés avec la page pendant l'exploration
+ * (data-hide-on-explore). Cachés par défaut : ils ne paraissent que sur grand écran, quand la page les déclare (plus
+ * bas). En mise en page compacte, la plaque se pose au-dessus du dock ; sur écran bas, barre et dock suivent la page.
  */
+.bar-fade,
 .dock-fade {
+  display: none;
   position: fixed;
   z-index: 3;
   left: 0;
   right: 0;
+  pointer-events: none;
+}
+
+/* La barre (4,75 rem, encoche comprise) et 40 px de plus. */
+.bar-fade {
+  top: 0;
+  height: calc(env(safe-area-inset-top, 0px) + 4.75rem + 40px);
+  background: linear-gradient(var(--nuit), rgba(6, 11, 24, 0.72) 45%, rgba(6, 11, 24, 0));
+}
+
+.dock-fade {
   bottom: 0;
   height: calc(140px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(rgba(6, 11, 24, 0), rgba(6, 11, 24, 0.72) 55%, var(--nuit));
-  pointer-events: none;
+}
+
+/*
+ * Grand écran (ni mise en page compacte ni écran bas), page qui déclare ses fondus (`data-fades` sur <html>) : ils
+ * paraissent, et ce qui reçoit le focus s'arrête avant eux, contour compris (0,75 rem d'air).
+ */
+@media (min-width: 1101px) and (min-height: 30.0625rem),
+  (min-width: 641px) and (orientation: landscape) and (min-height: 30.0625rem) {
+  html[data-fades] .bar-fade,
+  html[data-fades] .dock-fade {
+    display: block;
+  }
+
+  html[data-fades] {
+    scroll-padding-block:
+      calc(env(safe-area-inset-top, 0px) + 4.75rem + 40px + 0.75rem)
+      calc(140px + 0.75rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .dock {
@@ -2312,11 +2365,6 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     margin-bottom: max(0px, calc(12vh - var(--dock-clear)));
   }
 
-  /* La plaque se pose au-dessus du dock : le fondu voilerait ses boutons. */
-  .dock-fade {
-    display: none;
-  }
-
   .plate {
     position: sticky;
     bottom: var(--dock-clear);
@@ -2871,11 +2919,6 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     bottom: auto;
     width: fit-content;
     margin: 0 auto calc(1rem + env(safe-area-inset-bottom, 0px));
-  }
-
-  /* Le dock suit la page : plus rien ne passe dessous. */
-  .dock-fade {
-    display: none;
   }
 
   .scale-note {

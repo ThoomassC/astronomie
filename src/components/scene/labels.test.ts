@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   EDGE_MARGIN,
+  LABEL_GAP_PX,
+  LABEL_HALO_PX,
   LABEL_OFFSET_X,
   LABEL_OFFSET_Y,
   anchoredBox,
@@ -217,6 +219,39 @@ describe("placeMarkedLabel", () => {
       expect(placeMarkedLabel(at(640), BOTH, VIEW_W, VIEW_H, [], 560)).toBeNull();
     });
   });
+
+  describe("air entre deux étiquettes voisines", () => {
+    /** Étiquette déjà posée juste sous le texte à droite du repère ([410 ; 510] × [290 ; 310]), bord à bord. */
+    const touching: LabelBox = [410, 310, 510, 330];
+
+    it("devrait refuser, quand on demande de l'air, une étiquette qui en toucherait une autre bord à bord", () => {
+      expect(placeMarkedLabel(at(400), BOTH, VIEW_W, VIEW_H, [touching])).toBe(0);
+      expect(placeMarkedLabel(at(400), BOTH, VIEW_W, VIEW_H, [touching], 0, { gap: LABEL_GAP_PX })).toBe(1);
+    });
+
+    it("devrait accepter une étiquette séparée de l'air demandé", () => {
+      const apart: LabelBox = [410, 310 + LABEL_GAP_PX, 510, 330];
+      expect(placeMarkedLabel(at(400), BOTH, VIEW_W, VIEW_H, [apart], 0, { gap: LABEL_GAP_PX })).toBe(0);
+    });
+  });
+
+  describe("halo du texte et points des étoiles", () => {
+    const layouts = markerLayouts({
+      dotX: 5, dotY: 10, dotWidth: 10, textX: 15, textY: 0, textWidth: 100, textHeight: 20, detailWidth: 0,
+      halo: LABEL_HALO_PX,
+    });
+
+    it("devrait refuser la disposition dont le halo voilerait le point d'une étoile, que le texte seul épargnerait", () => {
+      // Point à 2 px sous le texte à droite ([410 ; 510] × [290 ; 310]) : dans le halo, pas sous le texte.
+      const points = [pointBox(460, 315, 2)];
+      expect(placeMarkedLabel(at(400), layouts, VIEW_W, VIEW_H, points)).toBe(0);
+      expect(placeMarkedLabel(at(400), layouts, VIEW_W, VIEW_H, [], 0, { points })).toBe(1);
+    });
+
+    it("ne devrait pas se heurter au point de sa propre étoile, sous son repère, même gros", () => {
+      expect(placeMarkedLabel(at(400), layouts, VIEW_W, VIEW_H, [], 0, { points: [pointBox(400, 300, 10)] })).toBe(0);
+    });
+  });
 });
 
 describe("clearanceShift", () => {
@@ -305,6 +340,28 @@ describe("markerLayouts", () => {
     expect(layouts).toHaveLength(1);
     expect(layouts[0].box).toEqual([-60, 8, 60, 28.2]);
   });
+
+  it("devrait confondre la boîte du halo et celle du texte sans halo (pastilles de la page Tailles)", () => {
+    expect(markerLayouts(STAR_METRICS).every((layout) => layout.haloBox === layout.box)).toBe(true);
+  });
+
+  it("devrait élargir la boîte du halo de tous les côtés sauf celui de son repère, dans les deux dispositions", () => {
+    const metrics: MarkerMetrics = {
+      dotX: 5, dotY: 10, dotWidth: 10, textX: 15, textY: 0, textWidth: 100, textHeight: 20, detailWidth: 0, halo: 6,
+    };
+    const [right, left] = markerLayouts(metrics);
+    expect(right.box).toEqual([10, -10, 110, 10]);
+    expect(right.haloBox).toEqual([10, -16, 116, 16]);
+    expect(left.box).toEqual([-110, -10, -10, 10]);
+    expect(left.haloBox).toEqual([-116, -16, -10, 16]);
+  });
+
+  it("devrait élargir le halo d'un texte centré sous son repère partout, sauf vers le repère", () => {
+    const below: MarkerMetrics = {
+      dotX: 60, dotY: 5, dotWidth: 10, textX: 0, textY: 13, textWidth: 120, textHeight: 20, detailWidth: 0, halo: 6,
+    };
+    expect(markerLayouts(below)[0].haloBox).toEqual([-66, 8, 66, 34]);
+  });
 });
 
 /**
@@ -366,5 +423,61 @@ describe("étoiles voisines en 375 × 812 : « Soleil » et « Proxima du Centau
     occupied.push(...POINTS.map(([x, y, size]) => pointBox(x, y, size)));
     place(PROXIMA, 213.4, 393.4, occupied);
     expect(place(ALPHA, 214.9, 393, occupied)).toBeNull();
+  });
+});
+
+/**
+ * Même escale, étiquettes du voyage posées à nu (sans pastille) : texte à 6,4 px du repère, interligne 1,4, halo de nuit
+ * réservé (LABEL_HALO_PX) autour des points des étoiles, air (LABEL_GAP_PX) entre étiquettes voisines ; tailles des
+ * points d'aujourd'hui (3,5 à 10 px).
+ */
+describe("étoiles voisines en 375 × 812, étiquettes à nu : halo réservé et air entre voisines", () => {
+  const W = 375;
+  const H = 812;
+  const SUN = { x: 187.5, y: 371 };
+  const POINTS: readonly (readonly [x: number, y: number, size: number])[] = [
+    [187.5, 371, 6], // point-Soleil
+    [213.4, 393.4, 3.5], // Proxima du Centaure
+    [214.9, 393, 8.3], // Alpha du Centaure
+    [228.9, 339.7, 3.9], // Barnard
+    [198.6, 412.3, 3.5], // Wolf 359
+    [185.2, 381.4, 5.3], // Lalande 21185
+    [144.8, 369.4, 3.5], // Luyten 726-8
+    [189.2, 360, 5.6], // Lacaille 9352
+    [216.4, 385, 7.1], // Epsilon Indi
+  ];
+  /** « Soleil » : bouton, sans le halo du ciel profond. */
+  const SOLEIL: MarkerMetrics = {
+    dotX: 8.2, dotY: 16, dotWidth: 10, textX: 20.4, textY: 5.6, textWidth: 32.7, textHeight: 20.8, detailWidth: 0,
+  };
+  const NAKED = { dotX: 8.2, dotY: 14.7, dotWidth: 10, textX: 19.6, textY: 5.6, textHeight: 18.2, halo: LABEL_HALO_PX };
+  const PROXIMA: MarkerMetrics = { ...NAKED, textWidth: 166.2, detailWidth: 43.3 };
+  const ALPHA: MarkerMetrics = { ...NAKED, textWidth: 191.7, detailWidth: 43.7 };
+
+  /** Pose une étiquette comme le moteur du voyage : halo contre les points, air contre les étiquettes posées. */
+  function place(metrics: MarkerMetrics, x: number, y: number, occupied: LabelBox[], points: readonly LabelBox[]) {
+    const layouts = markerLayouts(metrics);
+    const index = placeMarkedLabel({ x, y, depth: 0.5 }, layouts, W, H, occupied, 0, { points, gap: LABEL_GAP_PX });
+    if (index === null) return null;
+    occupied.push(anchoredBox(layouts[index].box, x, y), [x - 5, y - 5, x + 5, y + 5]);
+    return { ...layouts[index], at: anchoredBox(layouts[index].box, x, y) };
+  }
+
+  it("devrait encore nommer le Soleil et Proxima (par son nom seul), séparés de l'air demandé", () => {
+    const occupied: LabelBox[] = [];
+    const soleil = place(SOLEIL, SUN.x, SUN.y, occupied, []);
+    const points = POINTS.map(([x, y, size]) => pointBox(x, y, size));
+    const proxima = place(PROXIMA, 213.4, 393.4, occupied, points);
+    expect(soleil).toMatchObject({ mirrored: false, short: false });
+    expect(proxima).toMatchObject({ mirrored: false, short: true });
+    expect((proxima?.at[1] ?? 0) - (soleil?.at[3] ?? 0)).toBeGreaterThanOrEqual(LABEL_GAP_PX);
+  });
+
+  it("devrait laisser Alpha du Centaure céder plutôt que de toucher Proxima ou de voiler un point", () => {
+    const occupied: LabelBox[] = [];
+    place(SOLEIL, SUN.x, SUN.y, occupied, []);
+    const points = POINTS.map(([x, y, size]) => pointBox(x, y, size));
+    place(PROXIMA, 213.4, 393.4, occupied, points);
+    expect(place(ALPHA, 214.9, 393, occupied, points)).toBeNull();
   });
 });

@@ -105,8 +105,9 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   de 1 à 14 px) : lisible jusque sur les points les plus clairs de la galaxie, où chaque lettre garde la nuit pour
   fond (ivoire 15,6:1, brume 7,3:1, laiton 8,2:1). Aux étoiles voisines, six étoiles remarquables (Proxima et Alpha du
   Centaure, Barnard, Sirius, Procyon, Altaïr) ont leur nom en ivoire et leur distance en `--brume`, posées les
-  premières ; les autres, nom seul en `--brume`, repère atténué. Placées après les astres, sans que leurs textes se
-  chevauchent ni recouvrent le point d'une étoile (point ± demi-taille + 2 px), jamais hors de l'écran (texte à
+  premières ; les autres, nom seul en `--brume`, repère atténué. Placées après les astres, 2 px d'air au moins entre
+  deux textes, sans recouvrir le point d'une étoile (point ± demi-taille + 2 px), halo compris (6 px autour du texte,
+  sauf du côté de son repère), jamais hors de l'écran (texte à
   4 px des bords au moins, astre dans la vue) : texte à droite du repère, sinon à gauche, sinon le nom seul (la
   distance reste dans la plaque), sinon rien. Non interactives (la plaque donne la liste). Dès que le Soleil
   n'est plus qu'un point, « Soleil » se pose de même : seul son texte occupe la place, à droite ou à gauche du
@@ -146,7 +147,9 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Sur grand écran, seuls l'escale en cours et ses deux voisines (`data-near`) montrent nom et distance, à la ligne
   plutôt que tronqués (9 rem au plus) ; un texte qui toucherait celui d'à côté s'en écarte, sa pastille restant sur
   l'axe. Les autres repères se réduisent à une graduation : pastille de 7 px de leur couleur, texte masqué à l'œil mais
-  lu, qui paraît en infobulle au survol (appareils qui survolent) et au focus clavier ; Échap la ferme seule.
+  lu, qui paraît en infobulle au survol (appareils qui survolent) et au focus clavier ; Échap la ferme seule, où que
+  soit le focus. Cible d'un repère nommé : son texte (4 px d'air avec ses voisins) et sa pastille ; d'une graduation,
+  24 × 24 px centrés sur sa pastille.
   Apparitions en fondu bref ; en couleurs forcées, axe, graduations, curseur et pastilles en couleurs du système. La
   règle des tailles suit le même modèle. Là où elle n'a plus que des pastilles (860 px et moins), en mise en page
   compacte et sur écran bas (546 px de haut et moins : téléphone en paysage, zoom à 400 %), elle laisse sa place au menu
@@ -159,9 +162,11 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   un chevron (ou un toucher sur le texte) l'affiche en entier, une croix la masque. Échap la masque (après avoir fermé une infobulle de la règle ou
   le menu des escales, s'il y en a).
 - **Machine à remonter le temps** : dock bas en capsule, vitesse 1 jour à 1 an par seconde, retour à
-  aujourd'hui. Sur grand écran, un fondu fixe de 140 px, de transparent à `--nuit`, passe sous lui au bas de l'écran
-  (au-dessus du contenu, sous la règle, sans intercepter un clic) : une plaque qui glisse dessous s'efface au lieu
-  d'être tranchée ; absent en mise en page compacte et sur écran bas, effacé pendant l'exploration. La vitesse
+  aujourd'hui. Sur grand écran, un fondu fixe de 140 px, de transparent à `--nuit`, passe sous lui au bas de l'écran,
+  et un autre sous la barre haute, de `--nuit` à transparent sur la barre et 40 px (au-dessus du contenu, sous la
+  règle, sans intercepter un clic) : une plaque qui glisse dessous s'efface au lieu d'être tranchée ou de croiser la
+  marque, et le focus s'arrête avant eux (marges de défilement de 128 et 152 px) ; absents en mise en page compacte,
+  sur écran bas et sans JavaScript, effacés pendant l'exploration. La vitesse
   active est une bulle ivoire qui glisse d'un choix à l'autre : le bord avant part le premier, l'arrière suit, léger
   rebond à l'arrivée ; instantanée en mouvement réduit. Une copie
   sombre des libellés, découpée à la forme de la bulle, inverse le texte exactement là où elle passe

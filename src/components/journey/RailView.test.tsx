@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RailView, type RailMarker, type RailTick, type RailViewProps } from "@/components/journey/RailView";
+import { stubPseudoClasses } from "@/components/journey/testPseudoClasses";
 import type * as FrameLoopModule from "@/lib/sim/frameLoop";
 import type { FrameCallback } from "@/lib/sim/frameLoop";
 
@@ -165,12 +166,18 @@ describe("RailView", () => {
     // Frontière navigateur : petit écran, où le nom d'un repère devient une infobulle.
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 860px)", media: query }));
     render(<RailView {...props()} />);
+    act(() => marker("Soleil, 1 R☉").focus());
+    stubPseudoClasses({ focusVisible: marker("Soleil, 1 R☉") });
     expect(fireEvent.keyDown(marker("Soleil, 1 R☉"), { key: "Escape" })).toBe(false);
     expect(rail()).toHaveAttribute("data-tips", "off");
     fireEvent.pointerLeave(rail());
     expect(rail()).not.toHaveAttribute("data-tips");
   });
 });
+
+/** Frontière navigateur : grand écran, à un pointeur qui survole. */
+const stubLargeScreenWithHover = () =>
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(hover: hover)", media: query }));
 
 /** Cinq repères : assez pour qu'une escale en cours ait des voisines et des repères lointains. */
 const FIVE: readonly RailMarker[] = [
@@ -222,9 +229,10 @@ describe("RailView, repères nommés et graduations", () => {
       },
     );
     render(<RailView {...props({ current: "sun" })} />);
-    // Repères posés à 21,5 et 47,5 px : le texte de Proxima (30 px) monte de 4 px, Bételgeuse (89,2 px) est dégagée.
+    // Repères posés à 21,5 et 47,5 px : le texte de Proxima (30 px) monte de 4 px, plus 4 px d'air ; Bételgeuse
+    // (89,2 px) est dégagée.
     expect(marker("Proxima du Centaure, 0,154 R☉").style.top).toBe("21.5px");
-    expect(marker("Proxima du Centaure, 0,154 R☉").style.getPropertyValue("--shift")).toBe("-4px");
+    expect(marker("Proxima du Centaure, 0,154 R☉").style.getPropertyValue("--shift")).toBe("-8px");
     expect(marker("Soleil, 1 R☉").style.getPropertyValue("--shift")).toBe("");
     expect(marker("Bételgeuse, 764 R☉").style.getPropertyValue("--shift")).toBe("");
   });
@@ -232,13 +240,62 @@ describe("RailView, repères nommés et graduations", () => {
   it("devrait masquer l'infobulle d'une graduation avec Échap sur grand écran, sans rien fermer d'autre", () => {
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query }));
     render(<RailView {...props({ markers: FIVE, current: "a" })} />);
+    act(() => marker("Epsilon, 5 al").focus());
+    stubPseudoClasses({ focusVisible: marker("Epsilon, 5 al") });
     expect(fireEvent.keyDown(marker("Epsilon, 5 al"), { key: "Escape" })).toBe(false);
     expect(rail()).toHaveAttribute("data-tips", "off");
   });
 
-  it("devrait laisser passer Échap sur un repère nommé du grand écran, qui n'a pas d'infobulle", () => {
+  it("devrait laisser passer Échap sur un repère nommé du grand écran, sans couper les infobulles", () => {
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query }));
     render(<RailView {...props({ markers: FIVE, current: "a" })} />);
+    act(() => marker("Bêta, 2 al").focus());
+    stubPseudoClasses({ focusVisible: marker("Bêta, 2 al") });
     expect(fireEvent.keyDown(marker("Bêta, 2 al"), { key: "Escape" })).toBe(true);
+    expect(rail()).not.toHaveAttribute("data-tips");
+  });
+});
+
+/*
+ * Infobulle ouverte au survol (critère 1.4.13) : Échap la ferme où que soit le focus. Un seul appui ne ferme qu'une
+ * couche : quand il a fermé une infobulle, il est retenu (la note d'échelle reste) ; sinon, il passe.
+ */
+describe("RailView, Échap et infobulles au survol", () => {
+  it("devrait fermer l'infobulle d'une graduation survolée, le focus hors de la règle, et retenir l'appui", () => {
+    stubLargeScreenWithHover();
+    render(<RailView {...props({ markers: FIVE, current: "a" })} />);
+    stubPseudoClasses({ hover: marker("Epsilon, 5 al") });
+    expect(fireEvent.keyDown(document.body, { key: "Escape" })).toBe(false);
+    expect(rail()).toHaveAttribute("data-tips", "off");
+    // Infobulle déjà fermée : l'appui suivant passe à la couche d'après (la note d'échelle).
+    expect(fireEvent.keyDown(document.body, { key: "Escape" })).toBe(true);
+  });
+
+  it("ne devrait rien retenir quand aucune infobulle n'est ouverte : Échap reste à la note d'échelle", () => {
+    stubLargeScreenWithHover();
+    render(<RailView {...props({ markers: FIVE, current: "a" })} />);
+    // Le repère nommé survolé n'a pas d'infobulle : son texte est toujours affiché.
+    stubPseudoClasses({ hover: marker("Bêta, 2 al") });
+    expect(fireEvent.keyDown(document.body, { key: "Escape" })).toBe(true);
+    expect(rail()).not.toHaveAttribute("data-tips");
+  });
+
+  it("ne devrait pas compter le survol d'un appareil qui ne survole pas (au doigt)", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query }));
+    render(<RailView {...props({ markers: FIVE, current: "a" })} />);
+    stubPseudoClasses({ hover: marker("Epsilon, 5 al") });
+    expect(fireEvent.keyDown(document.body, { key: "Escape" })).toBe(true);
+    expect(rail()).not.toHaveAttribute("data-tips");
+  });
+
+  it("devrait rendre les infobulles au survol d'un autre repère, pas au survol de celui qu'on vient de fermer", () => {
+    stubLargeScreenWithHover();
+    render(<RailView {...props({ markers: FIVE, current: "a" })} />);
+    stubPseudoClasses({ hover: marker("Epsilon, 5 al") });
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    fireEvent.pointerOver(marker("Epsilon, 5 al").querySelector("small") ?? marker("Epsilon, 5 al"));
+    expect(rail()).toHaveAttribute("data-tips", "off");
+    fireEvent.pointerOver(marker("Delta, 4 al"));
+    expect(rail()).not.toHaveAttribute("data-tips");
   });
 });
