@@ -11,14 +11,19 @@ Textes : `src/content/about/` (`fr.ts`, `en.ts`, `es.ts` ; ancres et adresses da
 
 | Largeur | Disposition |
 |---|---|
-| < 64 rem (1 024 px) | Une colonne, pleine largeur entre les marges du site (`--gl`, `--gr`) : le titre, l'accroche, « Pourquoi ce site », puis « Sources ». |
+| < 64 rem (1 024 px) | Une colonne, pleine largeur dans la gouttière de la barre : le titre, l'accroche, « Pourquoi ce site », puis « Sources ». |
 | ≥ 64 rem | Grille `minmax(0, 1fr) minmax(0, 2fr)`, écart de 4 rem, sur toute la largeur utile : « Pourquoi ce site » à gauche, « Sources » à droite ; le titre et l'accroche couvrent les deux colonnes. |
 
 - Haut de page : 6,75 rem sous le bord (barre fixe de 4,75 rem, plus 2 rem), zone sûre comprise. Bas : 4 rem avant le
   pied de page.
 - Le `main` global du voyage laisse passer les clics vers la scène et réserve la place de la règle : la page
-  rétablit `pointer-events` et des marges symétriques (`--gl`, `--gr`).
-- Les paragraphes gardent une colonne de lecture de 42 rem au plus, même dans une section plus large.
+  rétablit `pointer-events` et reprend la gouttière de la barre.
+- Gouttière de la barre : la page et son pied de page commencent sous le logo et finissent sous la langue. À droite
+  `--gr` ; à gauche `--gl`, plus 8 px là où la barre réduit la marque à son pictogramme de 28 px, centré dans sa cible
+  de 44 px (de 861 à 1 100 px, sous 360 px, et sans JavaScript à 860 px et moins). Sans ce retrait, le titre
+  commençait à 16 px du bord, en avant du logo (vu à 1 024 px).
+- Les paragraphes gardent une colonne de lecture de 34 rem au plus, environ 65 caractères à 1,0625 rem (la mesure du
+  texte de l'accueil), même dans une section plus large ; à 42 rem, les lignes passaient 80 caractères.
 - Liste des sources : colonnes de 18 rem au moins (`repeat(auto-fill, minmax(min(100%, 18rem), 1fr))`, écart de
   2 rem) qui se partagent la largeur de la section : une sur téléphone, deux sur tablette comme à 1 440 px, trois sur
   les écrans plus larges. Les filets s'alignent d'une colonne à l'autre.

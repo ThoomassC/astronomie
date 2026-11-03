@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type TransitionEvent,
+} from "react";
+import { cssVars } from "@/components/journey/cssVars";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { INTL_LOCALE } from "@/i18n/locales";
 import { bodyName } from "@/i18n/names";
@@ -20,6 +29,7 @@ import {
   SATURN_RING,
 } from "@/lib/home/orrery";
 import { placeOrreryLabels, type LabelSize, type PlacedLabel } from "@/lib/home/orreryLabels";
+import { useReducedMotion } from "@/lib/sim/reducedMotion";
 import { HOME_STRINGS } from "./home.strings";
 import styles from "./Orrery.module.css";
 
@@ -29,6 +39,12 @@ const GENERATED_DATE_FORMAT: Intl.DateTimeFormatOptions = { ...DATE_FORMAT, time
 
 /** En deçà de cet écart (°) entre la génération et le chargement, rien ne glisse : les étiquettes viennent d'emblée. */
 const GLIDE_MIN_DEG = 0.5;
+
+/**
+ * Durée du glissement (ms), passée au CSS (`--glide`) : c'est aussi la minuterie de secours qui le termine quand la
+ * transition n'a pas lieu, donc pas de `transitionend`.
+ */
+const GLIDE_MS = 1200;
 
 const subscribeNever = () => () => {};
 /** Instant du chargement de la page (origine des temps du navigateur) : stable, sans lire l'heure courante. */
@@ -161,8 +177,8 @@ function LegendMark({ planetKey }: { planetKey: PlanetKey }) {
 
 interface OrreryProps {
   /**
-   * Instant où le serveur a produit la page (ms) : ses positions dessinent les planètes dès le HTML, et la ligne datée
-   * le dit, jusqu'à ce que le script les fasse glisser vers celles du chargement.
+   * Heure de génération de la page (ms), celle du build (`pageGenerationTime`) : ses positions dessinent les planètes
+   * dès le HTML, et la ligne datée le dit, jusqu'à ce que le script les fasse glisser vers celles du chargement.
    */
   generatedAt: number;
 }
@@ -173,15 +189,17 @@ interface OrreryProps {
  *
  * Le serveur dessine tout, aux positions du jour de la génération (`generatedAt`), daté de ce jour : la page n'est
  * jamais vide, même sans JavaScript ou avant l'hydratation, qui reprend ce rendu à l'identique. Juste après, les
- * planètes glissent le long de leurs orbites jusqu'à leurs positions du chargement (comme `HeroStamp`), en 1,2 s, puis
- * la date et les étiquettes suivent ; en mouvement réduit, tout se pose d'emblée. Monté dans le navigateur (navigation
- * interne), le planétaire part des positions du chargement, sans glisser.
+ * planètes glissent le long de leurs orbites jusqu'à leurs positions du chargement (comme `HeroStamp`), en 1,2 s ; le
+ * glissement s'achève avec la transition d'une planète (`transitionend`), ou au bout de 1,2 s si elle n'a pas lieu, et
+ * alors seulement les étiquettes et leurs filets se montrent. En mouvement réduit, rien ne glisse, tout se pose
+ * d'emblée. Monté dans le navigateur (navigation interne), le planétaire part des positions du chargement, sans glisser.
  *
  * Les étiquettes du dessin (HTML, cachées aux lecteurs d'écran) se posent une fois mesurées, sans se chevaucher : hors
  * du groupe intérieur, où Mercure, Vénus et la Terre se serrent, celles qu'il faut reporter au bout d'un filet de
- * laiton. La liste des planètes dit aux lecteurs d'écran où est chacune, comme l'heure d'un cadran ; elle ne se montre
- * (légende) que là où les étiquettes manquent. Aucune planète ne se reconnaît à sa seule couleur : nom, ordre des
- * orbites, anneau de Saturne.
+ * laiton. La légende nomme les planètes tant que les étiquettes ne le font pas (avant le script, sans lui, s'il échoue,
+ * pendant le glissement, ou s'il en manque une) ; ensuite elle s'efface sans quitter sa place, et dit encore aux
+ * lecteurs d'écran où est chaque planète, comme l'heure d'un cadran. Aucune planète ne se reconnaît à sa seule
+ * couleur : nom, ordre des orbites, anneau de Saturne.
  */
 export function Orrery({ generatedAt }: OrreryProps) {
   const locale = useLocale();
@@ -200,9 +218,14 @@ export function Orrery({ generatedAt }: OrreryProps) {
   const longitudes = planets.map(({ longitudeDeg }, index) =>
     start ? glideLongitude(start[index].longitudeDeg, longitudeDeg, forward) : longitudeDeg,
   );
+  // En mouvement réduit, la règle globale coupe la transition : les planètes sautent, rien n'est à attendre.
+  const reducedMotion = useReducedMotion();
   const glides =
     start !== null &&
+    !reducedMotion &&
     longitudes.some((longitude, index) => Math.abs(longitude - start[index].longitudeDeg) > GLIDE_MIN_DEG);
+  const [glideOver, setGlideOver] = useState(false);
+  const gliding = loadedAt !== null && glides && !glideOver;
   const date = useMemo(
     () =>
       new Intl.DateTimeFormat(INTL_LOCALE[locale], loadedAt === null ? GENERATED_DATE_FORMAT : DATE_FORMAT).format(
@@ -249,15 +272,33 @@ export function Orrery({ generatedAt }: OrreryProps) {
     };
   }, [loadedAt, planets, locale]);
 
+  // Minuterie de secours du glissement : sans transition (page masquée pendant le glissement, mouvement réduit demandé
+  // en route), `transitionend` ne vient jamais. Synchronisation avec une horloge, nettoyée au démontage.
+  useEffect(() => {
+    if (!gliding) return;
+    const timer = window.setTimeout(() => setGlideOver(true), GLIDE_MS);
+    return () => window.clearTimeout(timer);
+  }, [gliding]);
+
+  // Le glissement s'achève avec la transition de la première planète : toutes ont la même durée.
+  const endGlide = (event: TransitionEvent<HTMLDivElement>) => {
+    if (event.target instanceof Element && event.target.hasAttribute("data-planet")) setGlideOver(true);
+  };
+
   const placed = new Map(layout?.labels.map((label) => [label.key, label]));
   const hours = new Map(planets.map((planet) => [planet.key, clockHour(planet.longitudeDeg)]));
-  // Une étiquette sans place (texte très agrandi sur un petit dessin) : la légende se montre pour nommer les planètes.
-  const missingLabel = layout !== null && layout.labels.length < planets.length;
+  // Les huit étiquettes montrées sur le dessin : la légende, qui les répéterait, peut s'effacer. Pas avant (rendu
+  // serveur, script lent ou en échec, glissement), ni si l'une n'a pas trouvé de place (texte très agrandi).
+  const labelled = layout !== null && !gliding && layout.labels.length === planets.length;
 
   return (
-    <div className={styles.orrery} data-legend={missingLabel ? "" : undefined}>
+    <div
+      className={styles.orrery}
+      style={cssVars({ "--glide": `${GLIDE_MS}ms` })}
+      data-labelled={labelled ? "" : undefined}
+    >
       <figure className={styles.figure}>
-        <div className={styles.box} ref={boxRef} data-glide={loadedAt !== null && glides ? "" : undefined}>
+        <div className={styles.box} ref={boxRef} data-glide={gliding ? "" : undefined} onTransitionEnd={endGlide}>
           <svg className={styles.drawing} viewBox={VIEW_BOX} role="img" aria-labelledby={`${titleId} ${dateId}`}>
             <title id={titleId}>{t.orreryTitle}</title>
             <defs>
@@ -273,7 +314,8 @@ export function Orrery({ generatedAt }: OrreryProps) {
             </g>
             <circle r={ORRERY_SUN.glow} fill={`url(#${glowId})`} />
             <circle r={ORRERY_SUN.radius} fill={SUN.color} />
-            {layout ? <Leaders labels={layout.labels} size={layout.size} /> : null}
+            {/* Étiquettes et filets sont posés aux positions d'arrivée : ils attendent la fin du glissement. */}
+            {layout && !gliding ? <Leaders labels={layout.labels} size={layout.size} /> : null}
             {planets.map(({ key, orbit }, index) => (
               <PlanetMark key={key} planetKey={key} orbit={orbit} longitudeDeg={longitudes[index]} />
             ))}
@@ -298,7 +340,7 @@ export function Orrery({ generatedAt }: OrreryProps) {
                         ? { left: `${(label.left / layout.size) * 100}%`, top: `${(label.top / layout.size) * 100}%` }
                         : undefined
                     }
-                    data-placed={label ? "" : undefined}
+                    data-placed={label && !gliding ? "" : undefined}
                   >
                     {key === "earth" ? t.here : bodyName(key, locale)}
                   </span>

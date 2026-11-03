@@ -1,9 +1,8 @@
 /* Mini-planétaire de l'accueil : orbites en laiton, Soleil, planètes du jour, étiquettes posées par le script, ligne
    datée et légende. La boîte du dessin a sa taille dès le serveur (carré) : rien ne bouge à l'hydratation. */
 
-/* --glide : durée du glissement des planètes, des positions de la génération à celles du chargement. */
+/* --glide : durée du glissement des planètes, posée par le composant (GLIDE_MS, aussi sa minuterie de secours). */
 .orrery {
-  --glide: 1.2s;
   width: min(100%, 28rem);
   margin: 0 auto;
 }
@@ -74,7 +73,7 @@
 .planet {
   transform-box: view-box;
   transform-origin: 0 0;
-  transition: transform var(--glide) cubic-bezier(0.45, 0, 0.25, 1);
+  transition: transform var(--glide, 1.2s) cubic-bezier(0.45, 0, 0.25, 1);
 }
 
 @keyframes appear {
@@ -111,19 +110,14 @@
 }
 
 /* Filets des étiquettes reportées hors du groupe intérieur : laiton plein (8:1 sur --nuit), plus franc que les
-   orbites qu'ils croisent, posés en même temps que leurs étiquettes. */
+   orbites qu'ils croisent, montrés en même temps que leurs étiquettes : à la fin du glissement, sans autre retard
+   (le composant ne les rend qu'alors). */
 .leaders line {
   stroke: var(--laiton);
   stroke-width: 1;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
   animation: appear 200ms ease-out backwards;
-}
-
-/* Pendant le glissement, les étiquettes et leurs filets, posés aux positions d'arrivée, attendent les planètes. */
-.box[data-glide] .label[data-placed],
-.box[data-glide] .leaders line {
-  animation-delay: var(--glide);
 }
 
 .caption {
@@ -213,30 +207,19 @@
   font-size: 0.8125rem;
   line-height: 1.5;
   color: var(--ivoire);
+  transition: opacity 200ms ease-out;
 }
 
-/* Les étiquettes du dessin nomment les planètes : la légende les répéterait. Elle reste lue (où est chaque planète,
-   comme l'heure d'un cadran) et ne se montre que si une étiquette manque (`data-legend`) ou sans JavaScript. */
-.orrery:not([data-legend]) .legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-@media (scripting: none) {
-  .orrery:not([data-legend]) .legend {
-    position: static;
-    width: auto;
-    height: auto;
-    margin: 1rem 0 0;
-    overflow: visible;
-    clip: auto;
-    white-space: normal;
-  }
+/*
+ * La légende nomme les planètes tant que les étiquettes du dessin ne le font pas : rendu serveur, script lent, bloqué
+ * ou en échec, glissement, étiquette sans place. Une fois les huit montrées (`data-labelled`), elle les répéterait :
+ * elle s'efface, mais garde sa place, pour que rien ne bouge sous le planétaire, et reste lue (où est chaque planète,
+ * comme l'heure d'un cadran).
+ */
+.orrery[data-labelled] .legend {
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
 }
 
 .legend li {
