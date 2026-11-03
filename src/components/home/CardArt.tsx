@@ -36,7 +36,10 @@ function Stars({ stars }: { stars: readonly BackgroundStar[] }) {
   );
 }
 
-/** Le cadre commun : rapport 12:5, centré sans rogner, caché aux lecteurs d'écran. */
+/**
+ * Le cadre commun : rapport 12:5, centré sans rogner, caché aux lecteurs d'écran. Dans un cadre d'un autre rapport (la
+ * carte mise en avant), ce qui dépasse du viewBox se voit dans les bandes : orbites et étoiles y prolongent le ciel.
+ */
 function Art({ children }: { children: ReactNode }) {
   return (
     <svg viewBox="0 0 240 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
@@ -47,7 +50,7 @@ function Art({ children }: { children: ReactNode }) {
 
 /* ---------- Voyage : le Soleil, ses orbites, puis une trajectoire qui file vers les étoiles ---------- */
 
-/** Le Soleil, coupé par le bord gauche : ses orbites ne montrent que des arcs. */
+/** Le Soleil, près du bord gauche : ses orbites n'y montrent que des arcs. */
 const SUN_AT = { x: 22, y: 56 } as const;
 
 /** Orbites de Mercure à Saturne (rayon, en unités du dessin) et place de chaque planète sur la sienne (°, y vers le bas). */
@@ -89,6 +92,21 @@ const VOYAGE_STARS: readonly BackgroundStar[] = [
   [226, 58, 0.4, "k", 0.6],
   [232, 40, 0.5, "b", 0.7],
   [234, 72, 0.8, "near", 0.9],
+  // Hors du viewBox : le ciel des bandes, quand la carte mise en avant n'a pas le rapport 12:5.
+  [-46, 18, 0.5, "g", 0.5],
+  [-30, 94, 0.4, "near", 0.5],
+  [40, -14, 0.5, "g", 0.5],
+  [74, 116, 0.5, "near", 0.6],
+  [118, -22, 0.6, "near", 0.7],
+  [138, 112, 0.4, "k", 0.5],
+  [176, -10, 0.5, "g", 0.6],
+  [196, 124, 0.6, "near", 0.7],
+  [228, -30, 0.4, "b", 0.6],
+  [248, 24, 0.6, "g", 0.7],
+  [258, 84, 0.5, "near", 0.6],
+  [272, 46, 0.7, "near", 0.8],
+  [286, 10, 0.4, "k", 0.6],
+  [294, 70, 0.5, "g", 0.6],
 ];
 
 function VoyageArt() {

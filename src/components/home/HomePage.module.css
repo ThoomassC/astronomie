@@ -279,6 +279,12 @@
   .card[data-featured] {
     grid-column: 1 / -1;
   }
+
+  /* Sur toute la largeur d'une tablette, le dessin au rapport 12:5 ferait 400 px de haut : 18 rem au plus, le ciel
+     se prolonge dans les bandes (CardArt). */
+  .card[data-featured] .art {
+    max-height: 18rem;
+  }
 }
 
 /* ---------- Grand écran : deux colonnes, le Voyage en avant, quatre chiffres sur une rangée ---------- */
@@ -311,6 +317,7 @@
     flex: 1.25 1 0;
     aspect-ratio: auto;
     min-height: 17rem;
+    max-height: none;
     border-bottom: 0;
     border-right: 1px solid var(--filet);
     border-radius: calc(var(--r-lg) - 1px) 0 0 calc(var(--r-lg) - 1px);
