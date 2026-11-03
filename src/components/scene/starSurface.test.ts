@@ -95,6 +95,28 @@ describe("createStarSurfaceMaterial", () => {
     const spots = spotsOf(sunUniforms());
     expect(spots.every((spot) => spot.radius === 0 && spot.plage === 0 && spot.cosBound > 1)).toBe(true);
   });
+
+  it("devrait garder par défaut le rendu du Voyage : aucun assombrissement en intensité, opacité 1, matériau opaque", () => {
+    const { material, uniforms } = createStarSurfaceMaterial({ ...SUN_SURFACE, time: { value: 0 } });
+    expect(uniforms.uLimbIntensity.value).toBe(0);
+    expect(uniforms.uOpacity.value).toBe(1);
+    expect(material.transparent).toBe(false);
+  });
+
+  it("devrait transmettre au programme l'assombrissement en intensité demandé (étoiles chaudes)", () => {
+    const { material, uniforms } = createStarSurfaceMaterial({ ...SUN_SURFACE, limbIntensity: 0.35, time: { value: 0 } });
+    expect(uniforms.uLimbIntensity.value).toBe(0.35);
+    expect(material.uniforms.uLimbIntensity).toBe(uniforms.uLimbIntensity);
+    expect(material.uniforms.uOpacity).toBe(uniforms.uOpacity);
+  });
+
+  it("devrait déclarer les deux uniformes et sortir l'opacité en alpha", () => {
+    const { fragmentShader } = createStarSurfaceMaterial({ ...SUN_SURFACE, time: { value: 0 } }).material;
+    expect(fragmentShader).toContain("uniform float uLimbIntensity;");
+    expect(fragmentShader).toContain("uniform float uOpacity;");
+    expect(fragmentShader).toContain("(1.0 - uLimbIntensity * (1.0 - mu))");
+    expect(fragmentShader).toContain("gl_FragColor = vec4(light, uOpacity);");
+  });
 });
 
 describe("placeStarspots", () => {

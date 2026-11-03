@@ -443,7 +443,10 @@ void main() {
  * - Supergranulation (une cellule pour 6,5 granules) : modulation lente et réseau, dont les facules brillent vers
  *   le bord ; marbrure à grande échelle, visible de loin.
  * - Taches (STARSPOTS, placées par placeStarspots) : ombre, pénombre filamenteuse, plage de facules autour.
- * - Assombrissement centre-bord d'Eddington-Barbier : T⁴(μ) ∝ 1 − k + kμ (k = uLimbDarkening).
+ * - Assombrissement centre-bord d'Eddington-Barbier : T⁴(μ) ∝ 1 − k + kμ (k = uLimbDarkening) ; en plus, loi linéaire
+ *   en intensité I(μ)/I(1) = 1 − u(1 − μ) (u = uLimbIntensity, 0 par défaut), la même sur les trois canaux : le bord
+ *   des étoiles chaudes, dont la loi en température rougit à peine, s'assombrit sans virer au gris.
+ * - Alpha : uOpacity (1 par défaut), qui n'agit que si le matériau est transparent.
  * Le temps (uTime, en secondes affichées) fait tourner la surface (uSpinRate, rad/s, rotation rigide à la vitesse
  * de l'équateur) et bouillonner la convection, sur une période de BOIL_PERIOD secondes. Variante STAR_LITE
  * (écrans tactiles) : cellules figées, cherchées parmi 8 voisines au lieu de 27, ni détail fin ni réseau.
@@ -457,6 +460,8 @@ uniform vec3 uWien;
 uniform float uGranulation;
 uniform float uContrast;
 uniform float uLimbDarkening;
+uniform float uLimbIntensity;
+uniform float uOpacity;
 uniform float uActivity;
 uniform float uSpinRate;
 #if STARSPOTS > 0
@@ -591,7 +596,8 @@ void main() {
   t = mix(t, PENUMBRA_T + 0.2 * (filament - 0.5), penumbra);
   t = mix(t, UMBRA_T + 0.03 * (filament - 0.5), umbra);
   t *= pow(1.0 - uLimbDarkening + uLimbDarkening * mu, 0.25);
-  gl_FragColor = vec4(vExposure * uColor * exp(-uWien * (1.0 / t - 1.0)), 1.0);
+  vec3 light = vExposure * uColor * exp(-uWien * (1.0 / t - 1.0)) * (1.0 - uLimbIntensity * (1.0 - mu));
+  gl_FragColor = vec4(light, uOpacity);
   ${OUTPUT}
 }
 `;
