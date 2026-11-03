@@ -207,30 +207,19 @@
   font-size: 0.8125rem;
   line-height: 1.5;
   color: var(--ivoire);
+  transition: opacity 200ms ease-out;
 }
 
-/* Les étiquettes du dessin nomment les planètes : la légende les répéterait. Elle reste lue (où est chaque planète,
-   comme l'heure d'un cadran) et ne se montre que si une étiquette manque (`data-legend`) ou sans JavaScript. */
-.orrery:not([data-legend]) .legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-@media (scripting: none) {
-  .orrery:not([data-legend]) .legend {
-    position: static;
-    width: auto;
-    height: auto;
-    margin: 1rem 0 0;
-    overflow: visible;
-    clip: auto;
-    white-space: normal;
-  }
+/*
+ * La légende nomme les planètes tant que les étiquettes du dessin ne le font pas : rendu serveur, script lent, bloqué
+ * ou en échec, glissement, étiquette sans place. Une fois les huit montrées (`data-labelled`), elle les répéterait :
+ * elle s'efface, mais garde sa place, pour que rien ne bouge sous le planétaire, et reste lue (où est chaque planète,
+ * comme l'heure d'un cadran).
+ */
+.orrery[data-labelled] .legend {
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
 }
 
 .legend li {

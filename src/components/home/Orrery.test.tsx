@@ -116,6 +116,11 @@ describe("Orrery, rendu serveur", () => {
     expect(container.textContent).not.toContain("Vous êtes ici");
   });
 
+  it("devrait laisser la légende nommer les planètes avant le script, ou sans lui, ou s'il échoue", () => {
+    const container = serverRendered("fr");
+    expect(container.firstElementChild).not.toHaveAttribute("data-labelled");
+  });
+
   it("devrait réserver la place de la date la plus longue de la langue, pour que la ligne ne bouge pas", () => {
     const container = serverRendered("es");
     expect(container.querySelector("[data-reserve]")).toHaveAttribute("data-reserve", HOME_STRINGS.es.dateReserve);
@@ -206,6 +211,18 @@ describe("Orrery, à l'hydratation", () => {
     act(() => root.unmount());
   });
 
+  it("devrait garder la légende pendant le glissement, puis l'effacer quand les étiquettes paraissent", async () => {
+    measureLabels();
+    const { container, root } = await hydrated();
+    await waitFor(() => expect(screen.getByText("Vous êtes ici").getAttribute("style") ?? "").toContain("left"));
+    expect(container.firstElementChild).not.toHaveAttribute("data-labelled");
+    act(() => {
+      fireEvent.transitionEnd(planetOf(container, "earth"));
+    });
+    expect(container.firstElementChild).toHaveAttribute("data-labelled");
+    act(() => root.unmount());
+  });
+
   it("ne devrait rien faire glisser en mouvement réduit : les étiquettes se posent d'emblée", async () => {
     stubMatchMedia({ reduced: true });
     measureLabels();
@@ -275,18 +292,21 @@ describe("Orrery, après le montage", () => {
     expect(document.querySelector("svg [data-leader]")?.closest("svg")).toBe(screen.getByRole("img"));
   });
 
-  it("ne devrait pas montrer la légende quand chaque planète a son étiquette : elle la répéterait", async () => {
+  it("devrait effacer la légende une fois les huit étiquettes posées : elle les répéterait", async () => {
     measureLabels();
     const { container } = render(inLocale("fr"));
+    expect(container.firstElementChild).not.toHaveAttribute("data-labelled");
     await waitFor(() => expect(document.querySelectorAll("[data-placed]")).toHaveLength(8));
-    expect(container.firstElementChild).not.toHaveAttribute("data-legend");
+    expect(container.firstElementChild).toHaveAttribute("data-labelled");
   });
 
-  it("devrait montrer la légende quand une étiquette ne trouve pas de place (texte très agrandi)", async () => {
-    measureLabels(400);
+  it("devrait garder la légende quand une étiquette ne trouve pas de place (texte très agrandi)", async () => {
+    measureLabels(300);
     const { container } = render(inLocale("fr"));
-    await waitFor(() => expect(container.firstElementChild).toHaveAttribute("data-legend"));
-    expect(legendEntries(container)).toHaveLength(8);
+    // « Vous êtes ici » se pose la première ; d'autres, larges de 300 px, n'ont plus de place sur 544.
+    await waitFor(() => expect(screen.getByText("Vous êtes ici")).toHaveAttribute("data-placed"));
+    expect(document.querySelectorAll("[data-placed]").length).toBeLessThan(8);
+    expect(container.firstElementChild).not.toHaveAttribute("data-labelled");
   });
 });
 

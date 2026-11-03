@@ -196,9 +196,10 @@ interface OrreryProps {
  *
  * Les étiquettes du dessin (HTML, cachées aux lecteurs d'écran) se posent une fois mesurées, sans se chevaucher : hors
  * du groupe intérieur, où Mercure, Vénus et la Terre se serrent, celles qu'il faut reporter au bout d'un filet de
- * laiton. La liste des planètes dit aux lecteurs d'écran où est chacune, comme l'heure d'un cadran ; elle ne se montre
- * (légende) que là où les étiquettes manquent. Aucune planète ne se reconnaît à sa seule couleur : nom, ordre des
- * orbites, anneau de Saturne.
+ * laiton. La légende nomme les planètes tant que les étiquettes ne le font pas (avant le script, sans lui, s'il échoue,
+ * pendant le glissement, ou s'il en manque une) ; ensuite elle s'efface sans quitter sa place, et dit encore aux
+ * lecteurs d'écran où est chaque planète, comme l'heure d'un cadran. Aucune planète ne se reconnaît à sa seule
+ * couleur : nom, ordre des orbites, anneau de Saturne.
  */
 export function Orrery({ generatedAt }: OrreryProps) {
   const locale = useLocale();
@@ -286,14 +287,15 @@ export function Orrery({ generatedAt }: OrreryProps) {
 
   const placed = new Map(layout?.labels.map((label) => [label.key, label]));
   const hours = new Map(planets.map((planet) => [planet.key, clockHour(planet.longitudeDeg)]));
-  // Une étiquette sans place (texte très agrandi sur un petit dessin) : la légende se montre pour nommer les planètes.
-  const missingLabel = layout !== null && layout.labels.length < planets.length;
+  // Les huit étiquettes montrées sur le dessin : la légende, qui les répéterait, peut s'effacer. Pas avant (rendu
+  // serveur, script lent ou en échec, glissement), ni si l'une n'a pas trouvé de place (texte très agrandi).
+  const labelled = layout !== null && !gliding && layout.labels.length === planets.length;
 
   return (
     <div
       className={styles.orrery}
       style={cssVars({ "--glide": `${GLIDE_MS}ms` })}
-      data-legend={missingLabel ? "" : undefined}
+      data-labelled={labelled ? "" : undefined}
     >
       <figure className={styles.figure}>
         <div className={styles.box} ref={boxRef} data-glide={gliding ? "" : undefined} onTransitionEnd={endGlide}>
