@@ -1,4 +1,5 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import HomeRoute, { generateMetadata } from "@/app/[lang]/page";
 import { HomePage } from "@/components/home/HomePage";
@@ -88,6 +89,18 @@ describe("HomePage", () => {
     expect(within(footer).getByRole("link", { name: github })).toHaveAttribute("href", "https://github.com/ThoomassC");
     expect(within(footer).getByRole("link", { name: "caronthomas27@gmail.com" })).toBeInTheDocument();
     expect(within(footer).queryByRole("navigation")).not.toBeInTheDocument();
+  });
+
+  it("devrait dessiner le planétaire dès le HTML du serveur, planètes comprises, à la date de la génération", () => {
+    const html = renderToString(
+      <LocaleProvider locale="fr">
+        <HomePage locale="fr" />
+      </LocaleProvider>,
+    );
+    const page = new DOMParser().parseFromString(html, "text/html");
+    expect(page.querySelectorAll("[data-planet]")).toHaveLength(8);
+    // Génération : l'origine des temps du processus serveur, ici le 29 octobre 2026 à midi UTC.
+    expect(page.querySelector("[data-date]")?.textContent).toBe("Positions réelles du 29 octobre 2026");
   });
 
   it("devrait être la cible du lien d'évitement (main#contenu, focalisable par script)", () => {
