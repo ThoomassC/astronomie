@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { eclipticLongitudeDeg, heliocentric, julianDate } from "@/lib/astro/ephemeris";
 import { PLANETS, PLANET_BY_KEY } from "@/lib/astro/planets";
-import { clockHour, orreryOrbit, orreryPlanets } from "@/lib/home/orrery";
+import { clockHour, glideLongitude, orreryOrbit, orreryPlanets } from "@/lib/home/orrery";
 
 /** Jour julien d'une date ISO à 0 h UTC. */
 const jdOf = (day: string) => julianDate(Date.parse(`${day}T00:00:00Z`));
@@ -80,6 +80,42 @@ describe("orreryPlanets", () => {
     expect(Math.abs((earth?.longitudeDeg ?? 0) - 270)).toBeLessThan(1);
     expect(earth?.y).toBeCloseTo(-(earth?.orbit ?? 0), 3);
     expect(Math.abs(earth?.x ?? 1)).toBeLessThan(0.01);
+  });
+});
+
+describe("glideLongitude", () => {
+  it.each([
+    [10, 40, 40],
+    [350, 10, 370],
+    [10, 350, 350],
+    [120, 120, 120],
+    [-30, 15, 15],
+  ])("devrait aller de %f° à %f° dans le sens direct quand le temps avance (arrivée écrite %f°)", (from, to, arrival) => {
+    expect(glideLongitude(from, to, true)).toBeCloseTo(arrival, 9);
+  });
+
+  it.each([
+    [40, 10, 10],
+    [10, 350, -10],
+    [350, 10, 10],
+    [120, 120, 120],
+  ])("devrait reculer de %f° à %f° quand le temps recule (arrivée écrite %f°)", (from, to, arrival) => {
+    expect(glideLongitude(from, to, false)).toBeCloseTo(arrival, 9);
+  });
+
+  it("devrait toujours arriver sur la longitude visée, à un tour près, en moins d'un tour", () => {
+    for (let from = 0; from < 360; from += 7) {
+      for (let to = 0; to < 360; to += 11) {
+        for (const forward of [true, false]) {
+          const arrival = glideLongitude(from, to, forward);
+          const turns = (arrival - to) / 360;
+          expect(turns).toBeCloseTo(Math.round(turns), 9);
+          expect(Math.abs(arrival - from)).toBeLessThan(360);
+          if (forward) expect(arrival).toBeGreaterThanOrEqual(from);
+          else expect(arrival).toBeLessThanOrEqual(from);
+        }
+      }
+    }
   });
 });
 

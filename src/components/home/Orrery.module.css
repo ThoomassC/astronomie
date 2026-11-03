@@ -1,7 +1,9 @@
 /* Mini-planétaire de l'accueil : orbites en laiton, Soleil, planètes du jour, étiquettes posées par le script, ligne
    datée et légende. La boîte du dessin a sa taille dès le serveur (carré) : rien ne bouge à l'hydratation. */
 
+/* --glide : durée du glissement des planètes, des positions de la génération à celles du chargement. */
 .orrery {
+  --glide: 1.2s;
   width: min(100%, 28rem);
   margin: 0 auto;
 }
@@ -65,10 +67,14 @@
   vector-effect: non-scaling-stroke;
 }
 
-/* L'instrument se met en place : fondu de 300 ms, de l'orbite intérieure vers l'extérieure, une seule fois. */
+/* Planètes dessinées dès le serveur, aux positions de la génération. Le script les mène à celles du chargement : la
+   transition interpole chaque rotation autour du Soleil (origine du dessin), si bien qu'elles glissent le long de leur
+   orbite, comme sous la manivelle d'un planétaire. Une seule fois ; en mouvement réduit, la règle globale les pose
+   d'emblée. */
 .planet {
-  animation: appear 300ms ease-out backwards;
-  animation-delay: calc(var(--i, 0) * 40ms);
+  transform-box: view-box;
+  transform-origin: 0 0;
+  transition: transform var(--glide) cubic-bezier(0.45, 0, 0.25, 1);
 }
 
 @keyframes appear {
@@ -102,6 +108,22 @@
 .label[data-placed] {
   visibility: visible;
   animation: appear 200ms ease-out backwards;
+}
+
+/* Filets des étiquettes reportées hors du groupe intérieur : laiton plein (8:1 sur --nuit), plus franc que les
+   orbites qu'ils croisent, posés en même temps que leurs étiquettes. */
+.leaders line {
+  stroke: var(--laiton);
+  stroke-width: 1;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  animation: appear 200ms ease-out backwards;
+}
+
+/* Pendant le glissement, les étiquettes et leurs filets, posés aux positions d'arrivée, attendent les planètes. */
+.box[data-glide] .label[data-placed],
+.box[data-glide] .leaders line {
+  animation-delay: var(--glide);
 }
 
 .caption {
@@ -154,7 +176,8 @@
 }
 
 /* La date occupe dès le serveur la largeur de la plus longue de sa langue (`data-reserve`, cachée) : la ligne passe à
-   la ligne au même endroit avec « – » et avec la date. Le texte réservé n'a pas de texte de remplacement. */
+   la ligne au même endroit avec la date de la génération et avec celle du chargement. Le texte réservé n'a pas de
+   texte de remplacement. */
 .reserve {
   display: inline-grid;
   white-space: nowrap;
@@ -192,6 +215,30 @@
   color: var(--ivoire);
 }
 
+/* Les étiquettes du dessin nomment les planètes : la légende les répéterait. Elle reste lue (où est chaque planète,
+   comme l'heure d'un cadran) et ne se montre que si une étiquette manque (`data-legend`) ou sans JavaScript. */
+.orrery:not([data-legend]) .legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (scripting: none) {
+  .orrery:not([data-legend]) .legend {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 1rem 0 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
 .legend li {
   display: flex;
   align-items: center;
@@ -206,15 +253,9 @@
   overflow: visible;
 }
 
-/* Sans JavaScript, pas de planètes ni de date : la ligne datée se tait plutôt que d'afficher « – ». */
-@media (scripting: none) {
-  .date {
-    display: none;
-  }
-}
-
 @media (forced-colors: active) {
-  .orbits circle {
+  .orbits circle,
+  .leaders line {
     stroke: CanvasText;
   }
 

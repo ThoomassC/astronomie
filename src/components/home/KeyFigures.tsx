@@ -9,21 +9,36 @@ import styles from "./HomePage.module.css";
 
 const TITLE_ID = "accueil-chiffres";
 
-/** Valeur affichée : les nombres en grand, les symboles et l'unité en mots plus petits, sur la même ligne de base. */
+/**
+ * Valeur affichée : les nombres en grand (Bodoni), les symboles et l'unité en mots plus petits (Atkinson), sur la même
+ * ligne de base. L'espace qui précède un symbole ou l'unité est dans leur span, donc à leur taille : « 8 min » reste
+ * serré, quand « min 19 » garde l'espace des grands chiffres. Le nombre et ses symboles ne se coupent jamais ; l'unité
+ * en mots (« années-lumière », d'un seul tenant) passe sous le nombre si la colonne est trop étroite.
+ */
 function FigureValue({ parts, unit }: { parts: readonly KeyFigurePart[]; unit?: string }) {
   return (
     <>
-      {parts.map((part, index) => (
-        <Fragment key={index}>
-          {index > 0 ? " " : null}
-          {part.kind === "symbol" ? <span className={styles.unit}>{part.text}</span> : part.text}
-        </Fragment>
-      ))}
+      <span className={styles.number}>
+        {parts.map((part, index) => {
+          const space = index > 0 ? " " : null;
+          return part.kind === "symbol" ? (
+            <span key={index} className={styles.unit}>
+              {space}
+              {part.text}
+            </span>
+          ) : (
+            <Fragment key={index}>
+              {space}
+              {part.text}
+            </Fragment>
+          );
+        })}
+      </span>
       {unit ? (
-        <>
+        <span className={styles.unit}>
           {" "}
-          <span className={styles.unit}>{unit}</span>
-        </>
+          <span className={styles.word}>{unit}</span>
+        </span>
       ) : null}
     </>
   );

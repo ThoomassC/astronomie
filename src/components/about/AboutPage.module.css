@@ -3,13 +3,31 @@
    deux tiers) ; plus étroit, l'une sous l'autre. Aucun effet : la typographie, l'espace et les filets de laiton font
    le rythme. */
 
+/*
+ * Gouttière de la barre : la page et son pied commencent sous le logo, finissent sous la langue. Le début reprend la
+ * marge de la barre (`--gl`) ; là où la barre réduit la marque à son pictogramme de 28 px, centré dans sa cible de
+ * 44 px (de 861 à 1 100 px, sous 360 px, et sans JavaScript à 860 px et moins : globals.css et SiteHeader.module.css),
+ * il gagne ce retrait de 8 px. Sans lui, le titre commençait à 16 px du bord, en avant du logo.
+ */
+.page,
+.footer {
+  --start: var(--gl);
+}
+
+@media (min-width: 861px) and (max-width: 1100px), (max-width: 359px), (max-width: 860px) and (scripting: none) {
+  .page,
+  .footer {
+    --start: calc(var(--gl) + 8px);
+  }
+}
+
 /* Le `main` du voyage (globals.css) laisse passer les clics vers la scène et réserve la place de la règle des
    distances : ici, ni scène ni règle. En haut, la place de la barre fixe (4,75 rem) plus 2 rem ; en bas, 4 rem
    avant le pied de page, qui ajoute son filet. */
 .page {
   pointer-events: auto;
   padding-block: calc(env(safe-area-inset-top, 0px) + 6.75rem) 4rem;
-  padding-inline: var(--gl) var(--gr);
+  padding-inline: var(--start) var(--gr);
 }
 
 /* ---------- Titre et accroche ---------- */
@@ -55,9 +73,11 @@
   text-wrap: balance;
 }
 
-/* Colonne de lecture de 42 rem au plus (60 à 70 caractères), même quand la section s'étend sur toute la largeur. */
+/* Colonne de lecture de 34 rem au plus, environ 65 caractères en Atkinson à 1,0625 rem (la mesure du texte de
+   l'accueil), même quand la section s'étend sur toute la largeur : à 42 rem, les lignes passaient 80 caractères. Les
+   listes des sources, elles, gardent toute leur largeur. */
 .part > p {
-  max-width: 42rem;
+  max-width: 34rem;
   margin: 0 0 1rem;
   color: #d9d3c4;
   font-size: 1.0625rem;
@@ -127,7 +147,7 @@
 
 /* Le `footer` global est celui du voyage (place de la règle et du dock) : ici, les marges de la page. */
 .footer {
-  padding: 0 var(--gr) calc(3rem + env(safe-area-inset-bottom, 0px)) var(--gl);
+  padding: 0 var(--gr) calc(3rem + env(safe-area-inset-bottom, 0px)) var(--start);
 }
 
 /* ---------- Grand écran : les deux sections côte à côte ---------- */

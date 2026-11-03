@@ -1,4 +1,5 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import HomeRoute, { generateMetadata } from "@/app/[lang]/page";
 import { HomePage } from "@/components/home/HomePage";
@@ -64,6 +65,28 @@ describe("HomePage", () => {
     ]);
   });
 
+  it("devrait illustrer chaque carte d'un dessin caché aux lecteurs d'écran, son titre restant le seul lien", () => {
+    renderHome("fr");
+    const region = screen.getByRole("region", { name: getHomeContent("fr").cards.title });
+    const cards = within(region).getAllByRole("listitem");
+    expect(cards).toHaveLength(3);
+    for (const card of cards) {
+      expect(card.querySelector("svg[viewBox='0 0 240 100']")).toHaveAttribute("aria-hidden", "true");
+      card.querySelectorAll("svg").forEach((svg) => expect(svg).toHaveAttribute("aria-hidden", "true"));
+      expect(within(card).getAllByRole("link")).toHaveLength(1);
+    }
+  });
+
+  it("devrait mettre en avant la carte du Voyage, et elle seule", () => {
+    renderHome("fr");
+    const region = screen.getByRole("region", { name: getHomeContent("fr").cards.title });
+    const featured = within(region)
+      .getAllByRole("listitem")
+      .filter((card) => card.hasAttribute("data-featured"));
+    expect(featured).toHaveLength(1);
+    expect(within(featured[0]).getByRole("link")).toHaveAttribute("href", pathFor("voyage", "fr"));
+  });
+
   it("devrait hiérarchiser les titres : un h1, les sections en h2, les cartes en h3", () => {
     renderHome("fr");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
@@ -88,6 +111,18 @@ describe("HomePage", () => {
     expect(within(footer).getByRole("link", { name: github })).toHaveAttribute("href", "https://github.com/ThoomassC");
     expect(within(footer).getByRole("link", { name: "caronthomas27@gmail.com" })).toBeInTheDocument();
     expect(within(footer).queryByRole("navigation")).not.toBeInTheDocument();
+  });
+
+  it("devrait dessiner le planétaire dès le HTML du serveur, planètes comprises, à la date de la génération", () => {
+    const html = renderToString(
+      <LocaleProvider locale="fr">
+        <HomePage locale="fr" />
+      </LocaleProvider>,
+    );
+    const page = new DOMParser().parseFromString(html, "text/html");
+    expect(page.querySelectorAll("[data-planet]")).toHaveLength(8);
+    // Génération : l'origine des temps du processus serveur, ici le 29 octobre 2026 à midi UTC.
+    expect(page.querySelector("[data-date]")?.textContent).toBe("Positions réelles du 29 octobre 2026");
   });
 
   it("devrait être la cible du lien d'évitement (main#contenu, focalisable par script)", () => {
