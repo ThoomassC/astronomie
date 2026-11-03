@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { smootherstep } from "@/lib/journey/sections";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { cssVars } from "./cssVars";
@@ -64,6 +64,8 @@ const MIN_GAP_PX = 26;
 const LABEL_GAP_PX = 4;
 /** Petits écrans : le nom de chaque repère devient une infobulle au survol et au focus (globals.css). */
 const TIPS_QUERY = "(max-width: 860px)";
+/** Pointeur qui survole (souris, stylet) : son survol ouvre une infobulle ; au doigt, seul le focus clavier. */
+const HOVER_QUERY = "(hover: hover)";
 /**
  * Repère nommé : l'escale en cours et ses deux voisines montrent leur nom et leur précision ; les autres, réduits à une
  * graduation, ne les montrent qu'en infobulle, au survol et au focus clavier (globals.css).
@@ -94,13 +96,29 @@ const sameMetrics = (a: RailMetrics, b: RailMetrics) =>
   a.labels.every((height, i) => height === b.labels[i]);
 
 /**
+ * Repère de `rail` dont l'infobulle est ouverte, ou null : une graduation (tout repère sur petit écran) au focus
+ * clavier, ou survolée par un pointeur qui survole. Mêmes pseudo-classes que la feuille de style. Règle inerte
+ * (exploration) : masquée, elle n'a pas d'infobulle.
+ */
+function openTip(rail: HTMLElement): HTMLAnchorElement | null {
+  if (rail.inert) return null;
+  const everyMarker = window.matchMedia(TIPS_QUERY).matches;
+  const canHover = window.matchMedia(HOVER_QUERY).matches;
+  for (const link of rail.querySelectorAll<HTMLAnchorElement>("a")) {
+    if (!everyMarker && link.hasAttribute(NEAR_ATTRIBUTE)) continue;
+    if (link.matches(":focus-visible") || (canHover && link.matches(":hover"))) return link;
+  }
+  return null;
+}
+
+/**
  * Règle à repères : sommaire des escales (liens) et repère du vol, commune au voyage (distances) et à la page Tailles
  * (rayons). Les graduations restent à leur position ; les repères trop proches s'écartent et un trait fin les relie à
  * leur vraie position. L'axe peut s'interrompre (« ≈ ») là où l'échelle change. Le curseur suit la caméra par
  * `transform`, hors de React, lissé comme elle (smootherstep). Seuls l'escale en cours et ses deux voisines montrent
  * leur nom et leur précision (`data-near`), leurs textes écartés l'un de l'autre s'ils se touchent ; les autres repères
  * se réduisent à une graduation dont le texte, masqué à l'œil, reste dans le lien et paraît en infobulle. Sur petit
- * écran, tout nom devient une infobulle. Échap masque l'infobulle affichée.
+ * écran, tout nom devient une infobulle. Échap ferme l'infobulle ouverte, où que soit le focus.
  */
 export function RailView({ id, label, markers, ticks, axis, breakMarks = [], current, readFlight }: RailViewProps) {
   const railRef = useRef<HTMLElement>(null);
@@ -108,6 +126,28 @@ export function RailView({ id, label, markers, ticks, axis, breakMarks = [], cur
   const lastCursor = useRef("");
   const [metrics, setMetrics] = useState<RailMetrics | null>(null);
   const [tipsDismissed, setTipsDismissed] = useState(false);
+  /** Repère dont Échap a fermé l'infobulle : le survoler encore ne la rouvre pas, survoler un autre repère si. */
+  const dismissedOn = useRef<Element | null>(null);
+
+  /*
+   * Échap ferme l'infobulle ouverte (critère 1.4.13), où que soit le focus : graduation survolée, ou au focus clavier
+   * (tout repère sur petit écran). En capture, avant la note d'échelle : un appui qui ferme une infobulle est retenu
+   * et ne ferme rien d'autre ; sans infobulle ouverte, il passe. Écouté tant que les infobulles sont permises.
+   */
+  useEffect(() => {
+    if (tipsDismissed) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const rail = railRef.current;
+      if (event.key !== "Escape" || !rail) return;
+      const open = openTip(rail);
+      if (!open) return;
+      event.preventDefault();
+      dismissedOn.current = open;
+      setTipsDismissed(true);
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [tipsDismissed]);
 
   useEffect(() => {
     const rail = railRef.current;
@@ -147,14 +187,12 @@ export function RailView({ id, label, markers, ticks, axis, breakMarks = [], cur
     track.style.transform = transform;
   }, FRAME_ORDER.ui);
 
-  // Échap masque l'infobulle (petit écran, ou graduation du grand écran) ; elle revient au prochain survol ou focus.
-  // Quand une infobulle était affichée, cet appui ne ferme qu'elle (pas la note d'échelle).
-  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== "Escape" || tipsDismissed) return;
-    setTipsDismissed(true);
+  // Infobulles fermées par Échap : elles reviennent au survol d'un autre repère (au prochain focus, et quand le
+  // pointeur quitte la règle, plus bas).
+  const onPointerOver = (event: PointerEvent<HTMLElement>) => {
+    if (!tipsDismissed) return;
     const link = event.target instanceof Element ? event.target.closest("a") : null;
-    const tip = window.matchMedia(TIPS_QUERY).matches || (link !== null && !link.hasAttribute(NEAR_ATTRIBUTE));
-    if (tip) event.preventDefault();
+    if (link && link !== dismissedOn.current) setTipsDismissed(false);
   };
 
   const idealPx = metrics ? markers.map((marker) => (marker.percent / 100) * metrics.height) : null;
@@ -185,7 +223,7 @@ export function RailView({ id, label, markers, ticks, axis, breakMarks = [], cur
       data-hide-on-explore
       aria-label={label}
       data-tips={tipsDismissed ? "off" : undefined}
-      onKeyDown={onKeyDown}
+      onPointerOver={onPointerOver}
       onFocus={() => setTipsDismissed(false)}
       onPointerLeave={() => setTipsDismissed(false)}
     >

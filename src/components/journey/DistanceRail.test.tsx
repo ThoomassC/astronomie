@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { anchorOf } from "@/components/journey/anchors";
 import { DistanceRail, type RailStop } from "@/components/journey/DistanceRail";
+import { stubPseudoClasses } from "@/components/journey/testPseudoClasses";
 import { renderIn } from "@/components/modules/testUtils";
 import { RAIL_STOPS } from "@/lib/journey/camera";
 import { journeyStore } from "@/lib/journey/store";
@@ -254,6 +255,8 @@ describe("DistanceRail", () => {
   it("devrait masquer l'infobulle des petits écrans avec Échap, sans fermer autre chose, et la rendre au focus suivant", () => {
     stubMatchMedia(TIPS_QUERY);
     render(<DistanceRail stops={STOPS} />);
+    act(() => marker("Mars, 1,52 UA").focus());
+    stubPseudoClasses({ focusVisible: marker("Mars, 1,52 UA") });
     // fireEvent renvoie false quand l'événement a été annulé : la note d'échelle ne se ferme pas avec lui.
     expect(fireEvent.keyDown(marker("Mars, 1,52 UA"), { key: "Escape" })).toBe(false);
     expect(rail()).toHaveAttribute("data-tips", "off");
@@ -266,17 +269,22 @@ describe("DistanceRail", () => {
   it("devrait masquer sur grand écran l'infobulle d'une graduation avec Échap, et la rendre quand le pointeur quitte la règle", () => {
     stubMatchMedia(null);
     render(<DistanceRail stops={STOPS} />);
-    // À l'accueil, Mars n'est qu'une graduation : son nom paraît en infobulle, qu'Échap ferme seule.
+    // À l'accueil, Mars n'est qu'une graduation : son nom paraît en infobulle au focus, qu'Échap ferme seule.
+    act(() => marker("Mars, 1,52 UA").focus());
+    stubPseudoClasses({ focusVisible: marker("Mars, 1,52 UA") });
     expect(fireEvent.keyDown(marker("Mars, 1,52 UA"), { key: "Escape" })).toBe(false);
     expect(rail()).toHaveAttribute("data-tips", "off");
     fireEvent.pointerLeave(rail());
     expect(rail()).not.toHaveAttribute("data-tips");
   });
 
-  it("devrait laisser passer Échap sur un repère nommé du grand écran, sans infobulle à fermer", () => {
+  it("devrait laisser passer Échap sur un repère nommé du grand écran, sans infobulle à fermer ni couper les autres", () => {
     stubMatchMedia(null);
     render(<DistanceRail stops={STOPS} />);
+    act(() => marker("Mercure, 0,39 UA").focus());
+    stubPseudoClasses({ focusVisible: marker("Mercure, 0,39 UA") });
     expect(fireEvent.keyDown(marker("Mercure, 0,39 UA"), { key: "Escape" })).toBe(true);
+    expect(rail()).not.toHaveAttribute("data-tips");
   });
 
   it("devrait nommer l'escale en cours et ses deux voisines, et réduire les treize autres à une graduation", () => {
