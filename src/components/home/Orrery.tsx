@@ -104,6 +104,30 @@ function PlanetMark({ planet, index }: { planet: OrreryPlanet; index: number }) 
   );
 }
 
+/**
+ * Filets de laiton des étiquettes reportées hors du groupe intérieur, du bord de l'astre au bord de son étiquette. La
+ * pose les donne en px du dessin mesuré (`size`) : ils passent ici en unités du viewBox, centré sur le Soleil.
+ */
+function Leaders({ labels, size }: { labels: readonly PlacedLabel[]; size: number }) {
+  const toUnits = (px: number) => ((px / size) * 2 - 1) * ORRERY_HALF_SIZE;
+  return (
+    <g className={styles.leaders}>
+      {labels.map(({ key, leader }) =>
+        leader ? (
+          <line
+            key={key}
+            x1={toUnits(leader.x1).toFixed(3)}
+            y1={toUnits(leader.y1).toFixed(3)}
+            x2={toUnits(leader.x2).toFixed(3)}
+            y2={toUnits(leader.y2).toFixed(3)}
+            data-leader={key}
+          />
+        ) : null,
+      )}
+    </g>
+  );
+}
+
 /** Pastille de la légende : la couleur de la planète, et ses formes du dessin (anneaux). */
 function LegendMark({ planetKey }: { planetKey: PlanetKey }) {
   return (
@@ -118,7 +142,8 @@ function LegendMark({ planetKey }: { planetKey: PlanetKey }) {
  * sur des orbites compressées comme celles de la scène. Le serveur dessine les orbites, le Soleil, la légende et une
  * date « – » ; les planètes se posent à l'hydratation, à l'heure du chargement (comme `HeroStamp`), dans une boîte de
  * taille fixe : rien ne bouge autour. Les étiquettes du dessin (HTML, cachées aux lecteurs d'écran) se posent une fois
- * mesurées, sans se chevaucher ; la légende nomme toujours les huit planètes et dit aux lecteurs d'écran où est
+ * mesurées, sans se chevaucher : hors du groupe intérieur, où Mercure, Vénus et la Terre se serrent, celles qu'il faut
+ * reporter au bout d'un filet de laiton. La légende nomme toujours les huit planètes et dit aux lecteurs d'écran où est
  * chacune, comme l'heure d'un cadran. Aucune planète ne se reconnaît à sa seule couleur : nom, ordre des orbites,
  * anneau de Saturne.
  */
@@ -195,6 +220,7 @@ export function Orrery() {
             </g>
             <circle r={ORRERY_SUN.glow} fill={`url(#${glowId})`} />
             <circle r={ORRERY_SUN.radius} fill={SUN.color} />
+            {layout ? <Leaders labels={layout.labels} size={layout.size} /> : null}
             {planets?.map((planet, index) => <PlanetMark key={planet.key} planet={planet} index={index} />)}
           </svg>
           {planets ? (

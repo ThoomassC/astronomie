@@ -121,21 +121,36 @@ describe("Orrery, après le montage", () => {
   });
 
   it("devrait poser les étiquettes du dessin une fois mesurées, cachées aux lecteurs d'écran", async () => {
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        constructor(private readonly callback: () => void) {}
-        observe() {
-          this.callback();
-        }
-        disconnect() {}
-      },
-    );
-    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(544);
-    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(60);
-    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(16);
+    measureLabels();
     render(inLocale("fr"));
     await waitFor(() => expect(screen.getByText("Vous êtes ici")).toHaveAttribute("data-placed"));
     expect(screen.getByText("Vous êtes ici").closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
   });
+
+  it("devrait nommer chaque planète, et relier par un filet de laiton celles du groupe intérieur", async () => {
+    measureLabels();
+    render(inLocale("fr"));
+    await waitFor(() => expect(document.querySelectorAll("[data-placed]")).toHaveLength(8));
+    // Mercure et Vénus, serrées contre le Soleil, ont toujours leur étiquette reportée au-delà de l'orbite de Mars.
+    expect(document.querySelector('[data-leader="mercury"]')).not.toBeNull();
+    expect(document.querySelector('[data-leader="venus"]')).not.toBeNull();
+    expect(document.querySelector("svg [data-leader]")?.closest("svg")).toBe(screen.getByRole("img"));
+  });
 });
+
+/** Boîte du dessin de 544 px et étiquettes de 60 × 16 px, observées dès le montage. */
+function measureLabels() {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(private readonly callback: () => void) {}
+      observe() {
+        this.callback();
+      }
+      disconnect() {}
+    },
+  );
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(544);
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(60);
+  vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(16);
+}
