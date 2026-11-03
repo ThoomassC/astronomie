@@ -1,4 +1,4 @@
-import type { WebGLRendererParameters } from "three";
+import type { Camera, Object3D, WebGLRendererParameters } from "three";
 
 /**
  * Moteur de rendu factice, pour faire tourner les moteurs de scène dans jsdom (sans WebGL) : à substituer à
@@ -53,7 +53,13 @@ export class FakeRenderer {
 
   initTexture(): void {}
 
-  render(): void {
+  /**
+   * Comme WebGLRenderer, met à jour les matrices de la scène et de la caméra avant de dessiner : les moteurs projettent
+   * leurs étiquettes juste après le rendu, sur la caméra de l'image.
+   */
+  render(scene?: Object3D, camera?: Camera): void {
+    if (scene?.matrixWorldAutoUpdate) scene.updateMatrixWorld();
+    if (camera && camera.parent === null && camera.matrixWorldAutoUpdate) camera.updateMatrixWorld();
     this.calls.push("render");
   }
 

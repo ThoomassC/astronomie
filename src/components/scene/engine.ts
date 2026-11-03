@@ -627,7 +627,10 @@ function setupScene(
   const andromedaCenterKly = new Vector3();
   if (andromeda) galaxyCenterKly(andromeda, andromedaCenterKly);
   const andromedaRadiusKly = andromeda ? galaxyRadiusKly(andromeda) : 0;
-  /** Grossissement des galaxies au zoom affiché (galaxyMagnification) : 1 jusqu'à la Voie lactée, 4 au Groupe local. */
+  /**
+   * Grossissement des galaxies au zoom affiché (galaxyMagnification) : 1 jusqu'à la Voie lactée,
+   * LOCAL_GROUP_MAGNIFICATION au Groupe local.
+   */
   let magnification = 1;
   /**
    * Part du fond diffus et de chaque autre bulle qui tient dans l'espace libre de l'écran (fitShellsToScreen) : leurs

@@ -1,7 +1,9 @@
 import type * as Three from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSolarScene, type SolarSceneOptions } from "@/components/scene/engine";
+import type { ExtragalacticLabelKey } from "@/components/scene/extragalactic";
 import { FakeRenderer } from "@/components/scene/testRenderer";
+import { journeyStore } from "@/lib/journey/store";
 
 /*
  * Moteur de la scène du Voyage, sans WebGL : jsdom n'en a pas, un moteur de rendu factice (testRenderer.ts) tient la
@@ -103,5 +105,77 @@ describe("createSolarScene", () => {
     scene?.dispose();
     scene?.dispose();
     expect(renderer().calls.filter((call) => call === "dispose")).toHaveLength(1);
+  });
+});
+
+/** Boîte posée à la main sur un élément : jsdom ne fait pas de mise en page (offset* y valent 0). */
+function measured(element: HTMLElement, box: { left: number; top: number; width: number; height: number }): void {
+  Object.defineProperties(element, {
+    offsetLeft: { get: () => box.left },
+    offsetTop: { get: () => box.top },
+    offsetWidth: { get: () => box.width },
+    offsetHeight: { get: () => box.height },
+  });
+}
+
+/** Étiquette de galaxie telle que la rend la page : repère de 16 × 9 px, puis le nom, 6 px plus loin. */
+function galaxyLabel(key: ExtragalacticLabelKey): HTMLElement {
+  const label = document.createElement("span");
+  label.className = "lbl deep galaxy";
+  label.dataset.deep = key;
+  const dot = document.createElement("i");
+  const text = document.createElement("span");
+  text.textContent = key;
+  label.append(dot, text);
+  measured(label, { left: 0, top: 0, width: 182, height: 20 });
+  measured(dot, { left: 0, top: 5.5, width: 16, height: 9 });
+  measured(text, { left: 22, top: 0, width: 160, height: 20 });
+  document.body.append(label);
+  return label;
+}
+
+/*
+ * Au Groupe local, les galaxies sont dessinées grossies : le nom d'une galaxie dont le disque déborde du repère se pose
+ * à côté, repère effacé (`data-beside`) ; celui d'une galaxie plus petite que son repère garde la disposition ordinaire.
+ */
+describe("noms des galaxies au Groupe local", () => {
+  afterEach(() => {
+    journeyStore.update("hero", "hero", 0);
+    document.body.replaceChildren();
+  });
+
+  /** Une image au repos sur l'escale du Groupe local ; la scène est rendue pour être libérée après les vérifications. */
+  async function framedAtLocalGroup(labels: Map<ExtragalacticLabelKey, HTMLElement>) {
+    journeyStore.update("localGroup", "localGroup", 0);
+    const scene = createSolarScene({ ...options(), deepLabels: labels });
+    if (!scene) throw new Error("Scène absente");
+    // Shaders compilés (compileAsync) : la première image peut partir.
+    await Promise.resolve();
+    scene.frame(1 / 60);
+    return scene;
+  }
+
+  it("devrait poser le nom d'Andromède à côté de son disque, repère effacé", async () => {
+    const andromeda = galaxyLabel("lg:andromeda");
+    const scene = await framedAtLocalGroup(new Map([["lg:andromeda", andromeda]]));
+    expect(andromeda.style.visibility).toBe("visible");
+    expect(andromeda).toHaveAttribute("data-beside");
+    scene.dispose();
+  });
+
+  // À sa vraie taille, le Grand Nuage ne ferait que 2 px de rayon : seul le grossissement le fait déborder du repère.
+  it("devrait mesurer le disque grossi : le Grand Nuage de Magellan déborde de son repère, son nom se pose à côté", async () => {
+    const cloud = galaxyLabel("lg:large-magellanic-cloud");
+    const scene = await framedAtLocalGroup(new Map([["lg:large-magellanic-cloud", cloud]]));
+    expect(cloud).toHaveAttribute("data-beside");
+    scene.dispose();
+  });
+
+  it("devrait garder le repère sur le Petit Nuage de Magellan, plus petit que lui à l'écran", async () => {
+    const cloud = galaxyLabel("lg:small-magellanic-cloud");
+    const scene = await framedAtLocalGroup(new Map([["lg:small-magellanic-cloud", cloud]]));
+    expect(cloud.style.visibility).toBe("visible");
+    expect(cloud).not.toHaveAttribute("data-beside");
+    scene.dispose();
   });
 });
