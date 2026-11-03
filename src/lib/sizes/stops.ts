@@ -40,7 +40,7 @@ export function sizeStopAnchor(key: SizeStopKey): `#${string}` {
 }
 
 /**
- * Indice de l'étoile d'une escale dans COMPARED_STARS (et dans la disposition de placeStars) : l'introduction montre
+ * Indice de l'étoile d'une escale dans COMPARED_STARS (et dans la disposition de placeObjects) : l'introduction montre
  * la plus petite, comme la première étoile.
  */
 export function sizeStarIndex(stop: SizeStopKey): number {

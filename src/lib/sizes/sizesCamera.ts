@@ -1,6 +1,6 @@
 import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
-import type { PlacedStar } from "@/lib/sizes/layout";
-import type { SizeStopKey } from "@/lib/sizes/stops";
+import type { PlacedObject } from "@/lib/sizes/layout";
+import type { SizeObjectKey } from "@/lib/sizes/objects";
 
 const D2R = Math.PI / 180;
 /** Part du vol pendant laquelle le halo de l'étoile qui arrive entre en fondu (ou s'éteint, au retour). */
@@ -67,13 +67,13 @@ export interface SizesFrameContext {
  * Lève une erreur si l'étoile de l'escale (l'étoile 0 pour « intro ») n'est pas posée.
  */
 export function sizesRestCamera(
-  placed: readonly PlacedStar[],
-  stop: SizeStopKey,
+  placed: readonly PlacedObject[],
+  stop: "intro" | SizeObjectKey,
   ctx: SizesFrameContext,
   out: SizesCam = emptyCam(),
 ): SizesCam {
   const index = stop === "intro" ? 0 : placed.findIndex((star) => star.key === stop);
-  const star: PlacedStar | undefined = placed[index];
+  const star: PlacedObject | undefined = placed[index];
   if (!star) throw new Error(`Étoile absente de la disposition : ${stop}`);
   const previous = index > 0 ? placed[index - 1] : star;
   const left = star.x - star.radius;

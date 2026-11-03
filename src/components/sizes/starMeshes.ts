@@ -9,7 +9,7 @@ import {
   type StarSurfaceUniforms,
 } from "@/components/scene/starSurface";
 import type { ComparedStar, SizeStarKey } from "@/lib/astro/starSizes";
-import type { PlacedStar } from "@/lib/sizes/layout";
+import type { PlacedObject } from "@/lib/sizes/layout";
 import { haloOpacity, visibleStarCount } from "@/lib/sizes/sizesCamera";
 
 /*
@@ -111,7 +111,7 @@ function createHaloMaterial(color: Color, opacity: Uniform<number>): ShaderMater
  */
 export function createStarMeshes(
   stars: readonly ComparedStar[],
-  placed: readonly PlacedStar[],
+  placed: readonly PlacedObject[],
   { time, lite, sunSpots }: { time: Uniform<number>; lite: boolean; sunSpots: SunSpots | null },
 ): { group: Group; meshes: SizesStarMesh[] } {
   const group = new Group();
@@ -149,7 +149,7 @@ export function createStarMeshes(
     // Disque orienté dans le shader : sa sphère englobante ne dit rien de ce qu'il couvre à l'écran.
     halo.frustumCulled = false;
     group.add(body, halo);
-    return { key: place.key, body, halo, haloOpacity: opacity, surface };
+    return { key: star.key, body, halo, haloOpacity: opacity, surface };
   });
   showStars(meshes, 0, 0, 0);
   return { group, meshes };

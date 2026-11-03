@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { COMPARED_STARS } from "@/lib/astro/starSizes";
-import { placeStars, type PlacedStar } from "@/lib/sizes/layout";
+import { placeObjects, type PlacedObject } from "@/lib/sizes/layout";
+import { layoutInput } from "@/lib/sizes/objects";
 import {
   haloOpacity,
   sizesFlightCamera,
@@ -17,10 +18,10 @@ const DEG = Math.PI / 180;
  * plus petite : x = 0 ; −5,4 ; −20,2. Positions figées ici : les attentes de caméra ne dépendent pas du réglage de
  * SIZE_GAP_RATIO.
  */
-const PLACED: readonly PlacedStar[] = [
-  { key: "proxima-centauri", radius: 1, x: 0 },
-  { key: "sun", radius: 2, x: -5.4 },
-  { key: "sirius-a", radius: 8, x: -20.2 },
+const PLACED: readonly PlacedObject[] = [
+  { key: "proxima-centauri", radius: 1, extent: 1, x: 0 },
+  { key: "sun", radius: 2, extent: 2, x: -5.4 },
+  { key: "sirius-a", radius: 8, extent: 8, x: -20.2 },
 ];
 
 /** Écran 16/9, champ vertical de 36°, sans bande ni zone libre. */
@@ -162,7 +163,7 @@ describe("sizesRestCamera", () => {
  * rayon tangent droit à la sphère fait avec l'axe de visée l'angle atan2(x − tx, dist) + asin(r / √((x − tx)² + dist²)).
  * Plafonné à 90° : une sphère qui déborde sur le côté de la caméra a son bord à l'infini, à droite.
  */
-function rightEdgeOnScreen(star: PlacedStar, cam: SizesCam, ctx: SizesFrameContext): number {
+function rightEdgeOnScreen(star: PlacedObject, cam: SizesCam, ctx: SizesFrameContext): number {
   const dx = star.x - cam.tx;
   const angle = Math.atan2(dx, cam.dist) + Math.asin(star.radius / Math.hypot(dx, cam.dist));
   return 0.5 + cam.offX + Math.tan(Math.min(angle, Math.PI / 2)) / (2 * ctx.aspect * tanHalf(ctx));
@@ -175,7 +176,7 @@ function rightEdgeOnScreen(star: PlacedStar, cam: SizesCam, ctx: SizesFrameConte
  * déborde nettement de ce point. En cas d'échec, élargir SIZE_GAP_RATIO, ne pas affaiblir le test.
  */
 describe("invariant de non-apparition, sur les dix étoiles du comparateur", () => {
-  const STARS = placeStars(COMPARED_STARS);
+  const STARS = placeObjects(COMPARED_STARS.map(layoutInput));
   /**
    * Vues de référence, champ réglé comme au voyage (50° sous un rapport largeur / hauteur de 0,9, 36° au-dessus) :
    * grand écran avec zone libre ; téléphone et tablette en portrait, bande libre entre la barre haute et la plaque

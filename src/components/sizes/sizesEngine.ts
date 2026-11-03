@@ -18,7 +18,8 @@ import { julianDate } from "@/lib/astro/ephemeris";
 import { solarActivity, sunspotLatitude } from "@/lib/astro/solarCycle";
 import { COMPARED_STARS, type SizeStarKey } from "@/lib/astro/starSizes";
 import { smootherstep } from "@/lib/journey/sections";
-import { placeStars } from "@/lib/sizes/layout";
+import { placeObjects } from "@/lib/sizes/layout";
+import { layoutInput } from "@/lib/sizes/objects";
 import { pixelsPerSolarRadius, scaleBarFor, scaleBarSun } from "@/lib/sizes/scaleBar";
 import {
   SIZES_VIEW_ELEV_DEG,
@@ -204,7 +205,7 @@ const emptyCam = (): SizesCam => ({ tx: 0, dist: 1, offX: 0, offY: 0 });
 
 /**
  * Scène 3D de la page « Tailles », légère et séparée du moteur du Voyage : les dix étoiles du comparateur à leur
- * taille vraie, côte à côte (placeStars), une caméra qui suit le défilement (sizesStore), leurs étiquettes et
+ * taille vraie, côte à côte (placeObjects), une caméra qui suit le défilement (sizesStore), leurs étiquettes et
  * l'échelle graphique. Elle ne rend une image que si quelque chose bouge (vol, mise en page, taille de la vue) ;
  * la surface des étoiles n'avance que pendant un vol, et jamais en mouvement réduit. Sur écran tactile, les vols se
  * rendent en rapport de pixels 1, l'arrivée nette. Renvoie `null` sans WebGL 2 ou en
@@ -238,7 +239,7 @@ function setupScene(
   const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const compact = window.matchMedia(COMPACT_LAYOUT_QUERY);
-  const placed = placeStars(COMPARED_STARS);
+  const placed = placeObjects(COMPARED_STARS.map(layoutInput));
   /** Temps affiché de la surface des étoiles, en secondes : il n'avance que pendant un vol. */
   const time = { value: 0 };
   const today = julianDate(Date.now());

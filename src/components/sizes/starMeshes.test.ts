@@ -2,14 +2,15 @@ import { Color } from "three";
 import { describe, expect, it } from "vitest";
 import { createStarMeshes, showStars, starLook } from "@/components/sizes/starMeshes";
 import { COMPARED_STARS, type ComparedStar, type SizeStarKey } from "@/lib/astro/starSizes";
-import { placeStars } from "@/lib/sizes/layout";
+import { placeObjects } from "@/lib/sizes/layout";
+import { layoutInput } from "@/lib/sizes/objects";
 
 /*
  * Étoiles 3D de la page « Tailles », construites sans WebGL (Three crée maillages et matériaux sans rendu) :
  * positions et tailles de la disposition, étoiles dessinées et halo de celle qui arrive pendant un vol.
  */
 
-const PLACED = placeStars(COMPARED_STARS);
+const PLACED = placeObjects(COMPARED_STARS.map(layoutInput));
 const INDICES = COMPARED_STARS.map((_, i) => i);
 
 function star(key: SizeStarKey): ComparedStar {
