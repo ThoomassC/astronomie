@@ -138,7 +138,11 @@ export interface SolarSceneOptions {
   canvas: HTMLCanvasElement;
   /** Étiquettes DOM des astres, placées à chaque image utile (masquées par `visibility`). */
   labels: ReadonlyMap<BodyKey, HTMLElement>;
-  /** Éléments que les étiquettes ne recouvrent jamais (règle des distances). */
+  /**
+   * Éléments que les étiquettes ne recouvrent jamais : la règle des distances, et les fondus sous la barre et sous le
+   * dock, où leur texte serait voilé. Mesurés dans la page, de nouveau à chaque redimensionnement (un fondu masqué par
+   * la feuille de style mesure une boîte vide).
+   */
   obstacles: readonly Element[];
   /** Plaques des escales : sur téléphone, l'astre est cadré dans la bande libre au-dessus de la sienne. */
   plates: ReadonlyMap<StopKey, HTMLElement>;

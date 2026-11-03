@@ -106,11 +106,12 @@ export default function SolarScene() {
       if (isDeepLabelKey(key) || isExtragalacticLabelKey(key)) deepLabelElements.set(key, element);
     }
     // Seulement la page affichée : Next garde dans le DOM, masquées, des pages quittées (Tailles et sa règle).
-    const { bar, rail, note, plates } = shownJourneyLayout();
+    // Obstacles des étiquettes : la règle, et les fondus sous la barre et sous le dock (texte voilé).
+    const { bar, rail, note, plates, obstacles } = shownJourneyLayout();
     const engine = createSolarScene({
       canvas,
       labels,
-      obstacles: rail ? [rail] : [],
+      obstacles,
       plates,
       bar,
       rail,
