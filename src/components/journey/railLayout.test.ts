@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { spreadPositions } from "@/components/journey/railLayout";
+import { nearIndexes, separateLabels, spreadPositions } from "@/components/journey/railLayout";
 import { RAIL_STOPS, railPercent, type StopKey } from "@/lib/journey/camera";
 
 /** Tolérance d'arrondi flottant : un écart de 1e-9 px ne se voit pas. */
@@ -83,5 +83,57 @@ describe("spreadPositions", () => {
       expect(placed.slice(at("sun"), at("venus") + 1)).toEqual(ideal.slice(at("sun"), at("venus") + 1));
       expect(placed[at("earth")]).toBeCloseTo(ideal[at("venus")] + MIN_GAP_PX, 9);
     });
+  });
+});
+
+describe("nearIndexes", () => {
+  it("devrait retenir l'escale en cours et ses deux voisines, dans l'ordre de la règle", () => {
+    expect(nearIndexes(16, 7)).toEqual([6, 7, 8]);
+  });
+
+  it("devrait n'avoir qu'une voisine aux deux bouts de la règle", () => {
+    expect(nearIndexes(16, 0)).toEqual([0, 1]);
+    expect(nearIndexes(16, 15)).toEqual([14, 15]);
+  });
+
+  it("devrait placer comme le premier repère une escale absente de la règle (rang −1, l'accueil)", () => {
+    expect(nearIndexes(16, -1)).toEqual([0, 1]);
+  });
+
+  it("devrait se contenter des repères qui existent", () => {
+    expect(nearIndexes(1, 0)).toEqual([0]);
+    expect(nearIndexes(0, -1)).toEqual([]);
+  });
+});
+
+describe("separateLabels", () => {
+  it("devrait laisser chaque texte centré sur son repère quand aucun ne touche son voisin", () => {
+    expect(separateLabels([0, 40, 80], [30, 30, 30], 1)).toEqual([0, 0, 0]);
+  });
+
+  it("devrait écarter juste assez le texte d'avant vers le haut et celui d'après vers le bas, l'escale en cours restant en place", () => {
+    // Repères à 26 px les uns des autres, textes de 30 px : 4 px de chevauchement de chaque côté.
+    expect(separateLabels([100, 126, 152], [30, 30, 30], 1)).toEqual([-4, 0, 4]);
+  });
+
+  it("devrait tenir compte d'un texte plus haut (distance sur deux lignes)", () => {
+    expect(separateLabels([100, 126, 152], [30, 45, 30], 1)).toEqual([-11.5, 0, 11.5]);
+  });
+
+  it("devrait propager l'écart de proche en proche quand l'escale en cours est au bout de la liste", () => {
+    expect(separateLabels([0, 10, 20], [20, 20, 20], 0)).toEqual([0, 10, 20]);
+    expect(separateLabels([0, 10, 20], [20, 20, 20], 2)).toEqual([-20, -10, 0]);
+  });
+
+  it("ne devrait rien déplacer pour un texte pas encore mesuré (hauteur nulle)", () => {
+    expect(separateLabels([100, 110, 120], [0, 0, 0], 1)).toEqual([0, 0, 0]);
+  });
+
+  it("ne devrait pas modifier les tableaux reçus", () => {
+    const centers = [100, 126, 152];
+    const heights = [30, 30, 30];
+    separateLabels(centers, heights, 1);
+    expect(centers).toEqual([100, 126, 152]);
+    expect(heights).toEqual([30, 30, 30]);
   });
 });
