@@ -1,4 +1,7 @@
-import { BEYOND, PLATE_MORE } from "@/content/site";
+import { getVoyageContent } from "@/content/voyage/content";
+import { BEYOND_MARKS } from "@/content/voyage/structure";
+import type { Locale } from "@/i18n/locales";
+import { STOP_IDS } from "@/lib/journey/stopIds";
 import { cssVars } from "./cssVars";
 import { GoToLink } from "./GoToLink";
 import { Plate } from "./Plate";
@@ -13,55 +16,48 @@ const SCALE_HOURS = 24;
 const MARK_BASE_REM = 1.5;
 const MARK_STEP_REM = 1.1;
 
-type Mark = (typeof BEYOND.marks)[number];
-
-const TITLE_ID = `${BEYOND.id}-titre`;
-
-/** Durée lue à voix haute : « ≈ 7 h » → « environ 7 heures », « 4 h 10 » → « 4 heures 10 ». */
-function spokenDuration(value: string): string {
-  return value
-    .replace("≈", "environ")
-    .replace(/(\d+) h(?: (\d+))?/, (_match: string, hours: string, minutes: string | undefined) =>
-      `${hours} heure${hours === "1" ? "" : "s"}${minutes ? ` ${minutes}` : ""}`,
-    );
-}
+const TITLE_ID = `${STOP_IDS.beyond}-titre`;
 
 /** Repères au-delà de la mi-échelle : étiquette à gauche du trait pour rester dans la plaque. */
-const isRightAligned = (mark: Mark) => mark.hours > SCALE_HOURS / 2;
+const isRightAligned = (hours: number) => hours > SCALE_HOURS / 2;
 
-/** Dernière escale : la ceinture de Kuiper et les sondes Voyager, en heures-lumière. */
-export function BeyondPlate({ sunHref }: { sunHref: `#${string}` }) {
-  const marks = BEYOND.marks;
+/**
+ * Dernière escale du système solaire, dans la langue de la page : la ceinture de Kuiper et les sondes Voyager, en
+ * heures-lumière. L'échelle dessinée est masquée aux lecteurs d'écran, qui en entendent une phrase complète.
+ */
+export function BeyondPlate({ locale, sunHref }: { locale: Locale; sunHref: `#${string}` }) {
+  const { beyond, plate } = getVoyageContent(locale);
+  const marks = BEYOND_MARKS.map((mark) => ({ ...mark, ...beyond.marks[mark.key] }));
   return (
-    <section className="stop" id={BEYOND.id} data-stop="beyond" tabIndex={-1} aria-labelledby={TITLE_ID}>
+    <section className="stop" id={STOP_IDS.beyond} data-stop="beyond" tabIndex={-1} aria-labelledby={TITLE_ID}>
       <Plate
-        id={BEYOND.id}
-        name={BEYOND.name}
+        id={STOP_IDS.beyond}
+        name={beyond.name}
         color="var(--laiton)"
         header={
           <>
             <p className="rank">
               <i aria-hidden="true" />
-              {BEYOND.rank}
+              {beyond.rank}
             </p>
-            <h2 id={TITLE_ID}>{BEYOND.name}</h2>
-            <p className="hook">{BEYOND.hook}</p>
+            <h2 id={TITLE_ID}>{beyond.name}</h2>
+            <p className="hook">{beyond.hook}</p>
           </>
         }
         sections={[
           {
             key: "suite",
-            label: PLATE_MORE.beyond,
+            label: plate.more,
             content: (
               <>
-                <p className="lede">{BEYOND.lede}</p>
+                <p className="lede">{beyond.lede}</p>
 
-                <h3 className="lightscale-title">{BEYOND.scaleTitle}</h3>
+                <h3 className="lightscale-title">{beyond.scaleTitle}</h3>
                 <div className="lightscale" aria-hidden="true">
                   {marks.map((mark, index) => (
                     <span
-                      key={mark.label}
-                      className={isRightAligned(mark) ? "r" : undefined}
+                      key={mark.key}
+                      className={isRightAligned(mark.hours) ? "r" : undefined}
                       style={cssVars(
                         { "--lc": mark.color },
                         {
@@ -75,13 +71,11 @@ export function BeyondPlate({ sunHref }: { sunHref: `#${string}` }) {
                   ))}
                 </div>
                 <div className="axis-l" aria-hidden="true">
-                  <span>Soleil, 0 h</span>
+                  <span>{beyond.scaleStart}</span>
                   <span>{SCALE_HOURS / 2} h</span>
                   <span>{SCALE_HOURS} h</span>
                 </div>
-                <p className="sr">
-                  {marks.map((mark) => `${mark.label} : ${spokenDuration(mark.value)}`).join(" ; ")}.
-                </p>
+                <p className="sr">{beyond.spokenScale(marks)}</p>
               </>
             ),
           },
@@ -90,7 +84,7 @@ export function BeyondPlate({ sunHref }: { sunHref: `#${string}` }) {
           <div className="actions">
             <ScaleToggle className="btn" />
             <GoToLink className="btn ghost" href={sunHref} stop="sun">
-              {BEYOND.back}
+              {beyond.back}
             </GoToLink>
           </div>
         }

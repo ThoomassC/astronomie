@@ -1,6 +1,12 @@
-import type { Vec3 } from "@/lib/astro/constants";
+import { AU_PER_LIGHT_YEAR, type Vec3 } from "@/lib/astro/constants";
+import { GALACTIC_CENTER_DISTANCE_LY, GALACTIC_DISK_RADIUS_LY, sceneFromGalactic } from "@/lib/astro/galactic";
+import { LOCAL_GROUP, galaxyCenterKly, galaxyRadiusKly, type LocalGroupGalaxyKey } from "@/lib/astro/localGroup";
+import { MULTIVERSE_SEED, MULTIVERSE_VIEW_DEG, multiverseBubbles, multiverseRadius } from "@/lib/astro/multiverse";
 import { SUN, type PlanetKey } from "@/lib/astro/planets";
-import { sceneRadius } from "@/lib/astro/scale";
+import { LOCAL_GROUP_MAGNIFICATION, sceneRadius, unitsPerLightYear } from "@/lib/astro/scale";
+import { NEARBY_STARS } from "@/lib/astro/stars";
+import { OBSERVABLE_UNIVERSE_RADIUS_GLY } from "@/lib/astro/universe";
+import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
 
 const D2R = Math.PI / 180;
 const TAU = Math.PI * 2;
@@ -11,15 +17,13 @@ const BAND_FILL = 0.9;
 const WIDTH_FILL = 0.8;
 /** Grand écran : l'astre occupe au plus 90 % de la largeur de la zone libre, anneaux compris. */
 const ZONE_FILL = 0.9;
-/** Rayon extérieur des anneaux visibles, en rayons de la planète. */
-const RING_EXTENT: Partial<Record<PlanetKey, number>> = { saturn: 2.337, uranus: 2.05 };
-/** Air entre la bande libre et ce qui la borde (bandeaux du haut, plaque), en px. */
-const BAND_MARGIN_PX = 8;
+/** Grand écran : une vue lointaine occupe au plus 80 % de la hauteur, entre la barre haute et le dock. */
+const ZONE_HEIGHT_FILL = 0.8;
 /**
- * Sous cette part de l'écran (texte très agrandi), pas de bande : cadrage portrait habituel.
- * Au-dessus, même un petit astre visible vaut mieux qu'un grand caché derrière la plaque.
+ * Rayon extérieur des anneaux visibles, en rayons de la planète : cadrage des escales, et approche minimale
+ * quand on tourne autour (orbit.ts).
  */
-const MIN_BAND_SHARE = 0.08;
+export const RING_EXTENT: Partial<Record<PlanetKey, number>> = { saturn: 2.337, uranus: 2.05 };
 
 interface StopCameraConfig {
   dist?: number;
@@ -29,20 +33,38 @@ interface StopCameraConfig {
   phi?: number;
   offX?: number;
   offY?: number;
+  /** Zoom cosmique de l'escale (0 par défaut). */
+  zoom?: number;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const emptyCam = (): CamState => ({ tx: 0, ty: 0, tz: 0, dist: 1, azim: 0, elev: 0, offX: 0, offY: 0, planet: false });
+const emptyCam = (): CamState => ({
+  tx: 0, ty: 0, tz: 0, dist: 1, azim: 0, elev: 0, offX: 0, offY: 0, planet: false, zoom: 0,
+});
+
+/** Escales au-delà du système solaire, vues au zoom cosmique, de la plus proche à la plus lointaine. */
+export const COSMIC_STOPS = ["stars", "galaxy", "localGroup", "universe", "multiverse"] as const;
+
+export type CosmicStopKey = (typeof COSMIC_STOPS)[number];
 
 /** Escales du voyage, dans l'ordre de la page. */
-export type StopKey = "hero" | "sun" | PlanetKey | "belt" | "beyond";
+export type StopKey = "hero" | "sun" | PlanetKey | "belt" | "beyond" | CosmicStopKey;
 
 export const STOP_ORDER: readonly StopKey[] = [
   "hero", "sun", "mercury", "venus", "earth", "mars", "belt", "jupiter", "saturn", "uranus", "neptune", "beyond",
+  ...COSMIC_STOPS,
 ];
 
-/** État de caméra : cible (tx, ty, tz), distance, azimut et élévation (radians), décalage d'écran (fraction de la vue). */
+/** Escale au-delà du système solaire (des étoiles voisines au multivers), où tout est déjà à l'échelle. */
+export function isCosmicStop(key: StopKey): key is CosmicStopKey {
+  return (COSMIC_STOPS as readonly StopKey[]).includes(key);
+}
+
+/**
+ * État de caméra : cible (tx, ty, tz), distance, azimut et élévation (radians), décalage d'écran (fraction de la vue),
+ * zoom cosmique.
+ */
 export interface CamState {
   tx: number;
   ty: number;
@@ -56,18 +78,11 @@ export interface CamState {
   offY: number;
   /** La cible est un astre en orbite (planète ou ceinture), pas le centre du système. */
   planet: boolean;
-}
-
-/** Bande horizontale de l'écran, en fractions de sa hauteur (0 en haut, 1 en bas). */
-export interface ScreenBand {
-  top: number;
-  bottom: number;
-}
-
-/** Bande verticale de l'écran, en fractions de sa largeur (0 à gauche, 1 à droite). */
-export interface ScreenZone {
-  left: number;
-  right: number;
+  /**
+   * Exposant du zoom cosmique : log10 du facteur de réduction du système solaire.
+   * 0 aux escales du système solaire, 4,6 aux étoiles voisines, 8 à la Voie lactée.
+   */
+  zoom: number;
 }
 
 export interface StopCameraContext {
@@ -97,9 +112,36 @@ export interface StopCameraContext {
   zone?(key: StopKey): ScreenZone | null;
 }
 
+/** Zoom cosmique du Groupe local : ses galaxies (milliers d'années-lumière) tiennent en quelques centaines d'unités. */
+const LOCAL_GROUP_ZOOM = 9.7;
+
 /**
- * Réglages par escale. `dist` absolue, ou `k` × rayon de la planète ; angles en degrés.
+ * Cible du Groupe local : la moitié du chemin vers Andromède, à l'échelle de son zoom (≈ (50,96 ; 37,93 ; −26,93)
+ * unités de scène). Calculée une fois, au chargement du module, comme celle de la Voie lactée.
+ */
+const LOCAL_GROUP_TARGET: Readonly<Vec3> = (() => {
+  const andromeda = LOCAL_GROUP.find((galaxy) => galaxy.key === "andromeda");
+  if (!andromeda) throw new Error("Andromède absente du Groupe local");
+  const center = galaxyCenterKly(andromeda);
+  const length = 0.5 * 1000 * unitsPerLightYear(LOCAL_GROUP_ZOOM);
+  return { x: center.x * length, y: center.y * length, z: center.z * length };
+})();
+
+/**
+ * Azimut de la caméra du Groupe local, en degrés : perpendiculaire à l'axe Voie lactée–Andromède projeté à
+ * l'horizontale, atan2(tz, tx) − 90° (≈ −117,85°). Les deux grandes galaxies s'étalent de part et d'autre de l'écran.
+ */
+const LOCAL_GROUP_AZIM_DEG = (Math.atan2(LOCAL_GROUP_TARGET.z, LOCAL_GROUP_TARGET.x) * 180) / Math.PI - 90;
+
+/**
+ * Réglages par escale. `dist` absolue, ou `k` × rayon de la planète ; angles en degrés ; zoom cosmique (0 par défaut).
  * Valeurs par défaut : elev 11, phi 55, offX 0,17, offY 0.
+ * Étoiles voisines : l'azimut de l'accueil et de l'au-delà, plus bas sur l'écliptique.
+ * Voie lactée : le pôle nord galactique est, dans la scène, à 179,98° d'azimut et 29,81° d'élévation ;
+ * monter de 30° sur ce méridien montre le disque à 30° de sa face (latitude galactique ≈ 59,8°), vu du
+ * nord (rotation horaire à l'écran), son grand axe horizontal.
+ * Groupe local : de côté (LOCAL_GROUP_AZIM_DEG), 25° au-dessus. Univers observable et multivers : la direction où
+ * le multivers garde notre bulle dégagée (MULTIVERSE_VIEW_DEG) ; de l'un à l'autre, la caméra ne fait que reculer.
  */
 export const STOP_CAMERA = {
   hero: { dist: 420, elev: 24, azim: 206, offX: 0.23, offY: 0.05 },
@@ -114,17 +156,102 @@ export const STOP_CAMERA = {
   uranus: { k: 7.8 },
   neptune: { k: 7.8 },
   beyond: { dist: 640, elev: 62, azim: 206, offX: 0.14, offY: 0 },
-} as const;
+  stars: { dist: 640, elev: 35, azim: 206, offX: 0.14, offY: 0, zoom: 4.6 },
+  galaxy: { dist: 640, elev: 60, azim: 180, offX: 0.14, offY: 0, zoom: 8 },
+  localGroup: { dist: 640, elev: 25, azim: LOCAL_GROUP_AZIM_DEG, offX: 0.14, offY: 0, zoom: LOCAL_GROUP_ZOOM },
+  universe: {
+    dist: 640, elev: MULTIVERSE_VIEW_DEG.elevation, azim: MULTIVERSE_VIEW_DEG.azimuth, offX: 0.14, offY: 0, zoom: 14,
+  },
+  multiverse: {
+    dist: 640, elev: MULTIVERSE_VIEW_DEG.elevation, azim: MULTIVERSE_VIEW_DEG.azimuth, offX: 0.14, offY: 0, zoom: 15,
+  },
+} as const satisfies Record<StopKey, StopCameraConfig>;
 
 /**
- * Bande libre de la mise en page mobile, en fractions de la hauteur de la vue : du bas des bandeaux
- * fixés en haut de l'écran (`top`, en px) au haut de la plaque repliée collée en bas (hauteur et écart
- * au bas de l'écran, en px), 8 px d'air de chaque côté. `null` si elle fait moins de 8 % de la vue.
+ * Cible de l'escale « galaxy » : le centre galactique, à GALACTIC_CENTER_DISTANCE_LY du Soleil, à l'échelle
+ * de son zoom (≈ (−4,132 ; −7,265 ; 74,836) unités de scène). Calculée une fois, au chargement du module.
  */
-export function freeBand(viewHeight: number, top: number, plate: { height: number; bottom: number }): ScreenBand | null {
-  const upper = top + BAND_MARGIN_PX;
-  const lower = viewHeight - plate.bottom - plate.height - BAND_MARGIN_PX;
-  return lower - upper >= MIN_BAND_SHARE * viewHeight ? { top: upper / viewHeight, bottom: lower / viewHeight } : null;
+const GALAXY_TARGET: Readonly<Vec3> = (() => {
+  const target = sceneFromGalactic(0, 0);
+  const length = GALACTIC_CENTER_DISTANCE_LY * unitsPerLightYear(STOP_CAMERA.galaxy.zoom);
+  return { x: target.x * length, y: target.y * length, z: target.z * length };
+})();
+
+/** Escale dont la caméra cadre un astre (le Soleil ou une planète) : la bande et la zone libres règlent sa distance. */
+function isFramedBody(key: StopKey): key is "sun" | PlanetKey {
+  return key !== "hero" && key !== "belt" && key !== "beyond" && !isCosmicStop(key);
+}
+
+/** Galaxies que cadre l'escale du Groupe local, grossies ; les naines lointaines (WLM, NGC 6822…) peuvent en sortir. */
+const LOCAL_GROUP_FRAMED: readonly LocalGroupGalaxyKey[] = [
+  "milky-way", "large-magellanic-cloud", "small-magellanic-cloud", "andromeda", "triangulum",
+];
+
+/**
+ * Rayon de la sphère cadrée au Groupe local, en kly : la plus grande distance entre sa cible et le bord d'une des
+ * cinq galaxies principales, grossies (LOCAL_GROUP_MAGNIFICATION) : ≈ 1 756 kly, le Triangle. Cadrer les treize
+ * galaxies, WLM à 3 Mal comprise, rapetisserait toutes les galaxies d'un tiers.
+ */
+const LOCAL_GROUP_FRAME_KLY = (() => {
+  const kly = 1000 * unitsPerLightYear(LOCAL_GROUP_ZOOM);
+  const target = { x: LOCAL_GROUP_TARGET.x / kly, y: LOCAL_GROUP_TARGET.y / kly, z: LOCAL_GROUP_TARGET.z / kly };
+  const reach = LOCAL_GROUP.filter((galaxy) => LOCAL_GROUP_FRAMED.includes(galaxy.key)).map((galaxy) => {
+    const center = galaxyCenterKly(galaxy);
+    const radius = LOCAL_GROUP_MAGNIFICATION * galaxyRadiusKly(galaxy);
+    return Math.hypot(center.x - target.x, center.y - target.y, center.z - target.z) + radius;
+  });
+  return Math.max(...reach);
+})();
+
+/**
+ * Ce que cadrent les escales lointaines, centré sur leur cible, en unités de scène au zoom de l'escale :
+ * - stars (disque) : 17 al, un peu au-delà d'Altaïr (16,7 al), la plus lointaine des étoiles de la carte, dans le
+ *   plan de l'écliptique, celui des cercles de distance ;
+ * - galaxy (disque) : le disque de la Voie lactée (50 000 al), dans le plan galactique ;
+ * - localGroup (sphère) : les cinq galaxies principales (LOCAL_GROUP_FRAME_KLY) ;
+ * - universe (sphère) : l'Univers observable (46 milliards d'al) ;
+ * - multiverse (sphère) : le multivers dessiné, max(|centre| + rayon) des bulles.
+ */
+const COSMIC_FRAME: Readonly<Record<CosmicStopKey, { shape: "disk" | "sphere"; radius: number }>> = {
+  stars: { shape: "disk", radius: 17 * unitsPerLightYear(STOP_CAMERA.stars.zoom) },
+  galaxy: { shape: "disk", radius: GALACTIC_DISK_RADIUS_LY * unitsPerLightYear(STOP_CAMERA.galaxy.zoom) },
+  localGroup: { shape: "sphere", radius: LOCAL_GROUP_FRAME_KLY * 1000 * unitsPerLightYear(LOCAL_GROUP_ZOOM) },
+  universe: {
+    shape: "sphere",
+    radius: OBSERVABLE_UNIVERSE_RADIUS_GLY * 1e9 * unitsPerLightYear(STOP_CAMERA.universe.zoom),
+  },
+  multiverse: {
+    shape: "sphere",
+    radius: multiverseRadius(multiverseBubbles(MULTIVERSE_SEED)) * 1e9 * unitsPerLightYear(STOP_CAMERA.multiverse.zoom),
+  },
+};
+
+/**
+ * Distance qui fait tenir un disque de rayon `radius`, centré sur la cible et vu `elev` au-dessus de son plan
+ * (radians), dans un cadre de demi-largeur `tanWidth` et de demi-hauteur `tanHeight` (tangentes des demi-angles).
+ * Le disque se projette en ellipse raccourcie en hauteur ; la perspective grossit son côté proche, en bas de l'écran :
+ * - bords gauche et droit : r / √(d² − (r cos elev)²) ≤ tanWidth ;
+ * - bord proche : r sin elev / (d − r cos elev) ≤ tanHeight.
+ */
+function diskDistance(radius: number, elev: number, tanWidth: number, tanHeight: number): number {
+  const depth = radius * Math.cos(elev);
+  return Math.max(Math.hypot(radius / tanWidth, depth), (radius * Math.sin(elev)) / tanHeight + depth);
+}
+
+/**
+ * Distance qui fait tenir une sphère de rayon `radius`, centrée sur la cible, dans le même cadre : vue sous un
+ * demi-angle asin(r / d), elle tient quand tan(asin(r / d)) ≤ min(tanWidth, tanHeight), soit d = r / sin(atan(tan)).
+ */
+function sphereDistance(radius: number, tanWidth: number, tanHeight: number): number {
+  return Math.max(radius / Math.sin(Math.atan(tanWidth)), radius / Math.sin(Math.atan(tanHeight)));
+}
+
+/** Distance qui fait tenir le cadre d'une escale lointaine (disque vu à `elev`, ou sphère). */
+function cosmicDistance(key: CosmicStopKey, elev: number, tanWidth: number, tanHeight: number): number {
+  const { shape, radius } = COSMIC_FRAME[key];
+  return shape === "disk"
+    ? diskDistance(radius, elev, tanWidth, tanHeight)
+    : sphereDistance(radius, tanWidth, tanHeight);
 }
 
 /** Rayon affiché du Soleil ou d'une planète, et rayon de ses anneaux visibles s'il en a. */
@@ -158,19 +285,26 @@ function bandDistance(radius: number, extent: number, band: ScreenBand, ctx: Sto
 
 /**
  * Caméra au repos sur une escale. Règles (angles convertis en radians) :
- * - elev = elev de l'escale, 11° par défaut.
- * - hero, beyond : cible (0,0,0), dist × (portrait ? 1,75 : 1), azim fixe, planet = false.
+ * - elev = elev de l'escale, 11° par défaut ; zoom = zoom de l'escale, 0 par défaut.
+ * - hero, beyond, stars, universe, multiverse : cible (0,0,0), dist × (portrait ? 1,75 : 1), azim fixe, planet = false.
+ * - galaxy, localGroup : de même, mais la cible est le centre galactique (GALAXY_TARGET), ou la moitié du chemin vers
+ *   Andromède (LOCAL_GROUP_TARGET), à l'échelle de leur zoom.
  * - sun : cible (0,0,0), dist × (portrait ? 1,45 : 1), azim fixe, planet = false.
  * - belt : θ = atan2(mars.z, mars.x) − 0,55 ; R = sceneRadius(2,7, realScale) ; cible (R cos θ, 0, R sin θ) ;
  *   dist × (portrait ? 1,3 : 1) ; azim = θ + π + phi ; planet = true.
  * - planète : cible = sa position ; θ = atan2(z, x) ; dist = k × rayon × (portrait ? 1,4 : 1) ;
  *   azim = θ + π + phi (55° par défaut) ; planet = true.
  * - offX = portrait ? 0 : offX de l'escale (0,17 par défaut).
- * - offY = portrait ? (hero : −0,29 ; beyond : −0,1 ; autres : −0,21) : offY de l'escale (0 par défaut).
- * - Mise en page mobile (bande fournie), Soleil, planètes et au-delà : offX = 0, offY = milieu de la bande − 0,5 ;
- *   Soleil et planètes seulement : dist = bandDistance (rayon du Soleil : SUN.displayRadius ; anneaux : RING_EXTENT).
- * - Grand écran (zone fournie, pas de bande), Soleil et planètes : offX = milieu de la zone − 0,5,
- *   dist = max(dist, zoneDistance) : l'astre ne recule que s'il déborde de la zone.
+ * - offY = portrait ? (hero : −0,29 ; beyond et escales lointaines : −0,1 ; autres : −0,21) : offY de l'escale (0 par
+ *   défaut).
+ * - Mise en page mobile (bande fournie), toutes les escales sauf hero et belt : offX = 0, offY = milieu de la bande − 0,5 ;
+ *   astre cadré (Soleil ou planète) : dist = bandDistance (rayon du Soleil : SUN.displayRadius ; anneaux : RING_EXTENT) ;
+ *   escales lointaines : dist = distance de leur cadre (COSMIC_FRAME : disque vu à elev, ou sphère), dans 80 % de la
+ *   largeur de l'écran et 90 % de la hauteur de la bande ; beyond garde sa distance.
+ * - Grand écran (zone fournie, pas de bande) :
+ *   astre cadré : offX = milieu de la zone − 0,5, dist = max(dist, zoneDistance) : l'astre ne recule que s'il déborde ;
+ *   escales lointaines : offX = milieu de la zone − 0,5, dist = distance de leur cadre dans 90 % de la largeur de la
+ *   zone et 80 % de la hauteur de l'écran ; beyond, hero, belt : rien ne change.
  */
 export function cameraFor(key: StopKey, ctx: StopCameraContext, out: CamState = emptyCam()): CamState {
   const cfg: StopCameraConfig = STOP_CAMERA[key];
@@ -180,10 +314,17 @@ export function cameraFor(key: StopKey, ctx: StopCameraContext, out: CamState = 
   out.tz = 0;
   out.elev = (cfg.elev ?? DEFAULTS.elev) * D2R;
   out.planet = false;
-  if (key === "hero" || key === "beyond" || key === "sun") {
+  out.zoom = cfg.zoom ?? 0;
+  if (key === "hero" || key === "beyond" || key === "sun" || isCosmicStop(key)) {
     const factor = key === "sun" ? 1.45 : 1.75;
     out.dist = (cfg.dist ?? 1) * (portrait ? factor : 1);
     out.azim = (cfg.azim ?? 0) * D2R;
+    const target = key === "galaxy" ? GALAXY_TARGET : key === "localGroup" ? LOCAL_GROUP_TARGET : null;
+    if (target) {
+      out.tx = target.x;
+      out.ty = target.y;
+      out.tz = target.z;
+    }
   } else if (key === "belt") {
     const mars = ctx.planetPosition("mars");
     const theta = Math.atan2(mars.z, mars.x) - 0.55;
@@ -204,21 +345,42 @@ export function cameraFor(key: StopKey, ctx: StopCameraContext, out: CamState = 
     out.planet = true;
   }
   out.offX = portrait ? 0 : (cfg.offX ?? DEFAULTS.offX);
-  out.offY = portrait ? (key === "hero" ? -0.29 : key === "beyond" ? -0.1 : -0.21) : (cfg.offY ?? DEFAULTS.offY);
+  out.offY = portrait
+    ? key === "hero"
+      ? -0.29
+      : key === "beyond" || isCosmicStop(key)
+        ? -0.1
+        : -0.21
+    : (cfg.offY ?? DEFAULTS.offY);
 
   if (key === "hero" || key === "belt") return out;
+  const tanHalf = Math.tan((ctx.fov * D2R) / 2);
   const band = ctx.band?.(key);
   if (band) {
     out.offX = 0;
     out.offY = (band.top + band.bottom) / 2 - 0.5;
-    if (key !== "beyond") {
+    if (isFramedBody(key)) {
       const { radius, extent } = bodySize(key, ctx);
       out.dist = bandDistance(radius, extent, band, ctx);
+    } else if (isCosmicStop(key)) {
+      const tanWidth = WIDTH_FILL * ctx.aspect * tanHalf;
+      const tanHeight = BAND_FILL * (band.bottom - band.top) * tanHalf;
+      out.dist = cosmicDistance(key, out.elev, tanWidth, tanHeight);
     }
     return out;
   }
-  const zone = key === "beyond" ? null : ctx.zone?.(key);
-  if (zone && key !== "beyond") {
+  if (isCosmicStop(key)) {
+    const zone = ctx.zone?.(key);
+    if (zone) {
+      out.offX = (zone.left + zone.right) / 2 - 0.5;
+      const tanWidth = ZONE_FILL * (zone.right - zone.left) * ctx.aspect * tanHalf;
+      out.dist = cosmicDistance(key, out.elev, tanWidth, ZONE_HEIGHT_FILL * tanHalf);
+    }
+    return out;
+  }
+  if (!isFramedBody(key)) return out;
+  const zone = ctx.zone?.(key);
+  if (zone) {
     out.offX = (zone.left + zone.right) / 2 - 0.5;
     out.dist = Math.max(out.dist, zoneDistance(bodySize(key, ctx).extent, zone, ctx));
   }
@@ -233,12 +395,6 @@ export function angleDiff(a: number, b: number): number {
   return d;
 }
 
-/** Courbe 6t⁵ − 15t⁴ + 10t³, t borné à [0, 1]. */
-export function smootherstep(t: number): number {
-  const x = clamp(t, 0, 1);
-  return x * x * x * (x * (x * 6 - 15) + 10);
-}
-
 /**
  * Interpolation de vol entre deux caméras (t déjà lissé par l'appelant).
  * - Cible en coordonnées cylindriques autour du Soleil : rayon et y linéaires, angle par le plus court chemin ;
@@ -247,6 +403,9 @@ export function smootherstep(t: number): number {
  * - dist = exp(lerp(ln a.dist, ln b.dist, t)) × (1 + 2,2 · hop · arc)  (recul en milieu de vol).
  * - azim par le plus court chemin ; elev = lerp + 0,32 · hop · arc ; offX, offY linéaires.
  * - planet = t < 0,5 ? a.planet : b.planet.
+ * - zoom linéaire en t (exponentiel à l'écran : chaque pas multiplie la réduction par le même facteur).
+ *   Entre les étoiles voisines et la Voie lactée, la cible glisse donc en ligne droite, en unités de scène,
+ *   pendant que tout se réduit : le Soleil reste dans le champ.
  */
 export function blendCameras(a: CamState, b: CamState, t: number, out: CamState = emptyCam()): CamState {
   const rA = Math.hypot(a.tx, a.tz);
@@ -267,6 +426,7 @@ export function blendCameras(a: CamState, b: CamState, t: number, out: CamState 
   const offX = lerp(a.offX, b.offX, t);
   const offY = lerp(a.offY, b.offY, t);
   const planet = t < 0.5 ? a.planet : b.planet;
+  const zoom = lerp(a.zoom, b.zoom, t);
   out.tx = radius * Math.cos(theta);
   out.ty = ty;
   out.tz = radius * Math.sin(theta);
@@ -276,97 +436,93 @@ export function blendCameras(a: CamState, b: CamState, t: number, out: CamState 
   out.offX = offX;
   out.offY = offY;
   out.planet = planet;
+  out.zoom = zoom;
   return out;
 }
 
-export interface SectionBox {
-  key: StopKey;
-  /** Position du haut de la section dans le document, en px. */
-  top: number;
-  height: number;
-}
-
-export interface SectionRange {
-  key: StopKey;
-  /** Défilement à partir duquel la caméra est arrivée sur l'escale. */
-  arrive: number;
-  /** Défilement à partir duquel elle repart vers l'escale suivante (≥ arrive). */
-  depart: number;
+/**
+ * Fondu entre deux caméras, sans recul ni arc : entrée et sortie de l'exploration (t déjà lissé par l'appelant).
+ * Contrairement au vol (blendCameras), la cible va en ligne droite et la caméra ne tourne pas autour du Soleil :
+ * - cible linéaire, en coordonnées cartésiennes ;
+ * - dist = exp(lerp(ln a.dist, ln b.dist, t)) : moyenne géométrique à mi-chemin, jamais au-delà des deux ;
+ * - azim par le plus court chemin ; elev, offX, offY et zoom linéaires ;
+ * - planet = t < 0,5 ? a.planet : b.planet.
+ * `out` peut être `a` ou `b` : tout est calculé avant d'y écrire.
+ */
+export function mixCameras(a: CamState, b: CamState, t: number, out: CamState = emptyCam()): CamState {
+  const tx = lerp(a.tx, b.tx, t);
+  const ty = lerp(a.ty, b.ty, t);
+  const tz = lerp(a.tz, b.tz, t);
+  const dist = Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), t));
+  const azim = a.azim + angleDiff(a.azim, b.azim) * t;
+  const elev = lerp(a.elev, b.elev, t);
+  const offX = lerp(a.offX, b.offX, t);
+  const offY = lerp(a.offY, b.offY, t);
+  const zoom = lerp(a.zoom, b.zoom, t);
+  const planet = t < 0.5 ? a.planet : b.planet;
+  out.tx = tx;
+  out.ty = ty;
+  out.tz = tz;
+  out.dist = dist;
+  out.azim = azim;
+  out.elev = elev;
+  out.offX = offX;
+  out.offY = offY;
+  out.planet = planet;
+  out.zoom = zoom;
+  return out;
 }
 
 /**
- * Plage de défilement où la caméra est posée sur une section (hors la première) :
- * arrive = top − 0,12 × hauteur de vue ; depart = max(arrive, top + height − hauteur de vue).
+ * Repères de la règle des distances (UA). « hero » se place comme le Soleil. Étoiles voisines : la plus proche,
+ * Proxima du Centaure (4,2465 al) ; Voie lactée : son centre (GALACTIC_CENTER_DISTANCE_LY) ; Groupe local : Andromède ;
+ * Univers observable : son rayon ; multivers : à l'infini, hors échelle (RAIL_OFF_SCALE).
  */
-export function restRange(box: { top: number; height: number }, viewportHeight: number): { arrive: number; depart: number } {
-  const arrive = box.top - 0.12 * viewportHeight;
-  return { arrive, depart: Math.max(arrive, box.top + box.height - viewportHeight) };
-}
-
-/**
- * Défilement le plus proche de `wanted` où la caméra reste posée sur la section : entre 2 px après
- * l'arrivée (cible de la navigation) et le départ ; 2 px après l'arrivée si la section n'a pas de repos.
- * Le départ est arrondi au pixel inférieur : le navigateur arrondit le défilement au pixel d'écran,
- * parfois vers le haut, ce qui lancerait le vol d'une fraction de pixel.
- */
-export function clampToRest(wanted: number, box: { top: number; height: number }, viewportHeight: number): number {
-  const { arrive, depart } = restRange(box, viewportHeight);
-  const low = arrive + 2;
-  return Math.min(Math.max(wanted, low), Math.max(low, Math.floor(depart)));
-}
-
-/**
- * Avancement du repos sur une section : 0 à l'arrivée, 1 au départ (le vol vers la suivante
- * commence), borné entre les deux ; 1 pour une section sans repos.
- */
-export function restProgress(range: SectionRange, scrollY: number): number {
-  if (range.depart <= range.arrive) return 1;
-  return clamp((scrollY - range.arrive) / (range.depart - range.arrive), 0, 1);
-}
-
-/** Plages de défilement par section : restRange, sauf arrive = 0 pour la première. */
-export function sectionRanges(boxes: readonly SectionBox[], viewportHeight: number): SectionRange[] {
-  return boxes.map((box, i) => {
-    const { arrive, depart } = restRange(box, viewportHeight);
-    return i === 0
-      ? { key: box.key, arrive: 0, depart: Math.max(0, box.top + box.height - viewportHeight) }
-      : { key: box.key, arrive, depart };
-  });
-}
-
-export interface ScrollState {
-  /** Indice de l'escale de départ dans `ranges`. */
-  from: number;
-  /** Indice de l'escale d'arrivée (= from au repos). */
-  to: number;
-  /** Avancement du vol entre les deux, de 0 à 1 (non lissé). */
-  t: number;
-}
-
-/**
- * Position du défilement dans le voyage : i = dernière section avec arrive ≤ y (0 si aucune) ;
- * au repos si i est la dernière ou si y ≤ depart(i) ; sinon vol vers i + 1 avec
- * t = clamp((y − depart(i)) / max(1, arrive(i+1) − depart(i)), 0, 1). Liste vide → {0, 0, 0}.
- */
-export function scrollState(ranges: readonly SectionRange[], scrollY: number): ScrollState {
-  if (!ranges.length) return { from: 0, to: 0, t: 0 };
-  let i = 0;
-  while (i < ranges.length - 1 && ranges[i + 1].arrive <= scrollY) i++;
-  const current = ranges[i];
-  if (i === ranges.length - 1 || scrollY <= current.depart) return { from: i, to: i, t: 0 };
-  const next = ranges[i + 1];
-  return { from: i, to: i + 1, t: clamp((scrollY - current.depart) / Math.max(1, next.arrive - current.depart), 0, 1) };
-}
-
-/** Repères de la règle des distances (UA). « hero » se place comme le Soleil. */
 export const RAIL_STOPS: readonly { key: StopKey; au: number }[] = [
   { key: "sun", au: 0 }, { key: "mercury", au: 0.387 }, { key: "venus", au: 0.723 }, { key: "earth", au: 1 },
   { key: "mars", au: 1.524 }, { key: "belt", au: 2.7 }, { key: "jupiter", au: 5.2 }, { key: "saturn", au: 9.54 },
   { key: "uranus", au: 19.19 }, { key: "neptune", au: 30.07 }, { key: "beyond", au: 45 },
+  { key: "stars", au: NEARBY_STARS[0].distanceLy * AU_PER_LIGHT_YEAR },
+  { key: "galaxy", au: GALACTIC_CENTER_DISTANCE_LY * AU_PER_LIGHT_YEAR },
+  {
+    key: "localGroup",
+    au: (LOCAL_GROUP.find((galaxy) => galaxy.key === "andromeda")?.distanceMly ?? Number.NaN) * 1e6 * AU_PER_LIGHT_YEAR,
+  },
+  { key: "universe", au: OBSERVABLE_UNIVERSE_RADIUS_GLY * 1e9 * AU_PER_LIGHT_YEAR },
+  { key: "multiverse", au: Infinity },
 ];
 
-/** Position verticale sur la règle (pourcentage) : 2 pour 0 UA, sinon 6 + 88 × (ln au − ln 0,3) / (ln 50 − ln 0,3). */
+/**
+ * Rupture de la règle : l'axe s'interrompt entre ces deux pourcentages, signe « ≈ » au milieu. Elle sépare
+ * le système solaire (au-delà : 84,35 %) des étoiles voisines (89,51 %), où l'échelle change d'unité.
+ */
+export const RAIL_BREAK = { from: 87, to: 88.5 } as const;
+
+/** Fin de l'axe dessiné (10¹¹ al) ; au-delà, le repère du multivers est hors échelle. */
+export const RAIL_AXIS_END = 98;
+
+/** Position du repère hors échelle (distance infinie : le multivers). */
+export const RAIL_OFF_SCALE = 99.4;
+
+/** 50 UA : fin de l'échelle du système solaire sur la règle. */
+const RAIL_SOLAR_LIMIT_AU = 50;
+/** 10¹¹ al : au-delà de l'Univers observable (46 milliards d'al) ; la règle s'y arrête, à 98 %. */
+const RAIL_COSMIC_LIMIT_LY = 1e11;
+
+/**
+ * Position verticale sur la règle (pourcentage), continue et croissante, en trois segments logarithmiques :
+ * - 0 UA → 2 ;
+ * - ]0 ; 50 UA] → 6 + 80 × ln(au / 0,3) / ln(50 / 0,3) : les planètes ;
+ * - ]50 UA ; 1 al] → 86 + 3 × ln(au / 50) / ln(1 al / 50 UA) : le grand vide, fortement comprimé (rupture) ;
+ * - ]1 al ; 10¹¹ al] → min(98, 89 + 9 × ln(d / 1 al) / ln(10¹¹)) : des étoiles voisines à l'Univers observable ;
+ * - distance non finie (le multivers) → RAIL_OFF_SCALE.
+ */
 export function railPercent(au: number): number {
+  if (!Number.isFinite(au)) return RAIL_OFF_SCALE;
   if (au <= 0) return 2;
-  return 6 + (88 * (Math.log(au) - Math.log(0.3))) / (Math.log(50) - Math.log(0.3));
+  if (au <= RAIL_SOLAR_LIMIT_AU) return 6 + (80 * Math.log(au / 0.3)) / Math.log(RAIL_SOLAR_LIMIT_AU / 0.3);
+  if (au <= AU_PER_LIGHT_YEAR) {
+    return 86 + (3 * Math.log(au / RAIL_SOLAR_LIMIT_AU)) / Math.log(AU_PER_LIGHT_YEAR / RAIL_SOLAR_LIMIT_AU);
+  }
+  return Math.min(RAIL_AXIS_END, 89 + (9 * Math.log(au / AU_PER_LIGHT_YEAR)) / Math.log(RAIL_COSMIC_LIMIT_LY));
 }

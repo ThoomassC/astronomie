@@ -1,7 +1,18 @@
-import { STOP_ORDER, sectionRanges, type SectionBox, type SectionRange, type StopKey } from "@/lib/journey/camera";
+import { STOP_ORDER, type StopKey } from "@/lib/journey/camera";
+import { sectionRanges, type SectionBox, type SectionRange } from "@/lib/journey/sections";
 import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
+import { shownElements } from "@/lib/site/shown";
 
-/** Plages de défilement des escales, mesurées par le suivi du voyage. */
+/*
+ * Seule la page affichée compte : les sections des pages quittées, que Next garde masquées, n'entrent pas dans les
+ * plages de défilement, ne reçoivent pas l'avancement du repos et leurs plaques ne cadrent pas la scène.
+ */
+export { isShown, shownElements } from "@/lib/site/shown";
+
+/**
+ * Plages de défilement des escales de la page, mesurées par son suivi du défilement. Les clés sont celles des
+ * `data-stop` de la page (voyage ou Tailles) : goTo et holdAt visent n'importe laquelle, sans liste d'escales.
+ */
 let ranges: readonly SectionRange[] = [];
 
 export function setSectionRanges(next: readonly SectionRange[]): void {
@@ -12,19 +23,20 @@ export function getSectionRanges(): readonly SectionRange[] {
   return ranges;
 }
 
+/** Escale du voyage. */
 export function isStopKey(value: string | undefined): value is StopKey {
   return value !== undefined && (STOP_ORDER as readonly string[]).includes(value);
 }
 
 /**
- * Position de chaque `[data-stop]` dans le document, convertie en plages de défilement.
- * Appelée par le suivi du voyage, et par une plaque qui vient de changer de hauteur.
+ * Position de chaque `[data-stop]` non vide de la page affichée, convertie en plages de défilement.
+ * Appelée par le suivi du défilement, et par une plaque qui vient de changer de hauteur.
  */
 export function measureSections(): void {
   const boxes: SectionBox[] = [];
-  for (const element of document.querySelectorAll<HTMLElement>("[data-stop]")) {
+  for (const element of shownElements("[data-stop]")) {
     const key = element.dataset.stop;
-    if (!isStopKey(key)) continue;
+    if (!key) continue;
     const rect = element.getBoundingClientRect();
     boxes.push({ key, top: rect.top + window.scrollY, height: rect.height });
   }
@@ -67,7 +79,7 @@ const USER_SCROLL_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"] as 
 let cancelSettle: (() => void) | null = null;
 
 /** Défilement d'arrivée sur l'escale : 2 px après son arrivée, caméra posée. */
-function targetOf(key: StopKey): number | null {
+function targetOf(key: string): number | null {
   const range = ranges.find((r) => r.key === key);
   return range ? Math.max(0, range.arrive + 2) : null;
 }
@@ -76,7 +88,7 @@ function targetOf(key: StopKey): number | null {
  * Après un défilement doux, recalcule la cible (les plages ont pu changer pendant le trajet)
  * et corrige si l'écart dépasse 2 px, sans quoi la caméra s'arrêterait en plein vol.
  */
-function settleOn(key: StopKey, correctionsLeft: number): void {
+function settleOn(key: string, correctionsLeft: number): void {
   cancelSettle?.();
   const hasScrollEnd = "onscrollend" in window;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -112,16 +124,37 @@ function settleOn(key: StopKey, correctionsLeft: number): void {
 
 /**
  * Défile jusqu'à l'escale, en douceur sauf si les animations sont réduites, puis y place
- * le focus comme le ferait une ancre. Renvoie `false` tant que les sections ne sont pas
+ * le focus comme le ferait une ancre, sur la section de la page affichée (une page quittée,
+ * masquée, peut porter la même clé). Renvoie `false` tant que les sections ne sont pas
  * mesurées : l'ancre native prend alors le relais.
  */
-export function goTo(key: StopKey): boolean {
+export function goTo(key: string): boolean {
   const target = targetOf(key);
   if (target === null) return false;
   const smooth = !prefersReducedMotion();
   window.scrollTo({ top: target, behavior: smooth ? "smooth" : "auto" });
-  document.querySelector<HTMLElement>(`[data-stop="${key}"]`)?.focus({ preventScroll: true });
+  shownElements(`[data-stop="${key}"]`)[0]?.focus({ preventScroll: true });
   if (smooth) settleOn(key, MAX_CORRECTIONS);
   else cancelSettle?.();
   return true;
+}
+
+/**
+ * Pose la caméra au repos sur l'escale, sans animation, avant l'exploration : coupe le recalage d'une navigation et
+ * tout défilement doux en cours ; si le défilement est hors de [arrive, depart] de l'escale (vol en cours), saute à
+ * arrive + 2 (avant) ou à max(arrive + 2, ⌊depart⌋) (après), sans que le suivi ne lisse le saut. Sans plages mesurées :
+ * coupe seulement, à la position actuelle.
+ */
+export function holdAt(key: string): void {
+  cancelSettle?.();
+  const y = window.scrollY;
+  const range = ranges.find((r) => r.key === key);
+  if (!range) {
+    scrollInstantly(y);
+    return;
+  }
+  const low = range.arrive + 2;
+  if (y < range.arrive) scrollInstantly(low);
+  else if (y > range.depart) scrollInstantly(Math.max(low, Math.floor(range.depart)));
+  else scrollInstantly(y);
 }

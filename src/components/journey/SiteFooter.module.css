@@ -1,0 +1,13 @@
+/*
+ * Pied de page commun, au pied du voyage : aligné sur les paragraphes qui le précèdent (`footer p` de globals.css),
+ * décalé comme eux sur grand écran et ramené au bord à 640 px et moins.
+ */
+.contact {
+  margin-left: clamp(0rem, 4vw, 4rem);
+}
+
+@media (max-width: 640px) {
+  .contact {
+    margin-left: 0;
+  }
+}

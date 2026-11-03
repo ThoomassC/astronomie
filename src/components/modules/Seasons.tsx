@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useLocale } from "@/i18n/LocaleProvider";
+import { INTL_LOCALE, type Locale } from "@/i18n/locales";
+import { withUnit } from "@/i18n/units";
 import { DAY_MS } from "@/lib/astro/constants";
 import { eclipticLongitudeDeg, heliocentric, julianDate } from "@/lib/astro/ephemeris";
 import { PLANET_BY_KEY, SUN } from "@/lib/astro/planets";
@@ -10,12 +13,12 @@ import {
   noonAltitudeDeg,
   northernSeason,
   solarDeclinationRad,
-  type Season,
 } from "@/lib/astro/seasons";
 import { formatNumber } from "@/lib/format";
 import { getClock } from "@/lib/sim/clock";
 import { ModuleCanvas } from "./ModuleCanvas";
 import { clamp, D2R, INK, TAU } from "./paint";
+import { SEASONS_STRINGS } from "./seasons.strings";
 import { StatusMessage } from "./StatusMessage";
 import { useAnnouncer } from "./useAnnouncer";
 import { useCanvasModule, type CanvasFrame, type CanvasSize } from "./useCanvasModule";
@@ -31,19 +34,14 @@ const READOUT_EVERY_S = 0.25;
 
 export type SeasonsPlanet = "earth" | "uranus";
 
+/** Réglages d'une planète ; ses textes, par langue, sont dans `SEASONS_STRINGS`. */
 interface SeasonsConfig {
   /** Préfixe des id des commandes. */
   idPrefix: string;
-  canvasLabel: string;
-  rangeLabel: string;
   rangeMin: number;
   /** Borne haute et position du curseur avant de connaître la date simulée (rendu serveur). */
   rangeMaxInitial: number;
   rangeInitial: number;
-  /** Repères de l'orbite : équinoxe de printemps boréal, puis tous les 90°. */
-  marks: readonly [string, string, string, string];
-  latLabel: string;
-  latName: string;
   /** Hauteur de l'horizon pour la durée du jour, en degrés. */
   horizonDeg: number;
   /** Longitude héliocentrique de la planète à l'équinoxe de printemps boréal, en degrés. */
@@ -54,13 +52,22 @@ interface SeasonsConfig {
   /** Borne haute du curseur pour l'instant `ms`. */
   rangeMax(ms: number): number;
   /** Début de la ligne de lecture, repris comme valeur lue du curseur. */
-  when(ms: number): string;
+  when(ms: number, locale: Locale): string;
   /** Part du tour passée au soleil, hors jour et nuit polaires. */
-  dayText(fraction: number): string;
+  dayText(fraction: number, locale: Locale): string;
 }
 
-/** Formats de date créés une seule fois. */
-const DAY_MONTH = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
+/** Formats « jour mois » créés une seule fois par langue : 29 octobre, 29 October, 29 de octubre. */
+const dayMonthFormats = new Map<Locale, Intl.DateTimeFormat>();
+
+function dayMonth(locale: Locale): Intl.DateTimeFormat {
+  let format = dayMonthFormats.get(locale);
+  if (!format) {
+    format = new Intl.DateTimeFormat(INTL_LOCALE[locale], { day: "numeric", month: "long" });
+    dayMonthFormats.set(locale, format);
+  }
+  return format;
+}
 
 /** 1er janvier (heure locale) de l'année de `ms`. */
 const yearStart = (ms: number) => new Date(new Date(ms).getFullYear(), 0, 1).getTime();
@@ -73,14 +80,9 @@ function daysInYear(ms: number): number {
 
 const EARTH: SeasonsConfig = {
   idPrefix: "seasons-earth",
-  canvasLabel: "Orbite de la Terre et éclairement selon la date",
-  rangeLabel: "Date",
   rangeMin: 0,
   rangeMaxInitial: 364,
   rangeInitial: 299,
-  marks: ["20 mars", "21 juin", "22 sept.", "21 déc."],
-  latLabel: "Paris",
-  latName: "Durée du jour à Paris",
   horizonDeg: -0.833,
   // Vue du Soleil, la Terre est à l'opposé : longitude héliocentrique 180° à l'équinoxe de mars.
   equinoxLongitudeDeg: () => 180,
@@ -88,7 +90,7 @@ const EARTH: SeasonsConfig = {
   toRange: (ms) => Math.floor((ms - yearStart(ms)) / DAY_MS),
   // Le 31 décembre reste atteignable les années bissextiles.
   rangeMax: (ms) => daysInYear(ms) - 1,
-  when: (ms) => DAY_MONTH.format(ms),
+  when: (ms, locale) => dayMonth(locale).format(ms),
   dayText: formatDayLength,
 };
 
@@ -100,14 +102,9 @@ const URANUS_LAST_YEAR = 2091;
 
 const URANUS: SeasonsConfig = {
   idPrefix: "seasons-uranus",
-  canvasLabel: "Orbite d'Uranus et éclairement selon l'année",
-  rangeLabel: "Année",
   rangeMin: URANUS_FIRST_YEAR,
   rangeMaxInitial: URANUS_LAST_YEAR,
   rangeInitial: 2049,
-  marks: ["2007", "2028", "2049", "2070"],
-  latLabel: "49° N",
-  latName: "À 49° nord",
   horizonDeg: 0,
   equinoxLongitudeDeg: () =>
     eclipticLongitudeDeg(heliocentric(PLANET_BY_KEY.uranus, julianDate(URANUS_EQUINOX_MS))),
@@ -115,16 +112,18 @@ const URANUS: SeasonsConfig = {
   fromRange: (year) => new Date(year, 6, 1).getTime(),
   toRange: (ms) => clamp(new Date(ms).getFullYear(), URANUS_FIRST_YEAR, URANUS_LAST_YEAR),
   rangeMax: () => URANUS_LAST_YEAR,
-  when: (ms) => `En ${new Date(ms).getFullYear()}`,
-  dayText: (fraction) => `${formatNumber(fraction * 100, 0)} % de chaque rotation au soleil`,
+  when: (ms, locale) => SEASONS_STRINGS[locale].inYear(new Date(ms).getFullYear()),
+  dayText: (fraction, locale) =>
+    SEASONS_STRINGS[locale].sunlitShare(withUnit(formatNumber(fraction * 100, 0, locale), "percent", locale)),
 };
 
 const CONFIGS: Record<SeasonsPlanet, SeasonsConfig> = { earth: EARTH, uranus: URANUS };
 
+/** Ligne de lecture, déjà écrite dans la langue, coupée autour du nom de la saison (en gras). */
 interface SeasonsReadout {
-  when: string;
-  season: Season;
-  tail: string;
+  before: string;
+  season: string;
+  after: string;
 }
 
 /** État d'animation, hors React. */
@@ -157,6 +156,9 @@ function showRange(input: HTMLInputElement | null, value: number, max: number, v
  * durée du jour et hauteur du Soleil à la latitude de Paris.
  */
 export function Seasons({ planet }: { planet: SeasonsPlanet }) {
+  const locale = useLocale();
+  const t = SEASONS_STRINGS[locale];
+  const text = t[planet];
   const config = CONFIGS[planet];
   const body = PLANET_BY_KEY[planet];
   const [following, setFollowing] = useState(true);
@@ -181,8 +183,8 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
     s.ms = getClock().now();
     s.rangeValue = config.toRange(s.ms);
     s.rangeMax = config.rangeMax(s.ms);
-    showRange(rangeRef.current, s.rangeValue, s.rangeMax, config.when(s.ms));
-  }, [config]);
+    showRange(rangeRef.current, s.rangeValue, s.rangeMax, config.when(s.ms, locale));
+  }, [config, locale]);
 
   const draw = ({ p, ctx: c, w, h, narrow, dt }: CanvasFrame) => {
     const s = view.current;
@@ -193,7 +195,7 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
       if (value !== s.rangeValue || max !== s.rangeMax) {
         s.rangeValue = value;
         s.rangeMax = max;
-        showRange(rangeRef.current, value, max, config.when(s.ms));
+        showRange(rangeRef.current, value, max, config.when(s.ms, locale));
       }
     }
     const equinoxDeg = (s.equinoxDeg ??= config.equinoxLongitudeDeg());
@@ -221,7 +223,7 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
     c.beginPath();
     c.arc(ox, oy, 14, 0, TAU);
     c.fill();
-    config.marks.forEach((label, i) => {
+    text.marks.forEach((label, i) => {
       const a = (equinoxDeg + i * 90) * D2R;
       const x = ox + Math.cos(a) * R;
       const y = oy - Math.sin(a) * R;
@@ -255,11 +257,14 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
     c.moveTo(px - ux * len, py - uy * len);
     c.lineTo(px + ux * len, py + uy * len);
     c.stroke();
-    p.text("N", px + ux * (len + 7), py + uy * (len + 7) + 4, { align: "center", size: 10, weight: 700 });
-    p.text("Vue du dessus", narrow ? 8 : ox, narrow ? 16 : h - 10, {
+    p.text(t.north, px + ux * (len + 7), py + uy * (len + 7) + 4, { align: "center", size: 10, weight: 700 });
+    // Titres des vues : seuls sur leur ligne en largeur étroite, côte à côte sinon (chacun dans sa moitié).
+    const captionWidth = narrow ? w - 16 : w * 0.46;
+    p.text(t.topView, narrow ? 8 : ox, narrow ? 16 : h - 10, {
       align: narrow ? "left" : "center",
       size: 11,
       color: INK.brume,
+      maxWidth: captionWidth,
     });
 
     // Vue de côté : le Soleil éclaire depuis la gauche.
@@ -282,7 +287,7 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
       c.fillStyle = "rgba(255,181,71,.6)";
       c.fill();
     }
-    p.text("Lumière du Soleil", ax0, gy - gr - 12, { size: 11, color: INK.soleil });
+    p.text(t.sunlight, ax0, gy - gr - 12, { size: 11, color: INK.soleil, maxWidth: w - ax0 - 8 });
     p.dot(gx, gy, gr, body.color);
     c.save();
     c.beginPath();
@@ -303,7 +308,7 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
     c.lineTo(gx + ax * gr * 1.35, gy + ay * gr * 1.35);
     c.stroke();
     c.setLineDash([]);
-    p.text("N", gx + ax * gr * 1.5, gy + ay * gr * 1.5 + 4, { align: "center", size: 11, weight: 700 });
+    p.text(t.north, gx + ax * gr * 1.5, gy + ay * gr * 1.5 + 4, { align: "center", size: 11, weight: 700 });
     c.strokeStyle = "rgba(236,229,211,.35)";
     c.beginPath();
     c.moveTo(gx - ex * gr, gy - ey * gr);
@@ -331,8 +336,13 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
     c.moveTo(splitX, splitY);
     c.lineTo(x1, y1);
     c.stroke();
-    p.text(config.latLabel, x1 + 8, y1 + 4, { size: 11, weight: 700 });
-    p.text("Vue de côté", narrow ? 8 : gx, h - 10, { align: narrow ? "left" : "center", size: 11, color: INK.brume });
+    p.text(text.latLabel, x1 + 8, y1 + 4, { size: 11, weight: 700 });
+    p.text(t.sideView, narrow ? 8 : gx, h - 10, {
+      align: narrow ? "left" : "center",
+      size: 11,
+      color: INK.brume,
+      maxWidth: captionWidth,
+    });
 
     // Ligne de lecture (non annoncée) : à chaque redessin ponctuel, et au plus toutes les 0,25 s en animation.
     s.acc += dt;
@@ -341,21 +351,15 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
       const fraction = daylightFraction(LATITUDE_DEG, dec, config.horizonDeg);
       const noonDeg = noonAltitudeDeg(LATITUDE_DEG, dec);
       const day =
-        fraction >= 1
-          ? "Soleil permanent, il ne se couche pas"
-          : fraction <= 0
-            ? "nuit permanente, le Soleil ne se lève pas"
-            : config.dayText(fraction);
-      const noon = noonDeg > 0 ? `${formatNumber(noonDeg, 0)}° au-dessus de l’horizon` : "sous l’horizon";
-      const next: SeasonsReadout = {
-        when: config.when(s.ms),
-        season: northernSeason(sinceEquinoxDeg),
-        tail: `${config.latName} : ${day}. Soleil à midi : ${noon}.`,
-      };
-      const key = `${next.when}|${next.season}|${next.tail}`;
+        fraction >= 1 ? t.polarDay : fraction <= 0 ? t.polarNight : config.dayText(fraction, locale);
+      const noon =
+        noonDeg > 0 ? t.noonAbove(withUnit(formatNumber(noonDeg, 0, locale), "degree", locale)) : t.noonBelow;
+      const [before, after] = t.line(config.when(s.ms, locale), text.latName, day, noon);
+      const next: SeasonsReadout = { before, season: t.seasons[northernSeason(sinceEquinoxDeg)], after };
+      const key = `${next.before}|${next.season}|${next.after}`;
       if (key !== s.readoutKey) {
         s.readoutKey = key;
-        s.readoutText = `${next.when} : ${next.season} dans l'hémisphère nord. ${next.tail}`;
+        s.readoutText = `${next.before}${next.season}${next.after}`;
         setReadout(next);
       }
     }
@@ -383,7 +387,7 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
     s.following = false;
     s.ms = config.fromRange(value, getClock().now());
     s.rangeValue = value;
-    event.currentTarget.setAttribute("aria-valuetext", config.when(s.ms));
+    event.currentTarget.setAttribute("aria-valuetext", config.when(s.ms, locale));
     setFollowing(false);
     invalidate();
     announceReadout();
@@ -392,7 +396,7 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
   const prefix = config.idPrefix;
   return (
     <>
-      <ModuleCanvas {...canvas} label={config.canvasLabel} />
+      <ModuleCanvas {...canvas} label={text.canvasLabel} />
       <div className="ctrls">
         <button
           className="chip"
@@ -401,10 +405,10 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
           aria-pressed={following}
           onClick={toggleFollowing}
         >
-          Suivre la date du site
+          {t.follow}
         </button>
         <label className="grow" htmlFor={`${prefix}-range`}>
-          {`${config.rangeLabel} `}
+          {`${text.rangeLabel} `}
           <input
             ref={rangeRef}
             id={`${prefix}-range`}
@@ -420,9 +424,9 @@ export function Seasons({ planet }: { planet: SeasonsPlanet }) {
       <p className={`readout ${styles.reserve}`} id={`${prefix}-readout`} aria-live="off">
         {readout ? (
           <>
-            {`${readout.when} : `}
+            {readout.before}
             <b>{readout.season}</b>
-            {` dans l'hémisphère nord. ${readout.tail}`}
+            {readout.after}
           </>
         ) : (
           "–"

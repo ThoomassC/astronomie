@@ -15,14 +15,15 @@ export function orbitFraction(fromYear: number, toYear: number, periodYears: num
 }
 
 /**
- * Lit une année de naissance : entier, espaces ignorés, bornes incluses 1846..maxYear.
- * Erreur en français qui donne la plage attendue.
+ * Lit une année de naissance : entier de 1 à 4 chiffres, espaces ignorés, bornes incluses 1846..maxYear.
+ * Erreur `format` si la saisie n'est pas un entier, `range` (1846 à maxYear) si elle sort des bornes.
  */
 export function parseBirthYear(raw: string, maxYear: number): ParseResult {
   const text = raw.replace(/\s+/g, "");
-  const error = `Indiquez une année entre ${NEPTUNE_DISCOVERY_YEAR} et ${maxYear}.`;
-  if (!/^\d{1,4}$/.test(text)) return { ok: false, error };
+  if (!/^\d{1,4}$/.test(text)) return { ok: false, error: { kind: "format" } };
   const value = Number(text);
-  if (value < NEPTUNE_DISCOVERY_YEAR || value > maxYear) return { ok: false, error };
+  if (value < NEPTUNE_DISCOVERY_YEAR || value > maxYear) {
+    return { ok: false, error: { kind: "range", min: NEPTUNE_DISCOVERY_YEAR, max: maxYear } };
+  }
   return { ok: true, value };
 }

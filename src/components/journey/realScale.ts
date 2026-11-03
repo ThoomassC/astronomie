@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { useIsCosmicStop } from "@/lib/journey/store";
 import { getClock, type ClockSnapshot } from "@/lib/sim/clock";
 import { useClockValue } from "./useClockValue";
 
@@ -44,8 +45,22 @@ function subscribeNote(listener: () => void): () => void {
 const readNoteDismissed = () => noteDismissed;
 const serverFalse = () => false;
 
-export function useScaleNoteVisible(): boolean {
+/** État de la note d'échelle : demandée (distances réelles actives, note non masquée), elle est visible ou suspendue. */
+export interface ScaleNoteState {
+  /** À l'écran : la note est demandée et l'escale est dans le système solaire. */
+  visible: boolean;
+  /**
+   * Demandée, mais tue aux étoiles voisines et à la Voie lactée, où tout est déjà à l'échelle : elle (les planètes
+   * plus petites qu'un pixel) reviendra au retour dans le système solaire.
+   */
+  suspended: boolean;
+}
+
+/** Note d'échelle ; ne re-rend qu'aux changements de ses conditions, pas à chaque escale. */
+export function useScaleNote(): ScaleNoteState {
   const realScale = useRealScale();
   const dismissed = useSyncExternalStore(subscribeNote, readNoteDismissed, serverFalse);
-  return realScale && !dismissed;
+  const cosmic = useIsCosmicStop();
+  const requested = realScale && !dismissed;
+  return { visible: requested && !cosmic, suspended: requested && cosmic };
 }

@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useLocale } from "@/i18n/LocaleProvider";
+import { withUnit } from "@/i18n/units";
 import { decimalYear } from "@/lib/astro/neptune";
 import { ringOpeningDeg } from "@/lib/astro/saturn";
 import { formatNumber } from "@/lib/format";
 import { getClock } from "@/lib/sim/clock";
+import { COMMON_STRINGS } from "./common.strings";
 import { ModuleCanvas } from "./ModuleCanvas";
 import { clamp, D2R, INK, TAU } from "./paint";
+import { SATURN_RINGS_STRINGS } from "./saturnRings.strings";
 import { StatusMessage } from "./StatusMessage";
 import { useAnnouncer } from "./useAnnouncer";
 import { useCanvasModule, type CanvasFrame, type CanvasSize } from "./useCanvasModule";
@@ -33,11 +37,10 @@ const RINGS = [
   [2.03, 2.27, 0.6],
 ] as const;
 
-const CANVAS_LABEL =
-  "Saturne et l'ouverture de ses anneaux selon l'année, de 2010 à 2050. Les anneaux sont vus par la tranche en 2025, puis en 2039-2040 ; entre ces passages, ils s'ouvrent jusqu'à environ 27°.";
-
 /** 7. Les anneaux de Saturne vus de la Terre : ouverture selon l'année, frise 2010-2050. */
 export function SaturnRings() {
+  const locale = useLocale();
+  const t = SATURN_RINGS_STRINGS[locale];
   const [running, setRunning] = useState(false);
   const [readout, setReadout] = useState("–");
   const { message, announce } = useAnnouncer();
@@ -120,7 +123,7 @@ export function SaturnRings() {
     }
     c.fillStyle = INK.brume;
     for (const year of EDGE_ON_YEARS) c.fillRect(toX(year) - 0.5, ty - 4, 1, 8);
-    p.text("par la tranche", toX(EDGE_ON_YEARS[0]), ty - 20, { align: "center", size: 10, color: INK.brume });
+    p.text(t.edgeOn, toX(EDGE_ON_YEARS[0]), ty - 20, { align: "center", size: 10, color: INK.brume });
     p.dot(toX(s.year), ty, 4.5, INK.soleil);
     const shownYear = Math.floor(s.year);
     p.text(String(shownYear), 16, 24, { weight: 700, size: 15 });
@@ -129,10 +132,8 @@ export function SaturnRings() {
     const tilt = Math.abs(opening);
     const next =
       tilt < EDGE_ON_DEG
-        ? `${shownYear} : anneaux vus par la tranche, presque invisibles.`
-        : `${shownYear} : anneaux ouverts d'environ ${formatNumber(tilt)}°, vus ${
-            north ? "par-dessus (face nord)" : "par-dessous (face sud)"
-          }.`;
+        ? t.edgeOnReadout(shownYear)
+        : t.openReadout(shownYear, withUnit(formatNumber(tilt, 0, locale), "degree", locale), north);
     if (next !== s.text) {
       s.text = next;
       setReadout(next);
@@ -159,13 +160,13 @@ export function SaturnRings() {
 
   return (
     <>
-      <ModuleCanvas {...canvas} label={CANVAS_LABEL} />
+      <ModuleCanvas {...canvas} label={t.canvasLabel} />
       <div className="ctrls">
         <button className="chip" type="button" id="saturn-rings-play" onClick={togglePlay}>
-          {running ? "Pause" : "Faire défiler les années"}
+          {running ? COMMON_STRINGS[locale].pause : t.play}
         </button>
         <label className="grow" htmlFor="saturn-rings-year">
-          {"Année "}
+          {`${t.year} `}
           <input
             ref={rangeRef}
             id="saturn-rings-year"

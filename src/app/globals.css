@@ -1,4 +1,4 @@
-/* Astronomia : scène 3D fixe en fond (l'instrument), plaques de lecture à gauche,
+/* Astronomie : scène 3D fixe en fond (l'instrument), plaques de lecture à gauche,
    règle des distances à droite, machine à remonter le temps en bas. Un seul monde, sombre.
    Port de docs/maquette/planetaire.html (sans les notes de maquette). */
 
@@ -161,19 +161,112 @@ main > section:focus {
     border-width 0.4s;
 }
 
-.lbl span {
+.lbl > span {
   opacity: 0.85;
 }
 
-.lbl:hover span {
+.lbl:hover > span {
   opacity: 1;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.real .lbl i {
+/* Texte à gauche du repère : la scène retourne l'étiquette quand le texte ne tient pas à droite. */
+.lbl[data-mirrored] {
+  flex-direction: row-reverse;
+}
+
+.real .lbl:not(.deep) i {
   transform: scale(1.6);
   border-width: 1.5px;
+}
+
+/*
+ * Ciel profond (étoiles voisines, « Vous êtes ici », centre galactique, cercles) : repères à lire, pas à toucher.
+ * Le texte est posé sur une pastille de plaque presque opaque : lisible sur les points les plus clairs de la
+ * galaxie (sur du blanc pur, ivoire 11,8:1 et laiton 6,2:1). Le moteur mesure le repère et le pose exactement
+ * sur l'astre ; seul le texte occupe la place face aux autres étiquettes, jamais hors de l'écran ni sur le point
+ * d'une étoile : à droite du repère, sinon à gauche, sinon le nom seul (la distance est dans la plaque).
+ */
+.lbl.deep {
+  gap: 0.3rem;
+  padding-right: 0.1rem;
+  pointer-events: none;
+}
+
+.lbl[data-short] .dist {
+  display: none;
+}
+
+.lbl.deep > span {
+  padding: 0 0.45rem;
+  border: 1px solid var(--filet);
+  border-radius: var(--r-pill);
+  background: var(--plaque-a);
+  line-height: 1.4;
+  opacity: 1;
+  text-shadow: none;
+}
+
+/*
+ * Voie lactée : « Vous êtes ici » au-dessus de son repère, « Centre de la Galaxie » en dessous du sien. Le Soleil et
+ * le centre sont presque à la même hauteur à l'écran : les deux textes ne se rencontrent jamais, même serrés.
+ */
+.lbl.deep.here,
+.lbl.deep.center {
+  flex-direction: column-reverse;
+  gap: 0.2rem;
+  padding: 0;
+}
+
+.lbl.deep.center {
+  flex-direction: column;
+}
+
+/* Le Soleil, devenu un point parmi les étoiles : un anneau de 14 px autour de lui, qui paraît avec la galaxie. */
+.lbl.deep.here i {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--soleil);
+}
+
+.lbl.deep.ring {
+  color: var(--laiton);
+  font-size: 0.75rem;
+}
+
+/* Sur le cercle, une graduation de laiton et non un anneau : on n'y croit pas voir une étoile de plus. */
+.lbl.deep.ring i {
+  width: 2px;
+  height: 9px;
+  border: 0;
+  border-radius: 1px;
+  background: var(--laiton);
+}
+
+/*
+ * Au-delà de la Voie lactée, le repère prend la couleur de l'escale (--lc, posée par la scène) : un ovale pour les
+ * galaxies du Groupe local, l'anneau ordinaire pour la toile, le fond diffus et notre univers.
+ */
+.lbl.deep.galaxy i {
+  width: 16px;
+  height: 9px;
+}
+
+/* Nom posé à côté du disque de la galaxie (data-beside, posé par la scène) : le disque dessiné tient lieu de repère. */
+.lbl.deep.galaxy[data-beside] i {
+  visibility: hidden;
+}
+
+/* Autres univers : une hypothèse, dite dans l'étiquette ; le repère en pointillés ne désigne rien d'observé. */
+.lbl.deep.hypothesis i {
+  width: 14px;
+  height: 14px;
+  border: 1.5px dashed var(--lc, var(--laiton));
+}
+
+.lbl.deep.hypothesis > span {
+  font-style: italic;
 }
 
 /* Repli sans scène 3D : le canvas (qui garderait sa dernière image) disparaît, un Soleil CSS le remplace. */
@@ -202,6 +295,14 @@ main > section:focus {
 }
 
 /* ---------- Barre haute ---------- */
+/*
+ * Barre commune aux quatre pages (SiteHeader, rendue par chaque page) : marque, onglets, commandes de la page (voyage :
+ * escale en cours, menu des escales, « Tourner autour »), langue ; à 860 px et moins, « Menu » remplace onglets et
+ * langue. Ici la ligne, la marque et l'escale en cours ; onglets, langue et menu dans SiteHeader.module.css. Une seule
+ * ligne de 320 à 1 440 px, dans les trois langues : rien n'y passe à la ligne, et l'escale en cours (ou le menu des
+ * escales) cède la place en finissant en « … ». Hauteur : 0,9 rem + 46 px (capsule des onglets) + 0,9 rem au-dessus de
+ * 860 px, commandes de 44 px au-dessous ; la scène mesure son bas.
+ */
 body::before {
   content: "";
   position: fixed;
@@ -225,6 +326,7 @@ body::before {
 }
 
 .brand {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -235,32 +337,76 @@ body::before {
   font-size: 1.375rem;
   font-weight: 500;
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .brand svg {
+  flex: none;
   width: 28px;
   height: 28px;
 }
 
+/*
+ * Escale en cours : le seul élément de la ligne qui rétrécit, son nom finit en « … ». Paragraphe sans ses marges
+ * (1 em) : elles portaient la barre du voyage à 79 px, et en décaleraient les onglets de ceux des autres pages (75 px).
+ */
 .where {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-left: auto;
+  min-width: 0;
+  margin: 0 0 0 auto;
   font-size: 0.875rem;
   color: var(--brume);
+  white-space: nowrap;
 }
 
 .where b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--ivoire);
   font-weight: 600;
 }
 
 .where i {
+  flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--c);
+}
+
+/*
+ * 1 100 px et moins : écart de 0,75 rem (0,6 rem à 640 px et moins, plus bas), le mot « Escale » s'efface, et la
+ * marque se réduit à son pictogramme dès que la barre porte des commandes. Réduite, elle reste une cible de 44 × 44 ;
+ * son nom accessible ne change pas.
+ */
+@media (max-width: 1100px) {
+  .bar {
+    gap: 0.75rem;
+  }
+
+  .brand {
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .where span,
+  .bar[data-controls] .brand-name {
+    display: none;
+  }
+}
+
+/*
+ * De 861 à 1 100 px, onglets affichés : pictogramme seul sur toutes les pages, pour que les onglets ne bougent pas
+ * d'une page à l'autre. Au-dessous, sans commandes (accueil, À propos), la marque retrouve son nom jusqu'à 360 px.
+ */
+@media (min-width: 861px) and (max-width: 1100px) {
+  .brand-name {
+    display: none;
+  }
 }
 
 /* ---------- Règle des distances ---------- */
@@ -293,6 +439,17 @@ body::before {
 
 .rail .tick.maj {
   opacity: 0.9;
+}
+
+/* Rupture de l'axe entre le système solaire et les étoiles : l'échelle passe des UA aux années-lumière. */
+.rail .rail-break {
+  position: absolute;
+  right: 0;
+  transform: translate(50%, -50%);
+  color: var(--laiton);
+  font-size: 0.875rem;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .rail a {
@@ -560,6 +717,17 @@ main > section > * {
   pointer-events: none;
 }
 
+/*
+ * Avancement du repos de la caméra, de 0 à 1, écrit sur la plaque de l'escale à chaque image (suivi du défilement) et
+ * lu par son seul filet (::after, mise en page compacte). Non héritée : sinon chaque écriture invaliderait le style de
+ * tout le contenu de la plaque ; le filet la reprend explicitement (`inherit`).
+ */
+@property --rest {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 .rank {
   margin: 0 0 0.25rem;
   font-size: 0.875rem;
@@ -652,6 +820,99 @@ main > section > * {
   border-radius: 50%;
   background: var(--soleil);
   vertical-align: 0.12em;
+}
+
+/* Sous la fiche des escales lointaines : ce que la vue simplifie, puis les sources. */
+.fact-caveat,
+.fact-source,
+.star-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--brume);
+}
+
+.fact-source {
+  margin-top: 0.25rem;
+}
+
+/* Étoiles de la carte : le texte équivalent des points de la scène, de la plus proche à la plus lointaine. */
+.star-table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.star-table caption {
+  margin-bottom: 0.4rem;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.star-table th,
+.star-table td {
+  padding: 0.45rem 0.5rem;
+  border-top: 1px solid var(--filet);
+  text-align: left;
+  vertical-align: top;
+}
+
+.star-table :is(th, td):first-child {
+  padding-left: 0;
+}
+
+.star-table :is(th, td):last-child {
+  padding-right: 0;
+}
+
+.star-table thead th {
+  border-top: 0;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--brume);
+}
+
+.star-table tbody th {
+  font-weight: 600;
+}
+
+/* Distances à une décimale, chiffres tabulaires : alignées à droite, elles s'alignent sur la virgule. */
+.star-table :is(th, td):nth-child(2) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Pastille de la couleur du point de l'étoile sur la carte. */
+.star-table i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--lc);
+  vertical-align: 0.05em;
+}
+
+.star-table small {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--brume);
+}
+
+/*
+ * Multivers : l'avertissement d'hypothèse, en tête de plaque, avant le rang et le titre ; en pointillés, comme son
+ * repère dans la scène.
+ */
+.hypothesis {
+  margin: 0 0 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--c);
+  border-radius: var(--r-sm);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--ivoire);
 }
 
 /* ---------- Modules explicatifs (classes partagées avec src/components/modules) ---------- */
@@ -946,10 +1207,17 @@ main > section > * {
 }
 
 /* ---------- Pied de page ---------- */
+/*
+ * Fond de nuit, plein dès 3 rem sous le haut du pied de page, avant son premier texte (4 rem) : la scène 3D, toujours
+ * dessous (VY Canis Majoris au bas de Tailles, le multivers au bas du voyage), s'y efface en fondu, et le texte garde
+ * son contraste quoi qu'elle montre (--brume sur --nuit : 7,3:1). L'Accueil et À propos, sans scène, sont déjà sur la
+ * nuit : rien n'y change.
+ */
 footer {
   position: relative;
   z-index: 2;
   padding: 4rem calc(var(--gr) + var(--rail-w) + 1rem) 9rem var(--gl);
+  background: linear-gradient(rgba(6, 11, 24, 0), var(--nuit) 3rem);
   color: var(--brume);
   font-size: 0.875rem;
 }
@@ -1162,9 +1430,12 @@ footer a {
   font-weight: 400;
 }
 
-/* Couleurs forcées : les fonds disparaissent, un contour garde la bulle visible. */
+/*
+ * Couleurs forcées : les fonds disparaissent, un contour garde visibles la bulle et l'escale en cours de la liste. Au
+ * focus, l'escale en cours prend le contour du focus : le sien le masquerait (la graisse la signale encore).
+ */
 @media (forced-colors: active) {
-  .stops-list a[aria-current="location"] {
+  .stops-list a[aria-current="location"]:not(:focus-visible) {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }
@@ -1190,6 +1461,24 @@ footer a {
   font-weight: 400;
   font-size: 0.6875rem;
   color: var(--brume);
+}
+
+/*
+ * Place de la plus longue date longue de l'année, pour que le dock ne change pas de largeur d'un mois à l'autre :
+ * 9,6rem tient « 30 septembre 2026 » ; l'anglais (« 30 September 2026 ») la dépasse de 2 px, l'espagnol
+ * (« 30 de septiembre de 2026 ») de 3rem. L'espagnol ne garde donc la date longue qu'au-delà de 900 px : en dessous,
+ * SimDate passe à la date courte (« 30 sept 2026 »), sans quoi le dock déborderait de sa capsule vers 770 px.
+ */
+@media (min-width: 47.5625rem) {
+  .date:lang(en) {
+    min-width: 9.75rem;
+  }
+}
+
+@media (min-width: 56.3125rem) {
+  .date:lang(es) {
+    min-width: 12.6rem;
+  }
 }
 
 .today {
@@ -1219,6 +1508,20 @@ footer a {
   border-color: var(--soleil);
   color: var(--encre);
   font-weight: 700;
+}
+
+/*
+ * Bascule indisponible (étoiles voisines, Voie lactée : tout y est déjà à l'échelle). Atténuée, sans effet
+ * de survol ; la case dessinée reste visible. Toujours focalisable : sa description dit pourquoi.
+ */
+.dock [aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dock .today[aria-disabled="true"]:not([aria-pressed="true"]):hover {
+  border-color: var(--filet-fort);
+  background: transparent;
 }
 
 .cycle {
@@ -1291,6 +1594,396 @@ footer a {
   display: none;
 }
 
+/* ---------- Exploration (« Tourner autour », « Vu depuis la Terre ») ---------- */
+/*
+ * Pendant l'exploration (`data-explore` sur <html>), la page ne défile plus et ce qui est marqué
+ * `data-hide-on-explore` (barre, règle, contenu, pied de page, note d'échelle, liens d'évitement) s'efface et
+ * devient inerte : opacité et visibilité, jamais `display: none`, sans quoi la page perdrait sa hauteur et son
+ * défilement serait tronqué. La scène et le dock du temps restent ; la couche d'exploration passe entre les deux.
+ */
+html {
+  /* La barre de défilement disparaît pendant le mode : la largeur de la page ne saute pas. */
+  scrollbar-gutter: stable;
+}
+
+/* Jamais `position: fixed` sur <body> : le défilement retomberait à 0 et le voyage repartirait de l'accueil. */
+html[data-explore] {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Le dock reste utilisable ; un balayage sur lui ne fait pas défiler la page (iOS ignore parfois overflow). */
+html[data-explore] .dock {
+  touch-action: none;
+}
+
+/*
+ * Fondu de 0,6 s, celui de la caméra. Ce qui apparaît devient visible aussitôt (visibilité sans transition) : le
+ * focus peut s'y poser dans la même image, ce qu'un élément encore `visibility: hidden` refuse en silence. Ce qui
+ * disparaît reste visible jusqu'à la fin du fondu. La note d'échelle garde son apparition franche (data-visible).
+ */
+[data-hide-on-explore]:not(.scale-note) {
+  transition:
+    opacity 0.6s,
+    visibility 0s;
+}
+
+html[data-explore] [data-hide-on-explore] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+html[data-explore] [data-hide-on-explore]:not(.scale-note) {
+  transition:
+    opacity 0.6s,
+    visibility 0.6s;
+}
+
+/* Couche plein écran, sous le dock : surface de gestes, puis les commandes par-dessus. */
+.explore {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  transition:
+    opacity 0.6s,
+    visibility 0s;
+}
+
+.explore:not([data-active]) {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.6s,
+    visibility 0.6s;
+}
+
+/* Le navigateur ne fait ni défiler, ni zoomer, ni sélectionner : chaque geste revient à la scène. */
+.explore-surface {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.explore-surface[data-dragging] {
+  cursor: grabbing;
+}
+
+/* Barre et lecture en haut, pavé en bas ; ailleurs, les gestes traversent le groupe jusqu'à la surface. */
+.explore-controls {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) var(--gr) 0 var(--gl);
+  pointer-events: none;
+}
+
+/* Cible du focus à l'entrée, comme les sections : un point de lecture, pas une commande. */
+.explore-controls:focus {
+  outline: none;
+}
+
+/* Barre et pavé : capsules, comme le dock. */
+.explore-bar,
+.explore-pad {
+  pointer-events: auto;
+  touch-action: none;
+  background: rgba(8, 14, 32, 0.92);
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-pill);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(236, 229, 211, 0.07);
+}
+
+.explore-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.35rem 0.35rem 0.35rem 1rem;
+}
+
+.explore-where {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0.4rem 0 0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.explore-where i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/*
+ * Rappel des gestes : le seul élément de la barre qui cède la place. Sur une ligne quand il tient, sinon sur deux
+ * lignes équilibrées, à la hauteur des boutons : la barre ne déborde jamais de l'écran et ses boutons restent entiers.
+ */
+.explore-hint {
+  margin: 0 0.4rem 0 0;
+  padding-left: 0.8rem;
+  border-left: 1px solid var(--filet);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--brume);
+  text-wrap: balance;
+}
+
+.explore-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.2rem 0.95rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-pill);
+  background: transparent;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.explore-bar button:hover {
+  border-color: var(--ivoire);
+  background: rgba(236, 229, 211, 0.06);
+}
+
+.explore-bar .check {
+  width: 14px;
+  height: 14px;
+}
+
+/* Bascule enfoncée, comme celle des distances réelles ; la case cochée dit l'état sans la couleur. */
+.explore-earth[aria-pressed="true"],
+.explore-earth[aria-pressed="true"]:hover {
+  background: var(--soleil);
+  border-color: var(--soleil);
+  color: var(--encre);
+  font-weight: 700;
+}
+
+/* Lecture du jour : encart sous la barre, sans commande ; les gestes le traversent. */
+.earth-reading {
+  max-width: min(34rem, 100%);
+  padding: 0.6rem 1.1rem 0.7rem;
+  background: rgba(8, 14, 32, 0.92);
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-md);
+  font-size: 0.9375rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.earth-reading p {
+  margin: 0;
+}
+
+.earth-reading .earth-reading-title {
+  margin-bottom: 0.15rem;
+  font-size: 0.8125rem;
+  color: var(--brume);
+}
+
+/* Pavé : centré au-dessus du dock (sa hauteur réservée, 82 px hors mise en page compacte), cibles de 44 px. */
+.explore-pad {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--dock-clear, calc(82px + env(safe-area-inset-bottom, 0px))) + 8px);
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem;
+}
+
+.explore-pad .ibtn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/*
+ * Bouton « Tourner autour » de la barre haute : pilule de 44 px, comme le menu des escales, au fond .92 des pilules de
+ * la barre (sur un fond à .6, l'ivoire tomberait à 4:1 devant un astre clair). Le voile du survol se pose dessus.
+ */
+.explore-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.35rem 0.95rem 0.35rem 0.75rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-pill);
+  background: rgba(8, 14, 32, 0.92);
+  color: var(--ivoire);
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.explore-toggle:hover {
+  border-color: var(--ivoire);
+  background-image: linear-gradient(rgba(236, 229, 211, 0.06), rgba(236, 229, 211, 0.06));
+}
+
+.explore-toggle svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--laiton);
+}
+
+/* Ceinture d'astéroïdes : rien à faire tourner ; le bouton garde sa place, la barre ne saute pas. */
+.explore-toggle[data-unavailable] {
+  visibility: hidden;
+}
+
+/* Sans scène 3D (repli CSS) ni JavaScript, rien à faire tourner. */
+.no3d .explore-toggle {
+  display: none;
+}
+
+@media (scripting: none) {
+  .explore-toggle {
+    display: none;
+  }
+}
+
+/* Le rappel des gestes parle de molette et d'Échap : grand écran et pointeur précis seulement. */
+@media (max-width: 860px), (pointer: coarse) {
+  .explore-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Pictogramme seul, 44 × 44 ; le libellé, masqué à l'œil, reste le début du nom accessible. */
+  .explore-toggle {
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+  }
+
+  .explore-toggle .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* La bascule et « Terminer » tiennent sur une ligne : le nom de la planète cède (le groupe le porte). */
+  .explore-bar:has(.explore-earth) {
+    padding-left: 0.35rem;
+  }
+
+  .explore-bar:has(.explore-earth) .explore-where {
+    display: none;
+  }
+
+  /* Sept boutons sur une ligne dès 375 px. */
+  .explore-pad {
+    gap: 0.15rem;
+    padding: 0.3rem;
+  }
+}
+
+/* 320 px (zoom à 400 %) : le pavé passe sur deux lignes, quatre puis trois ; arrondi de plaque, comme le dock. */
+@media (max-width: 359px) {
+  .explore-pad {
+    max-width: 13rem;
+    border-radius: var(--r-lg);
+  }
+}
+
+/*
+ * Écran bas (téléphone en paysage, zoom à 400 %) : la barre suit la page et le bouton sortirait de l'écran ; il se
+ * fixe en haut à droite, la barre lui réserve sa place. Pendant le mode, le dock, qui a rejoint la page, redevient
+ * fixe pour rester utilisable.
+ */
+@media (max-height: 30rem) {
+  /* Réserve du bouton fixé, qui n'existe que sur la barre du voyage. */
+  .bar[data-page="voyage"] {
+    padding-right: calc(var(--gr) + 52px);
+  }
+
+  .explore-toggle {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+    right: var(--gr);
+    z-index: 6;
+  }
+
+  html[data-explore] .dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    margin: 0 auto;
+  }
+
+  /*
+   * Les commandes forment une colonne qui s'arrête au-dessus du dock fixé (sa réserve, --dock-clear : deux lignes sous
+   * 360 px) et défile quand elle ne tient pas (zoom à 400 %, 320 × 175 px). Le pavé y suit la barre et la lecture du
+   * jour, dans le flux : collé au-dessus du dock, il sortait par le haut de l'écran en recouvrant la barre, et le dock
+   * recouvrait la lecture. La colonne laisse passer les gestes vers la scène ailleurs que sur ses capsules ; la molette
+   * au-dessus d'elles, comme le focus qui avance, la fait défiler.
+   */
+  .explore-controls {
+    bottom: var(--dock-clear, calc(82px + env(safe-area-inset-bottom, 0px)));
+    padding-bottom: 0.5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .explore-bar,
+  .earth-reading,
+  .explore-pad {
+    flex: none;
+  }
+
+  .explore-pad {
+    position: static;
+  }
+}
+
+/* Couleurs forcées : les fonds disparaissent ; contours sur les capsules et la bascule enfoncée. */
+@media (forced-colors: active) {
+  .explore-bar,
+  .explore-pad,
+  .earth-reading {
+    border-color: CanvasText;
+  }
+
+  .explore-earth[aria-pressed="true"] {
+    border: 2px solid Highlight;
+  }
+}
+
 /* ---------- Petits écrans ---------- */
 @media (max-width: 860px) {
   :root {
@@ -1346,10 +2039,6 @@ footer a {
   /* Échap referme l'infobulle jusqu'au prochain survol ou focus. */
   .rail[data-tips="off"] a span {
     visibility: hidden;
-  }
-
-  .where span {
-    display: none;
   }
 }
 
@@ -1460,6 +2149,11 @@ footer a {
   }
 
   .plate::after {
+    /*
+     * --rest n'est pas héritée (@property, plus haut) : le filet la prend de sa plaque. Le repli 0 sert aux navigateurs
+     * sans @property, tant que la plaque n'en a pas reçu.
+     */
+    --rest: inherit;
     content: "";
     position: absolute;
     top: -1px;
@@ -1472,12 +2166,15 @@ footer a {
     pointer-events: none;
   }
 
-  /* Dernière escale : aucun départ ne suit, le filet reste plein et ne mesure rien. */
-  [data-stop="beyond"] > .plate::before {
+  /*
+   * Dernière escale de la page (fin du voyage, plus grande étoile des Tailles) : aucun départ ne suit, le filet
+   * reste plein et ne mesure rien.
+   */
+  main > .stop:last-of-type > .plate::before {
     opacity: 0.9;
   }
 
-  [data-stop="beyond"] > .plate::after {
+  main > .stop:last-of-type > .plate::after {
     display: none;
   }
 
@@ -1559,8 +2256,12 @@ footer a {
     min-height: 44px;
   }
 
-  /* Ce qui reçoit le focus, ou le bouton d'une plaque qu'on déplie, passe sous la note (hauteur mesurée). */
-  html:has(.scale-note[data-visible="true"]) {
+  /*
+   * Ce qui reçoit le focus, ou le bouton d'une plaque qu'on déplie, passe sous la note visible (hauteur mesurée). La
+   * marque vient de la note (ScaleNote) : un sélecteur `:has()` sur la note serait encore satisfait par celle d'une
+   * page quittée, que Next garde masquée.
+   */
+  html[data-scale-note] {
     scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 5.25rem + var(--note-h, 11rem) + 0.75rem);
   }
 }
@@ -1690,12 +2391,16 @@ footer a {
 
 /*
  * La liste des escales remplace la règle des distances là où celle-ci n'a plus que des pastilles
- * sans nom au doigt (860 px et moins) et en mise en page compacte. Pas sur un écran bas (zoom à
- * 400 %, téléphone en paysage) : la barre y suit la page et la règle fixe reste la navigation.
- * Pas sans JavaScript non plus : la liste ne s'ouvrirait pas.
+ * sans nom au doigt (860 px et moins), en mise en page compacte, et partout où elle est trop basse
+ * pour ses seize repères : il leur faut 15 × 24 px = 360 px pour garder 24 px entre leurs centres
+ * (WCAG 2.5.8), soit 66vh ≥ 360 px, une vue d'au moins 546 px de haut (34,125 rem). Sur un écran
+ * bas (téléphone en paysage, zoom à 400 %), la barre suit la page : la liste s'ouvre en haut de
+ * page, quand la règle n'y aurait que des repères qui se chevauchent. Pas sans JavaScript : la
+ * liste ne s'ouvrirait pas.
  */
-@media (max-width: 860px) and (min-height: 30.0625rem) and (scripting: enabled),
-  (max-width: 1100px) and (orientation: portrait) and (min-height: 30.0625rem) and (scripting: enabled) {
+@media (max-width: 860px) and (scripting: enabled),
+  (max-width: 1100px) and (orientation: portrait) and (scripting: enabled),
+  (max-height: 34.125rem) and (scripting: enabled) {
   :root {
     --rail-w: 0px;
   }
@@ -1731,7 +2436,7 @@ footer a {
     padding: 0.35rem 0.85rem;
     border: 1px solid var(--filet-fort);
     border-radius: var(--r-pill);
-    background: rgba(8, 14, 32, 0.6);
+    background: rgba(8, 14, 32, 0.92);
     color: var(--ivoire);
     font-size: 0.9375rem;
     white-space: nowrap;
@@ -1769,8 +2474,12 @@ footer a {
     margin: 0;
     padding: 0.35rem;
     list-style: none;
-    max-height: calc(100vh - 6rem - var(--dock-clear) - env(safe-area-inset-top, 0px));
-    max-height: calc(100svh - 6rem - var(--dock-clear) - env(safe-area-inset-top, 0px));
+    /*
+     * Elle défile entre la barre fixe et la réserve du dock (hors mise en page compacte, rien à dégager) ; sur écran
+     * bas, où la barre et le dock suivent la page, elle s'ouvre en entier (plus bas, « Écran bas ou zoom à 400 % »).
+     */
+    max-height: calc(100vh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
+    max-height: calc(100svh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
     overflow-y: auto;
     overscroll-behavior: contain;
     background: #080e20;
@@ -1929,8 +2638,12 @@ footer a {
 
 /* Écran bas ou zoom à 400 % : la barre et le dock reprennent leur place dans la page. */
 @media (max-height: 30rem) {
+  /*
+   * Seul le bouton « Tourner autour » du voyage reste fixé en haut (44 px, à 0,5 rem du bord) : ce qui reçoit le focus
+   * s'arrête 0,5 rem sous lui. En bas, rien de fixe, hors de la note d'échelle (plus bas).
+   */
   html {
-    scroll-padding-block: 1rem;
+    scroll-padding-block: calc(env(safe-area-inset-top, 0px) + 3.75rem) 1rem;
   }
 
   /* Le dock rejoint la page : la plaque n'a plus à rester collée au-dessus de lui, ni à montrer le repos. */
@@ -1952,6 +2665,15 @@ footer a {
     top: auto;
   }
 
+  /*
+   * La barre suit la page : la liste des escales (voyage) ou des étoiles (Tailles) s'ouvre en entier sous elle, et la
+   * page défile pour la parcourir. Mesurée sur la vue, sa hauteur tomberait à 0 à 400 % (175 px de haut, moins la
+   * barre et une réserve du dock qui n'a plus lieu d'être). Même règle pour « Menu » (SiteHeader.module.css).
+   */
+  .stops-list {
+    max-height: none;
+  }
+
   .dock {
     position: relative;
     left: auto;
@@ -1966,9 +2688,9 @@ footer a {
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* La barre suit la page : rien à dégager en haut ; en bas, la note visible (hauteur mesurée). */
-  html:has(.scale-note[data-visible="true"]) {
-    scroll-padding-top: 1rem;
+  /* La barre suit la page : en haut, seulement le bouton fixé ; en bas, la note visible (hauteur mesurée). */
+  html[data-scale-note] {
+    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 3.75rem);
     scroll-padding-bottom: calc(14px + var(--note-h, 11rem) + 0.75rem + env(safe-area-inset-bottom, 0px));
   }
 

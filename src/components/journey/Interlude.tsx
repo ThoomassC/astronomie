@@ -1,19 +1,24 @@
-import type { InterludeStop } from "@/content/stops";
+import { getVoyageContent } from "@/content/voyage/content";
+import type { InterludeStructure } from "@/content/voyage/structure";
+import type { Locale } from "@/i18n/locales";
+import { STOP_IDS } from "@/lib/journey/stopIds";
 
-/** L'interlude n'a pas de titre visible : celui-ci nomme la section pour les lecteurs d'écran. */
-const INTERLUDE_TITLE = "La ceinture d'astéroïdes";
-
-/** Interlude sans plaque (ceinture d'astéroïdes) : une citation sur fond de scène. */
-export function Interlude({ stop }: { stop: InterludeStop }) {
-  const titleId = `${stop.id}-titre`;
+/**
+ * Interlude sans plaque (ceinture d'astéroïdes) : une citation sur fond de scène, dans la langue de la page. Il n'a
+ * pas de titre visible : le sien, masqué à l'œil, nomme la section pour les lecteurs d'écran.
+ */
+export function Interlude({ locale, stop }: { locale: Locale; stop: InterludeStructure }) {
+  const { interlude } = getVoyageContent(locale);
+  const id = STOP_IDS[stop.key];
+  const titleId = `${id}-titre`;
   return (
-    <section className="interlude" id={stop.id} data-stop={stop.key} tabIndex={-1} aria-labelledby={titleId}>
+    <section className="interlude" id={id} data-stop={stop.key} tabIndex={-1} aria-labelledby={titleId}>
       <h2 className="sr" id={titleId}>
-        {INTERLUDE_TITLE}
+        {interlude.title}
       </h2>
       <blockquote>
-        <p>{stop.text}</p>
-        <cite>{stop.cite}</cite>
+        <p>{interlude.text}</p>
+        <cite>{interlude.cite}</cite>
       </blockquote>
     </section>
   );

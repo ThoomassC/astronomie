@@ -1,12 +1,11 @@
 "use client";
 
 import type { ComponentPropsWithoutRef, MouseEvent } from "react";
-import type { StopKey } from "@/lib/journey/camera";
 import { goTo } from "./navigation";
 
 type GoToLinkProps = Omit<ComponentPropsWithoutRef<"a">, "onClick" | "href"> & {
-  /** Escale visée. */
-  stop: StopKey;
+  /** Escale visée : clé `data-stop` de sa section dans la page. */
+  stop: string;
   /** Ancre de repli (`#soleil`), suivie telle quelle sans JavaScript. */
   href: `#${string}`;
 };

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as NavigationModule from "@/components/journey/navigation";
-import type { SectionRange } from "@/lib/journey/camera";
+import type { SectionRange } from "@/lib/journey/sections";
 
 const RANGES: readonly SectionRange[] = [
   { key: "hero", arrive: 0, depart: 100 },
@@ -66,6 +66,30 @@ describe("goTo", () => {
     document.body.append(section);
     setSectionRanges(RANGES);
     goTo("sun");
+    expect(document.activeElement).toBe(section);
+  });
+
+  it("devrait placer le focus sur la section de la page affichée, pas sur celle d'une page quittée que Next garde masquée", () => {
+    // <Activity mode="hidden"> masque la page quittée par `display: none`, sans la retirer du document.
+    document.body.innerHTML = `
+      <main style="display: none"><section data-stop="sun" tabindex="-1" id="cachee"></section></main>
+      <main><section data-stop="sun" tabindex="-1" id="affichee"></section></main>`;
+    setSectionRanges(RANGES);
+    goTo("sun");
+    expect(document.activeElement?.id).toBe("affichee");
+  });
+
+  it("devrait mener à l'escale d'une autre page, quelle que soit sa clé (« intro » de la page Tailles)", () => {
+    const section = document.createElement("section");
+    section.dataset.stop = "intro";
+    section.tabIndex = -1;
+    document.body.append(section);
+    setSectionRanges([
+      { key: "intro", arrive: 0, depart: 100 },
+      { key: "sun", arrive: 804, depart: 1600 },
+    ]);
+    expect(goTo("intro")).toBe(true);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 2, behavior: "smooth" });
     expect(document.activeElement).toBe(section);
   });
 
@@ -154,6 +178,56 @@ describe("goTo", () => {
   });
 });
 
+describe("measureSections", () => {
+  /** Section `[data-stop]` du document, de hauteur `height` px, dont le haut est à `top` px du haut de la vue. */
+  function section(stop: string, top: number, height: number): HTMLElement {
+    const element = document.createElement("section");
+    element.dataset.stop = stop;
+    // Frontière navigateur : jsdom ne calcule aucune boîte.
+    vi.spyOn(element, "getBoundingClientRect").mockReturnValue(new DOMRect(0, top, 1024, height));
+    document.body.append(element);
+    return element;
+  }
+
+  it("devrait mesurer toutes les sections non vides de la page, quelles que soient leurs clés, dans l'ordre du document", async () => {
+    const { getSectionRanges, measureSections } = await import("@/components/journey/navigation");
+    vi.stubGlobal("innerHeight", 800);
+    scrolledTo(200);
+    section("intro", -200, 900);
+    section("", 700, 300);
+    section("proxima-centauri", 700, 1500);
+    measureSections();
+    expect(getSectionRanges()).toEqual([
+      { key: "intro", arrive: 0, depart: 100 },
+      { key: "proxima-centauri", arrive: expect.closeTo(804, 9), depart: 1600 },
+    ]);
+  });
+
+  it("devrait ignorer les sections d'une page quittée, que Next garde masquée dans le DOM", async () => {
+    const { getSectionRanges, measureSections } = await import("@/components/journey/navigation");
+    vi.stubGlobal("innerHeight", 800);
+    scrolledTo(0);
+    // <Activity mode="hidden"> masque la page quittée par `display: none`, sans la retirer du document.
+    const hiddenPage = document.createElement("main");
+    hiddenPage.style.display = "none";
+    document.body.append(hiddenPage);
+    hiddenPage.append(section("sun", 0, 0));
+    section("intro", 0, 900);
+    measureSections();
+    expect(getSectionRanges().map((range) => range.key)).toEqual(["intro"]);
+  });
+});
+
+describe("shownElements", () => {
+  it("devrait ne rendre que les éléments de la page affichée, dans l'ordre du document", async () => {
+    const { shownElements } = await import("@/components/journey/navigation");
+    document.body.innerHTML = `
+      <main style="display: none"><section data-stop="sun"><article class="plate" id="cachee"></article></section></main>
+      <main><section data-stop="soleil"><article class="plate" id="affichee"></article></section></main>`;
+    expect(shownElements("[data-stop] > .plate").map((plate) => plate.id)).toEqual(["affichee"]);
+  });
+});
+
 describe("scrollInstantly", () => {
   it("devrait défiler sans douceur, même quand la page défile en douceur par défaut", async () => {
     const { scrollInstantly } = await import("@/components/journey/navigation");
@@ -175,5 +249,55 @@ describe("scrollInstantly", () => {
     scrollInstantly(1200);
     expect(takeSkipSmoothing()).toBe(true);
     expect(takeSkipSmoothing()).toBe(false);
+  });
+});
+
+describe("holdAt", () => {
+  it("devrait seulement couper le défilement en cours, sans sauter, quand la page est déjà au repos sur l'escale", async () => {
+    const { holdAt, takeSkipSmoothing } = await import("@/components/journey/navigation");
+    setSectionRanges(RANGES);
+    scrolledTo(1000);
+    holdAt("sun");
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: "instant" });
+    expect(takeSkipSmoothing()).toBe(false);
+  });
+
+  it("devrait sauter sans animation 2 px après l'arrivée quand la page est encore avant l'escale (vol en cours)", async () => {
+    const { holdAt, takeSkipSmoothing } = await import("@/components/journey/navigation");
+    setSectionRanges(RANGES);
+    scrolledTo(300);
+    holdAt("sun");
+    expect(scrollTo).toHaveBeenCalledWith({ top: SUN_TARGET, behavior: "instant" });
+    expect(takeSkipSmoothing()).toBe(true);
+  });
+
+  it("devrait revenir sans animation au départ de l'escale quand la page l'a dépassé", async () => {
+    const { holdAt } = await import("@/components/journey/navigation");
+    setSectionRanges(RANGES);
+    scrolledTo(1700);
+    holdAt("sun");
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1600, behavior: "instant" });
+  });
+
+  it("devrait annuler le recalage d'une navigation en cours : aucune correction après la sienne", async () => {
+    const { holdAt } = await import("@/components/journey/navigation");
+    setSectionRanges(RANGES);
+    goTo("sun");
+    scrolledTo(400);
+    holdAt("sun");
+    setSectionRanges(GROWN);
+    window.dispatchEvent(new Event("scrollend"));
+    vi.advanceTimersByTime(FALLBACK_MS * 5);
+    expect(scrollTo).toHaveBeenCalledTimes(2);
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: SUN_TARGET, behavior: "instant" });
+  });
+
+  it("devrait seulement couper le défilement, à la position actuelle, tant que les sections ne sont pas mesurées", async () => {
+    const { holdAt } = await import("@/components/journey/navigation");
+    scrolledTo(500);
+    holdAt("sun");
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 500, behavior: "instant" });
   });
 });

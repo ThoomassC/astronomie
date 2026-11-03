@@ -12,6 +12,7 @@ const OUTPUT = /* glsl */ `
 /** Lumière du Soleil reçue par les astres (blanc chaud), sans atténuation avec la distance. */
 const SUNLIGHT = /* glsl */ `const vec3 SUNLIGHT = vec3(1.0, 0.97, 0.92) * 1.35;`;
 
+/** Bruit de valeur 3D (moyenne 0,5) : marbrure, détail fin, taches, jets de la couronne. */
 const NOISE_GLSL = /* glsl */ `
 float hs(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float vn(vec3 x) {
@@ -21,17 +22,6 @@ float vn(vec3 x) {
     mix(mix(hs(i), hs(i + vec3(1, 0, 0)), f.x), mix(hs(i + vec3(0, 1, 0)), hs(i + vec3(1, 1, 0)), f.x), f.y),
     mix(mix(hs(i + vec3(0, 0, 1)), hs(i + vec3(1, 0, 1)), f.x), mix(hs(i + vec3(0, 1, 1)), hs(i + vec3(1, 1, 1)), f.x), f.y),
     f.z);
-}
-// Somme de 3 à 5 octaves, ramenée à l'amplitude de 5 octaves : les seuils de couleur restent valables.
-float fb(vec3 p, int octaves) {
-  float v = 0., a = .5;
-  for (int i = 0; i < 5; i++) {
-    if (i >= octaves) break;
-    v += a * vn(p);
-    p *= 2.03;
-    a *= .5;
-  }
-  return v * .96875 / (1. - 2. * a);
 }
 `;
 
@@ -316,77 +306,448 @@ void main() {
 }
 `;
 
-// ---------- Soleil ----------
+// ---------- Étoiles : surface (le Soleil, et les étoiles à comparer) ----------
 
-export const SUN_VERTEX = /* glsl */ `
-varying vec3 vP;
-varying vec3 vN;
-void main() {
-  vP = position;
-  vN = normalize(normalMatrix * normal);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
+/**
+ * Exposition d'une étoile vue de près : l'œil s'adapte quand elle remplit la vue, la granulation reste lisible
+ * sous le tone mapping. `radii` : distance de la caméra au centre de l'étoile, en rayons. Rapport f = tan(rayon apparent)
+ * / tan(demi-champ vertical) : exposition pleine jusqu'à f = 0,3, 0,6 quand l'étoile déborde (f ≥ 1,2).
+ */
+const STAR_EXPOSURE_GLSL = /* glsl */ `
+float starExposure(float radii) {
+  float fill = projectionMatrix[1][1] / sqrt(max(radii * radii - 1.0, 1e-4));
+  return 1.0 - 0.4 * smoothstep(0.3, 1.2, fill);
 }
 `;
 
-/** Surface du Soleil : granulation animée par deux bruits, assombrissement et rougissement centre-bord. */
-export const SUN_FRAGMENT = /* glsl */ `
-uniform float uTime;
-varying vec3 vP;
-varying vec3 vN;
-${NOISE_GLSL}
+/** Cellules de convection (diagramme de Voronoï 3D, « bruit de Worley ») et leur hachage. */
+const STAR_CELLS_GLSL = /* glsl */ `
+// Hachage de Dave Hoskins (« Hash without Sine », licence MIT) : trois valeurs dans [0, 1[ par cellule entière.
+vec3 starHash(vec3 p) {
+  p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+  p += dot(p, p.yxz + 33.33);
+  return fract((p.xxy + p.yxx) * p.zyx);
+}
+// Distances au point le plus proche (x) et au deuxième (y), et phase propre de la cellule la plus proche (z).
+// Chaque point tourne dans sa cellule au rythme de boil (de 0 à 1, périodique) : les parois glissent, la granulation
+// bouillonne ; recherche parmi les 27 cellules voisines. Variante allégée : points figés, aucun sinus par cellule, peu
+// décalés (±0,3 au lieu de ±0,42) pour que la recherche parmi les 8 cellules les plus proches seulement, comme la
+// supergranulation, reste presque exacte (2 % des seconds plus proches manqués, sans effet visible) : 3,4 fois moins
+// de cellules visitées.
+vec3 starCells(vec3 x, float boil) {
+  vec3 cell = floor(x);
+  vec3 f = x - cell;
+  float d1 = 8.0;
+  float d2 = 8.0;
+  float own = 0.0;
+#ifdef STAR_LITE
+  vec3 first = step(0.5, f) - 1.0;
+  for (int k = 0; k < 2; k++) {
+    for (int j = 0; j < 2; j++) {
+      for (int i = 0; i < 2; i++) {
+        vec3 g = first + vec3(float(i), float(j), float(k));
+        vec3 h = starHash(cell + g);
+        vec3 r = g + 0.5 + 0.3 * (2.0 * h - 1.0) - f;
+#else
+  for (int k = -1; k <= 1; k++) {
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        vec3 g = vec3(float(i), float(j), float(k));
+        vec3 h = starHash(cell + g);
+        vec3 r = g + 0.5 + 0.42 * sin(6.2831853 * (boil + h)) - f;
+#endif
+        float d = dot(r, r);
+        if (d < d1) {
+          d2 = d1;
+          d1 = d;
+          own = h.x;
+        } else if (d < d2) {
+          d2 = d;
+        }
+      }
+    }
+  }
+  return vec3(sqrt(d1), sqrt(d2), own);
+}
+#ifndef STAR_LITE
+// Supergranulation : 8 cellules seulement (les plus proches du point), points peu décalés pour que la recherche
+// reste presque exacte ; un réseau discret supporte ses rares erreurs.
+vec3 starSuperCells(vec3 x, float boil) {
+  vec3 cell = floor(x);
+  vec3 f = x - cell;
+  vec3 first = step(0.5, f) - 1.0;
+  float d1 = 8.0;
+  float d2 = 8.0;
+  float own = 0.0;
+  for (int k = 0; k < 2; k++) {
+    for (int j = 0; j < 2; j++) {
+      for (int i = 0; i < 2; i++) {
+        vec3 g = first + vec3(float(i), float(j), float(k));
+        vec3 h = starHash(cell + g);
+        vec3 r = g + 0.5 + 0.3 * sin(6.2831853 * (boil + h)) - f;
+        float d = dot(r, r);
+        if (d < d1) {
+          d2 = d1;
+          d1 = d;
+          own = h.x;
+        } else if (d < d2) {
+          d2 = d;
+        }
+      }
+    }
+  }
+  return vec3(sqrt(d1), sqrt(d2), own);
+}
+#endif
+`;
+
+export const STAR_SURFACE_VERTEX = /* glsl */ `
+varying vec3 vLocal;
+varying vec3 vWorldPos;
+varying vec3 vWorldNormal;
+varying float vExposure;
+${STAR_EXPOSURE_GLSL}
 void main() {
-  vec3 p = normalize(vP) * 3.4;
-  // 4 octaves pour la granulation, 3 pour le second bruit : moins de calcul par pixel.
-  float n = fb(p + vec3(0., uTime * .05, uTime * .03), 4);
-  float m = fb(p * 2.7 - vec3(uTime * .04), 3);
-  float f = n * .62 + m * .38;
-  vec3 c = mix(vec3(1., .36, .06), vec3(1., .68, .26), smoothstep(.32, .6, f));
-  c = mix(c, vec3(1., .9, .72), smoothstep(.6, .82, f));
-  float mu = clamp(dot(vN, vec3(0., 0., 1.)), 0., 1.);
-  // Loi du Soleil visible : I(μ) = 1 − 0,6 (1 − μ), et le bord tire sur le rouge.
-  c *= (.4 + .6 * mu) * mix(vec3(1., .55, .3), vec3(1.), mu);
-  // Assez lumineux pour dominer la scène, pas au point que le tone mapping le blanchisse.
-  gl_FragColor = vec4(c * 1.7, 1.);
+  // Repère de l'étoile : l'axe y local est son pôle de rotation.
+  vLocal = position;
+  vec4 world = modelMatrix * vec4(position, 1.0);
+  vWorldPos = world.xyz;
+  // Échelle uniforme : la matrice du modèle suffit à tourner la normale.
+  vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  vec3 center = modelMatrix[3].xyz;
+  vExposure = starExposure(length(cameraPosition - center) / length(world.xyz - center));
+  gl_Position = projectionMatrix * viewMatrix * world;
+}
+`;
+
+/**
+ * Photosphère d'une étoile, calculée en température : chaque détail écarte la température locale de celle du
+ * centre du disque (rapport t), et la couleur suit la loi de Wien canal par canal, uColor · exp(−uWien (1/t − 1)) :
+ * ce qui est plus froid est plus sombre et plus rouge (couloirs, taches, bord), ce qui est plus chaud plus clair et
+ * plus jaune (cœur des granules, facules).
+ * - Granulation : cellules de Worley animées (uGranulation par rayon), couloirs sombres et fins, détail fin au
+ *   triple de la fréquence ; chaque niveau n'apparaît qu'au-delà de 1,5 px (fwidth) et garde la même moyenne,
+ *   ce qui évite le scintillement de loin.
+ * - Supergranulation (une cellule pour 6,5 granules) : modulation lente et réseau, dont les facules brillent vers
+ *   le bord ; marbrure à grande échelle, visible de loin.
+ * - Taches (STARSPOTS, placées par placeStarspots) : ombre, pénombre filamenteuse, plage de facules autour.
+ * - Assombrissement centre-bord d'Eddington-Barbier : T⁴(μ) ∝ 1 − k + kμ (k = uLimbDarkening).
+ * Le temps (uTime, en secondes affichées) fait tourner la surface (uSpinRate, rad/s, rotation rigide à la vitesse
+ * de l'équateur) et bouillonner la convection, sur une période de BOIL_PERIOD secondes. Variante STAR_LITE
+ * (écrans tactiles) : cellules figées, cherchées parmi 8 voisines au lieu de 27, ni détail fin ni réseau.
+ */
+export const STAR_SURFACE_FRAGMENT = /* glsl */ `
+// Détail fin : près de 190 cellules par rayon, il faut la pleine précision (téléphones compris).
+precision highp float;
+uniform float uTime;
+uniform vec3 uColor;
+uniform vec3 uWien;
+uniform float uGranulation;
+uniform float uContrast;
+uniform float uLimbDarkening;
+uniform float uActivity;
+uniform float uSpinRate;
+#if STARSPOTS > 0
+// Par tache : centre (unitaire, repère de l'étoile) et rayon ; part de l'ombre, rayon et éclat de la plage,
+// cosinus du rayon de la calotte qui les contient (2 : tache éteinte).
+uniform vec4 uSpotA[STARSPOTS];
+uniform vec4 uSpotB[STARSPOTS];
+#endif
+varying vec3 vLocal;
+varying vec3 vWorldPos;
+varying vec3 vWorldNormal;
+varying float vExposure;
+${NOISE_GLSL}
+${STAR_CELLS_GLSL}
+const float TAU = 6.2831853;
+// Période du bouillonnement affiché, en secondes.
+const float BOIL_PERIOD = 90.0;
+// Moyennes des motifs (mesurées), retranchées pour que l'éclat moyen ne bouge pas quand un niveau apparaît. Variante
+// allégée : 0,196 sur 27 cellules, + 0,031 sur 8 cellules aux points moins décalés (même tirage, banc logiciel).
+#ifdef STAR_LITE
+const float GRANULE_MEAN = 0.227;
+#else
+const float GRANULE_MEAN = 0.171;
+#endif
+const float SUPER_MEAN = 0.719;
+// Températures relatives de l'ombre et de la pénombre (Soleil : ≈ 3 900 K et 5 000 K pour 5 772 K).
+const float UMBRA_T = 0.68;
+const float PENUMBRA_T = 0.87;
+
+void main() {
+  vec3 q = normalize(vLocal);
+  // Taille d'un pixel sur la sphère unité, en rayons : règle chaque niveau de détail (hors de tout branchement).
+  float pixel = length(fwidth(q));
+  float spin = TAU * fract(uTime * uSpinRate / TAU);
+  float cs = cos(spin);
+  float sn = sin(spin);
+  // Repère qui tourne avec la surface (sens direct autour du pôle).
+  vec3 p = vec3(cs * q.x - sn * q.z, q.y, sn * q.x + cs * q.z);
+  float boil = fract(uTime / BOIL_PERIOD);
+  float mu = clamp(dot(normalize(vWorldNormal), normalize(cameraPosition - vWorldPos)), 0.0, 1.0);
+  float heat = 0.0;
+
+  // Granulation : visible dès 1,5 px par cellule, au complet à partir de 12 px.
+  float cellPx = 1.0 / (uGranulation * pixel);
+  float granulation = smoothstep(1.5, 3.5, cellPx) * (0.4 + 0.6 * smoothstep(4.0, 12.0, cellPx));
+  float lane = 0.0;
+  if (granulation > 0.0) {
+    vec3 x = p * uGranulation;
+    // Léger gauchissement de l'espace : parois courbes plutôt que polygones.
+    x += 0.12 * sin(x.yzx * vec3(1.31, 1.27, 1.23) + vec3(1.7, 4.1, 2.9));
+    vec3 c = starCells(x, boil);
+    float aa = 0.9 / cellPx;
+    float edge = c.y - c.x;
+    // Couloirs plus larges aux jonctions ; flous de la taille d'un pixel, à noirceur totale conservée.
+    float laneWidth = 0.05 * (0.7 + 1.6 * smoothstep(0.45, 0.9, c.x));
+    lane = (1.0 - smoothstep(0.0, laneWidth + aa, edge)) * laneWidth / (laneWidth + aa);
+    float inner = smoothstep(0.0, 0.55 + aa, edge);
+    float body = (1.0 - 0.6 * c.x * c.x) * (0.25 + 0.75 * inner) * (0.8 + 0.2 * sin(TAU * (boil + c.z)));
+    heat += granulation * uContrast * (mix(body, -1.1, lane) - GRANULE_MEAN);
+#ifndef STAR_LITE
+    float fine = smoothstep(1.5, 3.5, cellPx / 3.1);
+    if (fine > 0.0) {
+      vec3 drift = 0.6 * vec3(sin(TAU * boil), cos(TAU * boil), 0.0);
+      heat += fine * uContrast * 0.7 * (vn(p * uGranulation * 3.1 + drift) - 0.5) * (1.0 - lane);
+    }
+#endif
+  }
+
+  // Marbrure à grande échelle : de loin, le disque garde du relief ; de près, la granulation prend le relais.
+  float mottle = 0.65 * (vn(p * 3.4 + vec3(0.0, 0.3 * sin(TAU * boil), 0.0)) - 0.5);
+  if (granulation < 1.0) {
+    mottle += 0.35 * (1.0 - granulation) * (vn(p * 7.9 + vec3(3.1, 0.0, 0.3 * cos(TAU * boil))) - 0.5);
+  }
+  heat += 1.8 * uContrast * mottle;
+
+  // Supergranulation et réseau (étoiles à granulation fine seulement).
+  float network = 0.0;
+#ifndef STAR_LITE
+  float superFrequency = uGranulation / 6.5;
+  float supergranulation = smoothstep(2.0, 5.0, 1.0 / (superFrequency * pixel)) * smoothstep(4.0, 8.0, superFrequency);
+  if (supergranulation > 0.0) {
+    vec3 c = starSuperCells(p * superFrequency + vec3(31.7, 0.0, 0.0), boil * 0.25);
+    float aa = 0.9 * superFrequency * pixel;
+    // Réseau morcelé : seules certaines cellules ont un bord brillant.
+    network = supergranulation * (1.0 - smoothstep(0.0, 0.1 + aa, c.y - c.x)) * 0.1 / (0.1 + aa) * smoothstep(0.3, 0.7, c.z);
+    heat += supergranulation * 0.27 * uContrast * (1.0 - c.x * c.x - SUPER_MEAN);
+  }
+#endif
+
+  // Taches : ombre, pénombre filamenteuse, plage de facules autour du groupe.
+  float umbra = 0.0;
+  float penumbra = 0.0;
+  float filament = 0.5;
+  float plage = 0.0;
+#if STARSPOTS > 0
+  for (int i = 0; i < STARSPOTS; i++) {
+    vec4 a = uSpotA[i];
+    vec4 b = uSpotB[i];
+    float c = dot(q, a.xyz);
+    if (c < b.w) continue;
+    // Corde ≈ angle au centre, en rayons.
+    float d = sqrt(max(2.0 - 2.0 * c, 0.0));
+    plage += b.z * exp(-d * d / (b.y * b.y));
+    float r = a.w;
+    if (d < r * 1.3 + pixel) {
+      vec3 east = normalize(cross(vec3(0.0, 1.0, 0.0), a.xyz));
+      vec3 north = cross(a.xyz, east);
+      vec3 rel = q - a.xyz;
+      vec2 dir = vec2(dot(rel, east), dot(rel, north)) / max(d, 1e-6);
+      float seed = a.y * 53.1;
+      float ragged = 0.6 * vn(vec3(dir * 3.1 + vec2(seed, 0.0), seed * 3.1)) + 0.4 * vn(vec3(dir * 7.3 + vec2(0.0, seed), seed * 1.7));
+      float rr = d / (r * (0.85 + 0.3 * ragged));
+      float aa = pixel / max(r, 1e-6);
+      // Tache plus petite qu'un pixel : son assombrissement se dilue dans le pixel.
+      float fade = min(1.0, r * r / (2.25 * pixel * pixel));
+      float pen = (1.0 - smoothstep(1.0 - aa - 0.06, 1.0 + aa, rr)) * fade;
+      if (pen > penumbra) {
+        penumbra = pen;
+        filament = vn(vec3(dir * 22.0 + vec2(seed * 7.0, 0.0), rr * 2.2 + seed * 13.0));
+      }
+      umbra = max(umbra, (1.0 - smoothstep(b.x - aa - 0.05, b.x + aa + 0.05, rr)) * fade);
+    }
+  }
+#endif
+
+  // Facules : réseau et plages, surtout vers le bord du disque.
+  float limbFaculae = (1.0 - smoothstep(0.3, 0.95, mu)) * smoothstep(0.0, 0.1, mu);
+  heat += 0.05 * ((0.3 + 0.7 * uActivity) * network * 0.8 + plage * (0.5 + 0.8 * network)) * (0.25 + 0.75 * limbFaculae);
+
+  // Température relative : bord (Eddington-Barbier) × écarts locaux, remplacés dans les taches.
+  float t = 1.0 + heat;
+  t = mix(t, PENUMBRA_T + 0.2 * (filament - 0.5), penumbra);
+  t = mix(t, UMBRA_T + 0.03 * (filament - 0.5), umbra);
+  t *= pow(1.0 - uLimbDarkening + uLimbDarkening * mu, 0.25);
+  gl_FragColor = vec4(vExposure * uColor * exp(-uWien * (1.0 / t - 1.0)), 1.0);
   ${OUTPUT}
 }
 `;
 
+// ---------- Couronne, chromosphère et protubérances du Soleil ----------
+
 export const CORONA_VERTEX = /* glsl */ `
 uniform float uSize;
-uniform float uTime;
+uniform float uSunRadius;
 varying vec2 vOffset;
-varying float vRays;
-${NOISE_GLSL}
+varying vec3 vCenter;
+varying vec3 vDelta;
+varying float vExposure;
+${STAR_EXPOSURE_GLSL}
 void main() {
   // Disque toujours face à la caméra, centré sur le Soleil.
   vOffset = position.xy;
-  // Jets de la couronne : bruit angulaire lent, calculé aux 256 secteurs du disque puis interpolé.
-  vRays = vn(vec3(normalize(position.xy) * 4., uTime * .03));
   vec4 center = viewMatrix * modelMatrix * vec4(0., 0., 0., 1.);
+  // Centre et décalage du point dans le plan du disque, en espace vue et en rayons du Soleil : le rayon de vue
+  // s'en déduit sans soustraire deux grandeurs voisines (précis à tout zoom cosmique).
+  vCenter = center.xyz / uSunRadius;
+  vDelta = vec3(position.xy * uSize / uSunRadius, 0.0);
+  vExposure = starExposure(length(vCenter));
   center.xy += position.xy * uSize;
   gl_Position = projectionMatrix * center;
 }
 `;
 
 /**
- * Couronne et halo : décroissance radiale, jets lents modulés par un bruit angulaire.
- * L'éblouissement (uGlare) s'élargit quand la caméra s'éloigne : discret de près, il garde
- * de loin la présence du Soleil.
+ * Couronne, chromosphère et protubérances, le long du rayon de vue : b, distance du rayon au centre du Soleil (en
+ * rayons), et n, direction du point du rayon le plus proche du centre, dans le repère du Soleil (uStarFrame) ; la
+ * surface tourne autour de son pôle (uSpinRate). Tout ce qui dépasse du bord est ainsi attaché au Soleil.
+ * - Couronne en 1/b³, jets (streamers) : bruit lent sur n, resserrés en hauteur ; ceinture équatoriale au minimum
+ *   d'activité, tout autour au maximum (uActivity).
+ * - Chromosphère : liseré rose (Hα) d'environ 0,008 rayon, hérissé de spicules quand un pixel descend sous
+ *   0,004 rayon ; protubérances discrètes, plus nombreuses quand l'activité monte. Plus petit qu'un pixel, chaque
+ *   détail s'élargit à éclat total conservé : rien ne scintille de loin.
+ * Jets et sites des protubérances ne dépendent que de n : ils sont lus dans une carte cuite une fois (uField,
+ * coronaField.ts), où la rotation n'est qu'un décalage en longitude, au lieu de trois bruits de valeur par pixel.
+ * Variante CORONA_LITE (écrans tactiles) : ni spicules ni fibres, plus aucun bruit calculé par pixel.
+ * L'éblouissement (uGlare) garde sa formule : discret de près, il s'élargit quand la caméra s'éloigne.
  */
 export const CORONA_FRAGMENT = /* glsl */ `
 uniform float uSize;
 uniform float uSunRadius;
 uniform float uGlare;
+uniform float uTime;
+uniform float uActivity;
+uniform float uSpinRate;
+uniform mat3 uStarFrame;
+uniform sampler2D uField;
 varying vec2 vOffset;
-varying float vRays;
+varying vec3 vCenter;
+varying vec3 vDelta;
+varying float vExposure;
+${NOISE_GLSL}
+// Raie Hα de l'hydrogène : le rose-rouge de la chromosphère et des protubérances.
+const vec3 H_ALPHA = vec3(1.0, 0.16, 0.2);
+const float CHROMOSPHERE = 0.008;
+const float TAU = 6.2831853;
+#ifndef CORONA_LITE
+// La direction n dans le repère qui tourne avec la surface : turn tours autour du pôle, dans le sens direct.
+vec3 spun(vec3 n, float turn) {
+  float c = cos(TAU * turn);
+  float s = sin(TAU * turn);
+  return vec3(c * n.x - s * n.z, n.y, s * n.x + c * n.z);
+}
+#endif
 void main() {
   float d = length(vOffset);
+  // Éblouissement et fondu du bord du disque : distance dans le plan du disque, comme avant.
   float r = max(d * uSize / uSunRadius, 1.);
   float edge = smoothstep(1., .75, d);
-  float corona = .55 / (r * r * r) * (.7 + .6 * vRays);
   float glare = uGlare * pow(r, -1.7);
-  vec3 color = vec3(1., .84, .62) * corona + vec3(1., .66, .38) * glare;
+
+  // Rayon de vue : b = |C × Δ| / |C + Δ|, et direction du point le plus proche du centre, en espace vue.
+  float centerRadii = length(vCenter);
+  vec3 u = vCenter / centerRadii;
+  float b = length(cross(u, vDelta)) / length(u + vDelta / centerRadii);
+  float pixel = fwidth(b);
+  float h = max(b - 1.0, 0.0);
+  float bb = max(b, 1.0);
+
+  // Jets : structure marquée près du disque, halo plus lisse au loin. Au-delà de 6 rayons, la couronne ne pèse
+  // plus rien à côté de l'éblouissement : sa structure moyenne suffit (0,79 à 0,83 selon l'activité), sans direction
+  // ni champ à lire, pour la plupart des pixels du halo.
+  float structure = 0.81;
+  vec3 limb = vec3(0.0);
+  if (h < 7.0) {
+    float ud = dot(u, vDelta);
+    vec3 radial = vDelta * (1.0 + ud / centerRadii) - u * (ud + dot(vDelta, vDelta) / centerRadii) + u * 1e-6;
+    vec3 n = normalize(uStarFrame * (transpose(mat3(viewMatrix)) * radial));
+    // Rotation propre, en tours.
+    float turn = fract(uTime * uSpinRate / TAU);
+    // Jets (r) et sites des protubérances (g) de la direction n, surface tournée : longitude (atan) et distance au
+    // pôle. Lue au niveau 0 (carte sans mipmap) : dans une branche, les dérivées implicites ne sont pas sûres.
+    vec2 field = textureLod(uField, vec2(atan(n.z, n.x) / TAU + 0.5 + turn, acos(clamp(n.y, -1.0, 1.0)) / 3.1415927), 0.0).rg;
+    float belt = mix(1.12 - smoothstep(0.15, 0.75, abs(n.y)), 1.0, uActivity);
+    float rays = pow(clamp(field.r * 1.6 - 0.3, 0.0, 1.0), 1.4 + 1.6 * smoothstep(0.0, 2.5, h)) * belt;
+    structure = mix(mix(0.3 + 1.9 * rays, 0.7 + 0.6 * rays, smoothstep(1.5, 6.0, h)), structure, smoothstep(5.0, 7.0, h));
+
+    if (h < 0.2) {
+      float layer = max(CHROMOSPHERE, pixel);
+      float chromosphere = CHROMOSPHERE / layer * exp(-h / layer);
+#ifndef CORONA_LITE
+      float spicules = 1.0 - smoothstep(0.0015, 0.004, pixel);
+      if (spicules > 0.0) {
+        float s = vn(spun(n, turn) * 260.0 + vec3(0.0, uTime * 0.05, 0.0));
+        float height = max(0.004 + 0.02 * s * s, pixel);
+        chromosphere += spicules * 1.4 * s * CHROMOSPHERE / height * exp(-h / height);
+      }
+#endif
+      float threshold = mix(0.8, 0.66, uActivity);
+      float site = smoothstep(threshold, threshold + 0.1, field.g);
+      float prominence = 0.0;
+      if (site > 0.0) {
+        float height = 0.03 + 0.07 * site;
+#ifdef CORONA_LITE
+        float fibers = 0.6;
+#else
+        float fibers = mix(0.6, vn(spun(n, turn) * 70.0 + vec3(0.0, h * 20.0, 0.0)), 1.0 - smoothstep(0.003, 0.008, pixel));
+#endif
+        prominence = site * exp(-h / (0.45 * height)) * (1.0 - smoothstep(height * 0.6, height * 1.4, h)) * fibers * 1.6;
+        prominence *= min(1.0, 0.012 / max(pixel, 0.012));
+      }
+      limb = H_ALPHA * (1.2 * chromosphere + 0.8 * prominence);
+    }
+  }
+  float corona = .55 / (bb * bb * bb) * structure * vExposure;
+  vec3 color = vec3(1., .84, .62) * corona + vec3(1., .66, .38) * glare + limb;
   gl_FragColor = vec4(color * edge, 1.);
   ${OUTPUT}
+}
+`;
+
+// ---------- Nuages de points : étoiles voisines, Soleil vu de loin, galaxie ----------
+
+/**
+ * Taille fixe à l'écran (px CSS × rapport de pixels, sans perspective) ; la couleur (attribut `color`,
+ * linéaire, éclat compris) est déclarée par Three quand `vertexColors` est actif.
+ */
+export const POINT_CLOUD_VERTEX = /* glsl */ `
+attribute float size;
+uniform float uPixelRatio;
+varying vec3 vColor;
+void main() {
+  vColor = color;
+  gl_PointSize = size * uPixelRatio;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+/**
+ * Point rond à bord doux : plein au cœur, il s'éteint sur la moitié extérieure du disque. Mélange additif,
+ * sans tone mapping : les points se cumulent comme la lumière des étoiles ; uOpacity porte le fondu de la couche.
+ * uGain multiplie la valeur affichée, après l'encodage sRGB, c'est-à-dire ce que le mélange additif cumule :
+ * la galaxie l'abaisse quand elle rapetisse à l'écran, pour que ses points serrés ne partent pas au blanc.
+ */
+export const POINT_CLOUD_FRAGMENT = /* glsl */ `
+uniform float uOpacity;
+uniform float uGain;
+varying vec3 vColor;
+void main() {
+  float d = length(gl_PointCoord * 2.0 - 1.0);
+  if (d > 1.0) discard;
+  float falloff = 1.0 - smoothstep(0.45, 1.0, d);
+  gl_FragColor = vec4(vColor * falloff * uOpacity, 1.0);
+  #include <colorspace_fragment>
+  gl_FragColor.rgb *= uGain;
 }
 `;

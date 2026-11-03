@@ -4,6 +4,7 @@ import {
   Color,
   DataTexture,
   DoubleSide,
+  Matrix3,
   ShaderMaterial,
   Vector2,
   Vector3,
@@ -14,15 +15,16 @@ import {
   ATMOSPHERE_VERTEX,
   CORONA_FRAGMENT,
   CORONA_VERTEX,
+  POINT_CLOUD_FRAGMENT,
+  POINT_CLOUD_VERTEX,
   RING_FRAGMENT,
   RING_VERTEX,
   SKY_FRAGMENT,
   SKY_VERTEX,
-  SUN_FRAGMENT,
-  SUN_VERTEX,
   SURFACE_FRAGMENT,
   SURFACE_VERTEX,
 } from "./shaders";
+import { createCoronaFieldTexture } from "./coronaField";
 import { SATURN_RING } from "./textureSet";
 
 /** Matériaux de la scène : shaders de shaders.ts et uniformes typés, modifiés en place par le moteur. */
@@ -217,31 +219,87 @@ export function createSkyMaterial(
   return { material, uniforms };
 }
 
-export function createSunMaterial(time: Uniform<number>): ShaderMaterial {
-  return new ShaderMaterial({ uniforms: { uTime: time }, vertexShader: SUN_VERTEX, fragmentShader: SUN_FRAGMENT });
-}
-
 export interface CoronaUniforms {
   /** Demi-côté du panneau, en unités de scène. */
   uSize: Uniform<number>;
   uSunRadius: Uniform<number>;
   /** Intensité de l'éblouissement autour du disque. */
   uGlare: Uniform<number>;
+  /** Passage du repère du monde à celui du Soleil (pôle sur y), rotation propre exclue : orientation de son maillage. */
+  uStarFrame: Uniform<Matrix3>;
+  /** Carte cuite des jets et des sites des protubérances (coronaField.ts) ; à libérer avec la scène. */
+  uField: Uniform<DataTexture>;
 }
 
+/** Uniformes que la couronne partage avec la surface du Soleil (voir starSurface.ts). */
+export interface CoronaStar {
+  uTime: Uniform<number>;
+  /** Activité, de 0 à 1 : forme des jets et nombre de protubérances. */
+  uActivity: Uniform<number>;
+  /** Vitesse de rotation affichée à l'équateur, en rad/s : jets et protubérances tournent avec la surface. */
+  uSpinRate: Uniform<number>;
+}
+
+/**
+ * Couronne, chromosphère et protubérances du Soleil (CORONA_FRAGMENT), sur un disque additif tourné vers la caméra.
+ * `lite` (écrans tactiles) : variante CORONA_LITE, sans spicules ni fibres.
+ */
 export function createCoronaMaterial(
-  time: Uniform<number>,
+  star: CoronaStar,
   size: number,
   sunRadius: number,
+  lite = false,
 ): { material: ShaderMaterial; uniforms: CoronaUniforms } {
-  const uniforms: CoronaUniforms = { uSize: { value: size }, uSunRadius: { value: sunRadius }, uGlare: { value: 0.1 } };
+  const uniforms: CoronaUniforms = {
+    uSize: { value: size },
+    uSunRadius: { value: sunRadius },
+    uGlare: { value: 0.1 },
+    uStarFrame: { value: new Matrix3() },
+    uField: { value: createCoronaFieldTexture() },
+  };
   const material = new ShaderMaterial({
-    uniforms: { ...uniforms, uTime: time },
+    uniforms: { ...uniforms, uTime: star.uTime, uActivity: star.uActivity, uSpinRate: star.uSpinRate },
+    defines: lite ? { CORONA_LITE: "" } : {},
     vertexShader: CORONA_VERTEX,
     fragmentShader: CORONA_FRAGMENT,
     blending: AdditiveBlending,
     transparent: true,
     depthWrite: false,
+  });
+  return { material, uniforms };
+}
+
+export interface PointCloudUniforms {
+  /** Poids de la couche, de 0 à 1 : il éteint les points en fondu. */
+  uOpacity: Uniform<number>;
+  /** Rapport de pixels du rendu, partagé par tous les nuages : gl_PointSize = size × uPixelRatio. */
+  uPixelRatio: Uniform<number>;
+  /** Gain sur la valeur affichée, après encodage (1 : aucun) ; la galaxie l'abaisse quand elle rapetisse à l'écran. */
+  uGain: Uniform<number>;
+}
+
+/**
+ * Nuage de points ronds à bord doux, de taille fixe à l'écran (étoiles voisines, Soleil vu de loin, galaxie).
+ * Attributs de la géométrie : position, color (linéaire, éclat compris), size (px CSS). Additif, sans écriture
+ * de profondeur ni tone mapping. Les trois nuages partagent ce programme GPU, compilé avec la scène.
+ */
+export function createPointCloudMaterial(
+  pixelRatio: Uniform<number>,
+  gain: Uniform<number> = { value: 1 },
+): {
+  material: ShaderMaterial;
+  uniforms: PointCloudUniforms;
+} {
+  const uniforms: PointCloudUniforms = { uOpacity: { value: 1 }, uPixelRatio: pixelRatio, uGain: gain };
+  const material = new ShaderMaterial({
+    uniforms: { ...uniforms },
+    vertexShader: POINT_CLOUD_VERTEX,
+    fragmentShader: POINT_CLOUD_FRAGMENT,
+    vertexColors: true,
+    blending: AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    toneMapped: false,
   });
   return { material, uniforms };
 }

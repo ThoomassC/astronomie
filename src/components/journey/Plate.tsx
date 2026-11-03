@@ -1,11 +1,12 @@
 "use client";
 
 import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { PLATE_MORE } from "@/content/site";
-import { clampToRest, restRange } from "@/lib/journey/camera";
+import { useLocale } from "@/i18n/LocaleProvider";
+import { clampToRest, restRange } from "@/lib/journey/sections";
 import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
 import { cssVars } from "./cssVars";
-import { measureSections, scrollInstantly } from "./navigation";
+import { JOURNEY_STRINGS } from "./journey.strings";
+import { measureSections, scrollInstantly, shownElements } from "./navigation";
 
 export interface PlateSection {
   key: string;
@@ -82,9 +83,11 @@ function Chevron() {
  * accordéon), « Replier » referme tout. Un dépliage amène le bouton touché sous la barre sans quitter
  * la plage de repos de l'escale ; un repli ne déplace jamais la caméra. Les boutons sont rendus dès
  * le serveur, pour que la page ne change pas de hauteur à l'hydratation. Sur grand écran, ou sans
- * JavaScript, tout est visible et les boutons sont masqués (globals.css).
+ * JavaScript, tout est visible et les boutons sont masqués (globals.css). « Replier » est dans la
+ * langue de la page ; les libellés des sections viennent de qui rend la plaque.
  */
 export function Plate({ id, name, color, header, sections, footer }: PlateProps) {
+  const t = JOURNEY_STRINGS[useLocale()];
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const articleRef = useRef<HTMLElement>(null);
   const pending = useRef<ScrollRequest | null>(null);
@@ -108,7 +111,7 @@ export function Plate({ id, name, color, header, sections, footer }: PlateProps)
       return;
     }
     const { scrollY, arrive, depart, height } = request.before;
-    const stops = document.querySelectorAll("[data-stop]");
+    const stops = shownElements("[data-stop]");
     const last = stops[stops.length - 1] === section;
     let top = scrollY;
     if (scrollY > depart) {
@@ -188,7 +191,7 @@ export function Plate({ id, name, color, header, sections, footer }: PlateProps)
         {expanded && (
           <button type="button" className="more-btn more-fold" onClick={foldAll}>
             <span>
-              {PLATE_MORE.fold}
+              {t.fold}
               <span className="sr">, {name}</span>
             </span>
             <Chevron />

@@ -1,5 +1,7 @@
 /** Unité astronomique, en kilomètres. */
 export const AU_KM = 149_597_870.7;
+/** Unités astronomiques par année-lumière (UAI : 1 al = 9 460 730 472 580,8 km). */
+export const AU_PER_LIGHT_YEAR = 63_241.077;
 /** Temps mis par la lumière pour parcourir 1 UA, en secondes. */
 export const LIGHT_SECONDS_PER_AU = 499.004784;
 export const DAY_MS = 86_400_000;
@@ -17,4 +19,10 @@ export interface Vec3 {
   z: number;
 }
 
-export type ParseResult = { ok: true; value: number } | { ok: false; error: string };
+/**
+ * Saisie refusée, décrite par sa forme et non par une phrase : texte illisible, ou nombre hors des bornes incluses
+ * `min`..`max`. Le module qui affiche le champ en écrit le message, dans sa langue.
+ */
+export type ParseError = { kind: "format" } | { kind: "range"; min: number; max: number };
+
+export type ParseResult = { ok: true; value: number } | { ok: false; error: ParseError };

@@ -18,17 +18,21 @@ import {
   Vector3,
   type Texture,
 } from "three";
+import { J2000_JD } from "@/lib/astro/constants";
+import { julianDate } from "@/lib/astro/ephemeris";
 import { sceneFromGalactic } from "@/lib/astro/galactic";
 import { ROTATION } from "@/lib/astro/orientation";
 import { SUN, type Planet, type PlanetKey } from "@/lib/astro/planets";
-import { sceneRadius } from "@/lib/astro/scale";
+import { REAL_SCALE_SUN_SHRINK, sceneRadius } from "@/lib/astro/scale";
+import { SUN_ROTATION, solarActivity, solarRotationRate, sunspotLatitude } from "@/lib/astro/solarCycle";
+import { getClock } from "@/lib/sim/clock";
+import { orientAxis } from "./axes";
 import { rawColor } from "./color";
 import {
   createAtmosphereMaterial,
   createCoronaMaterial,
   createRingMaterial,
   createSkyMaterial,
-  createSunMaterial,
   createSurfaceMaterial,
   type AtmosphereUniforms,
   type CoronaUniforms,
@@ -37,7 +41,14 @@ import {
   type SurfaceUniforms,
   type Uniform,
 } from "./materials";
-import { TAU, clamp, lerp } from "./math";
+import { DEG, TAU, clamp, lerp } from "./math";
+import {
+  SUN_SURFACE,
+  createStarSurfaceMaterial,
+  placeStarspots,
+  type StarSurfaceUniforms,
+  type StarspotField,
+} from "./starSurface";
 import { SATURN_RING } from "./textureSet";
 import { uranusRingTexture } from "./textures";
 
@@ -108,7 +119,12 @@ export interface SkyBody {
   /** Sphère de la Voie lactée, orientée en coordonnées galactiques. */
   milkyWay: Mesh<SphereGeometry, ShaderMaterial>;
   uniforms: SkyUniforms;
+  /** Couches d'étoiles de fond, atténuées avec le ciel. */
+  layers: readonly Points<BufferGeometry, PointsMaterial>[];
 }
+
+/** Intensité de la Voie lactée photographiée, ciel entier. */
+export const SKY_INTENSITY = 1.1;
 
 /**
  * Oriente la sphère pour que ses UV lisent la carte galactique telle quelle (u = 0,5 − l/360°,
@@ -128,14 +144,26 @@ function orientMilkyWay(sphere: Mesh): void {
 /** Ciel : la Voie lactée photographiée (lueur diffuse) sous des étoiles ponctuelles, nettes à tout grossissement. */
 export function createSky(placeholder: Texture): SkyBody {
   // Carte de 256 × 128 lue presque à son plein niveau : les étoiles s'y fondent, la bande reste.
-  const { material, uniforms } = createSkyMaterial(placeholder, 0.2, 1.1);
+  const { material, uniforms } = createSkyMaterial(placeholder, 0.2, SKY_INTENSITY);
   const milkyWay = new Mesh(new SphereGeometry(STAR_SPHERE_RADIUS * 1.05, 64, 32), material);
   orientMilkyWay(milkyWay);
   // Dessinée après les astres opaques : la profondeur écarte les pixels qu'ils cachent.
   milkyWay.renderOrder = 1;
+  const layers = [starLayer(2600, 1.25, false), starLayer(1800, 1.05, true), starLayer(160, 2.4, false)];
   const group = new Group();
-  group.add(milkyWay, starLayer(2600, 1.25, false), starLayer(1800, 1.05, true), starLayer(160, 2.4, false));
-  return { group, milkyWay, uniforms };
+  group.add(milkyWay, ...layers);
+  return { group, milkyWay, uniforms, layers };
+}
+
+/**
+ * Atténue le ciel vu depuis le système solaire (poids de 0 à 1) : intensité de la Voie lactée photographiée
+ * = SKY_INTENSITY × poids, opacité des étoiles de fond = poids. À poids nul, plus rien n'est dessiné ; le fond
+ * reste la couleur de la page (celle du rendu).
+ */
+export function fadeSky(sky: SkyBody, weight: number): void {
+  sky.uniforms.uIntensity.value = SKY_INTENSITY * weight;
+  for (const layer of sky.layers) layer.material.opacity = weight;
+  sky.group.visible = weight > 0;
 }
 
 // ---------- Soleil ----------
@@ -144,34 +172,88 @@ export function createSky(placeholder: Texture): SkyBody {
 const CORONA_SIZE = [95, 30] as const;
 
 export interface SunBody {
+  /** Surface, axe y local sur le pôle de rotation du Soleil. */
   mesh: Mesh<SphereGeometry, ShaderMaterial>;
   /** Uniforme du temps, partagé par la surface et la couronne. */
   time: Uniform<number>;
+  /** Uniformes de la surface : activité et taches, tenues à jour avant chaque image où le Soleil paraît. */
+  surface: StarSurfaceUniforms;
   corona: Mesh<RingGeometry, ShaderMaterial>;
   coronaUniforms: CoronaUniforms;
+  /** Règle activité et taches sur la date simulée et le temps affiché ; appelée d'elle-même avant chaque image. */
+  update: () => void;
 }
 
-export function createSun(): SunBody {
+/** Écran tactile (téléphone, tablette) : variantes allégées de la surface et de la couronne, qui peuvent remplir l'écran. */
+function coarsePointer(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+}
+
+/**
+ * Rotation affichée du Soleil à une latitude (rad), en rad/s : celle de l'équateur (SUN_SURFACE.spin), ralentie vers
+ * les pôles dans le rapport de la vraie rotation différentielle (24,5 jours à l'équateur, 34 jours aux pôles).
+ */
+function sunSpin(latitude: number): number {
+  return (SUN_SURFACE.spin * solarRotationRate(latitude / DEG)) / solarRotationRate(0);
+}
+
+/**
+ * Soleil : surface d'étoile (préréglage SUN_SURFACE), pôle de rotation à sa place (UAI, 7,25° de l'écliptique),
+ * couronne. Juste avant chaque image où il paraît, l'activité et la latitude des taches suivent la date simulée
+ * (`date`, en ms Unix : l'horloge de la page par défaut) et les taches le temps affiché ; rien n'est recalculé si
+ * ni l'une ni l'autre n'a bougé.
+ */
+export function createSun(date: () => number = () => getClock().now()): SunBody {
   const time = { value: 0 };
-  const { material, uniforms } = createCoronaMaterial(time, CORONA_SIZE[0], SUN.displayRadius);
-  // Disque plutôt que carré : les coins, invisibles, ne coûtent plus rien. 256 secteurs pour les jets.
-  const corona = new Mesh(new RingGeometry(0.01, 1, 256, 1), material);
+  const lite = coarsePointer();
+  const { material, uniforms: surface } = createStarSurfaceMaterial({
+    ...SUN_SURFACE,
+    spotGroups: lite ? 8 : SUN_SURFACE.spotGroups,
+    time,
+    lite,
+  });
+  // 96 × 64 : silhouette lisse jusqu'à 2,5 rayons (moins d'un demi-pixel d'écart), pointage à la souris resté léger.
+  const mesh = new Mesh(new SphereGeometry(SUN.displayRadius, 96, 64), material);
+  orientAxis(mesh, SUN_ROTATION, J2000_JD, new Vector3());
+
+  const { material: coronaMaterial, uniforms } = createCoronaMaterial(surface, CORONA_SIZE[0], SUN.displayRadius, lite);
+  // Du monde au repère du Soleil : la transposée (l'inverse) de l'orientation du maillage, fixe.
+  uniforms.uStarFrame.value.setFromMatrix4(new Matrix4().makeRotationFromQuaternion(mesh.quaternion)).transpose();
+  // Disque plutôt que carré : les coins, invisibles, ne coûtent plus rien. Les jets se lisent dans une carte cuite.
+  const corona = new Mesh(new RingGeometry(0.01, 1, 96, 1), coronaMaterial);
   // Disque orienté dans le shader : sa sphère englobante ne dit rien de sa taille réelle.
   corona.frustumCulled = false;
-  return {
-    mesh: new Mesh(new SphereGeometry(SUN.displayRadius, 64, 40), createSunMaterial(time)),
-    time,
-    corona,
-    coronaUniforms: uniforms,
+
+  let shownDate = Number.NaN;
+  const field: StarspotField = { time: Number.NaN, activity: 0, latitude: 0, spin: sunSpin };
+  const update = () => {
+    const ms = date();
+    if (ms === shownDate && time.value === field.time) return;
+    if (ms !== shownDate) {
+      const jd = julianDate(ms);
+      field.activity = surface.uActivity.value = solarActivity(jd);
+      field.latitude = sunspotLatitude(jd) * DEG;
+      shownDate = ms;
+    }
+    field.time = time.value;
+    placeStarspots(surface, field);
   };
+  // Avant le dessin de la surface ; la couronne aussi, pour le cas où le disque sort du champ.
+  mesh.onBeforeRender = update;
+  corona.onBeforeRender = update;
+  return { mesh, time, surface, corona, coronaUniforms: uniforms, update };
 }
 
-/** Taille du Soleil et de sa couronne pour une échelle donnée (0 compressée, 1 réelle). */
-export function scaleSun(sun: SunBody, realScale: number): void {
-  const shrink = lerp(1, 0.05, realScale);
+/**
+ * Taille du Soleil et de sa couronne pour une échelle donnée (0 compressée, 1 réelle). La couronne est tracée
+ * en espace vue, hors de la matrice de son groupe : la réduction du zoom cosmique (`zoomScale`, 10^−zoom) s'y
+ * applique ici ; le maillage, lui, la reçoit du groupe du système solaire. Sans zoom (1) : tailles d'avant.
+ */
+export function scaleSun(sun: SunBody, realScale: number, zoomScale = 1): void {
+  const shrink = lerp(1, REAL_SCALE_SUN_SHRINK, realScale);
   sun.mesh.scale.setScalar(shrink);
-  sun.coronaUniforms.uSunRadius.value = SUN.displayRadius * shrink;
-  sun.coronaUniforms.uSize.value = lerp(CORONA_SIZE[0], CORONA_SIZE[1], realScale);
+  sun.coronaUniforms.uSunRadius.value = SUN.displayRadius * shrink * zoomScale;
+  sun.coronaUniforms.uSize.value = lerp(CORONA_SIZE[0], CORONA_SIZE[1], realScale) * zoomScale;
 }
 
 // ---------- Planètes ----------

@@ -1,6 +1,6 @@
-import type { ModuleKind } from "@/content/stops";
 import { KeplerAreas } from "./KeplerAreas";
 import { LightRace } from "./LightRace";
+import type { ModuleKind } from "./moduleKind";
 import { NeptuneYear } from "./NeptuneYear";
 import { PlanetSizes } from "./PlanetSizes";
 import { SaturnRings } from "./SaturnRings";

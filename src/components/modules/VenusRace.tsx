@@ -1,13 +1,18 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useLocale } from "@/i18n/LocaleProvider";
+import type { Locale } from "@/i18n/locales";
+import { withUnit } from "@/i18n/units";
 import { PLANET_BY_KEY, SUN } from "@/lib/astro/planets";
 import { formatNumber } from "@/lib/format";
+import { COMMON_STRINGS } from "./common.strings";
 import { ModuleCanvas } from "./ModuleCanvas";
 import { INK, TAU } from "./paint";
 import { StatusMessage } from "./StatusMessage";
 import { useAnnouncer } from "./useAnnouncer";
 import { useCanvasModule, type CanvasFrame, type CanvasSize } from "./useCanvasModule";
+import { VENUS_RACE_STRINGS } from "./venusRace.strings";
 import styles from "./modules.module.css";
 
 const SIZE: CanvasSize = { width: 560, height: 236 };
@@ -23,31 +28,38 @@ const DAYS_PER_S = 28;
 const FLASH_FADE_PER_S = 0.8;
 
 type Phase = "idle" | "running" | "paused" | "done";
-const PLAY_LABEL: Record<Phase, string> = {
-  idle: "Lancer la course",
-  running: "Pause",
-  paused: "Reprendre",
-  done: "Relancer",
-};
 
-const YEAR_READOUT = "Jour 224,7 : l'année de Vénus est bouclée. Sa rotation n'en est qu'à 92 %.";
-const ROTATION_READOUT =
-  "Jour 243 : Vénus a enfin fait un tour sur elle-même. Son jour sidéral dure plus longtemps que son année. Du lever au lever du Soleil, il s'écoule 117 jours.";
+/** Part d'un tour en pour cent entier, tronquée et plafonnée à 100 : « 92 % », « 92% ». */
+const percent = (fraction: number, locale: Locale) =>
+  withUnit(formatNumber(Math.floor(Math.min(1, fraction) * 100), 0, locale), "percent", locale);
 
-const percent = (fraction: number) => Math.floor(Math.min(1, fraction) * 100);
+/** Numéro du jour (entier) : « Jour 12 », « Day 12 ». */
+const dayText = (days: number, locale: Locale) =>
+  VENUS_RACE_STRINGS[locale].day(formatNumber(Math.floor(days), 0, locale));
 
 /** État lu à la pause : le compteur de jours et les cadrans ne sont dessinés que sur le canvas. */
-const pauseText = (days: number) =>
-  `Jour ${formatNumber(Math.floor(days))} : ${percent(days / YEAR_DAYS)} % du tour du Soleil, ${percent(
-    days / ROTATION_DAYS,
-  )} % du tour sur elle-même.`;
+const pauseText = (days: number, locale: Locale) =>
+  VENUS_RACE_STRINGS[locale].paused(
+    dayText(days, locale),
+    percent(days / YEAR_DAYS, locale),
+    percent(days / ROTATION_DAYS, locale),
+  );
 
 /** 3. Vénus : l'année contre la rotation, sur deux cadrans menés par la même horloge. */
 export function VenusRace() {
+  const locale = useLocale();
+  const t = VENUS_RACE_STRINGS[locale];
+  const common = COMMON_STRINGS[locale];
+  const playLabel: Record<Phase, string> = {
+    idle: t.start,
+    running: common.pause,
+    paused: common.resume,
+    done: common.restart,
+  };
   const [phase, setPhase] = useState<Phase>("idle");
   /** L'étiquette « Année bouclée » s'estompe : l'animation continue jusqu'à son extinction. */
   const [flashing, setFlashing] = useState(false);
-  const [readout, setReadout] = useState("Jour 0.");
+  const [readout, setReadout] = useState(() => `${dayText(0, locale)}.`);
   const { message, announce } = useAnnouncer();
   /** Jours écoulés, course en cours, opacité de l'étiquette « Année bouclée ». */
   const race = useRef({ days: 0, run: false, flash: 0 });
@@ -60,13 +72,13 @@ export function VenusRace() {
       if (before < YEAR_DAYS && s.days >= YEAR_DAYS) {
         s.flash = 1;
         setFlashing(true);
-        setReadout(YEAR_READOUT);
+        setReadout(t.yearReadout);
       }
       if (s.days >= ROTATION_DAYS) {
         s.run = false;
         setPhase("done");
-        setReadout(ROTATION_READOUT);
-        announce(ROTATION_READOUT);
+        setReadout(t.rotationReadout);
+        announce(t.rotationReadout);
       }
     }
     s.flash = Math.max(0, s.flash - dt * FLASH_FADE_PER_S);
@@ -74,6 +86,10 @@ export function VenusRace() {
 
     const r = Math.min(w * 0.18, h * 0.3);
     const y = h * 0.44;
+    const x1 = w * 0.27;
+    const x2 = w * 0.73;
+    // Les libellés de chaque cadran, centrés, tiennent dans l'écart entre les deux centres.
+    const labelWidth = x2 - x1 - 12;
     c.clearRect(0, 0, w, h);
     const dial = (x: number, frac: number, label: string, sub: string, done: boolean) => {
       c.strokeStyle = "rgba(236,229,211,.12)";
@@ -85,16 +101,14 @@ export function VenusRace() {
       c.beginPath();
       c.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, frac));
       c.stroke();
-      p.text(label, x, y + r + 26, { align: "center", weight: 700, size: 12.5 });
-      p.text(sub, x, y + r + 42, { align: "center", size: 11.5, color: INK.brume });
-      p.text(`${percent(frac)} %`, x, y + r * 0.62, { align: "center", size: 12, color: INK.brume });
+      p.text(label, x, y + r + 26, { align: "center", weight: 700, size: 12.5, maxWidth: labelWidth });
+      p.text(sub, x, y + r + 42, { align: "center", size: 11.5, color: INK.brume, maxWidth: labelWidth });
+      p.text(percent(frac, locale), x, y + r * 0.62, { align: "center", size: 12, color: INK.brume });
     };
-    const x1 = w * 0.27;
-    const x2 = w * 0.73;
     const yearFrac = s.days / YEAR_DAYS;
     const rotationFrac = s.days / ROTATION_DAYS;
-    dial(x1, yearFrac, "Un tour du Soleil", "224,7 jours", yearFrac >= 1);
-    dial(x2, rotationFrac, "Un tour sur elle-même", "243 jours, dans l’autre sens", rotationFrac >= 1);
+    dial(x1, yearFrac, t.orbit, t.orbitDays, yearFrac >= 1);
+    dial(x2, rotationFrac, t.spin, t.spinDays, rotationFrac >= 1);
 
     // À gauche : Vénus autour du Soleil.
     p.dot(x1, y, 7, SUN.color);
@@ -119,10 +133,10 @@ export function VenusRace() {
     c.stroke();
     p.dot(handX, handY, 3.5, INK.soleil);
 
-    p.text(`Jour ${formatNumber(Math.floor(s.days))}`, w / 2, 22, { align: "center", weight: 700, size: 14 });
+    p.text(dayText(s.days, locale), w / 2, 22, { align: "center", weight: 700, size: 14 });
     if (s.flash > 0) {
       c.globalAlpha = s.flash;
-      p.text("Année bouclée", x1, y - r - 14, { align: "center", weight: 700, color: INK.soleil });
+      p.text(t.yearDone, x1, y - r - 14, { align: "center", weight: 700, color: INK.soleil, maxWidth: labelWidth });
       c.globalAlpha = 1;
     }
   };
@@ -133,15 +147,15 @@ export function VenusRace() {
     if (s.days >= ROTATION_DAYS) s.days = 0;
     s.run = !s.run;
     setPhase(s.run ? "running" : s.days > 0 ? "paused" : "idle");
-    if (!s.run) announce(pauseText(s.days));
+    if (!s.run) announce(pauseText(s.days, locale));
   };
 
   return (
     <>
-      <ModuleCanvas {...canvas} label="Deux cadrans : l'année de Vénus et sa rotation" />
+      <ModuleCanvas {...canvas} label={t.canvasLabel} />
       <div className="ctrls">
         <button className="chip" type="button" id="venus-race-play" onClick={togglePlay}>
-          {PLAY_LABEL[phase]}
+          {playLabel[phase]}
         </button>
       </div>
       <p className={`readout ${styles.reserve}`} id="venus-race-readout" aria-live="off">
