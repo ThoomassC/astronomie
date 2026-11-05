@@ -159,6 +159,31 @@ describe("updateBlackHoles", () => {
     expect(lenses.length).toBeLessThanOrEqual(MAX_STARFIELD_LENSES);
   });
 
+  it("devrait n'en garder que les quatre plus grands à l'écran quand cinq trous noirs sont dessinés", () => {
+    const holes = COMPARED_OBJECTS.filter((object) => object.kind === "black-hole");
+    const objects = [...holes, holes[0]];
+    const placed = objects.map((object, i) => ({ key: object.key, radius: 1, extent: 10, x: -100 * i }));
+    const { items } = createSizesObjects(objects, placed, {
+      time: { value: 0 },
+      lite: false,
+      sunSpots: null,
+      starfield: createStarfieldBackground().uniforms,
+    });
+    showObjects(items, 4, 4, 0);
+    const camera = new PerspectiveCamera();
+    camera.position.set(0, 0, 1000);
+    camera.updateMatrixWorld();
+    const radii = [5, 1, 4, 3, 2];
+    const lenses = updateBlackHoles(items, camera, radii);
+    const local = (index: number) => {
+      const item = items[index];
+      if (item.kind !== "black-hole") throw new Error("Trou noir attendu");
+      return item.hole.cameraLocal;
+    };
+    expect(lenses).toHaveLength(MAX_STARFIELD_LENSES);
+    expect(lenses.map((lens) => lens.cameraLocal)).toEqual([0, 2, 3, 4].map(local));
+  });
+
   it("ne devrait rien donner pour un trou noir qui n'est pas dessiné", () => {
     const { items } = build();
     showObjects(items, 1, 1, 0);

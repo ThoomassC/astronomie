@@ -231,11 +231,14 @@ describe("nombres des textes des trous noirs", () => {
     const hole = COMPARED_BLACK_HOLE_BY_KEY["cosmic-horseshoe"];
     expect(hole.massSolar / COMPARED_BLACK_HOLE_BY_KEY["sagittarius-a-star"].massSolar).toBeGreaterThan(8000);
     expect(Math.round((hole.lightTravelYears ?? 0) / 1e9)).toBe(5);
+    // Le nombre et son mot : « 5 » seul se trouverait partout.
+    const BILLIONS = { fr: "milliards", en: "billion", es: "millones" } as const;
     for (const locale of LOCALES) {
       const scale = locale === "es" ? 1e6 : 1e9;
-      expect(text(locale, "cosmic-horseshoe")).toContain(n(hole.massSolar / scale, locale));
+      const billions = (value: number) => `${n(value / scale, locale)} ${BILLIONS[locale]}`;
+      expect(text(locale, "cosmic-horseshoe")).toContain(billions(hole.massSolar));
       expect(text(locale, "cosmic-horseshoe")).toContain(n(8000, locale));
-      expect(text(locale, "cosmic-horseshoe")).toContain(n(5e9 / scale, locale));
+      expect(text(locale, "cosmic-horseshoe")).toContain(billions(5e9));
     }
   });
 });
