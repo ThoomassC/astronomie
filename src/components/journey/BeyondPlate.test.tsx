@@ -26,6 +26,12 @@ const textsOf = (root: ParentNode, selector: string) =>
   Array.from(root.querySelectorAll(selector), (element) => element.textContent);
 
 describe("BeyondPlate", () => {
+  it("devrait mener, au bas de la plaque, à Neptune et aux étoiles voisines", () => {
+    const plate = renderBeyond("en");
+    expect(within(plate).getByRole("link", { name: "Previous stop: Neptune" })).toHaveAttribute("href", "#neptune");
+    expect(within(plate).getByRole("link", { name: "Next stop: Nearby stars" })).toHaveAttribute("href", "#etoiles-voisines");
+  });
+
   it.each([
     [
       "fr",

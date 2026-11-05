@@ -76,6 +76,21 @@ describe("createScreenLayout en mise en page compacte", () => {
     expect(layout.zone()).toBeNull();
   });
 
+  /*
+   * La barre glisse hors de l'écran quand on descend (AutoHideBar) et revient quand on remonte : le cadrage la lit à
+   * sa place de repos, sans quoi l'astre bougerait à chaque glissement.
+   */
+  it("devrait garder la bande sous la barre à sa place de repos quand elle glisse hors de l'écran", () => {
+    const bar = document.createElement("header");
+    bar.style.position = "fixed";
+    bar.style.transform = "matrix(1, 0, 0, 1, 0, -64)";
+    stubBox(bar, { top: -64, width: 375, height: 64 });
+    const layout = createScreenLayout(elements({ bar }));
+    layout.measure(PHONE);
+    layout.settle(1 / 60, false);
+    expect(layout.band("sun")).toEqual(freeBand(812, 64, { height: 200, bottom: 82 }));
+  });
+
   it("devrait garder la mesure repliée d'une plaque dépliée : la caméra ne bouge pas", () => {
     const plate = stickyPlate();
     const layout = createScreenLayout(elements({ plates: new Map([["sun", plate]]) }));

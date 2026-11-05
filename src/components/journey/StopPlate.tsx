@@ -7,6 +7,7 @@ import { bodyName } from "@/i18n/names";
 import { STOP_IDS } from "@/lib/journey/stopIds";
 import { LiveDistance } from "./LiveDistance";
 import { Plate } from "./Plate";
+import { JourneySteps } from "./StopSteps";
 
 /**
  * « L'étoile au centre », ou « 1ʳᵉ / 3ᵉ planète en partant du Soleil » : le rang en chiffres et sa marque ordinale
@@ -29,7 +30,8 @@ function Rank({ ordinal, label }: { ordinal?: Ordinal; label: string }) {
 
 /**
  * Escale d'un astre, dans la langue de la page : plaque de lecture, fiche avec la ligne « ce jour », module
- * explicatif. Sur téléphone, la fiche et le module se déplient à la demande pour laisser voir l'astre.
+ * explicatif. Sur téléphone, la fiche et le module se déplient à la demande pour laisser voir l'astre, et les escales
+ * voisines ferment la plaque.
  */
 export function StopPlate({ locale, stop }: { locale: Locale; stop: BodyStopStructure }) {
   const content = getVoyageContent(locale);
@@ -93,6 +95,7 @@ export function StopPlate({ locale, stop }: { locale: Locale; stop: BodyStopStru
             ),
           },
         ]}
+        footer={<JourneySteps stop={stop.key} locale={locale} />}
       />
     </section>
   );

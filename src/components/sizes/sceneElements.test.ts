@@ -25,6 +25,7 @@ describe("shownSceneLayout", () => {
         <header class="bar" data-owner="tailles"></header>
         <nav id="rail" data-owner="tailles"></nav>
         <main>
+          <section data-stop="intro" data-owner="tailles"><h1>Étoiles et trous noirs</h1></section>
           <section data-stop="sun"><article class="plate" data-owner="tailles"></article></section>
           <section data-stop="betelgeuse"><article class="plate" data-owner="tailles"></article></section>
         </main>
@@ -57,7 +58,13 @@ describe("shownSceneLayout", () => {
     expect(shownSceneLayout().plates.size).toBe(0);
   });
 
-  it("devrait se passer de barre et de règle quand la page n'en a pas", () => {
-    expect(shownSceneLayout()).toEqual({ bar: null, rail: null, plates: new Map() });
+  /* Le texte de l'introduction passe devant la scène : ses étiquettes ne s'affichent pas dessous. */
+  it("devrait prendre l'introduction de la page affichée", () => {
+    voyageHiddenThenSizes();
+    expect(shownSceneLayout().intro).toHaveAttribute("data-owner", "tailles");
+  });
+
+  it("devrait se passer de barre, de règle et d'introduction quand la page n'en a pas", () => {
+    expect(shownSceneLayout()).toEqual({ bar: null, rail: null, intro: null, plates: new Map() });
   });
 });

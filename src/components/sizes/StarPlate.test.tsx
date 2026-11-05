@@ -91,7 +91,15 @@ describe("StarPlate de Bételgeuse, en anglais", () => {
 
   it("ne devrait proposer aucun lien de retour quand la page n'en donne pas", () => {
     renderBetelgeuse();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Back to the smallest" })).not.toBeInTheDocument();
+  });
+
+  /* Sur téléphone, d'astre en astre sans ouvrir le menu : les liens ferment la plaque. */
+  it("devrait mener, au bas de la plaque, à Antares A et à VY Canis Majoris", () => {
+    const { container } = renderBetelgeuse();
+    expect(container.querySelector(".plate")?.lastElementChild).toHaveClass("stop-steps");
+    expect(screen.getByRole("link", { name: "Previous object: Antares A" })).toHaveAttribute("href", "#antares-a");
+    expect(screen.getByRole("link", { name: "Next object: VY Canis Majoris" })).toHaveAttribute("href", "#vy-canis-majoris");
   });
 });
 

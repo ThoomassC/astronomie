@@ -132,4 +132,8 @@ export const SIZES_EN: SizesContent = {
   },
   thermo: { cooler: "cooler", hotter: "hotter" },
   plate: { story: "Read the fact sheet", restart: "Back to the smallest", sources: "Sources:" },
+  steps: {
+    previous: (name) => `Previous object: ${name}`,
+    next: (name) => `Next object: ${name}`,
+  },
 };

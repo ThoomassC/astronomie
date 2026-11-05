@@ -134,4 +134,8 @@ export const SIZES_FR: SizesContent = {
   },
   thermo: { cooler: "plus froide", hotter: "plus chaude" },
   plate: { story: "Lire la fiche", restart: "Revenir au plus petit", sources: "Sources :" },
+  steps: {
+    previous: (name) => `Astre précédent : ${name}`,
+    next: (name) => `Astre suivant : ${name}`,
+  },
 };

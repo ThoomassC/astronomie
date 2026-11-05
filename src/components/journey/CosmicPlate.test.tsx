@@ -96,6 +96,15 @@ describe("l'escale du multivers", () => {
     expect(region.querySelector("p, h2")).toBe(warning);
   });
 
+  it("devrait ne mener qu'à l'Univers observable, après « Revenir au Soleil » : c'est la dernière escale", () => {
+    renderStops("fr");
+    const links = within(section(STOP_IDS.multiverse)).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("aria-label") ?? link.textContent)).toEqual([
+      getCosmicContent("fr").plate.back,
+      "Escale précédente\u00a0: Univers observable",
+    ]);
+  });
+
   it.each(LOCALES)("ne devrait afficher d'avertissement d'hypothèse qu'au multivers (%s)", (locale) => {
     renderStops(locale);
     expect(document.querySelectorAll(".hypothesis")).toHaveLength(1);

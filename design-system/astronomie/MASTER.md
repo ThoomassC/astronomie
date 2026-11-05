@@ -83,6 +83,14 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   de l'au-delà y est centrée. Écran court (≤ 700 px de haut) : plaque plus serrée. Sur grand écran
   ou sans JavaScript, tout est visible et les boutons sont masqués ; sur grand écran, l'astre est
   centré dans la zone libre entre la plaque et la règle, et recule s'il n'y tient pas.
+  **Escales voisines** (mise en page compacte seulement : ailleurs, la règle suffit) : la plaque se ferme sur deux
+  liens, « ← Vénus » à gauche, « Mars → » à droite : pilules de 44 px au filet `--filet` (en retrait des
+  titres-boutons), flèche en laiton, nom court de la barre ; le nom accessible dit le sens et le nom entier
+  (« Escale suivante : Mars », « Astre suivant : Trou noir du Fer à cheval cosmique »). Défilement doux vers
+  l'escale, immédiat en mouvement réduit. Ni précédente à la première escale (la vue d'ensemble n'en est pas une), ni
+  suivante à la dernière, dont la plaque ramène déjà au départ. Quand les deux ne tiennent pas côte à côte, la
+  suivante passe dessous, toujours à droite ; aucun nom n'est coupé. L'interlude de la ceinture, escale de la règle,
+  les a aussi, sous sa citation, sur le fond `.92` des pilules.
 - **Accueil** : sur téléphone, le bouton « Partir du Soleil » est visible sans défiler, au-dessus du
   dock ; la date de départ passe sous les boutons.
 - **Fiche** : grille 2 colonnes `dt` / `dd`, une ligne « ce jour » recalculée avec la date simulée.
@@ -117,7 +125,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   n'apparaisse) ; « Centre de la Galaxie » se lit sous son repère : à la même hauteur à l'écran, les deux textes
   ne se rencontrent jamais. Cercles de distance 5 et 10 al en laiton, étiquette 0,8125 rem, posée au premier point
   libre du cercle (côté opposé au Soleil d'abord, puis les côtés), sur une graduation de laiton de 2 × 9 px :
-  jamais l'anneau d'une étoile. Au-delà de la Voie lactée, mêmes textes à halo : les galaxies du Groupe local par leur
+  jamais l'anneau d'une étoile. Libre veut dire à 8 px au moins de toute autre étiquette, graduation comprise : « 5 al »
+  ne se lit jamais collé à « Soleil » ; sinon, plus loin sur le cercle. Au-delà de la Voie lactée, mêmes textes à halo : les galaxies du Groupe local par leur
   nom, puis « Toile cosmique », « Fond diffus cosmologique » et « Notre univers observable » ; les autres univers ont
   un repère en pointillés et un nom en italique qui dit l'hypothèse (« D'autres univers ? (hypothèse) »).
 - **Ciel profond (scène)** : étoiles voisines aux couleurs de leur classe, cœur de 3,5 à 10 px selon leur magnitude
@@ -154,8 +163,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   règle des tailles suit le même modèle. Là où elle n'a plus que des pastilles (860 px et moins), en mise en page
   compacte et sur écran bas (546 px de haut et moins : téléphone en paysage, zoom à 400 %), elle laisse sa place au menu
   **Escales** : le nom de l'escale en cours (« Escales » à l'accueil), dans la barre, ouvre la liste des escales
-  (pastille creuse, pleine pour l'escale en cours, nom, distance, lignes de 44 px). Sur écran bas, la barre suit la
-  page et la liste s'ouvre en haut de page. Sans JavaScript, la règle reste.
+  (pastille creuse, pleine pour l'escale en cours, nom, distance, lignes de 44 px). Sur écran bas, la liste s'ouvre
+  sous la barre, restée fixe, et défile en elle-même jusqu'au bas de la vue. Sans JavaScript, la règle reste.
 - **Note d'échelle** : encart `--r-md` bordé `--soleil`, visible avec les distances réelles ; au-dessus
   du dock ; en mise en page compacte, en haut sous la barre et dans la colonne de lecture, pour ne
   couvrir ni la plaque ni la règle. Sur téléphone, elle tient sur deux lignes, l'essentiel en tête :
@@ -172,7 +181,9 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   sombre des libellés, découpée à la forme de la bulle, inverse le texte exactement là où elle passe
   (jamais de texte sombre sur fond sombre). Le dock ne passe jamais à la ligne au-dessus de 360 px :
   complet au-delà de 900 px, boutons de droite réduits à leur icône jusqu'à 761 px, compact en dessous
-  (un seul bouton de vitesse, date courte). Aux escales lointaines (des étoiles voisines au multivers), où tout
+  (un seul bouton de vitesse, date courte). Au doigt (`pointer: coarse`), chaque commande offre une cible de 44 px
+  (40 à 42 px à la souris) ; à 384 px et moins, les écarts se resserrent d'autant, et le dock tient encore sur une
+  ligne à 360 px. Aux escales lointaines (des étoiles voisines au multivers), où tout
   est déjà à l'échelle, la bascule « Distances réelles » est indisponible : atténuée (opacité 0,45, sans survol),
   toujours focalisable, `aria-disabled` avec sa raison en description (« Ici, les distances sont déjà
   réelles. ») ; un clic ne change rien et le choix revient au retour dans le système solaire. La note
@@ -182,8 +193,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Pilule de 44 px filetée `--filet-fort`, comme le menu des escales : pictogramme d'orbite en laiton, puis le
   libellé ; à 640 px et moins, le pictogramme seul, 44 × 44 (le libellé, masqué à l'œil, reste le début du nom
   accessible : « Tourner autour de Saturne »). Il suit l'escale affichée ; à la ceinture d'astéroïdes, il garde
-  sa place sans se montrer. Écran bas (téléphone en paysage, zoom à 400 %) : fixé en haut à droite, la barre lui
-  réserve 52 px. Absent sans JavaScript et sans scène 3D.
+  sa place sans se montrer. Écran bas (téléphone en paysage, zoom à 400 %) : dans la barre, fixe là aussi, il glisse
+  avec elle. Absent sans JavaScript et sans scène 3D.
 - **Exploration** : la page (barre, règle, plaques, pied de page, note d'échelle) s'efface en 0,6 s et devient
   inerte pendant que la caméra glisse vers la vue d'exploration ; tout est instantané en mouvement réduit. La page
   ne défile plus ; la scène et le dock restent. En haut, une barre en capsule, comme le dock : pastille et nom de
@@ -217,6 +228,15 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   un voile léger (`--voile` vers transparent, plus dense à 640 px et moins), pour que la scène 3D se devine dessous ;
   à l'Accueil et à À propos, où le texte défile sous la barre, `--nuit` plein jusqu'au bas des commandes puis un
   fondu sur la marge basse (0,9 rem) : rien ne se lit derrière la marque ni les onglets.
+  **Barre qui glisse** (Voyage et Tailles, là où ni règle ni fondus ne la bordent : mise en page compacte et écran
+  bas, en portrait comme en paysage) : elle glisse hors de l'écran (0,25 s, rien en mouvement réduit) après 16 px de
+  descente, revient dès 8 px de remontée, et reste affichée en haut de page, quand le focus y entre (clavier, retour
+  de l'exploration), quand la fenêtre change de largeur (rotation ; pas quand la barre d'adresse du navigateur se
+  replie) et tant qu'un de ses menus est ouvert. Sa place reste
+  réservée : la scène la lit au repos (l'astre ne bouge pas quand elle part, aucune étiquette ne se pose dessous) et
+  le focus s'arrête toujours sous elle (marges de défilement). Sur écran bas (30 rem et moins), elle reste fixe,
+  resserrée à 3,75 rem (0,5 rem autour des commandes de 44 px) ; sans JavaScript, elle y suit la page, comme celle de
+  l'Accueil et d'À propos.
 - **Choix de la langue** : le bouton de la barre montre le drapeau de la langue de la page, puis son code (« FR ») et
   le chevron ; chaque ligne de la liste (et du menu replié), le drapeau puis le nom de la langue dans sa langue ; les
   pilules sans JavaScript, le drapeau puis le code. Drapeaux en SVG (pas d'emoji : Windows ne les dessine pas),

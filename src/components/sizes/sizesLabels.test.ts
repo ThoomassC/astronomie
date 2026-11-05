@@ -5,6 +5,7 @@ import { labelJetOf } from "@/components/sizes/sizesObjects";
 import {
   discBoxes,
   frameBoxes,
+  introVeil,
   jetBoxes,
   labelOrder,
   layoutSizeLabels,
@@ -667,5 +668,93 @@ describe("layoutSizeLabels", () => {
       modes: [null, null],
     });
     expect(layout.objects.map((placement) => placement.form)).toEqual(["hidden", "hidden"]);
+  });
+});
+
+/*
+ * Texte de l'introduction (titre, promesse, bouton de départ), qui défile au-dessus de la scène : aucune étiquette ne
+ * s'affiche dessous (« Cygnus X-1 · 163 km » sur le titre, en 375 × 812). Il ne déplace rien : l'étiquette qu'il
+ * recouvrirait se masque à sa place, gardée aux autres, et revient à la même place quand il est passé.
+ */
+describe("layoutSizeLabels sous le texte de l'introduction", () => {
+  const VIEW = { width: 1000, height: 800 };
+  const metrics = metricsFor("Rigel", "74 R☉");
+  /** Un grand astre (étiquette au-dessus du limbe) et un petit, à sa droite (étiquette sur son anneau). */
+  const input = (veils?: readonly LabelBox[]) =>
+    layoutSizeLabels({
+      discs: [
+        { x: 400, y: 400, radius: 100 },
+        { x: 750, y: 400, radius: 5 },
+      ],
+      count: 2,
+      current: 0,
+      sun: 5,
+      metrics: [metrics, metrics],
+      sunMarker: null,
+      view: VIEW,
+      reserved: [],
+      modes: [null, null],
+      veils,
+    });
+  const boxOf = (placement: LabelPlacement) => {
+    if (placement.form === "hidden") throw new Error("étiquette masquée");
+    return placement.box;
+  };
+
+  it("devrait masquer l'étiquette que recouvrirait le texte, sans rien déplacer d'autre", () => {
+    const free = input();
+    const limb = boxOf(free.objects[0]);
+    const veiled = input([[limb[0] + 10, limb[1] - 30, limb[2] - 10, limb[1] + 4]]);
+    expect(veiled.objects[0]).toEqual({ form: "hidden" });
+    expect(veiled.objects[1]).toEqual(free.objects[1]);
+  });
+
+  it("ne devrait masquer aucune étiquette que le texte ne recouvre pas", () => {
+    const free = input();
+    expect(input([[0, 0, 1000, 120]])).toEqual(free);
+  });
+
+  it("devrait masquer l'étiquette d'un petit astre dont le repère passe sous le texte, même si son texte en sort", () => {
+    const free = input();
+    expect(free.objects[1].form).toBe("ring");
+    const veiled = input([[745, 395, 755, 405]]);
+    expect(veiled.objects[1]).toEqual({ form: "hidden" });
+  });
+
+  it("devrait masquer de même l'anneau « ici » du Soleil devenu un point", () => {
+    const sunIn = (veils?: readonly LabelBox[]) =>
+      layoutSizeLabels({
+        discs: [{ x: 500, y: 400, radius: 2 }],
+        count: 1,
+        current: 0,
+        sun: 0,
+        metrics: [metrics],
+        sunMarker: sunMarkerFor("fr"),
+        view: VIEW,
+        reserved: [],
+        modes: [null],
+        veils,
+      });
+    expect(sunIn().sun.form).toBe("ring");
+    expect(sunIn([[490, 390, 510, 410]]).sun).toEqual({ form: "hidden" });
+  });
+});
+
+describe("introVeil", () => {
+  /** Texte de l'introduction, en px du document : de 280 à 580 px, sur la largeur d'un téléphone. */
+  const TEXT: LabelBox = [16, 280, 359, 580];
+
+  it("devrait suivre le texte à l'écran, décalé du défilement", () => {
+    expect(introVeil(TEXT, 0, 812)).toEqual([16, 280, 359, 580]);
+    expect(introVeil(TEXT, 500, 812)).toEqual([16, -220, 359, 80]);
+  });
+
+  it("devrait disparaître dès que le texte est sorti de l'écran, par le haut comme par le bas", () => {
+    expect(introVeil(TEXT, 580, 812)).toBeNull();
+    expect(introVeil([16, 900, 359, 1200], 0, 812)).toBeNull();
+  });
+
+  it("ne devrait rien voiler sans introduction", () => {
+    expect(introVeil(null, 0, 812)).toBeNull();
   });
 });

@@ -12,6 +12,7 @@ import { COMPARED_OBJECTS } from "@/lib/sizes/objects";
 import { SIZE_STOP_IDS, sizeObjectIndex, sizeStopAnchor, type SizeStopKey } from "@/lib/sizes/stops";
 import { TEMPERATURE_SCALE_STOPS, temperatureScalePercent, temperatureTint } from "@/lib/sizes/temperature";
 import { SIZES_STRINGS } from "./sizes.strings";
+import { SizesSteps } from "./SizesSteps";
 import styles from "./SizesPage.module.css";
 
 /** Chiffres significatifs du rayon en kilomètres : les rayons mesurés ne sont pas plus précis. */
@@ -57,7 +58,8 @@ function TemperatureScale({ star, words, sunName }: { star: ComparedStar; words:
  * nom, accroche) et fiche : présentation ; rayon, avec ses kilomètres (4 chiffres significatifs) et sa fourchette
  * publiée s'il est débattu ; type ; température, sa couleur en mots et la réglette ; distance ; comparaison ; mise en
  * garde ; sources. Sur téléphone, la fiche se déplie à la demande, comme au voyage. `restartTo` ajoute sous la fiche
- * un lien vers cette escale (le plus petit astre, sur la dernière plaque).
+ * un lien vers cette escale (le plus petit astre, sur la dernière plaque) ; les astres voisins
+ * ferment la plaque (SizesSteps, téléphone).
  */
 export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; locale: Locale; restartTo?: SizeStopKey }) {
   const content = getSizesContent(locale);
@@ -151,13 +153,16 @@ export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; loc
           },
         ]}
         footer={
-          restartTo ? (
-            <div className="actions">
-              <GoToLink className="btn ghost" href={sizeStopAnchor(restartTo)} stop={restartTo}>
-                {content.plate.restart}
-              </GoToLink>
-            </div>
-          ) : undefined
+          <>
+            {restartTo ? (
+              <div className="actions">
+                <GoToLink className="btn ghost" href={sizeStopAnchor(restartTo)} stop={restartTo}>
+                  {content.plate.restart}
+                </GoToLink>
+              </div>
+            ) : null}
+            <SizesSteps object={star.key} locale={locale} />
+          </>
         }
       />
     </section>

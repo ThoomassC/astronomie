@@ -32,6 +32,11 @@ export const POINT_MARGIN = 2;
 export const LABEL_HALO_PX = 6;
 /** Air entre deux étiquettes à repère voisines, en px : elles ne se touchent jamais. */
 export const LABEL_GAP_PX = 2;
+/**
+ * Air entre l'étiquette d'un cercle de distance, graduation comprise (ringLayouts), et toute autre étiquette, en px :
+ * « 5 al » ne se lit jamais comme la suite de « Soleil ».
+ */
+export const RING_LABEL_GAP_PX = 8;
 
 const overlaps = (a: LabelBox, b: LabelBox) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
 
@@ -139,6 +144,26 @@ export function markerLayouts(metrics: MarkerMetrics): MarkerLayout[] {
     if (row) layouts.push(layout([-gap - width, top, -gap, bottom], textX + width - dotWidth / 2, true, short));
   }
   return layouts;
+}
+
+/**
+ * Dispositions de l'étiquette d'un cercle de distance (« 5 al ») : la boîte de chacune s'étend à sa graduation, repère
+ * de `dotWidth` × `dotHeight` px posé sur le cercle, centré sur l'ancre. L'air demandé (RING_LABEL_GAP_PX) écarte ainsi
+ * des autres étiquettes la graduation comme le texte, et la boîte réservée une fois posée couvre les deux. Le halo du
+ * texte (`haloBox`) ne change pas.
+ */
+export function ringLayouts(layouts: readonly MarkerLayout[], dotWidth: number, dotHeight: number): MarkerLayout[] {
+  const halfWidth = dotWidth / 2;
+  const halfHeight = dotHeight / 2;
+  return layouts.map((layout) => ({
+    ...layout,
+    box: [
+      Math.min(layout.box[0], -halfWidth),
+      Math.min(layout.box[1], -halfHeight),
+      Math.max(layout.box[2], halfWidth),
+      Math.max(layout.box[3], halfHeight),
+    ],
+  }));
 }
 
 /** Repère d'une étiquette : position projetée de l'astre (px) et profondeur (NDC, au-delà de 1 derrière la caméra). */
