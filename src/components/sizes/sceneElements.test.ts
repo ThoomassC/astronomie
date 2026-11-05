@@ -17,6 +17,7 @@ describe("shownSceneLayout", () => {
         <header class="bar" data-owner="voyage"></header>
         <nav id="rail" data-owner="voyage"></nav>
         <main>
+          <section data-stop="intro" data-owner="voyage"><h1>Une introduction masquée</h1></section>
           <section data-stop="sun"><article class="plate" data-owner="voyage"></article></section>
           <section data-stop="saturn"><article class="plate" data-owner="voyage"></article></section>
         </main>
@@ -58,8 +59,11 @@ describe("shownSceneLayout", () => {
     expect(shownSceneLayout().plates.size).toBe(0);
   });
 
-  /* Le texte de l'introduction passe devant la scène : ses étiquettes ne s'affichent pas dessous. */
-  it("devrait prendre l'introduction de la page affichée", () => {
+  /*
+   * Le texte de l'introduction passe devant la scène : ses étiquettes ne s'affichent pas dessous. Celle d'une page
+   * masquée, plus haut dans le document, n'y est pour rien.
+   */
+  it("devrait prendre l'introduction de la page affichée, pas celle d'une page masquée", () => {
     voyageHiddenThenSizes();
     expect(shownSceneLayout().intro).toHaveAttribute("data-owner", "tailles");
   });
