@@ -188,6 +188,11 @@ export interface SizeLabelsInput {
   reserved: readonly LabelBox[];
   /** Disposition de chaque étiquette à l'image précédente (hystérésis), mise à jour en place. */
   modes: (StarLabelMode | null)[];
+  /**
+   * Part visible de chaque astre près de la règle (railSideFade), 1 par défaut. Un astre tout à fait effacé (0) n'est
+   * pas dessiné : ni réservé, ni étiqueté.
+   */
+  fits?: readonly number[];
 }
 
 export interface SizeLabelsLayout {
@@ -222,14 +227,18 @@ export function frameBoxes(
  * (placeLimbLabel), sur un anneau pour un petit (placeMarkedLabel : texte à droite, à gauche, puis le nom seul), anneau
  * « ici » pour le Soleil sous 14 px. L'anneau se pose sur l'astre même : son propre point est écarté de la recherche le
  * temps de la pose, les autres non. Une étiquette qui ne tient nulle part est masquée : jamais de texte recouvert ni
- * coupé. Un astre dans lequel la caméra serait entrée (rayon infini) occupe toute la vue.
+ * coupé. Un astre tout à fait effacé près de la règle (`fits`) compte pour non dessiné. Un astre dans lequel la caméra
+ * serait entrée (rayon infini) occupe toute la vue.
  */
 export function layoutSizeLabels(input: SizeLabelsInput): SizeLabelsLayout {
-  const { discs, count, current, sun, metrics, sunMarker, view, reserved, modes } = input;
+  const { discs, count, current, sun, metrics, sunMarker, view, reserved, modes, fits } = input;
   const occupied: LabelBox[] = [...reserved];
+  /** Astre dessiné à cette image : parmi les premiers (`discs`), et pas tout à fait effacé près de la règle. */
+  const drawn = (i: number) => i < discs.length && (fits?.[i] ?? 1) > 0;
   /** Place, dans `occupied`, du point réservé de chaque petit astre (−1 : grand, ou non dessiné). */
   const ownPoint = new Array<number>(count).fill(-1);
   discs.forEach(({ x, y, radius }, i) => {
+    if (!drawn(i)) return;
     if (!Number.isFinite(radius)) {
       occupied.push([0, 0, view.width, view.height]);
     } else if (2 * radius < RESERVED_DISC_PX) {
@@ -269,7 +278,7 @@ export function layoutSizeLabels(input: SizeLabelsInput): SizeLabelsLayout {
   let sunPlacement = HIDDEN;
   for (const i of labelOrder(current, sun, count)) {
     if (i >= count) continue;
-    const disc = i < discs.length ? discs[i] : undefined;
+    const disc = drawn(i) ? discs[i] : undefined;
     if (!disc) {
       modes[i] = null;
       continue;

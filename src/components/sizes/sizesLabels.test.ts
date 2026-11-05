@@ -21,6 +21,8 @@ import { placeObjects } from "@/lib/sizes/layout";
 import { COMPARED_OBJECTS, layoutInput } from "@/lib/sizes/objects";
 import { scaleBarBox } from "@/lib/sizes/scaleBar";
 import {
+  railSideFade,
+  rightEdgePx,
   screenDisc,
   sizesFlightCamera,
   sizesRestCamera,
@@ -305,6 +307,10 @@ function measuredBoxes({ view, ctx }: View): LabelBox[] {
 function layoutAt(view: View, locale: Locale, cam: SizesCam, drawn: number, current: number) {
   const discs: ScreenDisc[] = OBJECTS.slice(0, drawn).map((object) => screenDisc(object, cam, view.ctx, view.view));
   const zone = view.ctx.zone ? { left: view.ctx.zone.left * view.view.width, right: view.ctx.zone.right * view.view.width } : null;
+  // Comme le moteur : sur grand écran, un astre qui déborde vers la règle s'efface ; tout à fait effacé, il n'est plus dessiné.
+  const fits = OBJECTS.slice(0, drawn).map((object) =>
+    zone ? railSideFade(rightEdgePx(object, cam, view.ctx, view.view.width), zone.right) : 1,
+  );
   const scale = scaleBarBox({ compact: view.compact, zone, view: view.view, barBottom: 76, discs, measured: null });
   const reserved = frameBoxes(view.view, measuredBoxes(view), view.ctx.zone, view.ctx.band, scale);
   const t = SIZES_STRINGS[locale];
@@ -320,8 +326,9 @@ function layoutAt(view: View, locale: Locale, cam: SizesCam, drawn: number, curr
     view: view.view,
     reserved,
     modes,
+    fits,
   });
-  return { layout, discs, reserved };
+  return { layout, discs, reserved, fits };
 }
 
 /** Boîtes de texte posées d'une image. */
@@ -330,10 +337,15 @@ const placedBoxes = (placements: readonly LabelPlacement[]) =>
 
 /** Ce qu'une image ne doit jamais montrer : texte hors de la vue, sur un autre texte, sur une boîte réservée, sur un astre. */
 function faults(view: View, layoutResult: ReturnType<typeof layoutAt>): string[] {
-  const { layout, discs, reserved } = layoutResult;
+  const { layout, discs, reserved, fits } = layoutResult;
   const placements = [...layout.objects, layout.sun];
   const boxes = placedBoxes(placements);
   const found: string[] = [];
+  // Un astre effacé près de la règle n'est pas dessiné : son étiquette non plus.
+  layout.objects.forEach((placement, i) => {
+    if (placement.form !== "hidden" && fits[i] === 0) found.push(`étiquette de ${COMPARED_OBJECTS[i].key}, effacé`);
+  });
+  if (layout.sun.form !== "hidden" && fits[SUN] === 0) found.push("anneau « ici » du Soleil, effacé");
   boxes.forEach((box, i) => {
     if (box[0] < 0 || box[2] > view.view.width || box[1] < 0 || box[3] > view.view.height) found.push(`hors de la vue ${box}`);
     boxes.slice(i + 1).forEach((other) => {
@@ -341,11 +353,11 @@ function faults(view: View, layoutResult: ReturnType<typeof layoutAt>): string[]
     });
     for (const other of reserved) if (overlaps(box, other)) found.push(`sur une boîte réservée ${box} / ${other}`);
   });
-  // Un texte ne recouvre aucun astre de 24 px ou plus (sa croix) ; un anneau se pose sur son propre point, petit.
+  // Un texte ne recouvre aucun astre dessiné de 24 px ou plus (sa croix) ; un anneau se pose sur son propre point, petit.
   layout.objects.forEach((placement, i) => {
     if (placement.form === "hidden") return;
     discs.forEach((disc, j) => {
-      if (2 * disc.radius < 24) return;
+      if (2 * disc.radius < 24 || fits[j] === 0) return;
       for (const cross of discBoxes(disc.x, disc.y, disc.radius)) {
         if (overlaps(placement.box, cross)) found.push(`texte de ${COMPARED_OBJECTS[i].key} sur ${COMPARED_OBJECTS[j].key}`);
       }
@@ -373,7 +385,8 @@ describe("étiquettes sur les vues de référence, au repos sur chaque escale", 
 });
 
 describe("étiquettes sur les vues de référence, pendant les vols", () => {
-  const STEPS = [0.2, 0.5, 0.8];
+  // Un pas de 5 % : un astre ne reste effacé près de la règle que sur 12 à 16 % d'un vol.
+  const STEPS = Array.from({ length: 19 }, (_, k) => (k + 1) / 20);
   const CASES = VIEWS.flatMap((view) => OBJECTS.slice(0, -1).map((object, i) => [view.name, object.key, view, i] as const));
 
   it.each(CASES)("ne devrait couper ni superposer aucun texte (%s, vol depuis %s)", (_name, key, view, i) => {
@@ -392,6 +405,48 @@ describe("étiquettes sur les vues de référence, pendant les vols", () => {
 describe("layoutSizeLabels", () => {
   const VIEW = { width: 1000, height: 800 };
   const metrics = metricsFor("Rigel", "74 R☉");
+
+  /*
+   * Vol de Rigel vers Antarès A sur grand écran, à mi-chemin : Sagittarius A*, effacé contre la règle, n'est plus
+   * dessiné ; son étiquette ne doit pas rester seule, collée à la règle.
+   */
+  it("ne devrait ni réserver ni étiqueter un astre tout à fait effacé près de la règle, et oublier sa disposition", () => {
+    const modes: (StarLabelMode | null)[] = ["ring", "ring"];
+    const layout = layoutSizeLabels({
+      discs: [
+        { x: 500, y: 400, radius: 100 },
+        { x: 900, y: 400, radius: 5 },
+      ],
+      count: 2,
+      current: 0,
+      sun: 5,
+      metrics: [metrics, metrics],
+      sunMarker: null,
+      view: VIEW,
+      reserved: [],
+      modes,
+      fits: [1, 0],
+    });
+    expect(layout.objects[0].form).toBe("limb");
+    expect(layout.objects[1]).toEqual({ form: "hidden" });
+    expect(modes[1]).toBeNull();
+  });
+
+  it("devrait encore étiqueter un astre en partie effacé : il reste dessiné", () => {
+    const layout = layoutSizeLabels({
+      discs: [{ x: 500, y: 400, radius: 5 }],
+      count: 1,
+      current: 0,
+      sun: 5,
+      metrics: [metrics],
+      sunMarker: null,
+      view: VIEW,
+      reserved: [],
+      modes: [null],
+      fits: [0.3],
+    });
+    expect(layout.objects[0].form).toBe("ring");
+  });
 
   it("ne devrait poser aucune étiquette sur un astre qui n'est pas dessiné, et oublier sa disposition", () => {
     const modes: (StarLabelMode | null)[] = ["limb", "limb"];

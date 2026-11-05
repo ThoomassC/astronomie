@@ -492,6 +492,7 @@ function setupScene(
       view,
       reserved,
       modes,
+      fits,
     });
     placements.objects.forEach((placement, i) => applyPlacement(slots[i], placement));
     if (sunSlot && placements.sun.form === "ring") {
