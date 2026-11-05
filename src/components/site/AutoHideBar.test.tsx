@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Activity, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { scrollInstantly } from "@/components/journey/navigation";
 import { AutoHideBar } from "@/components/site/AutoHideBar";
 import { CONCEAL_AFTER_PX, REVEAL_AFTER_PX } from "@/lib/site/barSlide";
 
@@ -26,6 +27,15 @@ const scrollPageTo = (y: number) => {
   fireEvent.scroll(window);
 };
 
+/**
+ * La page saute d'elle-même jusqu'à `y` px (scrollInstantly : repli d'une plaque, caméra posée avant l'exploration) ;
+ * l'événement `scroll` arrive ensuite, comme dans le navigateur.
+ */
+const jumpPageTo = (y: number) => {
+  act(() => scrollInstantly(y));
+  fireEvent.scroll(window);
+};
+
 beforeEach(() => {
   scrollY = 0;
   // Frontière navigateur : jsdom ne fait ni défiler ni mesurer.
@@ -33,6 +43,9 @@ beforeEach(() => {
   vi.stubGlobal("innerHeight", VIEW_HEIGHT);
   vi.spyOn(Element.prototype, "scrollHeight", "get").mockReturnValue(PAGE_HEIGHT);
   vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(BAR_HEIGHT);
+  vi.stubGlobal("scrollTo", ({ top }: ScrollToOptions) => {
+    scrollY = top ?? scrollY;
+  });
 });
 
 afterEach(() => {
@@ -89,6 +102,27 @@ describe("AutoHideBar", () => {
     scrollPageTo(BOTTOM);
     scrollPageTo(BOTTOM + 60);
     scrollPageTo(BOTTOM);
+    expect(banner()).toHaveAttribute("data-concealed");
+  });
+
+  /* Un saut programmé n'est pas un geste : la barre reste comme elle est, sa course repart de la nouvelle position. */
+  it("ne devrait pas revenir quand la page remonte d'elle-même en plein vol (repli d'une plaque)", () => {
+    render(<Bar />);
+    scrollPageTo(2000);
+    jumpPageTo(1400);
+    expect(banner()).toHaveAttribute("data-concealed");
+    scrollPageTo(1400 - REVEAL_AFTER_PX);
+    expect(banner()).not.toHaveAttribute("data-concealed");
+  });
+
+  it("ne devrait pas se cacher quand la page descend d'elle-même (caméra posée avant l'exploration)", () => {
+    render(<Bar />);
+    scrollPageTo(1000);
+    scrollPageTo(1000 - REVEAL_AFTER_PX);
+    expect(banner()).not.toHaveAttribute("data-concealed");
+    jumpPageTo(1800);
+    expect(banner()).not.toHaveAttribute("data-concealed");
+    scrollPageTo(1800 + CONCEAL_AFTER_PX);
     expect(banner()).toHaveAttribute("data-concealed");
   });
 

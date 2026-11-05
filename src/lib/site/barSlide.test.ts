@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CONCEAL_AFTER_PX,
   REVEAL_AFTER_PX,
+  announceScrollJump,
   followScroll,
+  onScrollJump,
+  rebaseBar,
   restingRect,
   shownBar,
   translateYOf,
@@ -69,6 +72,39 @@ describe("followScroll", () => {
   it("devrait rendre le même état quand le défilement n'a pas bougé", () => {
     const hidden = scrollThrough(500, 600);
     expect(followScroll(hidden, 600, TOP)).toBe(hidden);
+  });
+});
+
+/*
+ * Défilement programmé (scrollInstantly : repli d'une plaque, caméra posée avant l'exploration) : ce n'est pas un geste
+ * de la personne. La barre reste comme elle est, et sa course repart de la nouvelle position.
+ */
+describe("rebaseBar", () => {
+  it("devrait reprendre la position d'un saut sans changer la barre, cachée ou affichée", () => {
+    expect(rebaseBar(scrollThrough(500, 600), 300)).toEqual({ concealed: true, y: 300, travel: 0 });
+    expect(rebaseBar(scrollThrough(500, 510), 1800)).toEqual({ concealed: false, y: 1800, travel: 0 });
+  });
+
+  it("devrait compter la course suivante depuis la position reprise", () => {
+    const hidden = rebaseBar(scrollThrough(500, 600), 300);
+    expect(followScroll(hidden, 300 - REVEAL_AFTER_PX + 1, TOP).concealed).toBe(true);
+    expect(followScroll(hidden, 300 - REVEAL_AFTER_PX, TOP).concealed).toBe(false);
+  });
+});
+
+describe("onScrollJump", () => {
+  it("devrait prévenir chaque abonné d'un saut programmé, jusqu'à son désabonnement", () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const stopFirst = onScrollJump(first);
+    const stopSecond = onScrollJump(second);
+    announceScrollJump();
+    stopFirst();
+    announceScrollJump();
+    stopSecond();
+    announceScrollJump();
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(2);
   });
 });
 

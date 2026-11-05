@@ -1,6 +1,7 @@
 import { STOP_ORDER, type StopKey } from "@/lib/journey/camera";
 import { sectionRanges, type SectionBox, type SectionRange } from "@/lib/journey/sections";
 import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
+import { announceScrollJump } from "@/lib/site/barSlide";
 import { shownElements } from "@/lib/site/shown";
 
 /*
@@ -50,12 +51,14 @@ let skipSmoothing = false;
  * Défilement immédiat que la caméra ne doit pas suivre en vol : le suivi saute à la nouvelle
  * position au lieu de la rejoindre en douceur. Sans cela, sa position lissée, encore sur
  * l'ancienne, pourrait tomber hors de la plage de repos d'une section qui vient de raccourcir.
- * Interrompt aussi un défilement doux en cours.
+ * Interrompt aussi un défilement doux en cours. La barre haute en est prévenue, une fois la page
+ * à sa nouvelle position : ce saut n'est pas un geste, elle ne part ni ne revient pour lui.
  */
 export function scrollInstantly(top: number): void {
   // Sans déplacement, l'appel interrompt seulement un défilement doux en cours : rien à sauter.
   if (Math.abs(top - window.scrollY) >= 1) skipSmoothing = true;
   window.scrollTo({ top, behavior: "instant" });
+  announceScrollJump();
 }
 
 /** Lu par le suivi à chaque image : vrai une seule fois après `scrollInstantly`. */
