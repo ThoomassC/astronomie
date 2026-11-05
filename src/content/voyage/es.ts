@@ -47,6 +47,10 @@ export const VOYAGE_ES: VoyageContent = {
     start: "Partir del Sol",
   },
   plate: { story: "Leer la ficha", more: "Leer más" },
+  steps: {
+    previous: (name) => `Escala anterior: ${name}`,
+    next: (name) => `Escala siguiente: ${name}`,
+  },
   ordinal,
   bodies: {
     sun: {

@@ -7,6 +7,7 @@ import { radiusKm } from "@/lib/sizes/comparisons";
 import { COMPARED_OBJECTS, comparedRadiusSolar } from "@/lib/sizes/objects";
 import { SIZE_STOP_IDS, sizeObjectIndex, sizeStopAnchor, type SizeStopKey } from "@/lib/sizes/stops";
 import { SIZES_STRINGS, type SizesStrings } from "./sizes.strings";
+import { SizesSteps } from "./SizesSteps";
 import styles from "./SizesPage.module.css";
 
 /** Sous ce rayon, en R☉ (7 000 km), une longueur s'écrit d'abord en kilomètres, puis en R☉ : « 163 km », « 0,000234 R☉ ». */
@@ -28,7 +29,8 @@ function radiusParts(radiusSolar: number, digits: number, t: SizesStrings): { va
  * comparée, et rayon de l'horizon, chacun en R☉ et en km ; masse, avec sa fourchette publiée si elle est débattue ;
  * type ; distance, avec le temps de trajet de la lumière d'un trou noir lointain ; comparaison ; mise en garde ; ce que
  * la vue simplifie (« Rendu calculé ») ; sources. Sur téléphone, la fiche se déplie à la demande. `restartTo` ajoute
- * sous la fiche un lien vers cette escale (le plus petit astre, sur la dernière plaque).
+ * sous la fiche un lien vers cette escale (le plus petit astre, sur la dernière plaque) ; les astres voisins
+ * ferment la plaque (SizesSteps, téléphone).
  */
 export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlackHole; locale: Locale; restartTo?: SizeStopKey }) {
   const content = getSizesContent(locale);
@@ -120,13 +122,16 @@ export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlac
           },
         ]}
         footer={
-          restartTo ? (
-            <div className="actions">
-              <GoToLink className="btn ghost" href={sizeStopAnchor(restartTo)} stop={restartTo}>
-                {content.plate.restart}
-              </GoToLink>
-            </div>
-          ) : undefined
+          <>
+            {restartTo ? (
+              <div className="actions">
+                <GoToLink className="btn ghost" href={sizeStopAnchor(restartTo)} stop={restartTo}>
+                  {content.plate.restart}
+                </GoToLink>
+              </div>
+            ) : null}
+            <SizesSteps object={hole.key} locale={locale} />
+          </>
         }
       />
     </section>

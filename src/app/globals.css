@@ -1350,6 +1350,97 @@ main > section > * {
   color: var(--brume);
 }
 
+/* ---------- Escales voisines ---------- */
+/*
+ * D'escale en escale sur téléphone (StopSteps) : au bas de la plaque compacte, et sous la citation de l'interlude, un
+ * lien vers l'escale précédente (flèche, nom court) à gauche, un vers la suivante (nom court, flèche) à droite.
+ * Pilules de 44 px, en retrait des titres-boutons de la plaque (filet --filet, comme « Replier »), flèche en laiton.
+ * Un nom n'est jamais coupé : quand les deux ne tiennent pas côte à côte, la suivante passe dessous, toujours à
+ * droite ; un nom trop long pour la ligne passe lui-même à la ligne. Hors de la mise en page compacte, la règle suffit.
+ */
+.stop-steps {
+  display: none;
+}
+
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait) {
+  .stop-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .stop-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--filet);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--ivoire);
+    font-size: 0.9375rem;
+    line-height: 1.3;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    transition:
+      border-color 0.2s,
+      background-color 0.2s;
+  }
+
+  .stop-step svg {
+    flex: none;
+    color: var(--laiton);
+  }
+
+  .stop-step[data-step="next"] {
+    margin-left: auto;
+    text-align: right;
+  }
+
+  @media (hover: hover) {
+    .stop-step:hover {
+      border-color: var(--ivoire);
+    }
+  }
+
+  /* Le voile se pose sur le fond, qui reste dessous (celui de l'interlude compris). */
+  .stop-step:active {
+    background-image: linear-gradient(rgba(236, 229, 211, 0.1), rgba(236, 229, 211, 0.1));
+  }
+
+  /* Interlude : la citation, puis ses escales voisines dessous, sur le fond .92 des pilules (la scène passe dessous). */
+  .interlude {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .interlude .stop-steps {
+    max-width: 34rem;
+    margin: 1.5rem 0 0 clamp(0rem, 4vw, 4rem);
+  }
+
+  .interlude .stop-step {
+    background-color: rgba(8, 14, 32, 0.92);
+  }
+}
+
+@media (max-width: 640px) {
+  .interlude .stop-steps {
+    margin-left: 0;
+  }
+}
+
+/* Couleurs forcées : le filet, presque transparent, prend la couleur du texte. */
+@media (forced-colors: active) {
+  .stop-step {
+    border-color: CanvasText;
+  }
+}
+
 /* ---------- Au-delà : échelle en heures-lumière ---------- */
 .lightscale-title {
   font-size: 1rem;

@@ -34,6 +34,10 @@ export const VOYAGE_FR: VoyageContent = {
     start: "Partir du Soleil",
   },
   plate: { story: "Lire la fiche", more: "Lire la suite" },
+  steps: {
+    previous: (name) => `Escale précédente : ${name}`,
+    next: (name) => `Escale suivante : ${name}`,
+  },
   // Accordé à « planète », féminin : 1re, puis 2e, 3e…
   ordinal: (n) => ({ number: formatNumber(n, 0, "fr"), suffix: n === 1 ? "re" : "e" }),
   bodies: {

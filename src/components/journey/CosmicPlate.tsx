@@ -11,6 +11,7 @@ import { STOP_IDS } from "@/lib/journey/stopIds";
 import { cssVars } from "./cssVars";
 import { GoToLink } from "./GoToLink";
 import { Plate, type PlateSection } from "./Plate";
+import { JourneySteps } from "./StopSteps";
 import { stopColor } from "./stopMeta";
 
 /** Type de l'étoile en mots simples (« naine rouge ») ; le type spectral tel quel si sa classe est inconnue. */
@@ -174,11 +175,14 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
         }
         sections={sections}
         footer={
-          <div className="actions">
-            <GoToLink className="btn ghost" href={sunHref} stop="sun">
-              {content.plate.back}
-            </GoToLink>
-          </div>
+          <>
+            <div className="actions">
+              <GoToLink className="btn ghost" href={sunHref} stop="sun">
+                {content.plate.back}
+              </GoToLink>
+            </div>
+            <JourneySteps stop={stop} locale={locale} />
+          </>
         }
       />
     </section>

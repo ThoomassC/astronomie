@@ -6,6 +6,7 @@ import { cssVars } from "./cssVars";
 import { GoToLink } from "./GoToLink";
 import { Plate } from "./Plate";
 import { ScaleToggle } from "./ScaleToggle";
+import { JourneySteps } from "./StopSteps";
 
 /** L'échelle couvre 24 heures-lumière. */
 const SCALE_HOURS = 24;
@@ -81,12 +82,15 @@ export function BeyondPlate({ locale, sunHref }: { locale: Locale; sunHref: `#${
           },
         ]}
         footer={
-          <div className="actions">
-            <ScaleToggle className="btn" />
-            <GoToLink className="btn ghost" href={sunHref} stop="sun">
-              {beyond.back}
-            </GoToLink>
-          </div>
+          <>
+            <div className="actions">
+              <ScaleToggle className="btn" />
+              <GoToLink className="btn ghost" href={sunHref} stop="sun">
+                {beyond.back}
+              </GoToLink>
+            </div>
+            <JourneySteps stop="beyond" locale={locale} />
+          </>
         }
       />
     </section>

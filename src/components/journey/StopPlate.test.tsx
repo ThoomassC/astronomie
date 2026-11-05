@@ -84,6 +84,23 @@ describe("StopPlate", () => {
     expect(textOf(plate, ".rank sup")).toBe(suffix);
   });
 
+  /* Sur téléphone, d'escale en escale sans ouvrir le menu : les liens ferment la plaque, après la fiche et le module. */
+  it("devrait mener, au bas de la plaque de Saturne, à Jupiter et à Uranus", () => {
+    const plate = renderPlate("en", "saturn");
+    const steps = plate.querySelector(".plate > .stop-steps");
+    expect(steps).not.toBeNull();
+    expect(steps).toBe(plate.querySelector(".plate")?.lastElementChild);
+    expect(within(plate).getByRole("link", { name: "Previous stop: Jupiter" })).toHaveAttribute("href", "#jupiter");
+    expect(within(plate).getByRole("link", { name: "Next stop: Uranus" })).toHaveAttribute("href", "#uranus");
+  });
+
+  it("ne devrait proposer au Soleil que l'escale suivante", () => {
+    const plate = renderPlate("fr", "sun");
+    expect(within(plate).getAllByRole("link").map((link) => link.getAttribute("aria-label"))).toEqual([
+      "Escale suivante\u00a0: Mercure",
+    ]);
+  });
+
   it.each(LOCALES)("ne devrait pas donner de rang chiffré au Soleil (%s)", (locale) => {
     const plate = renderPlate(locale, "sun");
     expect(textOf(plate, ".rank")).toBe(getVoyageContent(locale).bodies.sun.rank);

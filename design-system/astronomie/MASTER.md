@@ -83,6 +83,14 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   de l'au-delà y est centrée. Écran court (≤ 700 px de haut) : plaque plus serrée. Sur grand écran
   ou sans JavaScript, tout est visible et les boutons sont masqués ; sur grand écran, l'astre est
   centré dans la zone libre entre la plaque et la règle, et recule s'il n'y tient pas.
+  **Escales voisines** (mise en page compacte seulement : ailleurs, la règle suffit) : la plaque se ferme sur deux
+  liens, « ← Vénus » à gauche, « Mars → » à droite : pilules de 44 px au filet `--filet` (en retrait des
+  titres-boutons), flèche en laiton, nom court de la barre ; le nom accessible dit le sens et le nom entier
+  (« Escale suivante : Mars », « Astre suivant : Trou noir du Fer à cheval cosmique »). Défilement doux vers
+  l'escale, immédiat en mouvement réduit. Ni précédente à la première escale (la vue d'ensemble n'en est pas une), ni
+  suivante à la dernière, dont la plaque ramène déjà au départ. Quand les deux ne tiennent pas côte à côte, la
+  suivante passe dessous, toujours à droite ; aucun nom n'est coupé. L'interlude de la ceinture, escale de la règle,
+  les a aussi, sous sa citation, sur le fond `.92` des pilules.
 - **Accueil** : sur téléphone, le bouton « Partir du Soleil » est visible sans défiler, au-dessus du
   dock ; la date de départ passe sous les boutons.
 - **Fiche** : grille 2 colonnes `dt` / `dd`, une ligne « ce jour » recalculée avec la date simulée.

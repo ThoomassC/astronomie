@@ -70,7 +70,14 @@ describe("BlackHolePlate de M87*, en anglais", () => {
 
   it("ne devrait proposer aucun lien de retour quand la page n'en donne pas", () => {
     renderM87();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Back to the smallest" })).not.toBeInTheDocument();
+  });
+
+  it("devrait mener au Fer à cheval cosmique par son nom court, dit en entier aux lecteurs d'écran", () => {
+    renderM87();
+    const next = screen.getByRole("link", { name: "Next object: Cosmic Horseshoe black hole" });
+    expect(next).toHaveTextContent("Cosmic Horseshoe");
+    expect(next).toHaveAttribute("href", "#fer-a-cheval-cosmique");
   });
 });
 
@@ -121,5 +128,13 @@ describe("BlackHolePlate, distance cosmologique, mise en garde et lien de retour
   it("devrait proposer de revenir au plus petit astre quand la page le demande", () => {
     render(<BlackHolePlate hole={COMPARED_BLACK_HOLE_BY_KEY["cosmic-horseshoe"]} locale="fr" restartTo="cygnus-x-1" />);
     expect(screen.getByRole("link", { name: "Revenir au plus petit" })).toHaveAttribute("href", "#cygnus-x-1");
+  });
+
+  it("ne devrait proposer au plus grand astre que le précédent, après le retour au plus petit, sans le doubler", () => {
+    render(<BlackHolePlate hole={COMPARED_BLACK_HOLE_BY_KEY["cosmic-horseshoe"]} locale="fr" restartTo="cygnus-x-1" />);
+    expect(screen.getAllByRole("link").map((link) => link.getAttribute("aria-label") ?? link.textContent)).toEqual([
+      "Revenir au plus petit",
+      "Astre précédent\u00a0: M87*",
+    ]);
   });
 });
