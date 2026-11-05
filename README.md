@@ -1,6 +1,6 @@
 # Astronomie
 
-Site pédagogique sur l'espace, en français, en anglais et en espagnol, pour un public de 12 ans et plus. Quatre onglets : l'**Accueil** montre le système solaire tel qu'il est aujourd'hui ; le **Voyage** part du Soleil et, au fil du défilement, passe chaque planète puis s'éloigne jusqu'aux étoiles voisines, à la Voie lactée, au Groupe local, à l'Univers observable et à l'hypothèse du multivers ; **Tailles** compare dix étoiles à la même échelle ; **À propos** dit pourquoi ce site existe et d'où viennent ses chiffres.
+Site pédagogique sur l'espace, en français, en anglais et en espagnol, pour un public de 12 ans et plus. Quatre onglets : l'**Accueil** montre le système solaire tel qu'il est aujourd'hui ; le **Voyage** part du Soleil et, au fil du défilement, passe chaque planète puis s'éloigne jusqu'aux étoiles voisines, à la Voie lactée, au Groupe local, à l'Univers observable et à l'hypothèse du multivers ; **Tailles** compare dix étoiles et quatre trous noirs à la même échelle ; **À propos** dit pourquoi ce site existe et d'où viennent ses chiffres.
 
 ## Ce que fait le site
 
@@ -37,7 +37,12 @@ Dix-sept escales : la vue d'ensemble, le Soleil, les huit planètes, la ceinture
 
 - Dix étoiles, de la naine rouge Proxima du Centaure (0,154 rayon solaire) à l'hypergéante VY Canis Majoris (1 420), côte à côte et à la même échelle, Soleil compris. À chaque escale, la caméra recule : l'étoile précédente devient un caillou, puis un point.
 - Chaque plaque donne le rayon (en kilomètres aussi, et la fourchette publiée quand il est débattu), le type, la température et sa couleur, la distance, et une comparaison : jusqu'où irait l'étoile à la place du Soleil.
-- Une règle des tailles, logarithmique, en rayons solaires ; sur petit écran, le menu des étoiles de la barre la remplace.
+- Quatre trous noirs rangés parmi les étoiles par la taille de leur ombre : Cygnus X-1 (163 km), Sagittarius A* (entre
+  Aldébaran et Rigel), M87* et le trou noir du Fer à cheval cosmique, l'un des plus gros jamais pesés. Chacun est rendu
+  par lancer de rayons dans la métrique de Schwarzschild : ombre, anneau de photons, disque ou anneau d'accrétion avec
+  effet Doppler, jet de M87*, étoiles de fond déviées (ADR 0006). Leurs plaques donnent l'ombre, l'horizon, la masse et
+  la distance.
+- Une règle des tailles, logarithmique, en rayons solaires ; sur petit écran, le menu des astres de la barre la remplace.
 
 ### Partout
 
