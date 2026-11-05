@@ -60,8 +60,12 @@ rouge veut dire froid.
     dessous, sinon rien ; elle n'en sort que sous 18 px (hystérésis).
   - Plus petite : anneau creux de 10 px à sa couleur, texte à droite, sinon à gauche, sinon le nom seul.
   - Soleil sous 14 px : l'anneau « ici » de 14 px et 2 px en `--soleil`, réservé au Soleil, « Soleil · 1 R☉ ».
-  - Ordre de pose : étoile affichée, précédente, Soleil, puis de la plus grande à la plus petite. Barre, règle,
-    échelle graphique et place des plaques sont réservées d'avance.
+  - Ordre de pose : étoile affichée, précédente, Soleil, puis de la plus grande à la plus petite. Barre (à sa place de
+    repos, même glissée hors de l'écran), règle, échelle graphique et place des plaques sont réservées d'avance.
+  - Texte de l'introduction (titre, promesse, note, bouton) : il passe devant la scène, qui montre déjà Cygnus X-1.
+    Une étiquette qu'il toucherait, texte ou repère, se masque à sa place (gardée aux autres) et y revient quand il a
+    défilé : rien ne bouge, jamais de texte sur le titre. Au repos sur l'introduction, seules les étiquettes se
+    reposent, sans nouvelle image.
 - **Échelle graphique** : pilule `--plaque-a`, bord `--filet`. Ligne 1 : le Soleil **à l'échelle** (disque `#FFF1E7`
   de 4 à 24 px, sinon un point dans un anneau de 10 px `--soleil`), puis un trait `--laiton` terminé par deux traits
   de 8 px. Ligne 2 : « {n} Soleils côte à côte », 0,75 rem `--brume`. n parmi 2, 5, 10 … 2 000, le plus grand qui

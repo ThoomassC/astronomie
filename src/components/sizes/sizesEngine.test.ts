@@ -258,3 +258,75 @@ describe("astres de la scène", () => {
     atRest.dispose();
   });
 });
+
+/*
+ * Le texte de l'introduction passe devant la scène, qui montre déjà Cygnus X-1 : son étiquette ne s'affiche pas
+ * dessous (« Cygnus X-1 · 163 km » sur le titre, en 375 × 812). Au repos sur l'introduction, rien ne se rend, mais le
+ * texte défile encore : l'étiquette se masque et revient avec lui, sans nouvelle image.
+ */
+describe("étiquettes sous le texte de l'introduction", () => {
+  let scrollY = 0;
+
+  beforeEach(() => {
+    scrollY = 0;
+    vi.spyOn(window, "scrollY", "get").mockImplementation(() => scrollY);
+  });
+
+  /** Les deux étiquettes de Cygnus X-1, comme SizesScene les rend : sur son anneau, et au-dessus de son limbe. */
+  function cygnusLabels() {
+    const ring = document.createElement("span");
+    ring.append(document.createElement("i"), document.createElement("span"));
+    const limb = document.createElement("span");
+    limb.append(document.createElement("span"));
+    return { ring, limb };
+  }
+
+  /** Introduction dont le texte occupe, dans le document, toute la largeur de la vue de 200 à 500 px. */
+  function introduction(): HTMLElement {
+    const section = document.createElement("section");
+    const title = document.createElement("h1");
+    // Frontière navigateur : jsdom ne calcule aucune boîte ; celle-ci suit le défilement, comme dans la page.
+    vi.spyOn(title, "getBoundingClientRect").mockImplementation(() => new DOMRect(0, 200 - scrollY, window.innerWidth, 300));
+    section.append(title);
+    return section;
+  }
+
+  it("devrait masquer l'étiquette sous le texte, et la rendre quand il a défilé, au repos sur l'introduction", async () => {
+    const { ring, limb } = cygnusLabels();
+    const render = vi.spyOn(FakeRenderer.prototype, "render");
+    const scene = createSizesScene({
+      ...options(),
+      ringLabels: new Map([["cygnus-x-1", ring]]),
+      limbLabels: new Map([["cygnus-x-1", limb]]),
+      layout: { bar: null, rail: null, plates: new Map(), intro: introduction() },
+    });
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    const labelShown = () => [ring, limb].some((label) => label.style.visibility === "visible");
+    scene.frame(1 / 60);
+    expect(labelShown()).toBe(false);
+    const images = render.mock.calls.length;
+    scrollY = 520;
+    scene.frame(1 / 60);
+    expect(labelShown()).toBe(true);
+    scrollY = 100;
+    scene.frame(1 / 60);
+    expect(labelShown()).toBe(false);
+    expect(render.mock.calls.length).toBe(images);
+    scene.dispose();
+  });
+
+  it("devrait laisser l'étiquette à sa place sans introduction", async () => {
+    const { ring, limb } = cygnusLabels();
+    const scene = createSizesScene({
+      ...options(),
+      ringLabels: new Map([["cygnus-x-1", ring]]),
+      limbLabels: new Map([["cygnus-x-1", limb]]),
+    });
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    scene.frame(1 / 60);
+    expect([ring, limb].some((label) => label.style.visibility === "visible")).toBe(true);
+    scene.dispose();
+  });
+});

@@ -46,6 +46,7 @@ import { sizesStore } from "@/lib/sizes/store";
 import { sizeObjectIndex, type SizeStopKey } from "@/lib/sizes/stops";
 import {
   frameBoxes,
+  introVeil,
   jetBoxes,
   layoutSizeLabels,
   type LabelPlacement,
@@ -79,8 +80,11 @@ export interface SizesSceneOptions {
   scaleBar: ScaleBarElements | null;
   /** Texte de l'échelle graphique dans la langue de la page : « 10 Soleils côte à côte », « 500 km ». */
   scaleText(bar: ScaleBar): string;
-  /** Ce qui borde la scène : barre haute, règle des tailles, plaques (bandes et zone libres). */
-  layout: Omit<ScreenLayoutElements<SizeStopKey>, "note">;
+  /**
+   * Ce qui borde la scène : barre haute, règle des tailles, plaques (bandes et zone libres), et l'introduction, dont le
+   * texte passe devant la scène : aucune étiquette ne s'affiche dessous.
+   */
+  layout: Omit<ScreenLayoutElements<SizeStopKey>, "note"> & { intro?: HTMLElement | null };
 }
 
 export interface SizesScene {
@@ -239,6 +243,24 @@ function rectBox(rect: DOMRect): LabelBox {
   return [rect.left, rect.top, rect.right, rect.bottom];
 }
 
+/**
+ * Texte d'une section, en px du document : ses enfants qui se voient, réunis (le paragraphe réservé aux lecteurs
+ * d'écran, d'un pixel, n'en est pas) ; null si rien ne se voit.
+ */
+function documentTextBox(section: HTMLElement): LabelBox | null {
+  let [left, top, right, bottom] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const child of section.children) {
+    const rect = child.getBoundingClientRect();
+    if (rect.width <= 1 || rect.height <= 1) continue;
+    left = Math.min(left, rect.left);
+    top = Math.min(top, rect.top);
+    right = Math.max(right, rect.right);
+    bottom = Math.max(bottom, rect.bottom);
+  }
+  if (!(right > left && bottom > top)) return null;
+  return [left, top + window.scrollY, right, bottom + window.scrollY];
+}
+
 const emptyCam = (): SizesCam => ({ tx: 0, dist: 1, offX: 0, offY: 0 });
 
 /**
@@ -334,6 +356,13 @@ function setupScene(
   let measuredBoxes: LabelBox[] = [];
   /** Bas de la barre haute, en px : l'échelle graphique posée dans un coin se met dessous. */
   let barBottom = 0;
+  /** Texte de l'introduction, en px du document (introVeil le replace à l'écran) ; null sans introduction. */
+  let introText: LabelBox | null = null;
+  /** Défilement à la dernière pose des étiquettes, et texte de l'introduction alors à l'écran (voile). */
+  let labelsScrollY = Number.NaN;
+  let labelsVeiled = false;
+  /** Boîte de l'échelle graphique à la dernière image rendue : les étiquettes reposées entre deux images l'évitent. */
+  let lastScaleBox: LabelBox | null = null;
   /**
    * Dernier état écrit de l'échelle graphique (unité, texte, longueur, forme et taille du Soleil, position) ; sa taille,
    * mesurée quand son texte ou son unité change, ou que la mise en page change (`measured` faux).
@@ -384,8 +413,9 @@ function setupScene(
 
   /**
    * Une passe de lecture : tailles des étiquettes (mesurées dans leur forme normale, puis remises dans la leur), boîtes
-   * à éviter (barre, règle), bas de la barre, bandes et zone libres. La barre, qui glisse hors de l'écran quand on
-   * descend (téléphone), est mesurée à sa place de repos : aucune étiquette ne s'y pose, elle peut revenir à tout moment.
+   * à éviter (barre, règle), bas de la barre, texte de l'introduction, bandes et zone libres. La barre, qui glisse hors
+   * de l'écran quand on descend (téléphone), est mesurée à sa place de repos : aucune étiquette ne s'y pose, elle peut
+   * revenir à tout moment.
    */
   function measureLayout(): void {
     const forms = allSlots.map(({ mirrored, short }) => ({ mirrored, short }));
@@ -400,6 +430,7 @@ function setupScene(
       .map(rectBox)
       .filter(([left, top, right, bottom]) => right > left && bottom > top);
     barBottom = barRect?.bottom ?? 0;
+    introText = layout.intro ? documentTextBox(layout.intro) : null;
     screenLayout.measure(view);
     scaleSize.measured = false;
     layoutSettled = false;
@@ -494,9 +525,10 @@ function setupScene(
    * pour un petit, anneau « ici » pour le Soleil devenu un point. Barre, règle, échelle graphique et place des plaques
    * (à gauche de la zone libre sur grand écran, sous la bande libre de l'escale en mise en page compacte) sont réservées
    * d'avance, avec le jet d'un trou noir dessiné, qui sort de son encombrement. L'étiquette d'un trou noir se pose à
-   * 8 px de ce qui se voit de lui (`reach`). Une étiquette qui ne tient nulle part n'est pas montrée.
+   * 8 px de ce qui se voit de lui (`reach`). Une étiquette qui ne tient nulle part n'est pas montrée, ni celle que
+   * toucherait le texte de l'introduction (`veil`, à l'écran) : masquée à sa place, elle y revient quand il est passé.
    */
-  function updateLabels(current: SizeStopKey, scaleBox: LabelBox | null): void {
+  function updateLabels(current: SizeStopKey, scaleBox: LabelBox | null, veil: LabelBox | null): void {
     const reserved = frameBoxes(view, measuredBoxes, screenLayout.zone(), screenLayout.band(current), scaleBox);
     for (let i = 0; i < drawnDiscs.length; i++) {
       const jet = jets[i];
@@ -515,6 +547,7 @@ function setupScene(
       modes,
       fits,
       reach,
+      veils: veil ? [veil] : undefined,
     });
     placements.objects.forEach((placement, i) => applyPlacement(slots[i], placement));
     if (sunSlot && placements.sun.form === "ring") {
@@ -523,6 +556,13 @@ function setupScene(
     } else {
       setShown(sunSlot, false);
     }
+  }
+
+  /** Pose les étiquettes au défilement `scrollY`, sous le voile de l'introduction s'il est à l'écran. */
+  function placeLabels(current: SizeStopKey, veil: LabelBox | null, scrollY: number): void {
+    updateLabels(current, lastScaleBox, veil);
+    labelsScrollY = scrollY;
+    labelsVeiled = veil !== null;
   }
 
   // ---------- Astres à l'écran ----------
@@ -644,8 +684,14 @@ function setupScene(
       const reduced = reducedMotion.matches;
       const flying = from !== lastFrom || to !== lastTo || t !== lastT;
       applyPixelRatio(flying, t);
+      const scrollY = window.scrollY;
+      const veil = introVeil(introText, scrollY, view.height);
       // Rien n'a bougé (défilement immobile, mise en page posée) : pas de nouvelle image.
-      if (!needsRender && !flying && layoutSettled) return;
+      if (!needsRender && !flying && layoutSettled) {
+        // Au repos, le texte de l'introduction défile encore devant la scène : seules les étiquettes se reposent.
+        if (scrollY !== labelsScrollY && (veil !== null || labelsVeiled)) placeLabels(current, veil, scrollY);
+        return;
+      }
       if (!compiled) {
         if (++compileWaitFrames < MAX_COMPILE_WAIT_FRAMES) return;
         compiled = true;
@@ -669,7 +715,8 @@ function setupScene(
       starfield.update(camera, view.height);
       renderer.render(scene, camera);
       const pxPerSolarRadius = pixelsPerSolarRadius(view.height, shown.dist, camera.fov);
-      updateLabels(current, updateScaleBar(pxPerSolarRadius));
+      lastScaleBox = updateScaleBar(pxPerSolarRadius);
+      placeLabels(current, veil, scrollY);
     },
     dispose() {
       if (disposed) return;

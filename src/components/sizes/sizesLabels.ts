@@ -269,6 +269,22 @@ export interface SizeLabelsInput {
    * tout le disque par défaut. L'étiquette au-dessus du limbe s'y pose à 8 px.
    */
   reach?: readonly { up: number; down: number }[];
+  /**
+   * Texte qui passe devant la scène sans rien déplacer (l'introduction de la page, introVeil) : une étiquette dont le
+   * texte ou le repère le toucherait est masquée à sa place, qu'elle garde aux autres. Aucun par défaut.
+   */
+  veils?: readonly LabelBox[];
+}
+
+/**
+ * Texte de l'introduction à l'écran, en px de la vue : sa boîte dans le document (`text`, mesurée par le moteur)
+ * décalée du défilement ; null sans introduction, ou une fois sortie de la vue, par le haut comme par le bas.
+ */
+export function introVeil(text: LabelBox | null, scrollY: number, viewHeight: number): LabelBox | null {
+  if (!text) return null;
+  const top = text[1] - scrollY;
+  const bottom = text[3] - scrollY;
+  return bottom > 0 && top < viewHeight ? [text[0], top, text[2], bottom] : null;
 }
 
 export interface SizeLabelsLayout {
@@ -305,11 +321,14 @@ export function frameBoxes(
  * même : sa propre croix ou son propre point est écarté de la recherche le temps de la pose, ceux des autres non. Une
  * étiquette qui ne tient nulle part est masquée : jamais de texte recouvert ni coupé. Un astre tout à fait effacé près
  * de la règle (`fits`) compte pour non dessiné. Un astre dans lequel la caméra serait entrée (rayon infini) occupe toute
- * la vue.
+ * la vue. Une étiquette posée que toucherait un voile (`veils`, le texte de l'introduction) est masquée à sa place,
+ * qu'elle garde aux autres : le texte qui défile ne fait rien bouger.
  */
 export function layoutSizeLabels(input: SizeLabelsInput): SizeLabelsLayout {
-  const { discs, count, current, sun, metrics, sunMarker, view, reserved, modes, fits, reach } = input;
+  const { discs, count, current, sun, metrics, sunMarker, view, reserved, modes, fits, reach, veils = [] } = input;
   const occupied: LabelBox[] = [...reserved];
+  /** La boîte passe sous un voile. */
+  const veiled = (box: LabelBox) => veils.some((veil) => overlaps(box, veil));
   /** Astre dessiné à cette image : parmi les premiers (`discs`), et pas tout à fait effacé près de la règle. */
   const drawn = (i: number) => i < discs.length && (fits?.[i] ?? 1) > 0;
   /** Place, dans `occupied`, du point réservé de chaque petit astre (−1 : grand, ou non dessiné). */
@@ -348,6 +367,7 @@ export function layoutSizeLabels(input: SizeLabelsInput): SizeLabelsLayout {
     }
     if (!placed) return HIDDEN;
     occupied.push(placed.box);
+    if (veiled(placed.box)) return HIDDEN;
     return { form: "limb", box: placed.box, left: placed.box[0], top: placed.box[1], short: placed.short };
   };
 
@@ -365,7 +385,9 @@ export function layoutSizeLabels(input: SizeLabelsInput): SizeLabelsLayout {
     const box = anchoredBox(layout.box, disc.x, disc.y);
     const halfWidth = marker.dotWidth / 2;
     const halfHeight = marker.dotHeight / 2;
-    occupied.push(box, [disc.x - halfWidth, disc.y - halfHeight, disc.x + halfWidth, disc.y + halfHeight]);
+    const dot: LabelBox = [disc.x - halfWidth, disc.y - halfHeight, disc.x + halfWidth, disc.y + halfHeight];
+    occupied.push(box, dot);
+    if (veiled(box) || veiled(dot)) return HIDDEN;
     return {
       form: "ring",
       box,
