@@ -138,8 +138,10 @@ function skyLayerCall(index: number): string {
  * - `vec3 weakLens(vec3 dir, vec3 cameraLocal, float strength)` : `dir` tournée vers le centre du trou noir de
  *   strength × α, la caméra en `cameraLocal` dans son repère, en r_s, paramètre d'impact de l'observateur immobile
  *   (b = |c × d| / √(1 − 1/D), borné à l'ombre : sous elle, le rectangle recouvre) ;
- * - `vec3 lensSky(vec3 dir, vec3 exclude)` : `dir` déviée par les lentilles en service, dans l'ordre, sauf celle dont la
- *   caméra vaut `exclude` (le trou noir qui trace la sienne) ; vec3(0.0) : toutes.
+ * - `vec3 lensVector(vec3 dir, vec3 exclude)` : somme des rotations (vecteurs perpendiculaires à `dir`, de longueur
+ *   l'angle) des lentilles en service, chacune calculée sur `dir` non déviée (approximation de Born), sauf celle dont la
+ *   caméra vaut `exclude` (le trou noir qui trace la sienne) ; vec3(0.0) : toutes ;
+ * - `vec3 rotateBy(vec3 dir, vec3 shift)` et `vec3 lensSky(vec3 dir, vec3 exclude)` : `dir` tournée de ce vecteur.
  * Aucune dérivée : les fonctions servent aussi dans les boucles du tracé.
  */
 export const STARFIELD_GLSL = /* glsl */ `
@@ -233,24 +235,40 @@ float weakDeflection(float b, float s) {
   float share = s <= 0.0 ? 1.0 - s / q : b * b / (q * (q + s));
   return 0.5 * total * share;
 }
-vec3 weakLens(vec3 dir, vec3 cameraLocal, float strength) {
+// Rotation de dir vers le centre d'un trou noir, en vecteur perpendiculaire à dir de longueur strength × α.
+vec3 lensShift(vec3 dir, vec3 cameraLocal, float strength) {
   // Du rayon vers le centre du trou noir, perpendiculairement : longueur b sur la droite.
   vec3 toward = dot(cameraLocal, dir) * dir - cameraLocal;
   float line = length(toward);
-  if (strength <= 0.0 || line < 1e-6) return dir;
+  if (strength <= 0.0 || line < 1e-6) return vec3(0.0);
   float dist = length(cameraLocal);
   float b = max(line / sqrt(max(1.0 - 1.0 / dist, 1e-6)), LENS_MIN_IMPACT);
-  float alpha = strength * weakDeflection(b, dot(cameraLocal, dir));
-  return cos(alpha) * dir + sin(alpha) * (toward / line);
+  return toward * (strength * weakDeflection(b, dot(cameraLocal, dir)) / line);
 }
-vec3 lensSky(vec3 dir, vec3 exclude) {
+// dir tournée de l'angle |shift| dans le sens de shift, perpendiculaire à dir.
+vec3 rotateBy(vec3 dir, vec3 shift) {
+  float angle = length(shift);
+  return angle > 1e-9 ? cos(angle) * dir + sin(angle) * (shift / angle) : dir;
+}
+vec3 weakLens(vec3 dir, vec3 cameraLocal, float strength) {
+  return rotateBy(dir, lensShift(dir, cameraLocal, strength));
+}
+// Somme des rotations des lentilles en service, sauf celle dont la caméra vaut exclude, chacune calculée sur la
+// direction non déviée (approximation de Born) : indépendante de l'ordre des lentilles. Appliquées l'une après
+// l'autre, la première déplacerait le rayon de plusieurs r_s par rapport à la suivante (0,1 rad du Fer à cheval
+// cosmique près de M87*) et le ciel d'un trou noir ne se raccorderait plus à celui du fond.
+vec3 lensVector(vec3 dir, vec3 exclude) {
+  vec3 shift = vec3(0.0);
   for (int i = 0; i < ${MAX_STARFIELD_LENSES}; i++) {
     if (i >= uLensCount) break;
     vec3 gap = uLensCamera[i] - exclude;
     if (dot(gap, gap) <= 1e-8 * dot(exclude, exclude)) continue;
-    dir = weakLens(dir, uLensCamera[i], uLensStrength[i]);
+    shift += lensShift(dir, uLensCamera[i], uLensStrength[i]);
   }
-  return dir;
+  return shift;
+}
+vec3 lensSky(vec3 dir, vec3 exclude) {
+  return rotateBy(dir, lensVector(dir, exclude));
 }
 `;
 
