@@ -24,6 +24,14 @@ describe("SizesMenu", () => {
     expect(screen.getByRole("button", { name: "Astros, elegir un astro" })).toBeInTheDocument();
   });
 
+  it("devrait donner au bouton le nom court du trou noir du Fer à cheval cosmique, et à la liste son nom entier (fr)", async () => {
+    const user = userEvent.setup();
+    renderIn("fr");
+    act(() => sizesStore.update("cosmic-horseshoe", "cosmic-horseshoe", 0));
+    await user.click(screen.getByRole("button", { name: "Fer à cheval cosmique, changer d'astre" }));
+    expect(screen.getByRole("link", { name: /^Trou noir du Fer à cheval cosmique/ })).toHaveAttribute("href", "#fer-a-cheval-cosmique");
+  });
+
   it("devrait nommer l'astre affiché sur le bouton, et suivre le parcours de la page (es)", () => {
     renderIn("es");
     act(() => sizesStore.update("pollux", "pollux", 0));

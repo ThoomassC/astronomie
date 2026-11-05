@@ -18,8 +18,18 @@ export type Gender = "feminine" | "masculine";
  * Un trou noir s'y mesure par son ombre, comme dans toute la page.
  */
 export interface SizesStrings {
-  /** Noms officiels des astres (données v2, § 6.3, fiche des trous noirs) ; celui du Soleil vient de `bodyName`. */
+  /**
+   * Noms officiels des astres (données v2, § 6.3, fiche des trous noirs) ; celui du Soleil vient de `bodyName`. Un nom
+   * suivi d'une taille (règle, liste du menu, étiquettes) désigne l'astre même : « Trou noir du Fer à cheval cosmique »,
+   * et non « Fer à cheval cosmique », sa galaxie-lentille, qui n'a pas cette taille.
+   */
   names: Readonly<Record<SizeObjectKey, string>>;
+  /**
+   * Noms courts, pour la barre (bouton du menu, astre affiché après sa sorte), où aucune taille ne suit le nom et où la
+   * place manque sur téléphone : à 375 px, le bouton du menu laisse 170 px au nom. Seulement pour un nom trop long ;
+   * à défaut, `names`.
+   */
+  shortNames: Readonly<Partial<Record<SizeObjectKey, string>>>;
   /** Nom accessible de la règle des tailles. */
   railLabel: string;
   /** Légende sous la règle (décorative) : chaque graduation multiplie la taille par 10. */
@@ -219,6 +229,25 @@ const MASS_FR: PluralForms = { one: "masse solaire", other: "masses solaires" };
 const MASS_EN: PluralForms = { one: "solar mass", other: "solar masses" };
 const MASS_ES: PluralForms = { one: "masa solar", other: "masas solares" };
 
+/** Nom d'un astre autour de son nom court : `lead` + `core` + `tail` donnent le nom entier ; `core`, le nom court. */
+export interface ObjectNameParts {
+  lead: string;
+  core: string;
+  tail: string;
+}
+
+/**
+ * Nom d'un astre découpé autour de son nom court (`shortNames`), pour l'étiquette de la scène, dont la forme courte ne
+ * garde que `core`. Sans nom court, ou s'il ne figure pas dans le nom entier, `core` est le nom entier.
+ */
+export function nameParts(t: SizesStrings, key: SizeObjectKey): ObjectNameParts {
+  const name = t.names[key];
+  const short = t.shortNames[key];
+  const at = short === undefined ? -1 : name.indexOf(short);
+  if (short === undefined || at < 0) return { lead: "", core: name, tail: "" };
+  return { lead: name.slice(0, at), core: short, tail: name.slice(at + short.length) };
+}
+
 export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
   fr: {
     names: {
@@ -235,8 +264,9 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
       betelgeuse: "Bételgeuse",
       "vy-canis-majoris": "VY Canis Majoris",
       "m87-star": "M87*",
-      "cosmic-horseshoe": "Fer à cheval cosmique",
+      "cosmic-horseshoe": "Trou noir du Fer à cheval cosmique",
     },
+    shortNames: { "cosmic-horseshoe": "Fer à cheval cosmique" },
     railLabel: "Règle des tailles, du plus petit au plus grand astre",
     railLegend: "× 10 à chaque graduation",
     menu: { nav: "Étoiles et trous noirs", home: "Astres", choose: "choisir un astre", change: "changer d'astre" },
@@ -296,8 +326,9 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
       betelgeuse: "Betelgeuse",
       "vy-canis-majoris": "VY Canis Majoris",
       "m87-star": "M87*",
-      "cosmic-horseshoe": "Cosmic Horseshoe",
+      "cosmic-horseshoe": "Cosmic Horseshoe black hole",
     },
+    shortNames: { "cosmic-horseshoe": "Cosmic Horseshoe" },
     railLabel: "Size scale, from the smallest to the largest object",
     railLegend: "× 10 per mark",
     menu: { nav: "Stars and black holes", home: "Objects", choose: "choose an object", change: "change object" },
@@ -356,8 +387,9 @@ export const SIZES_STRINGS: Readonly<Record<Locale, SizesStrings>> = {
       betelgeuse: "Betelgeuse",
       "vy-canis-majoris": "VY Canis Majoris",
       "m87-star": "M87*",
-      "cosmic-horseshoe": "Herradura Cósmica",
+      "cosmic-horseshoe": "Agujero negro de la Herradura Cósmica",
     },
+    shortNames: { "cosmic-horseshoe": "Herradura Cósmica" },
     railLabel: "Escala de tamaños, del astro más pequeño al más grande",
     railLegend: "× 10 en cada marca",
     menu: { nav: "Estrellas y agujeros negros", home: "Astros", choose: "elegir un astro", change: "cambiar de astro" },

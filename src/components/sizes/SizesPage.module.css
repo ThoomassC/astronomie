@@ -181,6 +181,11 @@
   padding: 0;
 }
 
+/* Forme courte (`data-short`) : le nom court d'un astre au nom long, sans ce qui l'encadre (« Trou noir du »). */
+:global(.lbl[data-short]) .longName {
+  display: none;
+}
+
 /* ---------- Légende de la règle ---------- */
 .railLegend {
   position: fixed;

@@ -29,4 +29,11 @@ describe("CurrentObject", () => {
     expect(screen.getByText("Black hole")).toBeInTheDocument();
     expect(screen.getByText("M87*")).toBeInTheDocument();
   });
+
+  it("devrait donner après « Trou noir » le nom court du Fer à cheval cosmique, sans redire « trou noir »", () => {
+    render(<CurrentObject />);
+    act(() => sizesStore.update("cosmic-horseshoe", "cosmic-horseshoe", 0));
+    expect(screen.getByText("Trou noir")).toBeInTheDocument();
+    expect(screen.getByText("Fer à cheval cosmique")).toBeInTheDocument();
+  });
 });

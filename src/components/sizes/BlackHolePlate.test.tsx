@@ -42,10 +42,10 @@ describe("BlackHolePlate de M87*, en anglais", () => {
   it.each([
     ["Shadow radius", "72,000 R☉"],
     ["Shadow radius", "50 billion km"],
-    ["Event horizon radius", "28,000 R☉"],
-    ["Event horizon radius", "19 billion km"],
+    ["Event horizon radius (without rotation)", "28,000 R☉"],
+    ["Event horizon radius (without rotation)", "19 billion km"],
     ["Mass", "6.5 billion solar masses"],
-    ["Mass", "5.4–7.2 billion solar masses, depending on the study"],
+    ["Mass", "5.1–7.2 billion solar masses, depending on the study"],
     ["Black hole type", "supermassive black hole"],
     ["Distance from Earth", "55 million light-years"],
     ["For scale", "In the Sun's place, its shadow would swallow the whole Solar System, out to 11 times Neptune's orbit."],
@@ -85,8 +85,8 @@ describe("BlackHolePlate de Cygnus X-1, en français", () => {
   it.each([
     ["Rayon de l'ombre", "163 km"],
     ["Rayon de l'ombre", "0,000234 R☉"],
-    ["Rayon de l'horizon", "62,6 km"],
-    ["Rayon de l'horizon", "0,0000900 R☉"],
+    ["Rayon de l'horizon (sans rotation)", "62,6 km"],
+    ["Rayon de l'horizon (sans rotation)", "0,0000900 R☉"],
     ["Masse", "21,2 masses solaires"],
     ["Masse", "de 12,7 à 23,4 masses solaires selon les études"],
     ["Distance de la Terre", "7\u202f200 années-lumière"],
@@ -111,6 +111,11 @@ describe("BlackHolePlate, distance cosmologique, mise en garde et lien de retour
     expect(Array.from(container.querySelectorAll(".fact-caveat"), (line) => line.textContent)).toEqual([
       expect.stringMatching(/^Rendu calculé/),
     ]);
+  });
+
+  it("devrait titrer la plaque du nom entier du trou noir, sans le confondre avec sa galaxie (en)", () => {
+    render(<BlackHolePlate hole={COMPARED_BLACK_HOLE_BY_KEY["cosmic-horseshoe"]} locale="en" />);
+    expect(screen.getByRole("heading", { level: 2, name: "Cosmic Horseshoe black hole" })).toBeInTheDocument();
   });
 
   it("devrait proposer de revenir au plus petit astre quand la page le demande", () => {

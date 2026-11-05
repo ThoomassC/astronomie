@@ -1,3 +1,4 @@
+import type { Vec3 } from "@/lib/astro/constants";
 import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
 import type { PlacedObject } from "@/lib/sizes/layout";
 import type { SizeStopKey } from "@/lib/sizes/stops";
@@ -197,6 +198,47 @@ export function screenDisc(
   out.y = (0.5 + cam.offY) * view.height;
   out.radius =
     distance > object.extent ? (f * object.extent) / Math.sqrt(distance * distance - object.extent * object.extent) : Infinity;
+  return out;
+}
+
+/** Point de la scène à l'écran, en px depuis le coin haut gauche de la vue, et sa profondeur le long du regard (R☉). */
+export interface ScreenPoint {
+  x: number;
+  y: number;
+  depth: number;
+}
+
+/**
+ * Profondeur (R☉) du point (x, y, z en R☉) le long du regard de la caméra `cam`, négative derrière elle :
+ * dist − (y sin 5° + z cos 5°). Celle du centre d'un astre est `dist`.
+ */
+export function viewDepth(point: Vec3, cam: SizesCam): number {
+  const elevation = SIZES_VIEW_ELEV_DEG * D2R;
+  return cam.dist - (point.y * Math.sin(elevation) + point.z * Math.cos(elevation));
+}
+
+/**
+ * Point (x, y, z en R☉) vu par la caméra `cam`, posée comme celle du moteur : en (tx, dist sin 5°, dist cos 5°), elle
+ * vise la cible (tx, 0, 0), image décalée de (offX, offY). En px de la vue : x = (0,5 + offX) × largeur + (v·droite /
+ * profondeur) × f, y = (0,5 + offY) × hauteur − (v·haut / profondeur) × f, v du point à la caméra, f = hauteur /
+ * (2 tan(champ / 2)). Même projection que three ; sur l'axe des astres, le centre que donne screenDisc. `null` pour un
+ * point qui n'est pas devant la caméra.
+ */
+export function screenPoint(
+  point: Vec3,
+  cam: SizesCam,
+  ctx: Pick<SizesFrameContext, "fovDeg">,
+  view: { width: number; height: number },
+  out: ScreenPoint = { x: 0, y: 0, depth: 0 },
+): ScreenPoint | null {
+  const depth = viewDepth(point, cam);
+  if (depth <= 0) return null;
+  // Axes de la caméra : droite (1, 0, 0), haut (0, cos 5°, −sin 5°).
+  const elevation = SIZES_VIEW_ELEV_DEG * D2R;
+  const f = pixelsPerTangent(view.height, ctx.fovDeg);
+  out.x = (0.5 + cam.offX) * view.width + ((point.x - cam.tx) / depth) * f;
+  out.y = (0.5 + cam.offY) * view.height - ((point.y * Math.cos(elevation) - point.z * Math.sin(elevation)) / depth) * f;
+  out.depth = depth;
   return out;
 }
 

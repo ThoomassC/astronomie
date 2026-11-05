@@ -1,11 +1,19 @@
 import { Group, PlaneGeometry, SphereGeometry, type Camera } from "three";
-import { BLACK_HOLE_LOOKS, createBlackHoleMesh, type BlackHoleLookName, type BlackHoleMesh } from "@/components/scene/blackHole";
+import {
+  BLACK_HOLE_LOOKS,
+  createBlackHoleMesh,
+  diskAxis,
+  type BlackHoleLookName,
+  type BlackHoleMesh,
+} from "@/components/scene/blackHole";
 import type { Uniform } from "@/components/scene/materials";
+import { DEG } from "@/components/scene/math";
 import { MAX_STARFIELD_LENSES, type StarfieldLens, type StarfieldUniforms } from "@/components/scene/starfield";
 import type { BlackHoleKey } from "@/lib/astro/blackHoles";
 import type { PlacedObject } from "@/lib/sizes/layout";
 import { BLACK_HOLE_EXTENT_RS, type ComparedObject } from "@/lib/sizes/objects";
 import { haloOpacity, visibleObjectCount } from "@/lib/sizes/sizesCamera";
+import type { LabelJet } from "./sizesLabels";
 import { createStarMesh, type SizesStarMesh, type SunSpots } from "./starMeshes";
 
 /*
@@ -24,6 +32,23 @@ export const BLACK_HOLE_LOOK_OF: Readonly<Record<BlackHoleKey, BlackHoleLookName
   "m87-star": "jet-ring",
   "cosmic-horseshoe": "dormant",
 };
+
+/**
+ * Jet d'un trou noir pour les étiquettes (jetBoxes), d'après son aspect : l'axe du disque côté qui s'approche, sa
+ * longueur et ses largeurs ; `null` sans jet. Seul M87* en a un ; son contre-jet, presque éteint et caché derrière
+ * l'ombre, n'y est pas.
+ */
+export function labelJetOf(key: BlackHoleKey): LabelJet | null {
+  const look = BLACK_HOLE_LOOKS[BLACK_HOLE_LOOK_OF[key]];
+  if (!look.jet) return null;
+  const axis = diskAxis(look.inclinationDeg, look.positionAngleDeg);
+  return {
+    axis: { x: axis.x, y: axis.y, z: axis.z },
+    lengthRs: look.jet.lengthRs,
+    widthRs: look.jet.widthRs,
+    spread: Math.tan(look.jet.halfAngleDeg * DEG),
+  };
+}
 
 /** Sous ce rayon apparent d'encombrement, en px, un trou noir n'est pas dessiné : son étiquette à anneau le marque. */
 const HIDDEN_BLACK_HOLE_PX = 0.5;

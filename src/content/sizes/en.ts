@@ -80,8 +80,8 @@ export const SIZES_EN: SizesContent = {
   blackHoles: {
     "cygnus-x-1": {
       kind: "stellar black hole",
-      hook: "More than twenty times the Sun's mass, packed into a shadow a few hundred kilometres across.",
-      lede: "Cygnus X-1 was the first object astronomers recognised as a black hole, in the early 1970s. It orbits a blue supergiant star every 5.6 days and swallows its wind. In 1974, the physicist Stephen Hawking bet that it was not a black hole; he admitted defeat in 1990. Its event horizon is only about 125 km across: the Earth is a hundred times wider.",
+      hook: "About 15 to 20 times the Sun's mass, packed into a shadow a few hundred kilometres across.",
+      lede: "Cygnus X-1 was the first object astronomers recognised as a black hole, in the early 1970s. It orbits a blue supergiant star every 5.6 days and swallows its wind. In 1974, the physicist Stephen Hawking bet that it was not a black hole; he admitted defeat in 1990. Its event horizon (without rotation) is only about a hundred kilometres across: the Earth is about a hundred times wider.",
       simplification:
         "Computed rendering: light follows the curvature of space around a non-rotating black hole. The disc, which shines mostly in X-rays, takes the colour of a black body at several million degrees; it is shown more tilted than it really is, to reveal its bent image above the shadow.",
       caveat: "Its mass is debated: a 2025 study finds it much lighter than the 2021 measurement used here.",
@@ -120,7 +120,7 @@ export const SIZES_EN: SizesContent = {
     comparison: "For scale",
     sunDistance: "8.3 light-minutes",
     shadow: "Shadow radius",
-    horizon: "Event horizon radius",
+    horizon: "Event horizon radius (without rotation)",
     mass: "Mass",
     blackHoleType: "Black hole type",
   },

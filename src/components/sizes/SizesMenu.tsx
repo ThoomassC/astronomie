@@ -9,8 +9,9 @@ import { SIZES_STRINGS } from "./sizes.strings";
 
 /**
  * Menu des astres (StopsMenuView) : là où la règle n'a plus la place, le nom de l'astre affiché, dans la barre haute,
- * ouvre la liste des quatorze astres avec leur taille (l'ombre d'un trou noir). À l'introduction, le bouton dit
- * « Astres ».
+ * ouvre la liste des quatorze astres avec leur taille (l'ombre d'un trou noir). Le bouton prend le nom court d'un astre
+ * au nom long (`shortNames`), qui tient sans être coupé à 375 px ; la liste, le nom entier. À l'introduction, le bouton
+ * dit « Astres ».
  */
 export function SizesMenu() {
   const t = SIZES_STRINGS[useLocale()];
@@ -28,7 +29,7 @@ export function SizesMenu() {
       items={items}
       current={current}
       homeKey="intro"
-      currentName={t.names[shown.key]}
+      currentName={t.shortNames[shown.key] ?? t.names[shown.key]}
       currentColor={shown.color}
       labels={t.menu}
     />

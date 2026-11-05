@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COMPARED_BLACK_HOLE_BY_KEY, COMPARED_BLACK_HOLES } from "@/lib/astro/blackHoles";
+import { COMPARED_BLACK_HOLE_BY_KEY, COMPARED_BLACK_HOLES, M87_STELLAR_DYNAMICS_MASS_SOLAR } from "@/lib/astro/blackHoles";
 import { schwarzschildRadiusSolar } from "@/lib/astro/schwarzschild";
 
 /*
@@ -83,6 +83,22 @@ describe("COMPARED_BLACK_HOLES", () => {
     it("ne devrait emprunter ni la couleur d'interaction (--soleil) ni celle des traits (--laiton)", () => {
       expect(RESERVED_COLORS).not.toContain(hole.color);
     });
+  });
+
+  /*
+   * Fourchette de M87* : l'enveloppe à 1σ des deux mesures directes, comme pour les autres trous noirs. L'anneau de
+   * l'EHT donne 6,5 ± 0,7 milliards de M☉ (2019), la dynamique stellaire 5,37 (+0,37/−0,25) milliards (Liepold et al.
+   * 2023) : de 5,12 à 7,2 milliards.
+   */
+  it("devrait encadrer la masse de M87* par l'enveloppe à 1σ de l'anneau de l'EHT et de la dynamique stellaire", () => {
+    expect(COMPARED_BLACK_HOLE_BY_KEY["m87-star"].massRange).toEqual([5.37e9 - 0.25e9, 6.5e9 + 0.7e9]);
+  });
+
+  it("devrait garder à part la masse de M87* par la dynamique stellaire, dans sa fourchette, sous celle de l'EHT", () => {
+    const [low, high] = COMPARED_BLACK_HOLE_BY_KEY["m87-star"].massRange ?? [Number.NaN, Number.NaN];
+    expect(M87_STELLAR_DYNAMICS_MASS_SOLAR).toBe(5.37e9);
+    expect(M87_STELLAR_DYNAMICS_MASS_SOLAR).toBeGreaterThan(low);
+    expect(M87_STELLAR_DYNAMICS_MASS_SOLAR).toBeLessThan(Math.min(high, COMPARED_BLACK_HOLE_BY_KEY["m87-star"].massSolar));
   });
 
   it("devrait mettre en garde sur les masses débattues : Cygnus X-1, M87* et le Fer à cheval cosmique", () => {

@@ -18,7 +18,7 @@ import { julianDate } from "@/lib/astro/ephemeris";
 import { solarActivity, sunspotLatitude } from "@/lib/astro/solarCycle";
 import { smootherstep } from "@/lib/journey/sections";
 import { placeObjects } from "@/lib/sizes/layout";
-import { COMPARED_OBJECTS, layoutInput, type SizeObjectKey } from "@/lib/sizes/objects";
+import { COMPARED_OBJECTS, layoutInput, visibleShare, type SizeObjectKey } from "@/lib/sizes/objects";
 import {
   SCALE_BAR_CHROME_PX,
   pixelsPerSolarRadius,
@@ -45,6 +45,7 @@ import { sizesStore } from "@/lib/sizes/store";
 import { sizeObjectIndex, type SizeStopKey } from "@/lib/sizes/stops";
 import {
   frameBoxes,
+  jetBoxes,
   layoutSizeLabels,
   type LabelPlacement,
   type LimbLabelSize,
@@ -52,7 +53,7 @@ import {
   type RingMarker,
   type StarLabelMode,
 } from "./sizesLabels";
-import { createSizesObjects, showObjects, updateBlackHoles } from "./sizesObjects";
+import { createSizesObjects, labelJetOf, showObjects, updateBlackHoles } from "./sizesObjects";
 
 /** Échelle graphique (DOM, `aria-hidden`) : conteneur, Soleil à l'échelle, trait, texte. */
 export interface ScaleBarElements {
@@ -68,7 +69,8 @@ export interface SizesSceneOptions {
   ringLabels: ReadonlyMap<SizeObjectKey, HTMLElement>;
   /**
    * Étiquette de chaque astre posée au-dessus de son limbe (grand à l'écran) : texte seul, le nom puis sa taille dans un
-   * `.dist`, que la forme courte masque (`data-short`).
+   * `.dist`, que la forme courte masque (`data-short`), avec ce qui encadre le nom court d'un astre au nom long
+   * (`[data-long]`).
    */
   limbLabels: ReadonlyMap<SizeObjectKey, HTMLElement>;
   /** Le Soleil devenu un point : anneau « ici » en `--soleil` (`.lbl.deep.here`). */
@@ -168,10 +170,17 @@ function showAt(slot: LabelSlot, left: number, top: number): void {
   setShown(slot, true);
 }
 
-/** Étiquette de limbe, mesurée dans sa forme complète : sa taille, et la largeur du nom seul (sans le `.dist`). */
+/** Largeur (px) de ce que la forme courte (`data-short`) masque : la taille (`.dist`), ce qui encadre le nom court. */
+function shortenedWidth(element: HTMLElement): number {
+  let width = 0;
+  for (const part of element.querySelectorAll<HTMLElement>(".dist, [data-long]")) width += part.offsetWidth;
+  return width;
+}
+
+/** Étiquette de limbe, mesurée dans sa forme complète : sa taille, et la largeur de sa forme courte (le nom court). */
 function measureLimb(element: HTMLElement): LimbLabelSize {
   const width = element.offsetWidth;
-  return { width, height: element.offsetHeight, shortWidth: width - (element.querySelector<HTMLElement>(".dist")?.offsetWidth ?? 0) };
+  return { width, height: element.offsetHeight, shortWidth: width - shortenedWidth(element) };
 }
 
 /** Écrit dans les deux étiquettes d'un astre la disposition retenue pour l'image. */
@@ -205,7 +214,7 @@ function measureMarker(element: HTMLElement): RingMarker | null {
       textY: text.offsetTop,
       textWidth: text.offsetWidth,
       textHeight: text.offsetHeight,
-      detailWidth: text.querySelector<HTMLElement>(".dist")?.offsetWidth ?? 0,
+      detailWidth: shortenedWidth(text),
     }),
     dotY,
     dotWidth: dot.offsetWidth,
@@ -339,6 +348,10 @@ function setupScene(
   const fits: number[] = placed.map(() => 1);
   /** Rapport et champ de la caméra de l'image, pour la projection des disques. */
   const lens = { aspect: 1, fovDeg: 36 };
+  /** Ce qui se voit de chaque astre au-dessus et au-dessous de son centre, en part de son encombrement (étiquettes). */
+  const reach = COMPARED_OBJECTS.map(visibleShare);
+  /** Jet de chaque trou noir qui en a un (M87*), réservé aux étiquettes ; null sinon. */
+  const jets = COMPARED_OBJECTS.map((object) => (object.kind === "black-hole" ? labelJetOf(object.key) : null));
 
   // ---------- Taille de la vue, mesures du DOM ----------
   function resize(): void {
@@ -478,10 +491,16 @@ function setupScene(
    * précédent, Soleil, puis du plus grand au plus petit), au-dessus du limbe d'un astre grand à l'écran, sur un anneau
    * pour un petit, anneau « ici » pour le Soleil devenu un point. Barre, règle, échelle graphique et place des plaques
    * (à gauche de la zone libre sur grand écran, sous la bande libre de l'escale en mise en page compacte) sont réservées
-   * d'avance. Une étiquette qui ne tient nulle part n'est pas montrée.
+   * d'avance, avec le jet d'un trou noir dessiné, qui sort de son encombrement. L'étiquette d'un trou noir se pose à
+   * 8 px de ce qui se voit de lui (`reach`). Une étiquette qui ne tient nulle part n'est pas montrée.
    */
   function updateLabels(current: SizeStopKey, scaleBox: LabelBox | null): void {
     const reserved = frameBoxes(view, measuredBoxes, screenLayout.zone(), screenLayout.band(current), scaleBox);
+    for (let i = 0; i < drawnDiscs.length; i++) {
+      const jet = jets[i];
+      if (!jet || fits[i] === 0) continue;
+      reserved.push(...jetBoxes({ x: placed[i].x, rs: COMPARED_OBJECTS[i].radiusSolar }, jet, shown, lens, view));
+    }
     const placements = layoutSizeLabels({
       discs: drawnDiscs,
       count: slots.length,
@@ -492,6 +511,8 @@ function setupScene(
       view,
       reserved,
       modes,
+      fits,
+      reach,
     });
     placements.objects.forEach((placement, i) => applyPlacement(slots[i], placement));
     if (sunSlot && placements.sun.form === "ring") {

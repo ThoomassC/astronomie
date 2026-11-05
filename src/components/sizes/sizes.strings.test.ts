@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SIZES_STRINGS } from "@/components/sizes/sizes.strings";
+import { nameParts, SIZES_STRINGS } from "@/components/sizes/sizes.strings";
 import { LOCALES } from "@/i18n/locales";
 import { bodyName } from "@/i18n/names";
 import { COMPARED_BLACK_HOLE_BY_KEY } from "@/lib/astro/blackHoles";
@@ -28,12 +28,25 @@ describe("SIZES_STRINGS.names", () => {
   });
 
   it.each([
-    ["fr", ["Cygnus X-1", "Sagittarius A*", "M87*", "Fer à cheval cosmique"]],
-    ["en", ["Cygnus X-1", "Sagittarius A*", "M87*", "Cosmic Horseshoe"]],
-    ["es", ["Cygnus X-1", "Sagitario A*", "M87*", "Herradura Cósmica"]],
-  ] as const)("devrait nommer les quatre trous noirs (%s)", (locale, names) => {
+    ["fr", ["Cygnus X-1", "Sagittarius A*", "M87*", "Trou noir du Fer à cheval cosmique"]],
+    ["en", ["Cygnus X-1", "Sagittarius A*", "M87*", "Cosmic Horseshoe black hole"]],
+    ["es", ["Cygnus X-1", "Sagitario A*", "M87*", "Agujero negro de la Herradura Cósmica"]],
+  ] as const)("devrait nommer les quatre trous noirs, celui du Fer à cheval cosmique sans le confondre avec sa galaxie (%s)", (locale, names) => {
     const keys = ["cygnus-x-1", "sagittarius-a-star", "m87-star", "cosmic-horseshoe"] as const;
     expect(keys.map((key) => SIZES_STRINGS[locale].names[key])).toEqual(names);
+  });
+
+  /*
+   * Dans la barre (bouton du menu, astre affiché), aucune taille ne suit le nom, et la place manque sur téléphone : à
+   * 375 px, le bouton du menu laisse 170 px au nom (Atkinson Hyperlegible Next, 15 px, graisse 600). « Trou noir du Fer
+   * à cheval cosmique » y mesure 244 px ; « Fer à cheval cosmique », 155.
+   */
+  it.each([
+    ["fr", "Fer à cheval cosmique"],
+    ["en", "Cosmic Horseshoe"],
+    ["es", "Herradura Cósmica"],
+  ] as const)("devrait garder pour la barre un nom court au seul trou noir du Fer à cheval cosmique (%s)", (locale, short) => {
+    expect(SIZES_STRINGS[locale].shortNames).toEqual({ "cosmic-horseshoe": short });
   });
 
   it.each(LOCALES)("devrait nommer les quatorze astres, sans doublon (%s)", (locale) => {
@@ -44,6 +57,35 @@ describe("SIZES_STRINGS.names", () => {
   it.each(LOCALES)("devrait nommer le Soleil comme le reste du site, étoile et repère de la scène (%s)", (locale) => {
     expect(SIZES_STRINGS[locale].names.sun).toBe(bodyName("sun", locale));
     expect(SIZES_STRINGS[locale].labels.sunMarker).toBe(bodyName("sun", locale));
+  });
+});
+
+/*
+ * Étiquette de la scène : sa forme courte, quand la complète ne tient pas, perd la taille (`.dist`) et ce qui encadre
+ * le nom court d'un astre au nom long. À 844 × 390, la zone libre a 267 px : « Agujero negro de la Herradura Cósmica »
+ * n'y tiendrait même pas seul.
+ */
+describe("nameParts", () => {
+  it.each([
+    ["fr", { lead: "Trou noir du ", core: "Fer à cheval cosmique", tail: "" }],
+    ["en", { lead: "", core: "Cosmic Horseshoe", tail: " black hole" }],
+    ["es", { lead: "Agujero negro de la ", core: "Herradura Cósmica", tail: "" }],
+  ] as const)("devrait découper le nom du trou noir du Fer à cheval cosmique autour de son nom court (%s)", (locale, parts) => {
+    expect(nameParts(SIZES_STRINGS[locale], "cosmic-horseshoe")).toEqual(parts);
+  });
+
+  it.each(LOCALES)("devrait recomposer chaque nom entier, et laisser entier celui d'un astre sans nom court (%s)", (locale) => {
+    const t = SIZES_STRINGS[locale];
+    for (const { key } of COMPARED_OBJECTS) {
+      const { lead, core, tail } = nameParts(t, key);
+      expect(lead + core + tail).toBe(t.names[key]);
+      expect(core).toBe(t.shortNames[key] ?? t.names[key]);
+    }
+  });
+
+  it("devrait garder le nom entier quand le nom court n'y figure pas", () => {
+    const t = { ...SIZES_STRINGS.fr, shortNames: { rigel: "β Orionis" } };
+    expect(nameParts(t, "rigel")).toEqual({ lead: "", core: "Rigel", tail: "" });
   });
 });
 
@@ -191,7 +233,7 @@ describe("SIZES_STRINGS.mass et massRange", () => {
 
   it.each([
     ["fr", 12.7, 23.4, 3, "de 12,7 à 23,4 masses solaires selon les études"],
-    ["en", 5.37e9, 7.2e9, 2, "5.4–7.2 billion solar masses, depending on the study"],
+    ["en", 5.12e9, 7.2e9, 2, "5.1–7.2 billion solar masses, depending on the study"],
     ["es", 2.6e10, 5e10, 2, "entre 26 y 50 mil millones de masas solares según los estudios"],
   ] as const)("devrait écrire la fourchette publiée d'une masse débattue (%s)", (locale, low, high, digits, expected) => {
     expect(SIZES_STRINGS[locale].massRange(low, high, digits)).toBe(expected);

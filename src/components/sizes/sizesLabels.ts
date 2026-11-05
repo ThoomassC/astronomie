@@ -1,13 +1,16 @@
 import { anchoredBox, placeMarkedLabel, pointBox, type LabelBox, type MarkerLayout } from "@/components/scene/labels";
+import type { Vec3 } from "@/lib/astro/constants";
 import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
-import type { ScreenDisc } from "@/lib/sizes/sizesCamera";
+import { pixelsPerSolarRadius } from "@/lib/sizes/scaleBar";
+import { screenPoint, viewDepth, type ScreenDisc, type SizesCam, type SizesFrameContext } from "@/lib/sizes/sizesCamera";
 
 /*
  * Étiquettes de la scène des tailles, posées sans jamais se recouvrir ni recouvrir un astre, la barre, la règle, la place
  * des plaques ou l'échelle graphique : au-dessus du limbe d'un astre grand à l'écran (le nom seul quand la forme
  * complète ne tient pas), sur un anneau à sa couleur pour un petit, anneau « ici » pour le Soleil devenu un point. Un
- * astre se mesure ici à son encombrement : un trou noir éclaire bien au-delà de son ombre. Logique pure, testée sur les
- * vues de référence ; le moteur mesure le DOM et applique le résultat.
+ * astre se réserve par son encombrement : un trou noir éclaire bien au-delà de son ombre. Son étiquette, elle, se pose
+ * à 8 px de ce qui se voit (anneau, disque), dans l'encombrement ; le jet de M87*, qui en sort, est réservé à part.
+ * Logique pure, testée sur les vues de référence ; le moteur mesure le DOM et applique le résultat.
  */
 
 /** Diamètre à l'écran, en px, dès lequel l'étiquette d'un astre passe au-dessus de son limbe… */
@@ -31,6 +34,14 @@ const RESERVED_DISC_PX = 24;
 const DISC_CROSS_RATIO = 0.72;
 /** Boîte vide, qui ne recouvre rien : tient la place d'une boîte réservée, écartée le temps d'une pose. */
 const EMPTY_BOX: LabelBox = [0, 0, 0, 0];
+/** Ce qui se voit d'une étoile : tout son disque, au-dessus comme au-dessous de son centre. */
+const WHOLE_DISC = { up: 1, down: 1 } as const;
+/** Tronçons du jet d'un trou noir, couverts chacun d'une boîte. */
+const JET_PIECES = 16;
+/** Demi-largeur couverte, en largeurs du jet : l'éclat de sa gaussienne y tombe sous 2 % de celui de l'axe (e⁻⁴). */
+const JET_HALF_WIDTHS = 2;
+/** Profondeur la plus courte d'un point du jet, en part de la distance de la caméra ; plus près, il n'est pas projeté. */
+const JET_NEAR_SHARE = 0.01;
 
 /** Étiquette d'un astre : au-dessus de son limbe (grand à l'écran), ou sur un anneau à sa couleur (petit). */
 export type StarLabelMode = "limb" | "ring";
@@ -95,8 +106,9 @@ function freeLeft(
 }
 
 /**
- * Boîte d'une étiquette au-dessus du limbe de l'astre (centre projeté x, y ; rayon projeté `radiusPx`), à 8 px ; sinon
- * au-dessous ; sinon le nom seul au-dessus, puis au-dessous ; sinon `null`. Centrée sur l'astre, elle glisse vers
+ * Boîte d'une étiquette à 8 px au-dessus de ce qui se voit de l'astre (centre projeté x, y ; `upPx` au-dessus du centre :
+ * le limbe d'une étoile, l'anneau ou le disque d'un trou noir) ; sinon à 8 px au-dessous (`downPx`) ; sinon le nom seul
+ * au-dessus, puis au-dessous ; sinon `null`. Centrée sur l'astre, elle glisse vers
  * l'intérieur de la vue quand elle en déborderait d'un côté (au repos, les plus grands ont parfois leur centre à moins
  * d'une demi-étiquette du bord), et le long d'une boîte occupée qui la gênerait (la place des plaques, au bord de la
  * zone libre étroite d'un téléphone en paysage). Elle reste au-dessus du centre de l'astre, sans quoi elle ne le
@@ -104,15 +116,15 @@ function freeLeft(
  * occupée, et l'astre doit être devant la caméra (profondeur NDC ≤ 1).
  */
 export function placeLimbLabel(
-  anchor: { x: number; y: number; radiusPx: number; depth: number },
+  anchor: { x: number; y: number; upPx: number; downPx: number; depth: number },
   size: LimbLabelSize,
   view: { width: number; height: number },
   occupied: readonly LabelBox[],
 ): { box: LabelBox; short: boolean } | null {
-  const { x, y, radiusPx, depth } = anchor;
+  const { x, y, upPx, downPx, depth } = anchor;
   if (depth > 1) return null;
-  const above = y - radiusPx - LIMB_GAP_PX - size.height;
-  const below = y + radiusPx + LIMB_GAP_PX;
+  const above = y - upPx - LIMB_GAP_PX - size.height;
+  const below = y + downPx + LIMB_GAP_PX;
   for (const short of [false, true]) {
     const width = short ? size.shortWidth : size.width;
     const limits = { minLeft: EDGE_MARGIN, maxLeft: view.width - EDGE_MARGIN - width };
@@ -126,6 +138,65 @@ export function placeLimbLabel(
     }
   }
   return null;
+}
+
+/** Jet d'un trou noir vu par les étiquettes, en r_s : son axe, sa longueur, sa largeur au pied et son évasement. */
+export interface LabelJet {
+  /** Axe unitaire, dans les axes du monde : celui du disque, côté du jet qui s'approche (diskAxis). */
+  axis: Vec3;
+  lengthRs: number;
+  /** Largeur (écart type de sa gaussienne) au pied ; elle croît de `spread` par r_s de longueur. */
+  widthRs: number;
+  spread: number;
+}
+
+/**
+ * Boîtes qui couvrent à l'écran le jet du trou noir de centre (x, 0, 0) et de rayon d'horizon `rs` (R☉), vu par la
+ * caméra `cam` : son axe, du centre au bout, en 16 tronçons, chacun pris dans l'englobant de ses deux bouts élargi de
+ * deux largeurs du jet à leur profondeur. Un jet tourné vers la caméra grandit à l'approche ; la part trop près d'elle
+ * (moins de 1 % de sa distance), ou derrière, est coupée. Chaque boîte est bornée à la vue ; celles qui en sortent tout
+ * à fait sont écartées.
+ */
+export function jetBoxes(
+  hole: { x: number; rs: number },
+  jet: LabelJet,
+  cam: SizesCam,
+  ctx: Pick<SizesFrameContext, "fovDeg">,
+  view: { width: number; height: number },
+): LabelBox[] {
+  const along = (s: number): Vec3 => ({
+    x: hole.x + jet.axis.x * s * hole.rs,
+    y: jet.axis.y * s * hole.rs,
+    z: jet.axis.z * s * hole.rs,
+  });
+  // La profondeur varie linéairement le long de l'axe : le jet s'arrête où elle passerait sous le seuil.
+  const near = JET_NEAR_SHARE * cam.dist;
+  const start = viewDepth(along(0), cam);
+  const slope = viewDepth(along(jet.lengthRs), cam) - start;
+  const reach = slope < 0 ? Math.min(1, (start - near) / -slope) : 1;
+  if (start <= near || reach <= 0) return [];
+  const ends: { x: number; y: number; half: number }[] = [];
+  for (let k = 0; k <= JET_PIECES; k++) {
+    const s = (jet.lengthRs * reach * k) / JET_PIECES;
+    const point = screenPoint(along(s), cam, ctx, view);
+    if (!point) return [];
+    const widthPx = (jet.widthRs + s * jet.spread) * hole.rs * pixelsPerSolarRadius(view.height, point.depth, ctx.fovDeg);
+    ends.push({ x: point.x, y: point.y, half: JET_HALF_WIDTHS * widthPx });
+  }
+  const boxes: LabelBox[] = [];
+  for (let k = 0; k < JET_PIECES; k++) {
+    const a = ends[k];
+    const b = ends[k + 1];
+    const half = Math.max(a.half, b.half);
+    const box: LabelBox = [
+      Math.max(0, Math.min(a.x, b.x) - half),
+      Math.max(0, Math.min(a.y, b.y) - half),
+      Math.min(view.width, Math.max(a.x, b.x) + half),
+      Math.min(view.height, Math.max(a.y, b.y) + half),
+    ];
+    if (box[2] > box[0] && box[3] > box[1]) boxes.push(box);
+  }
+  return boxes;
 }
 
 /**
@@ -188,6 +259,16 @@ export interface SizeLabelsInput {
   reserved: readonly LabelBox[];
   /** Disposition de chaque étiquette à l'image précédente (hystérésis), mise à jour en place. */
   modes: (StarLabelMode | null)[];
+  /**
+   * Part visible de chaque astre près de la règle (railSideFade), 1 par défaut. Un astre tout à fait effacé (0) n'est
+   * pas dessiné : ni réservé, ni étiqueté.
+   */
+  fits?: readonly number[];
+  /**
+   * Ce qui se voit de chaque astre au-dessus et au-dessous de son centre, en part de son rayon à l'écran (visibleShare) :
+   * tout le disque par défaut. L'étiquette au-dessus du limbe s'y pose à 8 px.
+   */
+  reach?: readonly { up: number; down: number }[];
 }
 
 export interface SizeLabelsLayout {
@@ -218,27 +299,57 @@ export function frameBoxes(
 
 /**
  * Étiquettes de l'image, dans l'ordre de pose (labelOrder), après avoir réservé chaque astre dessiné : le carré de son
- * point s'il fait moins de 24 px, sa croix (discBoxes) sinon. Au-dessus du limbe d'un astre grand à l'écran
- * (placeLimbLabel), sur un anneau pour un petit (placeMarkedLabel : texte à droite, à gauche, puis le nom seul), anneau
- * « ici » pour le Soleil sous 14 px. L'anneau se pose sur l'astre même : son propre point est écarté de la recherche le
- * temps de la pose, les autres non. Une étiquette qui ne tient nulle part est masquée : jamais de texte recouvert ni
- * coupé. Un astre dans lequel la caméra serait entrée (rayon infini) occupe toute la vue.
+ * point s'il fait moins de 24 px, la croix de son encombrement (discBoxes) sinon. Au-dessus du limbe d'un astre grand à
+ * l'écran (placeLimbLabel), à 8 px de ce qui se voit de lui (`reach`) ; sur un anneau pour un petit (placeMarkedLabel :
+ * texte à droite, à gauche, puis le nom seul), anneau « ici » pour le Soleil sous 14 px. Chacune se pose sur son astre
+ * même : sa propre croix ou son propre point est écarté de la recherche le temps de la pose, ceux des autres non. Une
+ * étiquette qui ne tient nulle part est masquée : jamais de texte recouvert ni coupé. Un astre tout à fait effacé près
+ * de la règle (`fits`) compte pour non dessiné. Un astre dans lequel la caméra serait entrée (rayon infini) occupe toute
+ * la vue.
  */
 export function layoutSizeLabels(input: SizeLabelsInput): SizeLabelsLayout {
-  const { discs, count, current, sun, metrics, sunMarker, view, reserved, modes } = input;
+  const { discs, count, current, sun, metrics, sunMarker, view, reserved, modes, fits, reach } = input;
   const occupied: LabelBox[] = [...reserved];
+  /** Astre dessiné à cette image : parmi les premiers (`discs`), et pas tout à fait effacé près de la règle. */
+  const drawn = (i: number) => i < discs.length && (fits?.[i] ?? 1) > 0;
   /** Place, dans `occupied`, du point réservé de chaque petit astre (−1 : grand, ou non dessiné). */
   const ownPoint = new Array<number>(count).fill(-1);
+  /** Place, dans `occupied`, de la première boîte de la croix de chaque grand astre (−1 : petit, ou non dessiné). */
+  const ownCross = new Array<number>(count).fill(-1);
   discs.forEach(({ x, y, radius }, i) => {
+    if (!drawn(i)) return;
     if (!Number.isFinite(radius)) {
       occupied.push([0, 0, view.width, view.height]);
     } else if (2 * radius < RESERVED_DISC_PX) {
       ownPoint[i] = occupied.length;
       occupied.push(pointBox(x, y, 2 * radius));
     } else {
+      ownCross[i] = occupied.length;
       occupied.push(...discBoxes(x, y, radius));
     }
   });
+
+  /** Pose l'étiquette de l'astre `index` au-dessus de son limbe, sa propre croix écartée : elle entre dans l'encombrement. */
+  const limb = (size: LimbLabelSize, index: number): LabelPlacement => {
+    const disc = discs[index];
+    const { up, down } = reach?.[index] ?? WHOLE_DISC;
+    const cross = ownCross[index];
+    const wide = cross >= 0 ? occupied[cross] : null;
+    const tall = cross >= 0 ? occupied[cross + 1] : null;
+    if (wide && tall) {
+      occupied[cross] = EMPTY_BOX;
+      occupied[cross + 1] = EMPTY_BOX;
+    }
+    const anchor = { x: disc.x, y: disc.y, upPx: up * disc.radius, downPx: down * disc.radius, depth: 0.5 };
+    const placed = placeLimbLabel(anchor, size, view, occupied);
+    if (wide && tall) {
+      occupied[cross] = wide;
+      occupied[cross + 1] = tall;
+    }
+    if (!placed) return HIDDEN;
+    occupied.push(placed.box);
+    return { form: "limb", box: placed.box, left: placed.box[0], top: placed.box[1], short: placed.short };
+  };
 
   /** Pose une étiquette à anneau sur l'astre `index`, son propre point écarté ; la boîte de texte et le repère réservés. */
   const ring = (marker: RingMarker | null, index: number): LabelPlacement => {
@@ -269,7 +380,7 @@ export function layoutSizeLabels(input: SizeLabelsInput): SizeLabelsLayout {
   let sunPlacement = HIDDEN;
   for (const i of labelOrder(current, sun, count)) {
     if (i >= count) continue;
-    const disc = i < discs.length ? discs[i] : undefined;
+    const disc = drawn(i) ? discs[i] : undefined;
     if (!disc) {
       modes[i] = null;
       continue;
@@ -287,10 +398,7 @@ export function layoutSizeLabels(input: SizeLabelsInput): SizeLabelsLayout {
       continue;
     }
     const size = metrics[i]?.limb;
-    const placed = size ? placeLimbLabel({ x: disc.x, y: disc.y, radiusPx: disc.radius, depth: 0.5 }, size, view, occupied) : null;
-    if (!placed) continue;
-    occupied.push(placed.box);
-    objects[i] = { form: "limb", box: placed.box, left: placed.box[0], top: placed.box[1], short: placed.short };
+    if (size) objects[i] = limb(size, i);
   }
   return { objects, sun: sunPlacement };
 }

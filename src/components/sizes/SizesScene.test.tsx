@@ -66,6 +66,20 @@ describe("SizesScene sans WebGL", () => {
     expect(limb?.querySelector(".dist")).toHaveTextContent("· 74 R☉");
   });
 
+  it("devrait écrire à part (`[data-long]`) ce que la forme courte retire du nom du trou noir du Fer à cheval (en)", () => {
+    const { container } = render(
+      <LocaleProvider locale="en">
+        <SizesScene />
+      </LocaleProvider>,
+    );
+    for (const attribute of ["data-ring", "data-limb"]) {
+      const label = container.querySelector(`[${attribute}="cosmic-horseshoe"] > span`);
+      expect(label?.textContent).toMatch(/^Cosmic Horseshoe black hole · /);
+      expect(Array.from(label?.querySelectorAll("[data-long]") ?? [], (part) => part.textContent)).toEqual([" black hole"]);
+      expect(container.querySelector(`[${attribute}="rigel"] [data-long]`)).toBeNull();
+    }
+  });
+
   it("devrait donner au Soleil devenu un point l'anneau « ici », avec son nom et son rayon (fr : « Soleil · 1 R☉ »)", () => {
     const { container } = render(<SizesScene />);
     expect(container.querySelector("[data-sun-here]")).toHaveTextContent("Soleil · 1 R☉");

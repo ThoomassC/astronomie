@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getSizesContent } from "@/content/sizes/content";
 import { LOCALES, type Locale } from "@/i18n/locales";
-import { COMPARED_BLACK_HOLE_BY_KEY, COMPARED_BLACK_HOLES } from "@/lib/astro/blackHoles";
+import { COMPARED_BLACK_HOLE_BY_KEY, COMPARED_BLACK_HOLES, M87_STELLAR_DYNAMICS_MASS_SOLAR } from "@/lib/astro/blackHoles";
 import { SHADOW_RADIUS_RS, schwarzschildRadiusKm } from "@/lib/astro/schwarzschild";
 import { COMPARED_STAR_BY_KEY, COMPARED_STARS } from "@/lib/astro/starSizes";
 import { formatNumber } from "@/lib/format";
@@ -22,6 +22,14 @@ function leaves(value: unknown, path = ""): (readonly [string, string])[] {
 const FRENCH = new Map(leaves(getSizesContent("fr")));
 
 describe("getSizesContent", () => {
+  it.each([
+    ["fr", "Rayon de l'horizon (sans rotation)"],
+    ["en", "Event horizon radius (without rotation)"],
+    ["es", "Radio del horizonte (sin rotación)"],
+  ] as const)("devrait dire, dans la fiche de chaque trou noir, que l'horizon est celui d'un trou noir sans rotation (%s)", (locale, label) => {
+    expect(getSizesContent(locale).facts.horizon).toBe(label);
+  });
+
   it.each(LOCALES)("devrait donner un texte à chacune des dix étoiles du comparateur (%s)", (locale) => {
     expect(Object.keys(getSizesContent(locale).stars).sort()).toEqual(COMPARED_STARS.map((star) => star.key).sort());
   });
@@ -154,11 +162,42 @@ describe("nombres des textes des trous noirs", () => {
     for (const locale of LOCALES) expect(getSizesContent(locale).intro.text).toContain(n(SHADOW_RADIUS_RS, locale, 1));
   });
 
-  it("devrait donner à l'horizon de Cygnus X-1 environ 125 km de diamètre, la Terre étant plus de cent fois plus large", () => {
-    const diameterKm = 2 * schwarzschildRadiusKm(COMPARED_BLACK_HOLE_BY_KEY["cygnus-x-1"].massSolar);
-    expect(Math.round(diameterKm)).toBe(125);
-    expect(12_742 / diameterKm).toBeGreaterThan(100);
-    for (const locale of LOCALES) expect(text(locale, "cygnus-x-1")).toContain("125 km");
+  /*
+   * Cygnus X-1 : 21,2 M☉ en 2021, de 12,7 à 17,8 M☉ selon l'étude de 2025 ; fourchette retenue, de 12,7 à 23,4 M☉. Les
+   * textes disent ce qui reste vrai sur toute la fourchette, et que l'horizon est celui d'un trou noir sans rotation
+   * (un trou noir qui tourne a un horizon plus petit).
+   */
+  describe("Cygnus X-1, sur toute la fourchette publiée de sa masse", () => {
+    const [low, high] = COMPARED_BLACK_HOLE_BY_KEY["cygnus-x-1"].massRange ?? [Number.NaN, Number.NaN];
+    const horizonKm = (mass: number) => 2 * schwarzschildRadiusKm(mass);
+    const SAYINGS = {
+      fr: { mass: "Environ 15 à 20 fois", horizon: "horizon (sans rotation)", hundred: "une centaine de kilomètres" },
+      en: { mass: "About 15 to 20 times", horizon: "horizon (without rotation)", hundred: "about a hundred kilometres" },
+      es: { mass: "Entre 15 y 20 veces", horizon: "horizonte (sin rotación)", hundred: "un centenar de kilómetros" },
+    } as const;
+
+    it("devrait donner une masse de 15 à 20 fois le Soleil, dans la fourchette publiée", () => {
+      expect(low).toBeLessThanOrEqual(15);
+      expect(high).toBeGreaterThanOrEqual(20);
+      for (const locale of LOCALES) expect(getSizesContent(locale).blackHoles["cygnus-x-1"].hook).toContain(SAYINGS[locale].mass);
+    });
+
+    it("devrait donner à son ombre quelques centaines de kilomètres de diamètre", () => {
+      expect(SHADOW_RADIUS_RS * horizonKm(low)).toBeGreaterThan(100);
+      expect(SHADOW_RADIUS_RS * horizonKm(high)).toBeLessThan(1000);
+    });
+
+    it("devrait donner à son horizon, sans rotation, une centaine de kilomètres de diamètre, la Terre environ cent fois plus large", () => {
+      expect(horizonKm(low)).toBeGreaterThan(50);
+      expect(horizonKm(high)).toBeLessThan(150);
+      expect(12_742 / horizonKm(high)).toBeGreaterThan(80);
+      expect(12_742 / horizonKm(low)).toBeLessThan(200);
+      for (const locale of LOCALES) {
+        expect(text(locale, "cygnus-x-1")).toContain(SAYINGS[locale].horizon);
+        expect(text(locale, "cygnus-x-1")).toContain(SAYINGS[locale].hundred);
+        expect(text(locale, "cygnus-x-1")).not.toMatch(/125 km|vingt|twenty|veinte/);
+      }
+    });
   });
 
   it("devrait comparer l'ombre de Sagittarius A* à Aldébaran, à peine plus petite, et écrire sa masse et sa distance", () => {
@@ -176,14 +215,15 @@ describe("nombres des textes des trous noirs", () => {
     const hole = COMPARED_BLACK_HOLE_BY_KEY["m87-star"];
     const ratio = hole.massSolar / COMPARED_BLACK_HOLE_BY_KEY["sagittarius-a-star"].massSolar;
     expect(Math.round(ratio / 100) * 100).toBe(1500);
-    const [low] = hole.massRange ?? [Number.NaN];
+    // La mise en garde oppose la masse de l'anneau à celle de la dynamique stellaire, gardée à part (pas le bas de la fourchette).
+    const dynamics = Math.round(M87_STELLAR_DYNAMICS_MASS_SOLAR / 1e8) * 1e8;
     for (const locale of LOCALES) {
       expect(text(locale, "m87-star")).toContain(n(1500, locale));
       // En espagnol, les milliards se disent en milliers de millions : « 6500 millones ».
       const scale = locale === "es" ? 1e6 : 1e9;
       const digits = locale === "es" ? 0 : 1;
       expect(text(locale, "m87-star")).toContain(n(hole.massSolar / scale, locale, digits));
-      expect(text(locale, "m87-star")).toContain(n(Math.round(low / 1e8) * 1e8 / scale, locale, digits));
+      expect(text(locale, "m87-star")).toContain(n(dynamics / scale, locale, digits));
     }
   });
 
@@ -191,11 +231,14 @@ describe("nombres des textes des trous noirs", () => {
     const hole = COMPARED_BLACK_HOLE_BY_KEY["cosmic-horseshoe"];
     expect(hole.massSolar / COMPARED_BLACK_HOLE_BY_KEY["sagittarius-a-star"].massSolar).toBeGreaterThan(8000);
     expect(Math.round((hole.lightTravelYears ?? 0) / 1e9)).toBe(5);
+    // Le nombre et son mot : « 5 » seul se trouverait partout.
+    const BILLIONS = { fr: "milliards", en: "billion", es: "millones" } as const;
     for (const locale of LOCALES) {
       const scale = locale === "es" ? 1e6 : 1e9;
-      expect(text(locale, "cosmic-horseshoe")).toContain(n(hole.massSolar / scale, locale));
+      const billions = (value: number) => `${n(value / scale, locale)} ${BILLIONS[locale]}`;
+      expect(text(locale, "cosmic-horseshoe")).toContain(billions(hole.massSolar));
       expect(text(locale, "cosmic-horseshoe")).toContain(n(8000, locale));
-      expect(text(locale, "cosmic-horseshoe")).toContain(n(5e9 / scale, locale));
+      expect(text(locale, "cosmic-horseshoe")).toContain(billions(5e9));
     }
   });
 });

@@ -81,8 +81,8 @@ export const SIZES_ES: SizesContent = {
   blackHoles: {
     "cygnus-x-1": {
       kind: "agujero negro estelar",
-      hook: "Más de veinte veces la masa del Sol, en una sombra de unos pocos cientos de kilómetros.",
-      lede: "Cygnus X-1 fue el primer objeto que los astrónomos reconocieron como un agujero negro, a principios de los años setenta. Gira cada 5,6 días alrededor de una estrella supergigante azul y se traga su viento. En 1974, el físico Stephen Hawking apostó a que no era un agujero negro; reconoció su derrota en 1990. Su horizonte mide solo unos 125 km de diámetro: la Tierra es cien veces más ancha.",
+      hook: "Entre 15 y 20 veces la masa del Sol, en una sombra de unos pocos cientos de kilómetros.",
+      lede: "Cygnus X-1 fue el primer objeto que los astrónomos reconocieron como un agujero negro, a principios de los años setenta. Gira cada 5,6 días alrededor de una estrella supergigante azul y se traga su viento. En 1974, el físico Stephen Hawking apostó a que no era un agujero negro; reconoció su derrota en 1990. Su horizonte (sin rotación) mide solo un centenar de kilómetros de diámetro: la Tierra es unas cien veces más ancha.",
       simplification:
         "Representación calculada: la luz sigue la curvatura del espacio alrededor de un agujero negro sin rotación. El disco, que brilla sobre todo en rayos X, toma el color de un cuerpo negro a varios millones de grados; se ve más inclinado que en la realidad, para mostrar su imagen desviada por encima de la sombra.",
       caveat: "Su masa se discute: un estudio de 2025 lo encuentra bastante más ligero que la medida de 2021 que se usa aquí.",
@@ -119,7 +119,7 @@ export const SIZES_ES: SizesContent = {
     comparison: "Para comparar",
     sunDistance: "8,3 minutos luz",
     shadow: "Radio de la sombra",
-    horizon: "Radio del horizonte",
+    horizon: "Radio del horizonte (sin rotación)",
     mass: "Masa",
     blackHoleType: "Tipo",
   },
