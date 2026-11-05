@@ -225,9 +225,12 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Voyage) : 800 px de contenu pour 829 disponibles à 861 px en paysage ; en portrait, où le menu des escales remplace
   l'escale, 860 px qui ne tiennent qu'à 892 px : la grille y attend 900 px, la ligne d'origine sert avant. Hauteur
   inchangée, une seule ligne ; à 860 px et moins, les onglets passent dans « Menu ». Fond : au Voyage et à Tailles,
-  un voile léger (`--voile` vers transparent, plus dense à 640 px et moins), pour que la scène 3D se devine dessous ;
-  à l'Accueil et à À propos, où le texte défile sous la barre, `--nuit` plein jusqu'au bas des commandes puis un
-  fondu sur la marge basse (0,9 rem) : rien ne se lit derrière la marque ni les onglets.
+  sur grand écran, un voile léger (`--voile` vers transparent), pour que la scène 3D se devine dessous (les fondus
+  effacent les plaques avant elle) ; à l'Accueil et à À propos, où le texte défile sous la barre, et au Voyage et à
+  Tailles là où la barre glisse (mise en page compacte, écran bas : les plaques y passent dessous sans fondu), `--nuit`
+  plein jusqu'au bas des commandes puis un fondu sur la marge basse (0,9 rem ; 0,6 sur téléphone court, 0,5 sur écran
+  bas) : rien ne se lit derrière la marque ni les commandes. En couleurs forcées, la barre qui glisse prend le fond du
+  système.
   **Barre qui glisse** (Voyage et Tailles, là où ni règle ni fondus ne la bordent : mise en page compacte et écran
   bas, en portrait comme en paysage) : elle glisse hors de l'écran (0,25 s, rien en mouvement réduit) après 16 px de
   descente, revient dès 8 px de remontée, et reste affichée en haut de page, quand le focus y entre (clavier, retour

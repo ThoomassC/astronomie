@@ -2626,10 +2626,9 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 }
 
 @media (max-width: 640px) {
-  /* Les plaques défilent sous la barre : un voile plus dense garde la marque lisible. */
+  /* Le voile de la barre, sous laquelle passent les plaques : en fin de feuille (« Voile de la barre qui glisse »). */
   .bar {
     gap: 0.6rem;
-    background: linear-gradient(rgba(6, 11, 24, 0.94) 55%, rgba(6, 11, 24, 0));
   }
 
   .brand {
@@ -3074,8 +3073,6 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     position: fixed;
     top: env(safe-area-inset-top, 0px);
     padding-block: 0.5rem;
-    /* Les plaques défilent dessous, sans fondu : le voile dense des téléphones garde la marque lisible. */
-    background: linear-gradient(rgba(6, 11, 24, 0.94) 55%, rgba(6, 11, 24, 0));
   }
 }
 
@@ -3104,6 +3101,38 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 
   .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) {
     transform: translateY(-100%);
+  }
+}
+
+/*
+ * Voile de la barre qui glisse : les plaques passent sous elle, sans fondu pour les effacer (en 844 × 390, « 6e planète
+ * en partant du Soleil » se lisait sous la marque). Comme à l'Accueil, nuit pleine jusqu'au bas des commandes, puis un
+ * fondu sur sa marge basse, qui change avec la mise en page : 0,9 rem, 0,6 rem sur téléphone court, 0,5 rem sur écran
+ * bas. La scène n'y perd rien : elle ne cadre ni n'étiquette rien sous la barre. En couleurs forcées, le fond du système.
+ */
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
+  .bar[data-autohide] {
+    background: linear-gradient(var(--nuit) calc(100% - 0.9rem), rgba(6, 11, 24, 0));
+  }
+}
+
+@media (max-width: 640px) and (max-height: 700px) {
+  .bar[data-autohide] {
+    background: linear-gradient(var(--nuit) calc(100% - 0.6rem), rgba(6, 11, 24, 0));
+  }
+}
+
+@media (max-height: 30rem) and (scripting: enabled) {
+  .bar[data-autohide] {
+    background: linear-gradient(var(--nuit) calc(100% - 0.5rem), rgba(6, 11, 24, 0));
+  }
+}
+
+@media (forced-colors: active) {
+  @media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
+    .bar[data-autohide] {
+      background: Canvas;
+    }
   }
 }
 

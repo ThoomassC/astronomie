@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Activity, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -190,3 +192,78 @@ describe("AutoHideBar", () => {
     expect(banner()).toHaveAttribute("data-concealed");
   });
 });
+
+/*
+ * Ce que décide la feuille de style (globals.css, lue telle quelle) : où la barre glisse, ce qui la retient, et son
+ * voile, là où les plaques passent dessous sans fondu.
+ */
+describe("feuille de style de la barre qui glisse", () => {
+  const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+  /** Mise en page compacte et écran bas : le complément exact de la requête des fondus. */
+  const SLIDING = "(max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem)";
+
+  /** Requête du bloc média qui contient `marker`, à `from` caractères au moins du début. */
+  function queryAround(marker: string, from = 0): { query: string; at: number } {
+    const at = css.indexOf(marker, from);
+    expect(at, marker).toBeGreaterThan(0);
+    const start = css.lastIndexOf("@media", at);
+    return { query: css.slice(start + "@media".length, css.indexOf("{", start)).replace(/\s+/g, " ").trim(), at };
+  }
+
+  /** Déclarations de la règle `selector` (indentation de 2) dans le bloc média de requête `query`. */
+  function ruleIn(query: string, selector: string): string {
+    const escaped = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const block = new RegExp(`@media ${escaped(query)} \\{([\\s\\S]*?)\\n\\}`, "g");
+    const rules = Array.from(css.matchAll(block), (match) => match[1])
+      .map((body) => new RegExp(`\\n {2}${escaped(selector)} \\{([^}]*)\\}`).exec(body)?.[1])
+      .filter((rule): rule is string => rule !== undefined);
+    expect(rules, `${selector} dans ${query}`).not.toEqual([]);
+    return rules.join("\n");
+  }
+
+  it("devrait la faire glisser seulement là où ni la règle ni les fondus ne bordent la page", () => {
+    const { query } = queryAround(".bar[data-concealed]");
+    expect(query).toBe(SLIDING);
+  });
+
+  it("devrait la garder tant qu'elle a le focus clavier ou qu'un de ses menus est ouvert", () => {
+    expect(ruleIn(SLIDING, '.bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"]))')).toMatch(
+      /transform: translateY\(-100%\);/,
+    );
+  });
+
+  it("devrait la faire glisser en 0,25 s, et sans animation en mouvement réduit", () => {
+    expect(ruleIn(SLIDING, ".bar[data-autohide]")).toMatch(/transform 0\.25s/);
+    expect(ruleIn("(prefers-reduced-motion: reduce)", "*,\n  *::before,\n  *::after")).toMatch(/transition: none !important;/);
+  });
+
+  /*
+   * Les plaques passent sous elle sans fondu (en 844 × 390, « 6e planète en partant du Soleil » se lisait sous la
+   * marque) : nuit pleine jusqu'au bas des commandes, puis un fondu sur sa marge basse, dans chaque mise en page.
+   */
+  const SHORT_PHONE = "(max-width: 640px) and (max-height: 700px)";
+  const LOW_SCREEN = "(max-height: 30rem) and (scripting: enabled)";
+  /** Marge basse de la barre : celle de la règle de base, puis du téléphone court et de l'écran bas. */
+  const margins: Readonly<Record<string, string | undefined>> = {
+    [SLIDING]: /\n\.bar \{[^}]*\n {2}padding: ([\d.]+rem) /.exec(css)?.[1],
+    [SHORT_PHONE]: /padding-block: ([\d.]+rem);/.exec(ruleIn(SHORT_PHONE, ".bar"))?.[1],
+    [LOW_SCREEN]: /padding-block: ([\d.]+rem);/.exec(ruleIn(LOW_SCREEN, ".bar[data-autohide]"))?.[1],
+  };
+
+  it.each([SLIDING, SHORT_PHONE, LOW_SCREEN])(
+    "devrait masquer ce qui passe sous elle jusqu'au bas des commandes, fondu sur sa marge basse (%s)",
+    (query) => {
+      const margin = margins[query] ?? "";
+      expect(margin).toMatch(/^[\d.]+rem$/);
+      const gradient = `background: linear-gradient(var(--nuit) calc(100% - ${margin}), rgba(6, 11, 24, 0));`;
+      expect(ruleIn(query, ".bar[data-autohide]")).toContain(gradient);
+    },
+  );
+
+  it("devrait poser, en couleurs forcées, un fond plein du système sous la barre qui glisse", () => {
+    const at = css.indexOf("@media (forced-colors: active) {\n  @media " + SLIDING);
+    expect(at).toBeGreaterThan(0);
+    expect(css.slice(at, css.indexOf("\n}", at))).toMatch(/\.bar\[data-autohide\] \{\n {6}background: Canvas;/);
+  });
+});
+
