@@ -243,6 +243,28 @@ describe("Plate", () => {
     });
   });
 
+  /*
+   * Escales voisines (téléphone) : au bout de la rangée des titres-boutons, et non dans une rangée à part sous la
+   * plaque, qui rognerait la bande libre de la scène ; dans l'ordre de tabulation, après les sections, avant le pied.
+   */
+  it("devrait poser les escales voisines au bout de la rangée des titres-boutons, avant le pied", async () => {
+    render(
+      <Plate
+        id="mars"
+        name="Mars"
+        color="#DA6A43"
+        header={<h2>Mars</h2>}
+        sections={SECTIONS}
+        steps={<a href="#jupiter">Jupiter</a>}
+        footer={<p>Pied de plaque</p>}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Lire la fiche" }));
+    const row = document.querySelector(".plate-sections");
+    expect(row?.lastElementChild).toBe(screen.getByRole("link", { name: "Jupiter" }));
+    expect(row?.nextElementSibling).toBe(screen.getByText("Pied de plaque"));
+  });
+
   it("devrait garder le pied de plaque visible après les sections", () => {
     renderPlate();
     expect(screen.getByText("Pied de plaque")).toBeInTheDocument();

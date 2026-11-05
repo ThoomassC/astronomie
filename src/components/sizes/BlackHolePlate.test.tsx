@@ -130,11 +130,11 @@ describe("BlackHolePlate, distance cosmologique, mise en garde et lien de retour
     expect(screen.getByRole("link", { name: "Revenir au plus petit" })).toHaveAttribute("href", "#cygnus-x-1");
   });
 
-  it("ne devrait proposer au plus grand astre que le précédent, après le retour au plus petit, sans le doubler", () => {
+  it("ne devrait proposer au plus grand astre que le précédent, avant le retour au plus petit, sans le doubler", () => {
     render(<BlackHolePlate hole={COMPARED_BLACK_HOLE_BY_KEY["cosmic-horseshoe"]} locale="fr" restartTo="cygnus-x-1" />);
     expect(screen.getAllByRole("link").map((link) => link.getAttribute("aria-label") ?? link.textContent)).toEqual([
-      "Revenir au plus petit",
       "Astre précédent\u00a0: M87*",
+      "Revenir au plus petit",
     ]);
   });
 });

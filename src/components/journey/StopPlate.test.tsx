@@ -84,12 +84,15 @@ describe("StopPlate", () => {
     expect(textOf(plate, ".rank sup")).toBe(suffix);
   });
 
-  /* Sur téléphone, d'escale en escale sans ouvrir le menu : les liens ferment la plaque, après la fiche et le module. */
+  /*
+   * Sur téléphone, d'escale en escale sans ouvrir le menu : les liens sont au bout de la rangée des titres-boutons,
+   * après la fiche et le module, sans rangée de plus sous la plaque.
+   */
   it("devrait mener, au bas de la plaque de Saturne, à Jupiter et à Uranus", () => {
     const plate = renderPlate("en", "saturn");
-    const steps = plate.querySelector(".plate > .stop-steps");
+    const steps = plate.querySelector(".plate-sections > .stop-steps");
     expect(steps).not.toBeNull();
-    expect(steps).toBe(plate.querySelector(".plate")?.lastElementChild);
+    expect(steps).toBe(plate.querySelector(".plate-sections")?.lastElementChild);
     expect(within(plate).getByRole("link", { name: "Previous stop: Jupiter" })).toHaveAttribute("href", "#jupiter");
     expect(within(plate).getByRole("link", { name: "Next stop: Uranus" })).toHaveAttribute("href", "#uranus");
   });
