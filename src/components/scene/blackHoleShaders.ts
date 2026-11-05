@@ -1,5 +1,11 @@
-import { SHADOW_RADIUS_RS } from "@/lib/astro/schwarzschild";
-import { OUTPUT } from "./shaders";
+import {
+  BLACKBODY_FIT,
+  BLACKBODY_LIMIT_SHIFT,
+  DISK_PEAK_SHAPE,
+  START_IMPACT_RATIO,
+} from "@/lib/astro/photonGeodesic";
+import { ISCO_RS, SHADOW_RADIUS_RS } from "@/lib/astro/schwarzschild";
+import { NOISE_GLSL, OUTPUT } from "./shaders";
 import { STARFIELD_GLSL } from "./starfield";
 
 /*
@@ -7,10 +13,17 @@ import { STARFIELD_GLSL } from "./starfield";
  * de rayon uQuadRs (en r_s) ; le fragment travaille dans le repère du trou noir, en r_s, à partir de la caméra
  * uCamLocal et de la rotation uViewToWorld, calculées en double précision côté TypeScript : jamais de différence de
  * deux positions de la scène dans le GLSL, où le float32 la rendrait fausse.
+ *
+ * Le fragment suit pas à pas le modèle exécutable src/lib/astro/photonGeodesic.ts (startRay, traceRay, diskRedshift,
+ * flowRedshift, diskTemperatureRatio, blackbodyColor), sous les mêmes noms quand c'est possible : toute modification
+ * se fait des deux côtés. Pas, série de champ faible et ajustement du corps noir viennent de lui.
  */
 
 /** Constante GLSL flottante (« 2.5 », « 3.0 ») : un entier ne se mêle pas aux flottants. */
 const glslFloat = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value));
+
+/** vecN GLSL de nombres TypeScript. */
+const glslVec = (values: readonly number[]) => `vec${values.length}(${values.map(glslFloat).join(", ")})`;
 
 /**
  * Rectangle face caméra : le carré unité (PlaneGeometry(2, 2)) se pose dans le plan perpendiculaire à la ligne de
@@ -53,39 +66,409 @@ void main() {
 `;
 
 /**
- * Squelette analytique, en attendant le lancer de rayons : le ciel du fond, non dévié ; noir dans le cercle apparent
- * de l'ombre, de rayon asin(SHADOW_RADIUS_RS / |uCamLocal|) ; un anneau fin de la couleur uRingColor à son bord ; le
- * cercle de l'horizon (r_s), non lentillé, en uHorizonColor, dosé par uHorizonMark ; rien hors du cercle apparent de la
- * sphère tracée. Bords adoucis sur un px CSS (uPixelAngle). Sortie : vec4(couleur, uOpacity), puis tone mapping.
+ * Lancer de rayons dans la métrique de Schwarzschild, r_s = 1, repère du trou noir.
+ *
+ * - Départ (startRay) : direction mesurée par la caméra immobile, vitesse affine (composante transverse divisée par
+ *   √(1 − 1/D)), saut en ligne droite jusqu'à la sphère max(R_q, 3 b) en gardant exactement b et l'énergie.
+ * - Tracé (traceRay) : Verlet sur a = −1,5 h² x / |x|⁵, pas clamp(BH_STEP_FACTOR r, BH_MIN_STEP, BH_MAX_STEP) dans la
+ *   sphère tracée, BH_FAR_STEP_FACTOR r au-delà ; arrêt dès l'horizon franchi (r < 1), le rayon sorti en s'éloignant,
+ *   le disque opaque, ou au dernier pas (inachevé : sans ciel, émission gardée, c'est l'anneau de photons).
+ * - Disque mince : traversées du plan (BH_MAX_CROSSINGS au plus) ; température de Shakura et Sunyaev, couleur de
+ *   corps noir à g T, éclat (g T)⁴, g exact par le moment cinétique conservé du rayon ; opacité 1 − e^(−τ/μ), τ qui
+ *   s'efface au bord extérieur ; turbulence en spirales logarithmiques, advectée à la vitesse képlérienne par deux
+ *   couches fondues l'une dans l'autre (l'enroulement reste borné, rien ne se répète), détail effacé sous deux pixels.
+ * - Gaz chaud : émission j g³ dλ le long des pas (paramètre affine), couleur de corps noir au g moyen, sursauts lents.
+ * - Jet : cône d'émission le long de l'axe, contre-jet affaibli. Lueur et son anneau de photons : fonction de b, hors
+ *   de l'ombre seulement.
+ * - Bord de l'ombre et anneau de photons : cercle exact de Synge. Dans une couronne fine autour de lui (d'un demi-pixel
+ *   dedans à RING_BAND pixels dehors), le pixel trace EDGE_SAMPLES rayons répartis sur sa largeur radiale ; la part de
+ *   chaque tranche qui tombe dans l'ombre prend l'émission d'avant-plan de son rayon (couverture exacte). Bord net,
+ *   anneau de photons fin et continu, sans scintillement ; ailleurs, un seul rayon par pixel.
+ * - Ciel : déviation tracée, ajoutée à celles des autres trous noirs comme dans le fond (approximation de Born) ; au
+ *   bord du rectangle, raccord à la lentille faible du fond, sans couture. Empreinte des étoiles hors de toute boucle.
+ * - Ni discard ni dérivée dans le tracé ; hors du cercle apparent de la sphère, alpha nul.
  */
 export const BLACK_HOLE_FRAGMENT = /* glsl */ `
 precision highp float;
 ${STARFIELD_GLSL}
+${NOISE_GLSL}
+uniform float uTime;
 uniform vec3 uCamLocal;
 uniform mat3 uViewToWorld;
 uniform float uQuadRs;
 uniform float uOpacity;
 uniform float uHorizonMark;
-uniform vec3 uRingColor;
 uniform vec3 uHorizonColor;
+uniform vec3 uAxis;
+uniform vec3 uSpin;
+uniform vec3 uDiskE1;
+uniform vec3 uDiskE2;
+uniform float uOrbitRate;
+uniform vec2 uDiskRadii;
+uniform float uDiskTemperature;
+uniform float uDiskGain;
+uniform float uDiskDepth;
+uniform float uDiskTurbulence;
+uniform vec2 uFlowRadii;
+uniform float uFlowTemperature;
+uniform float uFlowGain;
+uniform float uFlowFlatten;
+uniform float uFlowRotation;
+uniform float uFlowFlicker;
+uniform float uJetGain;
+uniform float uJetTan;
+uniform float uJetCounter;
+uniform float uJetLength;
+uniform vec3 uJetColor;
+uniform float uGlowGain;
+uniform float uGlowScale;
+uniform float uGlowReach;
+uniform float uGlowRing;
+uniform float uGlowRingWidth;
+uniform vec3 uGlowColor;
 varying vec3 vViewRay;
 const float SHADOW_RS = ${glslFloat(SHADOW_RADIUS_RS)};
+const float ISCO = ${glslFloat(ISCO_RS)};
+const float START_IMPACT_RATIO = ${glslFloat(START_IMPACT_RATIO)};
+// Instantané de l'émission d'avant-plan, juste au-dessus de la sphère des photons : l'intérieur de l'ombre au bord.
+const float FRONT_RS = 1.7;
+// Couronne suréchantillonnée, en pixels hors du bord de l'ombre ; écart minimal d'un rayon au bord, en pixels.
+const float RING_BAND = 3.0;
+const float EDGE_MIN = 0.05;
+#ifdef BH_LITE
+const int EDGE_SAMPLES = 2;
+#else
+const int EDGE_SAMPLES = 4;
+#endif
+const float BB_MIN_T = ${glslFloat(BLACKBODY_FIT.minTemperatureK)};
+const float BB_LIMIT_SCALE = ${glslFloat(BLACKBODY_FIT.limitScale)};
+const vec3 BB_U_NUM = ${glslVec(BLACKBODY_FIT.u.numerator)};
+const vec2 BB_U_DEN = ${glslVec(BLACKBODY_FIT.u.denominator)};
+const vec3 BB_V_NUM = ${glslVec(BLACKBODY_FIT.v.numerator)};
+const vec2 BB_V_DEN = ${glslVec(BLACKBODY_FIT.v.denominator)};
+const vec2 BB_SHIFT = ${glslVec([BLACKBODY_LIMIT_SHIFT.u, BLACKBODY_LIMIT_SHIFT.v])};
+const float DISK_PEAK_SHAPE = ${glslFloat(DISK_PEAK_SHAPE)};
+// Début du fondu du bord extérieur du disque, en part de sa largeur.
+const float DISK_FADE = 0.65;
+// Turbulence : rayon du cercle de bruit (cellules autour du disque : 2π × 4), cellules par facteur e du rayon, pas
+// de la spirale logarithmique, contraste, durée d'un cycle d'advection en orbites à 3 r_s.
+const float TURB_AZIMUTH = 4.0;
+const float TURB_RADIAL = 9.0;
+const float TURB_SPIRAL = 2.5;
+const float TURB_CONTRAST = 2.4;
+const float TURB_CYCLE = 0.5;
+#ifdef BH_LITE
+const int TURB_OCTAVES = 2;
+#else
+const int TURB_OCTAVES = 3;
+#endif
+// Jet : pied (r_s), montée de l'éclat le long de l'axe (il sort de l'anneau au lieu de voiler l'ombre), largeur au
+// pied.
+const float JET_BASE = 1.5;
+const float JET_RISE = 2.5;
+const float JET_WIDTH = 0.3;
+const float FLARE_SHARPNESS = 5.0;
+
+// Couleur d'un corps noir, linéaire, de luminance 1 (photonGeodesic.ts, blackbodyColor) : lieu de Planck de Krystek en
+// uv CIE 1960, raccordé à la limite de Rayleigh-Jeans, puis XYZ → sRGB linéaire (D65).
+vec3 blackbody(float temperature) {
+  float m = 1000.0 / max(temperature, BB_MIN_T);
+  float join = 1.0 / (1.0 + (m / BB_LIMIT_SCALE) * (m / BB_LIMIT_SCALE));
+  float u = (BB_U_NUM.x + m * (BB_U_NUM.y + m * BB_U_NUM.z)) / (BB_U_DEN.x + m * (BB_U_DEN.y + m)) + BB_SHIFT.x * join;
+  float v = (BB_V_NUM.x + m * (BB_V_NUM.y + m * BB_V_NUM.z)) / (BB_V_DEN.x + m * (BB_V_DEN.y + m)) + BB_SHIFT.y * join;
+  float d = 2.0 * u - 8.0 * v + 4.0;
+  float x = 3.0 * u / d;
+  float y = 2.0 * v / d;
+  vec3 xyz = vec3(x / y, 1.0, (1.0 - x - y) / y);
+  vec3 rgb = max(vec3(
+    dot(vec3(3.2406, -1.5372, -0.4986), xyz),
+    dot(vec3(-0.9689, 1.8758, 0.0415), xyz),
+    dot(vec3(0.0557, -0.204, 1.057), xyz)), vec3(0.0));
+  return rgb / dot(rgb, vec3(0.2126, 0.7152, 0.0722));
+}
+
+// Température du disque rapportée à son maximum (photonGeodesic.ts, diskTemperatureRatio).
+float diskHeat(float r) {
+  float x = r / uDiskRadii.x;
+  if (x <= 1.0) return 0.0;
+  return pow(x, -0.75) * pow(1.0 - inversesqrt(x), 0.25) / DISK_PEAK_SHAPE;
+}
+
+// Une couche de turbulence : bruit fractal sur un cercle (sans couture en azimut) et sur ln r, en spirale ; chaque
+// octave s'efface quand ses cellules (radiales) couvrent moins de deux pixels.
+float diskNoise(float psi, float lr, float seed, float r, float footprint) {
+  float spiral = psi + TURB_SPIRAL * lr;
+  vec3 q = vec3(TURB_AZIMUTH * cos(spiral), TURB_AZIMUTH * sin(spiral), TURB_RADIAL * lr + 13.7 * seed);
+  float sum = 0.0;
+  float total = 0.0;
+  float amplitude = 0.5;
+  float cell = r / TURB_RADIAL;
+  for (int o = 0; o < TURB_OCTAVES; o++) {
+    float shown = smoothstep(1.0, 2.5, cell / footprint);
+    sum += amplitude * mix(0.5, vn(q), shown);
+    total += amplitude;
+    q *= 2.03;
+    amplitude *= 0.5;
+    cell *= 0.5;
+  }
+  return sum / total;
+}
+
+// Facteur d'éclat de la turbulence au point p du disque (rayon r), pour l'image d'ordre « order ». Le motif tourne à
+// la vitesse képlérienne affichée ; deux couches, remises à zéro à tour de rôle et fondues l'une dans l'autre, bornent
+// son enroulement ; variance gardée constante pendant le fondu.
+float diskPattern(vec3 p, float r, float order, float pixelSize) {
+  if (uDiskTurbulence <= 0.0) return 1.0;
+  float phi = atan(dot(p, uDiskE2), dot(p, uDiskE1));
+  float lr = log(r);
+  float omega = uOrbitRate * pow(ISCO / r, 1.5);
+  float cycle = TURB_CYCLE * 6.2831853 / uOrbitRate;
+  float t = uTime / cycle;
+  // Taille d'un pixel sur le disque, en r_s ; les images d'ordre supérieur sont rapetissées.
+  float footprint = pixelSize * length(uCamLocal) * (1.0 + 3.0 * order);
+  float phaseA = fract(t);
+  float phaseB = fract(t + 0.5);
+  float weightA = 1.0 - abs(2.0 * phaseA - 1.0);
+  float weightB = 1.0 - weightA;
+  float a = diskNoise(phi - omega * phaseA * cycle, lr, mod(floor(t), 64.0), r, footprint);
+  float b = diskNoise(phi - omega * phaseB * cycle, lr, mod(floor(t + 0.5), 64.0) + 0.5, r, footprint);
+  float n = 0.5 + (weightA * (a - 0.5) + weightB * (b - 0.5)) * inversesqrt(weightA * weightA + weightB * weightB);
+  return exp(TURB_CONTRAST * uDiskTurbulence * (n - 0.5));
+}
+
+// Profil radial du gaz chaud : une coquille, nulle aux deux bords, maximale à mi-chemin (sin²). Un rayon qui la frôle
+// la traverse longuement, un rayon qui plonge vers l'horizon à peine : anneau brillant, intérieur sombre.
+float flowDensity(float r) {
+  float s = sin(3.14159265 * clamp((r - uFlowRadii.x) / (uFlowRadii.y - uFlowRadii.x), 0.0, 1.0));
+  return s * s;
+}
+
+// Sursauts lents du gaz : trois taches qui tournent avec lui, naissent et s'éteignent ; évaluées au centre de gravité
+// de l'émission du rayon, d'autant moins que celle-ci est étalée autour du trou noir (anneau de photons).
+float flowFlicker(vec3 center, float radius) {
+  if (uFlowFlicker <= 0.0) return 1.0;
+  vec2 plane = vec2(dot(center, uDiskE1), dot(center, uDiskE2));
+  float localized = clamp(length(plane) / max(radius, 1e-3), 0.0, 1.0);
+  float phi = atan(plane.y, plane.x);
+  float spin = uOrbitRate * uFlowRotation * pow(ISCO / max(radius, 1.5), 1.5);
+  float flares = 0.0;
+  for (int k = 0; k < 3; k++) {
+    float fk = float(k);
+    float life = max(sin(uTime * (0.23 + 0.09 * fk) + 2.4 * fk), 0.0);
+    float at = phi - spin * uTime - 2.0944 * fk - 0.6 * sin(0.17 * uTime + 1.3 * fk);
+    flares += life * life * exp(FLARE_SHARPNESS * (cos(at) - 1.0));
+  }
+  return max(1.0 + uFlowFlicker * localized * (3.4 * flares - 0.45), 0.05);
+}
+
+// Trace le rayon de direction rayDir (repère du trou noir) depuis la caméra et accumule, de l'avant vers l'arrière,
+// l'émission (light), celle d'avant-plan (inner), la transmission restante. Renvoie 1.0 si le rayon s'échappe (farDir :
+// sa direction à l'infini), 0.0 s'il est capturé, arrêté par le disque ou inachevé.
+float marchRay(vec3 rayDir, float pixelSize, out vec3 light, out vec3 inner, out vec3 farDir, out float impact, out float transmit) {
+  light = vec3(0.0);
+  inner = vec3(0.0);
+  farDir = rayDir;
+  transmit = 1.0;
+  float dist = length(uCamLocal);
+  vec3 radial = uCamLocal / dist;
+  float along = dot(rayDir, radial);
+  vec3 vel = radial * along + (rayDir - radial * along) * inversesqrt(max(1.0 - 1.0 / dist, 1e-6));
+  vec3 momentum = cross(uCamLocal, vel);
+  impact = length(momentum);
+  float escapeRs = max(uQuadRs, START_IMPACT_RATIO * impact);
+  vec3 pos = uCamLocal;
+  if (dist > escapeRs) {
+    float speed = sqrt(1.0 + impact * impact / (escapeRs * escapeRs * escapeRs));
+    vec3 heading = normalize(vel);
+    vec3 outward = impact > 0.0 ? cross(heading, momentum / impact) : vec3(0.0);
+    float lateral = impact / speed;
+    pos = heading * -sqrt(max(escapeRs * escapeRs - lateral * lateral, 0.0)) + outward * lateral;
+    vel = heading * speed;
+  }
+  float h2 = impact * impact;
+  // Moment cinétique du rayon autour de l'axe du gaz, conservé : il donne l'effet Doppler partout.
+  float lz = dot(uSpin, momentum);
+  float r = length(pos);
+  vec3 acc = pos * (-1.5 * h2 / (r * r * r * r * r));
+  float zPrev = dot(pos, uSpin);
+  int crossed = 0;
+  float flowSum = 0.0;
+  float flowShift = 0.0;
+  float flowRadius = 0.0;
+  vec3 flowCenter = vec3(0.0);
+  float jetSum = 0.0;
+  bool frontTaken = false;
+  vec3 frontLight = vec3(0.0);
+  float frontFlow = 0.0;
+  float frontShift = 0.0;
+  float frontJet = 0.0;
+  float escaped = 0.0;
+  for (int i = 0; i < BH_STEPS; i++) {
+    float dl = r > uQuadRs ? max(BH_MIN_STEP, BH_FAR_STEP_FACTOR * r) : clamp(BH_STEP_FACTOR * r, BH_MIN_STEP, BH_MAX_STEP);
+    vec3 prev = pos;
+    vel += acc * (0.5 * dl);
+    pos += vel * dl;
+    r = length(pos);
+    acc = pos * (-1.5 * h2 / (r * r * r * r * r));
+    vel += acc * (0.5 * dl);
+    vec3 mid = 0.5 * (prev + pos);
+    float rm = length(mid);
+    // Gaz chaud, optiquement mince : j g³ dλ (photonGeodesic.ts, flowRedshift).
+    if (uFlowGain > 0.0 && rm < uFlowRadii.y && rm > uFlowRadii.x) {
+      float lat = dot(mid, uSpin) / rm;
+      float beta = uFlowRotation * sqrt(max(1.0 - lat * lat, 0.0)) * sqrt(0.5 / max(rm - 1.0, 0.5));
+      float g = sqrt(max(1.0 - 1.0 / rm, 0.0)) * sqrt(max(1.0 - beta * beta, 0.0))
+        / max(1.0 + uFlowRotation * lz * inversesqrt(2.0 * rm * rm * rm), 1e-3);
+      float emitted = flowDensity(rm) * exp(-uFlowFlatten * lat * lat) * g * g * g * dl * transmit;
+      flowSum += emitted;
+      flowShift += emitted * g;
+      flowRadius += emitted * rm;
+      flowCenter += emitted * mid;
+    }
+    // Jet : cône le long de l'axe, plein du côté qui s'approche, contre-jet affaibli ; il s'élargit et s'estompe.
+    if (uJetGain > 0.0) {
+      float height = dot(mid, uAxis);
+      float reach = abs(height);
+      if (reach > JET_BASE && reach < uJetLength) {
+        float width = JET_WIDTH + reach * uJetTan;
+        float off = max(rm * rm - height * height, 0.0);
+        float fade = smoothstep(JET_BASE, JET_BASE + JET_RISE, reach) * exp(-reach / (0.4 * uJetLength))
+          * (1.0 - smoothstep(0.6 * uJetLength, uJetLength, reach));
+        jetSum += (height > 0.0 ? 1.0 : uJetCounter) * fade * exp(-off / (width * width)) / (width * width) * dl * transmit;
+      }
+    }
+    // Disque mince : traversée du plan, point interpolé entre deux pas (photonGeodesic.ts, diskRedshift).
+    float z = dot(pos, uSpin);
+    if (uDiskGain > 0.0 && crossed < BH_MAX_CROSSINGS && zPrev * z < 0.0) {
+      vec3 hit = mix(prev, pos, zPrev / (zPrev - z));
+      float rc = length(hit);
+      if (rc > uDiskRadii.x && rc < uDiskRadii.y) {
+        float g = sqrt(max(1.0 - 1.5 / rc, 0.0)) / max(1.0 + lz * inversesqrt(2.0 * rc * rc * rc), 1e-3);
+        float heat = diskHeat(rc);
+        float edge = 1.0 - smoothstep(mix(uDiskRadii.x, uDiskRadii.y, DISK_FADE), uDiskRadii.y, rc);
+        float mu = abs(dot(vel, uSpin)) / length(vel);
+        float alpha = 1.0 - exp(-uDiskDepth * edge / max(mu, 0.05));
+        float flux = heat * g;
+        flux *= flux;
+        flux *= flux;
+        vec3 shade = blackbody(uDiskTemperature * heat * g) * (uDiskGain * flux * diskPattern(hit, rc, float(crossed), pixelSize));
+        light += transmit * alpha * shade;
+        transmit *= 1.0 - alpha;
+        crossed++;
+      }
+    }
+    zPrev = z;
+    if (!frontTaken && r < FRONT_RS) {
+      frontTaken = true;
+      frontLight = light;
+      frontFlow = flowSum;
+      frontShift = flowShift;
+      frontJet = jetSum;
+    }
+    if (r < 1.0 || transmit < 0.004) break;
+    if (r > escapeRs && dot(pos, vel) > 0.0) {
+      escaped = 1.0;
+      farDir = normalize(vel);
+      break;
+    }
+  }
+  if (!frontTaken) {
+    frontLight = light;
+    frontFlow = flowSum;
+    frontShift = flowShift;
+    frontJet = jetSum;
+  }
+  float flicker = flowSum > 0.0 ? flowFlicker(flowCenter / flowSum, flowRadius / flowSum) : 1.0;
+  if (flowSum > 0.0) light += blackbody(uFlowTemperature * flowShift / flowSum) * (uFlowGain * flowSum * flicker);
+  if (frontFlow > 0.0) frontLight += blackbody(uFlowTemperature * frontShift / frontFlow) * (uFlowGain * frontFlow * flicker);
+  light += uJetColor * (uJetGain * jetSum);
+  inner = frontLight + uJetColor * (uJetGain * frontJet);
+  return escaped;
+}
+
+// Rotation qui mène from à to (unitaires), en vecteur perpendiculaire à from de longueur l'angle : la déviation tracée,
+// à ajouter à celles des autres lentilles (lensVector).
+vec3 turnVector(vec3 from, vec3 to) {
+  vec3 side = to - dot(from, to) * from;
+  float s = length(side);
+  return s > 1e-9 ? side * (atan(s, dot(from, to)) / s) : vec3(0.0);
+}
+
+// Lueur au-delà de l'ombre, selon le paramètre d'impact : lueur diffuse et, serré contre l'ombre, l'anneau de photons.
+vec3 glowLight(float impact) {
+  if (uGlowGain <= 0.0) return vec3(0.0);
+  float beyond = max(impact - SHADOW_RS, 0.0);
+  float fade = 1.0 - smoothstep(0.75 * uGlowReach, uGlowReach, impact);
+  return uGlowColor * (uGlowGain * (exp(-beyond / uGlowScale) + uGlowRing * exp(-beyond / uGlowRingWidth)) * fade);
+}
+
 void main() {
   vec3 dir = normalize(uViewToWorld * vViewRay);
-  float dist = max(length(uCamLocal), 1e-6);
+  // Angle d'un pixel de l'écran, pris avant toute branche (les dérivées y restent définies).
+  float pixelSize = max(length(dFdx(dir)), 1e-7);
+  float dist = max(length(uCamLocal), 1.0001);
   vec3 toCenter = -uCamLocal / dist;
   // Angle du pixel au centre, précis aux petits angles (un trou noir de quelques pixels).
   float angle = atan(length(cross(dir, toCenter)), dot(dir, toCenter));
-  if (dist > uQuadRs && angle > asin(uQuadRs / dist)) discard;
-  float shadow = asin(min(SHADOW_RS / dist, 1.0));
+  float covered = dist > uQuadRs && angle > asin(uQuadRs / dist) ? 0.0 : 1.0;
+  // Bord exact de l'ombre (Synge), en pixels : positif au-dehors.
+  float shadowAngle = asin(min(1.0, SHADOW_RS * sqrt(1.0 - 1.0 / dist) / dist));
+  float edge = (angle - shadowAngle) / pixelSize;
+  // Direction radiale de l'image, pour répartir les rayons sur la largeur du pixel.
+  vec3 radialImage = dir - toCenter * dot(dir, toCenter);
+  float radialLength = length(radialImage);
+  vec3 outward = radialLength > 1e-7 ? radialImage / radialLength : vec3(0.0);
+  int count = covered > 0.0 && edge > -0.5 && edge < RING_BAND ? EDGE_SAMPLES : 1;
+  float width = 1.0 / float(count);
+  vec3 color = vec3(0.0);
+  vec3 skies[EDGE_SAMPLES];
+  float skyShare[EDGE_SAMPLES];
+  for (int k = 0; k < EDGE_SAMPLES; k++) {
+    skies[k] = dir;
+    skyShare[k] = 0.0;
+  }
+  if (covered > 0.0) {
+    for (int k = 0; k < EDGE_SAMPLES; k++) {
+      if (k >= count) break;
+      // Tranche radiale [lo, hi] du pixel, en pixels du bord ; part hors de l'ombre, rayon au milieu de cette part.
+      float lo = edge - 0.5 + float(k) * width;
+      float hi = lo + width;
+      float outside = clamp(hi / width, 0.0, 1.0);
+      float target = outside > 0.0 ? max(0.5 * (max(lo, 0.0) + hi), EDGE_MIN) : 0.5 * (lo + hi);
+      float shift = (target - edge) * pixelSize;
+      vec3 rayDir = cos(shift) * dir + sin(shift) * outward;
+      vec3 light = vec3(0.0);
+      vec3 inner = vec3(0.0);
+      vec3 farDir = rayDir;
+      float impact = 0.0;
+      float transmit = 1.0;
+      float escaped = marchRay(rayDir, pixelSize, light, inner, farDir, impact, transmit);
+      color += width * (outside > 0.0 ? mix(inner, light, outside) : light);
+      skies[k] = farDir;
+      skyShare[k] = width * outside * escaped * transmit;
+      // Lueur : toute la part hors de l'ombre, même pour un rayon inachevé qui tourne encore autour d'elle.
+      color += (width * outside * transmit) * glowLight(impact);
+    }
+  }
+  // Ciel : déviation tracée plus celles des autres trous noirs (même somme que le fond, où la sienne est en champ
+  // faible) ; au bord, celui du fond, sans couture. L'empreinte des étoiles se mesure sur le premier rayon, hors de
+  // toute branche.
+  vec3 background = lensSky(dir, vec3(0.0));
+  vec3 others = lensVector(dir, uCamLocal);
+  float blend = smoothstep(0.9 * uQuadRs, uQuadRs, dist * sin(angle));
+  vec3 sky = normalize(mix(rotateBy(dir, turnVector(dir, skies[0]) + others), background, blend));
+  float footprint = clamp(length(fwidth(sky)), uPixelAngle, 4.0 * uPixelAngle);
+  color += skyShare[0] * starfield(sky, footprint);
+  for (int k = 1; k < EDGE_SAMPLES; k++) {
+    if (skyShare[k] > 0.0) {
+      color += skyShare[k] * starfield(normalize(mix(rotateBy(dir, turnVector(dir, skies[k]) + others), background, blend)), footprint);
+    }
+  }
+  // Cercle de laiton de l'horizon (r_s), non dévié, 1,5 px CSS.
   float horizon = asin(min(1.0 / dist, 1.0));
-  float aa = uPixelAngle;
-  float edge = angle - shadow;
-  float ring = 1.0 - smoothstep(0.0, max(0.06 * shadow, 1.5 * aa), edge);
-  vec3 color = (starfield(dir, uPixelAngle) + uRingColor * ring) * smoothstep(-aa, 0.0, edge);
-  float mark = 1.0 - smoothstep(0.75 * aa, 1.75 * aa, abs(angle - horizon));
+  float mark = 1.0 - smoothstep(0.75 * uPixelAngle, 1.75 * uPixelAngle, abs(angle - horizon));
   color = mix(color, uHorizonColor, mark * uHorizonMark);
-  gl_FragColor = vec4(color, uOpacity);
+  gl_FragColor = vec4(color, uOpacity * covered);
   ${OUTPUT}
 }
 `;

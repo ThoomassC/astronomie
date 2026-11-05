@@ -1,7 +1,8 @@
-import { Matrix3, Matrix4, PerspectiveCamera, Vector3, Vector4 } from "three";
+import { Color, Matrix3, Matrix4, PerspectiveCamera, Vector3, Vector4 } from "three";
 import { describe, expect, it } from "vitest";
 import {
   MAX_STARFIELD_LENSES,
+  STAR_CLASS_SHARES,
   STARFIELD_GLSL,
   STARFIELD_RENDER_ORDER,
   createStarfieldBackground,
@@ -9,6 +10,8 @@ import {
   type StarfieldLens,
 } from "@/components/scene/starfield";
 import { neutralToneMap, srgbHexToLinear } from "@/components/scene/toneMapping.testUtils";
+import { WEAK_DEFLECTION_SERIES } from "@/lib/astro/photonGeodesic";
+import { spectralColor, type SpectralClass } from "@/lib/astro/starMap";
 
 /*
  * Fond étoilé de l'onglet « Tailles » : triangle plein écran, dessiné avant tout le reste, dont la nuit sort exactement
@@ -47,6 +50,9 @@ describe("nightBeforeToneMapping", () => {
   );
 });
 
+/** Nombre d'occurrences de `needle` dans `text`. */
+const occurrences = (text: string, needle: string) => text.split(needle).length - 1;
+
 describe("STARFIELD_GLSL", () => {
   it("devrait déclarer les uniformes du ciel et les trois fonctions partagées avec les trous noirs", () => {
     expect(STARFIELD_GLSL).toContain("uniform float uPixelAngle;");
@@ -55,6 +61,51 @@ describe("STARFIELD_GLSL", () => {
     expect(STARFIELD_GLSL).toContain("vec3 starfield(vec3 dir, float footprint)");
     expect(STARFIELD_GLSL).toContain("float weakDeflection(float b, float s)");
     expect(STARFIELD_GLSL).toContain("vec3 weakLens(vec3 dir, vec3 cameraLocal, float strength)");
+  });
+
+  it("devrait définir une seule fois chaque fonction et déclarer une seule fois chaque uniforme", () => {
+    for (const signature of [
+      "vec3 starfield(",
+      "float weakDeflection(",
+      "vec3 weakLens(",
+      "vec3 lensShift(",
+      "vec3 rotateBy(",
+      "vec3 lensVector(",
+      "vec3 lensSky(",
+      "uvec3 skyHash(",
+      "vec3 skyStarColor(",
+      "vec3 skyFaceDirection(",
+      "vec3 skyLayer(",
+    ]) {
+      expect(occurrences(STARFIELD_GLSL, signature)).toBe(1);
+    }
+    const declared = [...STARFIELD_GLSL.matchAll(/uniform \w+ (\w+)/g)].map((match) => match[1]);
+    expect(new Set(declared).size).toBe(declared.length);
+    expect(declared.sort()).toEqual(
+      ["uLensCamera", "uLensCount", "uLensStrength", "uNight", "uPixelAngle", "uStarfieldGain"].sort(),
+    );
+  });
+
+  it("devrait reprendre les coefficients de la lentille faible du modèle TypeScript (même source)", () => {
+    for (const coefficient of WEAK_DEFLECTION_SERIES) expect(STARFIELD_GLSL).toContain(coefficient.toPrecision(9));
+  });
+
+  it("devrait colorer les étoiles des sept classes de Harvard, couleurs du design system converties en linéaire", () => {
+    const classes = Object.keys(STAR_CLASS_SHARES) as SpectralClass[];
+    expect(classes.sort()).toEqual(["A", "B", "F", "G", "K", "M", "O"]);
+    for (const spectral of classes) {
+      const linear = new Color(spectralColor(spectral));
+      const literal = `vec3(${[linear.r, linear.g, linear.b].map((c) => c.toPrecision(9)).join(", ")})`;
+      expect(STARFIELD_GLSL).toContain(literal);
+    }
+    const total = Object.values(STAR_CLASS_SHARES).reduce((sum, share) => sum + share, 0);
+    expect(total).toBeCloseTo(1, 12);
+  });
+
+  it("devrait équilibrer accolades et parenthèses, et n'employer aucune dérivée (le chunk sert dans des boucles)", () => {
+    expect(occurrences(STARFIELD_GLSL, "{")).toBe(occurrences(STARFIELD_GLSL, "}"));
+    expect(occurrences(STARFIELD_GLSL, "(")).toBe(occurrences(STARFIELD_GLSL, ")"));
+    expect(STARFIELD_GLSL).not.toMatch(/\b(fwidth|dFdx|dFdy|discard)\b/);
   });
 });
 
@@ -92,6 +143,10 @@ describe("createStarfieldBackground", () => {
     expect(mesh.material.uniforms.uPixelAngle).toBe(uniforms.uPixelAngle);
     expect(mesh.material.uniforms.uStarfieldGain).toBe(uniforms.uStarfieldGain);
     expect(mesh.material.uniforms.uNight).toBe(uniforms.uNight);
+    // Lentilles comprises : chaque trou noir applique celles des autres à son ciel, comme le fond.
+    expect(mesh.material.uniforms.uLensCamera).toBe(uniforms.uLensCamera);
+    expect(mesh.material.uniforms.uLensStrength).toBe(uniforms.uLensStrength);
+    expect(mesh.material.uniforms.uLensCount).toBe(uniforms.uLensCount);
   });
 
   it("devrait inclure STARFIELD_GLSL une seule fois et sortir par le tone mapping et l'encodage sRGB", () => {
@@ -100,6 +155,13 @@ describe("createStarfieldBackground", () => {
     expect(fragmentShader).toContain("precision highp float;");
     expect(fragmentShader).toContain("#include <tonemapping_fragment>");
     expect(fragmentShader).toContain("#include <colorspace_fragment>");
+  });
+
+  it("devrait dévier le ciel par toutes les lentilles, puis mesurer l'étirement des étoiles hors de toute boucle", () => {
+    const { fragmentShader } = createStarfieldBackground().mesh.material;
+    expect(fragmentShader).toContain("lensSky(dir, vec3(0.0))");
+    expect(fragmentShader).toMatch(/clamp\(length\(fwidth\(\w+\)\), uPixelAngle, 4\.0 \* uPixelAngle\)/);
+    expect(fragmentShader.indexOf("fwidth")).toBeGreaterThan(fragmentShader.indexOf("void main"));
   });
 });
 
