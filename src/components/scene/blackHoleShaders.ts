@@ -451,13 +451,14 @@ void main() {
     }
   }
   // Ciel : déviation tracée plus celles des autres trous noirs (même somme que le fond, où la sienne est en champ
-  // faible) ; au bord, celui du fond, sans couture. L'empreinte des étoiles se mesure sur le premier rayon, hors de
-  // toute branche.
+  // faible) ; au bord, celui du fond, sans couture. Empreinte des étoiles : racine de l'aire que couvre le pixel dans le
+  // ciel source, mesurée sur le premier rayon hors de toute branche ; un arc étiré par la lentille garde l'éclat de son
+  // étoile, une image écrasée près de l'ombre pâlit.
   vec3 background = lensSky(dir, vec3(0.0));
   vec3 others = lensVector(dir, uCamLocal);
   float blend = smoothstep(0.9 * uQuadRs, uQuadRs, dist * sin(angle));
   vec3 sky = normalize(mix(rotateBy(dir, turnVector(dir, skies[0]) + others), background, blend));
-  float footprint = clamp(length(fwidth(sky)), uPixelAngle, 4.0 * uPixelAngle);
+  float footprint = clamp(sqrt(length(cross(dFdx(sky), dFdy(sky)))), uPixelAngle, 4.0 * uPixelAngle);
   color += skyShare[0] * starfield(sky, footprint);
   for (int k = 1; k < EDGE_SAMPLES; k++) {
     if (skyShare[k] > 0.0) {

@@ -334,8 +334,9 @@ void main() {
 `;
 
 /**
- * Ciel dévié par toutes les lentilles. L'empreinte des points d'étoile se mesure sur la direction déviée, hors de toute
- * boucle : là où la lentille étire le ciel, les étoiles s'étalent en arcs et pâlissent (de 1 à 4 px CSS).
+ * Ciel dévié par toutes les lentilles. L'empreinte des points d'étoile est la racine de l'aire que couvre le pixel dans
+ * le ciel source, mesurée sur la direction déviée hors de toute boucle (de 1 à 4 px CSS) : un arc que la lentille étire
+ * garde l'éclat de son étoile (l'anneau d'Einstein se voit), une image écrasée près de l'ombre pâlit.
  */
 const STARFIELD_FRAGMENT = /* glsl */ `
 precision highp float;
@@ -344,7 +345,7 @@ varying vec3 vDirection;
 void main() {
   vec3 dir = normalize(vDirection);
   vec3 sky = lensSky(dir, vec3(0.0));
-  float footprint = clamp(length(fwidth(sky)), uPixelAngle, 4.0 * uPixelAngle);
+  float footprint = clamp(sqrt(length(cross(dFdx(sky), dFdy(sky)))), uPixelAngle, 4.0 * uPixelAngle);
   gl_FragColor = vec4(starfield(sky, footprint), 1.0);
   ${OUTPUT}
 }

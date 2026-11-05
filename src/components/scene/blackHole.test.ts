@@ -390,7 +390,8 @@ describe("BLACK_HOLE_FRAGMENT", () => {
     const before = BLACK_HOLE_FRAGMENT.slice(0, BLACK_HOLE_FRAGMENT.indexOf("void main()"));
     expect(before).not.toMatch(/\b(fwidth|dFdx|dFdy)\b/);
     expect(main).toMatch(/\bdFdx\(dir\)/);
-    expect(main).toMatch(/clamp\(length\(fwidth\(\w+\)\), uPixelAngle, 4\.0 \* uPixelAngle\)/);
+    // Racine de l'aire du pixel dans le ciel source, comme le fond.
+    expect(main).toContain("clamp(sqrt(length(cross(dFdx(sky), dFdy(sky)))), uPixelAngle, 4.0 * uPixelAngle)");
   });
 
   it("devrait inclure une fois le ciel et le bruit, et raccorder son ciel à la lentille faible du fond", () => {
