@@ -394,6 +394,13 @@ describe("BLACK_HOLE_FRAGMENT", () => {
     expect(main).toContain("clamp(sqrt(length(cross(dFdx(sky), dFdy(sky)))), uPixelAngle, 4.0 * uPixelAngle)");
   });
 
+  it("devrait tracer le repère de l'horizon en pointillés de laiton, fin et discret", () => {
+    expect(BLACK_HOLE_FRAGMENT).toContain("const float HORIZON_ALPHA = 0.35;");
+    expect(BLACK_HOLE_FRAGMENT).toContain("HORIZON_ALPHA * onLine * onDash * uHorizonMark");
+    // Trait d'un px CSS : demi-largeur 0,5 uPixelAngle.
+    expect(BLACK_HOLE_FRAGMENT).toContain("(0.5 * uPixelAngle - abs(angle - horizon))");
+  });
+
   it("devrait inclure une fois le ciel et le bruit, et raccorder son ciel à la lentille faible du fond", () => {
     expect(occurrences(BLACK_HOLE_FRAGMENT, STARFIELD_GLSL)).toBe(1);
     expect(occurrences(BLACK_HOLE_FRAGMENT, NOISE_GLSL)).toBe(1);

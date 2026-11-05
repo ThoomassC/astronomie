@@ -274,8 +274,9 @@ export interface BlackHoleMesh {
   /** Opacité d'ensemble, de 0 à 1 : fondu d'arrivée × effacement près de la règle. */
   opacity: Uniform<number>;
   /**
-   * Cercle de laiton de l'horizon (r_s), non lentillé, au cœur de l'ombre : 0 caché, 1 plein (défaut). L'horizon n'est
-   * pas la taille comparée (l'ombre l'est) ; le cercle montre où il se trouve.
+   * Repère de l'horizon (r_s), non lentillé, au cœur de l'ombre : cercle fin de laiton en pointillés, discret comme un
+   * trait d'instrument ; 0 caché, 1 (défaut) à son opacité nominale (35 %). L'horizon n'est pas la taille comparée
+   * (l'ombre l'est) ; le cercle montre où il se trouve.
    */
   horizonMark: Uniform<number>;
   /** Caméra dans le repère du trou noir, en r_s, mise à jour par `update` ; le fond la lit pour sa lentille faible. */

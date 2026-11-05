@@ -86,6 +86,7 @@ void main() {
  *   anneau de photons fin et continu, sans scintillement ; ailleurs, un seul rayon par pixel.
  * - Ciel : déviation tracée, ajoutée à celles des autres trous noirs comme dans le fond (approximation de Born) ; au
  *   bord du rectangle, raccord à la lentille faible du fond, sans couture. Empreinte des étoiles hors de toute boucle.
+ * - Repère de l'horizon : cercle de laiton en pointillés, 1 px CSS, à 35 % (uHorizonMark le dose).
  * - Ni discard ni dérivée dans le tracé ; hors du cercle apparent de la sphère, alpha nul.
  */
 export const BLACK_HOLE_FRAGMENT = /* glsl */ `
@@ -168,6 +169,9 @@ const float JET_BASE = 1.5;
 const float JET_RISE = 2.5;
 const float JET_WIDTH = 0.3;
 const float FLARE_SHARPNESS = 5.0;
+// Repère de l'horizon : opacité, période des pointillés en px CSS (moitié trait, moitié vide).
+const float HORIZON_ALPHA = 0.35;
+const float HORIZON_DASH = 6.0;
 
 // Couleur d'un corps noir, linéaire, de luminance 1 (photonGeodesic.ts, blackbodyColor) : lieu de Planck de Krystek en
 // uv CIE 1960, raccordé à la limite de Rayleigh-Jeans, puis XYZ → sRGB linéaire (D65).
@@ -465,10 +469,17 @@ void main() {
       color += skyShare[k] * starfield(normalize(mix(rotateBy(dir, turnVector(dir, skies[k]) + others), background, blend)), footprint);
     }
   }
-  // Cercle de laiton de l'horizon (r_s), non dévié, 1,5 px CSS.
+  // Repère de l'horizon (r_s), non dévié : cercle fin de laiton en pointillés, 1 px CSS, comme un trait d'instrument.
+  vec3 across = cross(toCenter, uViewToWorld[1]);
+  vec3 imageRight = across / max(length(across), 1e-6);
+  vec3 imageUp = cross(imageRight, toCenter);
   float horizon = asin(min(1.0 / dist, 1.0));
-  float mark = 1.0 - smoothstep(0.75 * uPixelAngle, 1.75 * uPixelAngle, abs(angle - horizon));
-  color = mix(color, uHorizonColor, mark * uHorizonMark);
+  float dashes = max(floor(6.2831853 * horizon / (HORIZON_DASH * uPixelAngle) + 0.5), 8.0);
+  float around = atan(dot(outward, imageUp), dot(outward, imageRight) + 1e-9) / 6.2831853;
+  float phase = fract(around * dashes + 0.25) - 0.5;
+  float onDash = clamp((0.25 - abs(phase)) * 6.2831853 * horizon / (dashes * pixelSize) + 0.5, 0.0, 1.0);
+  float onLine = clamp((0.5 * uPixelAngle - abs(angle - horizon)) / pixelSize + 0.5, 0.0, 1.0);
+  color = mix(color, uHorizonColor, HORIZON_ALPHA * onLine * onDash * uHorizonMark);
   gl_FragColor = vec4(color, uOpacity * covered);
   ${OUTPUT}
 }
