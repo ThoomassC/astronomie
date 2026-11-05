@@ -19,7 +19,7 @@ import {
 import { BLACK_HOLE_FRAGMENT, BLACK_HOLE_VERTEX } from "@/components/scene/blackHoleShaders";
 import { NOISE_GLSL } from "@/components/scene/shaders";
 import { STARFIELD_GLSL, STARFIELD_RENDER_ORDER, createStarfieldBackground } from "@/components/scene/starfield";
-import { DESKTOP_RAY_STEPS, LITE_RAY_STEPS } from "@/lib/astro/photonGeodesic";
+import { DESKTOP_RAY_STEPS, LITE_RAY_STEPS, blackbodyColor } from "@/lib/astro/photonGeodesic";
 import { ISCO_RS, PHOTON_SPHERE_RS, SHADOW_RADIUS_RS } from "@/lib/astro/schwarzschild";
 
 /*
@@ -51,7 +51,15 @@ const FLOW: BlackHoleFlow = {
   rotation: 0.6,
   flicker: 0.4,
 };
-const JET: BlackHoleJet = { gain: 0.3, halfAngleDeg: 8, counterRatio: 0.1, lengthRs: 6.42, color: WHITE };
+const JET: BlackHoleJet = {
+  gain: 0.3,
+  lengthRs: 6.42,
+  widthRs: 0.25,
+  halfAngleDeg: 8,
+  counterRatio: 0.1,
+  knots: 0.5,
+  color: WHITE,
+};
 const GLOW: BlackHoleGlow = { gain: 0.3, scaleRs: 2, reachRs: 4, ring: 1, ringWidthRs: 0.05, color: WHITE };
 
 /** Nombre d'occurrences de `needle` dans `text`. */
@@ -71,9 +79,9 @@ function options(overrides: Partial<BlackHoleMeshOptions> = {}): BlackHoleMeshOp
 
 describe("requiredExtentRs", () => {
   it.each<[BlackHoleLookName, number]>([
-    ["x-ray-binary", 8.8],
+    ["x-ray-binary", 9.8],
     ["faint-ring", 3.2],
-    ["jet-ring", 10],
+    ["jet-ring", 3.9],
     ["dormant", 10],
   ])("devrait exiger de l'aspect %s un encombrement de %f r_s", (name, extentRs) => {
     expect(requiredExtentRs(BLACK_HOLE_LOOKS[name])).toBe(extentRs);
@@ -94,10 +102,14 @@ describe("requiredExtentRs", () => {
     expect(requiredExtentRs({ ...BARE, flow: FLOW })).toBe(4.9);
   });
 
-  it("devrait laisser 1 r_s au-delà du bout du jet et de la portée de la lueur", () => {
-    expect(requiredExtentRs({ ...BARE, jet: JET })).toBe(7.5);
+  it("devrait laisser 1 r_s au-delà de la portée de la lueur", () => {
     expect(requiredExtentRs({ ...BARE, glow: GLOW })).toBe(5);
-    expect(requiredExtentRs({ ...BARE, disk: DISK, jet: JET, glow: GLOW })).toBe(7.5);
+    expect(requiredExtentRs({ ...BARE, disk: DISK, glow: GLOW })).toBe(5.8);
+  });
+
+  it("ne devrait pas compter le jet : faisceau de lumière additive, il peut déborder de l'encombrement", () => {
+    expect(requiredExtentRs({ ...BARE, jet: { ...JET, lengthRs: 40 } })).toBe(3);
+    expect(requiredExtentRs({ ...BARE, disk: DISK, jet: JET, glow: GLOW })).toBe(5.8);
   });
 });
 
@@ -142,18 +154,36 @@ describe("BLACK_HOLE_LOOKS", () => {
     }
   });
 
-  it("devrait donner à la binaire X un disque mince et opaque, très chaud, qui commence à la dernière orbite stable", () => {
-    const { disk, flow } = BLACK_HOLE_LOOKS["x-ray-binary"];
+  it("devrait donner à la binaire X un disque mince et opaque, vu presque par la tranche, une couronne et un anneau", () => {
+    const { disk, flow, glow, inclinationDeg } = BLACK_HOLE_LOOKS["x-ray-binary"];
     expect(disk?.innerRs).toBe(ISCO_RS);
     expect(disk?.opacity).toBe(1);
-    // Bleu-blanc : au-delà de 25 000 K, la couleur approche la limite d'un corps noir très chaud.
-    expect(disk?.temperatureK).toBeGreaterThanOrEqual(25_000);
-    expect(flow).toBeNull();
+    // Presque par la tranche : le disque paraît mince, son image passe par-dessus et par-dessous l'ombre.
+    expect(inclinationDeg).toBeGreaterThanOrEqual(80);
+    // Couronne : gaz très chaud (couleur limite, bleutée) et ténu, en halo doux.
+    expect(flow?.temperatureK).toBeGreaterThanOrEqual(1e5);
+    expect(flow?.gain).toBeLessThan((disk?.gain ?? 0) / 10);
+    // Anneau de photons : un fil vif serré contre l'ombre.
+    expect(glow?.ring).toBeGreaterThan(10);
+    expect(glow?.ringWidthRs).toBeLessThanOrEqual(0.05);
   });
 
-  it("devrait réserver le jet à l'anneau de M87*, contre-jet plus faible que le jet", () => {
+  it("devrait chauffer assez peu le disque d'affichage pour que l'effet Doppler se voie dans la couleur", () => {
+    const temperature = BLACK_HOLE_LOOKS["x-ray-binary"].disk?.temperatureK ?? 0;
+    // Vu presque par la tranche, g va d'environ 1,3 (côté qui s'approche) à 0,55 (côté qui s'éloigne).
+    const [redNear, , blueNear] = blackbodyColor(1.3 * temperature);
+    const [redFar, , blueFar] = blackbodyColor(0.55 * temperature);
+    expect(blueNear).toBeGreaterThan(redNear);
+    expect(redFar).toBeGreaterThan(blueFar);
+  });
+
+  it("devrait réserver le jet à l'anneau de M87*, long, fin et collimaté, contre-jet presque invisible", () => {
     expect(LOOK_NAMES.filter((name) => BLACK_HOLE_LOOKS[name].jet !== null)).toEqual(["jet-ring"]);
-    expect(BLACK_HOLE_LOOKS["jet-ring"].jet?.counterRatio).toBeLessThan(1);
+    const jet = BLACK_HOLE_LOOKS["jet-ring"].jet;
+    expect(jet?.lengthRs).toBeGreaterThanOrEqual(25);
+    expect(jet?.halfAngleDeg).toBeLessThanOrEqual(3);
+    expect(jet?.counterRatio).toBeLessThanOrEqual(0.05);
+    expect(jet?.knots).toBeGreaterThan(0);
     // Jet vers l'ouest-nord-ouest (≈ 288°), vers la droite de l'image.
     expect(BLACK_HOLE_LOOKS["jet-ring"].positionAngleDeg).toBe(288);
   });
@@ -250,13 +280,32 @@ describe("createBlackHoleMesh", () => {
     expect(createBlackHoleMesh(options({ time })).mesh.material.uniforms.uTime).toBe(time);
   });
 
-  it("devrait tracer la sphère de rayon max(encombrement, LENS_QUAD_RS), à la taille de son r_s", () => {
+  it("devrait tracer le cœur de rayon max(encombrement, LENS_QUAD_RS), à la taille de son r_s, rectangle à sa mesure", () => {
     expect(LENS_QUAD_RS).toBe(10);
     const wide = createBlackHoleMesh(options({ look: BLACK_HOLE_LOOKS.dormant, extentRs: 12, radius: 3 }));
     const faint = createBlackHoleMesh(options({ look: BLACK_HOLE_LOOKS["faint-ring"], extentRs: 3.2 }));
+    expect(wide.mesh.material.uniforms.uCoreRs.value).toBe(12);
     expect(wide.mesh.material.uniforms.uQuadRs.value).toBe(12);
     expect(wide.mesh.material.uniforms.uRadius.value).toBe(3);
+    expect(faint.mesh.material.uniforms.uCoreRs.value).toBe(LENS_QUAD_RS);
     expect(faint.mesh.material.uniforms.uQuadRs.value).toBe(LENS_QUAD_RS);
+  });
+
+  it("devrait agrandir le rectangle pour un jet, jusqu'à trois largeurs au-delà de son bout, et lui seul", () => {
+    const hole = createBlackHoleMesh(options({ look: { ...BARE, jet: { ...JET, lengthRs: 30, halfAngleDeg: 2 } } }));
+    const { uCoreRs, uQuadRs } = hole.mesh.material.uniforms;
+    expect(uCoreRs.value).toBe(10);
+    expect(uQuadRs.value).toBeCloseTo(30 + 3 * (0.25 + 30 * Math.tan((2 * Math.PI) / 180)), 12);
+    hole.setLook(BARE);
+    expect(uQuadRs.value).toBe(10);
+  });
+
+  it("devrait prémultiplier sa couleur : hors du cœur, la lumière du jet s'ajoute au fond", () => {
+    const { material } = createBlackHoleMesh(options()).mesh;
+    expect(material.premultipliedAlpha).toBe(true);
+    expect(material.fragmentShader).toContain("gl_FragColor.rgb *= gl_FragColor.a;");
+    // Jet ajouté après le tone mapping, le même dans le cœur et au-delà : aucune couture à son bord.
+    expect(material.fragmentShader).toContain("gl_FragColor.rgb += linearToOutputTexel(jet).rgb;");
   });
 
   it("devrait partir pleinement visible, cercle de l'horizon compris, réglages lus par le programme", () => {
@@ -320,22 +369,23 @@ describe("createBlackHoleMesh", () => {
   it.each([9.9, 3, Number.NaN, Number.POSITIVE_INFINITY])(
     "devrait lever une RangeError quand l'encombrement ne contient pas ce que l'aspect éclaire (%f r_s pour 10 exigés)",
     (extentRs) => {
-      expect(() => createBlackHoleMesh(options({ look: BLACK_HOLE_LOOKS["jet-ring"], extentRs }))).toThrow(RangeError);
+      expect(() => createBlackHoleMesh(options({ look: BLACK_HOLE_LOOKS.dormant, extentRs }))).toThrow(RangeError);
     },
   );
 });
 
 describe("BlackHoleMesh.setLook", () => {
   it("devrait écrire l'aspect dans les uniformes : gains nuls pour ce qui manque", () => {
-    const hole = createBlackHoleMesh(options({ look: BLACK_HOLE_LOOKS["x-ray-binary"], extentRs: 10 }));
+    const hole = createBlackHoleMesh(options({ look: BLACK_HOLE_LOOKS["faint-ring"], extentRs: 10 }));
     const { uniforms } = hole.mesh.material;
-    expect(uniforms.uDiskGain.value).toBe(BLACK_HOLE_LOOKS["x-ray-binary"].disk?.gain);
-    expect(uniforms.uFlowGain.value).toBe(0);
+    expect(uniforms.uDiskGain.value).toBe(0);
+    expect(uniforms.uFlowGain.value).toBe(BLACK_HOLE_LOOKS["faint-ring"].flow?.gain);
     expect(uniforms.uJetGain.value).toBe(0);
     expect(uniforms.uGlowGain.value).toBe(0);
     hole.setLook({ ...BARE, glow: GLOW });
-    expect(uniforms.uDiskGain.value).toBe(0);
+    expect(uniforms.uFlowGain.value).toBe(0);
     expect(uniforms.uGlowGain.value).toBe(GLOW.gain);
+    expect(uniforms.uGlowRing.value).toBe(GLOW.ring);
   });
 
   it("devrait poser l'axe du disque, le moment cinétique du gaz et une base directe de son plan", () => {
@@ -390,7 +440,22 @@ describe("BLACK_HOLE_FRAGMENT", () => {
     const before = BLACK_HOLE_FRAGMENT.slice(0, BLACK_HOLE_FRAGMENT.indexOf("void main()"));
     expect(before).not.toMatch(/\b(fwidth|dFdx|dFdy)\b/);
     expect(main).toMatch(/\bdFdx\(dir\)/);
-    expect(main).toMatch(/clamp\(length\(fwidth\(\w+\)\), uPixelAngle, 4\.0 \* uPixelAngle\)/);
+    // Racine de l'aire du pixel dans le ciel source, comme le fond.
+    expect(main).toContain("clamp(sqrt(length(cross(dFdx(sky), dFdy(sky)))), uPixelAngle, 4.0 * uPixelAngle)");
+  });
+
+  it("devrait intégrer le jet hors du tracé, le long de la visée, et le cacher derrière l'ombre", () => {
+    expect(BLACK_HOLE_FRAGMENT).toMatch(/vec3 jetLight\(vec3 d\)/);
+    expect(BLACK_HOLE_FRAGMENT).toContain("jetLight(dir)");
+    expect(BLACK_HOLE_FRAGMENT).toContain("length(cross(c, d)) < SHADOW_RS && t > -cd");
+    expect(marchLoop()).not.toContain("uJet");
+  });
+
+  it("devrait tracer le repère de l'horizon en pointillés de laiton, fin et discret", () => {
+    expect(BLACK_HOLE_FRAGMENT).toContain("const float HORIZON_ALPHA = 0.35;");
+    expect(BLACK_HOLE_FRAGMENT).toContain("HORIZON_ALPHA * onLine * onDash * uHorizonMark");
+    // Trait d'un px CSS : demi-largeur 0,5 uPixelAngle.
+    expect(BLACK_HOLE_FRAGMENT).toContain("(0.5 * uPixelAngle - abs(angle - horizon))");
   });
 
   it("devrait inclure une fois le ciel et le bruit, et raccorder son ciel à la lentille faible du fond", () => {
@@ -401,7 +466,7 @@ describe("BLACK_HOLE_FRAGMENT", () => {
     expect(BLACK_HOLE_FRAGMENT).toContain("lensVector(dir, uCamLocal)");
     expect(BLACK_HOLE_FRAGMENT).toContain("rotateBy(dir, turnVector(dir, skies[0]) + others)");
     // Raccord sur le dernier dixième du rectangle, selon le paramètre d'impact de la droite du pixel.
-    expect(BLACK_HOLE_FRAGMENT).toContain("smoothstep(0.9 * uQuadRs, uQuadRs, dist * sin(angle))");
+    expect(BLACK_HOLE_FRAGMENT).toContain("smoothstep(0.9 * uCoreRs, uCoreRs, dist * sin(angle))");
   });
 
   it("devrait équilibrer accolades et parenthèses", () => {
