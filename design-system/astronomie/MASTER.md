@@ -154,8 +154,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   règle des tailles suit le même modèle. Là où elle n'a plus que des pastilles (860 px et moins), en mise en page
   compacte et sur écran bas (546 px de haut et moins : téléphone en paysage, zoom à 400 %), elle laisse sa place au menu
   **Escales** : le nom de l'escale en cours (« Escales » à l'accueil), dans la barre, ouvre la liste des escales
-  (pastille creuse, pleine pour l'escale en cours, nom, distance, lignes de 44 px). Sur écran bas, la barre suit la
-  page et la liste s'ouvre en haut de page. Sans JavaScript, la règle reste.
+  (pastille creuse, pleine pour l'escale en cours, nom, distance, lignes de 44 px). Sur écran bas, la liste s'ouvre
+  sous la barre, restée fixe, et défile en elle-même jusqu'au bas de la vue. Sans JavaScript, la règle reste.
 - **Note d'échelle** : encart `--r-md` bordé `--soleil`, visible avec les distances réelles ; au-dessus
   du dock ; en mise en page compacte, en haut sous la barre et dans la colonne de lecture, pour ne
   couvrir ni la plaque ni la règle. Sur téléphone, elle tient sur deux lignes, l'essentiel en tête :
@@ -182,8 +182,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Pilule de 44 px filetée `--filet-fort`, comme le menu des escales : pictogramme d'orbite en laiton, puis le
   libellé ; à 640 px et moins, le pictogramme seul, 44 × 44 (le libellé, masqué à l'œil, reste le début du nom
   accessible : « Tourner autour de Saturne »). Il suit l'escale affichée ; à la ceinture d'astéroïdes, il garde
-  sa place sans se montrer. Écran bas (téléphone en paysage, zoom à 400 %) : fixé en haut à droite, la barre lui
-  réserve 52 px. Absent sans JavaScript et sans scène 3D.
+  sa place sans se montrer. Écran bas (téléphone en paysage, zoom à 400 %) : dans la barre, fixe là aussi, il glisse
+  avec elle. Absent sans JavaScript et sans scène 3D.
 - **Exploration** : la page (barre, règle, plaques, pied de page, note d'échelle) s'efface en 0,6 s et devient
   inerte pendant que la caméra glisse vers la vue d'exploration ; tout est instantané en mouvement réduit. La page
   ne défile plus ; la scène et le dock restent. En haut, une barre en capsule, comme le dock : pastille et nom de
@@ -217,6 +217,14 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   un voile léger (`--voile` vers transparent, plus dense à 640 px et moins), pour que la scène 3D se devine dessous ;
   à l'Accueil et à À propos, où le texte défile sous la barre, `--nuit` plein jusqu'au bas des commandes puis un
   fondu sur la marge basse (0,9 rem) : rien ne se lit derrière la marque ni les onglets.
+  **Barre qui glisse** (Voyage et Tailles, là où ni règle ni fondus ne la bordent : mise en page compacte et écran
+  bas, en portrait comme en paysage) : elle glisse hors de l'écran (0,25 s, rien en mouvement réduit) après 16 px de
+  descente, revient dès 8 px de remontée, et reste affichée en haut de page, quand le focus y entre (clavier, retour
+  de l'exploration), quand la fenêtre change de taille et tant qu'un de ses menus est ouvert. Sa place reste
+  réservée : la scène la lit au repos (l'astre ne bouge pas quand elle part, aucune étiquette ne se pose dessous) et
+  le focus s'arrête toujours sous elle (marges de défilement). Sur écran bas (30 rem et moins), elle reste fixe,
+  resserrée à 3,75 rem (0,5 rem autour des commandes de 44 px) ; sans JavaScript, elle y suit la page, comme celle de
+  l'Accueil et d'À propos.
 - **Choix de la langue** : le bouton de la barre montre le drapeau de la langue de la page, puis son code (« FR ») et
   le chevron ; chaque ligne de la liste (et du menu replié), le drapeau puis le nom de la langue dans sa langue ; les
   pilules sans JavaScript, le drapeau puis le code. Drapeaux en SVG (pas d'emoji : Windows ne les dessine pas),

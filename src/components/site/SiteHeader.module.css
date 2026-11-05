@@ -344,7 +344,7 @@
 
 /*
  * Ancré comme la liste des escales : sous la barre, à droite ; il défile entre la barre fixe et la réserve du dock
- * quand il ne tient pas (sur écran bas, il s'ouvre en entier, plus bas).
+ * quand il ne tient pas (sur écran bas, voir plus bas).
  */
 .menuPanel {
   position: absolute;
@@ -392,13 +392,24 @@
 }
 
 /*
- * Écran bas (téléphone en paysage, zoom à 400 %) : la barre suit la page, le panneau s'ouvre en entier sous elle et la
- * page défile pour le parcourir. Une hauteur mesurée sur la vue (100svh − 6 rem) le réduisait à 79 px à 400 % (175 px
- * de haut), moins de deux lignes. Même règle pour la liste des escales (globals.css).
+ * Écran bas (téléphone en paysage, zoom à 400 %), Accueil et À propos : la barre suit la page, le panneau s'ouvre en
+ * entier sous elle et la page défile pour le parcourir. Une hauteur mesurée sur la vue (100svh − 6 rem) le réduisait à
+ * 79 px à 400 % (175 px de haut), moins de deux lignes.
  */
 @media (max-height: 30rem) {
   .menuPanel {
     max-height: none;
+  }
+}
+
+/*
+ * Au Voyage et à Tailles, la barre reste fixe sur écran bas (globals.css) : le panneau défile sous elle, jusqu'à 0,5 rem
+ * du bas de la vue, sans réserve pour le dock, qui a rejoint la page. Même règle pour la liste des escales.
+ */
+@media (max-height: 30rem) and (scripting: enabled) {
+  .header[data-autohide] .menuPanel {
+    max-height: calc(100vh - 4.25rem - env(safe-area-inset-top, 0px));
+    max-height: calc(100svh - 4.25rem - env(safe-area-inset-top, 0px));
   }
 }
 

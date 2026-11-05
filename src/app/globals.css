@@ -337,7 +337,8 @@ main > section:focus {
  * langue. Ici la ligne, la marque et l'escale en cours ; onglets, langue et menu dans SiteHeader.module.css. Une seule
  * ligne de 320 à 1 440 px, dans les trois langues : rien n'y passe à la ligne, et l'escale en cours (ou le menu des
  * escales) cède la place en finissant en « … ». Hauteur : 0,9 rem + 46 px (capsule des onglets) + 0,9 rem au-dessus de
- * 860 px, commandes de 44 px au-dessous ; la scène mesure son bas.
+ * 860 px, commandes de 44 px au-dessous ; la scène mesure son bas, à sa place de repos. Au Voyage et à Tailles, en mise
+ * en page compacte et sur écran bas, elle glisse hors de l'écran quand on descend (fin de « Petits écrans »).
  */
 body::before {
   content: "";
@@ -1428,7 +1429,8 @@ footer a {
  * tranché par le dock. Au-dessus du contenu et du pied de page (2), sous la règle (4), la barre et le dock (6), deux
  * bandes et rien entre elles, sans intercepter un clic ; effacés avec la page pendant l'exploration
  * (data-hide-on-explore). Cachés par défaut : ils ne paraissent que sur grand écran, quand la page les déclare (plus
- * bas). En mise en page compacte, la plaque se pose au-dessus du dock ; sur écran bas, barre et dock suivent la page.
+ * bas). En mise en page compacte, la plaque se pose au-dessus du dock ; sur écran bas, le dock suit la page. Là où ils
+ * manquent, la barre glisse hors de l'écran quand on descend (fin de « Petits écrans ») : rien n'y passe dessous.
  */
 .bar-fade,
 .dock-fade {
@@ -2159,23 +2161,10 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 }
 
 /*
- * Écran bas (téléphone en paysage, zoom à 400 %) : la barre suit la page et le bouton sortirait de l'écran ; il se
- * fixe en haut à droite, la barre lui réserve sa place. Pendant le mode, le dock, qui a rejoint la page, redevient
- * fixe pour rester utilisable.
+ * Écran bas (téléphone en paysage, zoom à 400 %) : le bouton reste dans la barre, fixe là aussi (« Petits écrans »,
+ * plus bas). Pendant le mode, le dock, qui a rejoint la page, redevient fixe pour rester utilisable.
  */
 @media (max-height: 30rem) {
-  /* Réserve du bouton fixé, qui n'existe que sur la barre du voyage. */
-  .bar[data-page="voyage"] {
-    padding-right: calc(var(--gr) + 52px);
-  }
-
-  .explore-toggle {
-    position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
-    right: var(--gr);
-    z-index: 6;
-  }
-
   html[data-explore] .dock {
     position: fixed;
     left: 0;
@@ -2632,9 +2621,9 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
  * sans nom au doigt (860 px et moins), en mise en page compacte, et partout où elle est trop basse
  * pour ses seize repères : il leur faut 15 × 24 px = 360 px pour garder 24 px entre leurs centres
  * (WCAG 2.5.8), soit 66vh ≥ 360 px, une vue d'au moins 546 px de haut (34,125 rem). Sur un écran
- * bas (téléphone en paysage, zoom à 400 %), la barre suit la page : la liste s'ouvre en haut de
- * page, quand la règle n'y aurait que des repères qui se chevauchent. Pas sans JavaScript : la
- * liste ne s'ouvrirait pas.
+ * bas (téléphone en paysage, zoom à 400 %), la liste s'ouvre sous la barre, restée fixe, et défile
+ * en elle-même, quand la règle n'y aurait que des repères qui se chevauchent. Pas sans JavaScript :
+ * la liste ne s'ouvrirait pas.
  */
 @media (max-width: 860px) and (scripting: enabled),
   (max-width: 1100px) and (orientation: portrait) and (scripting: enabled),
@@ -2714,7 +2703,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     list-style: none;
     /*
      * Elle défile entre la barre fixe et la réserve du dock (hors mise en page compacte, rien à dégager) ; sur écran
-     * bas, où la barre et le dock suivent la page, elle s'ouvre en entier (plus bas, « Écran bas ou zoom à 400 % »).
+     * bas, où le dock suit la page, jusqu'au bas de la vue (plus bas, « Écran bas ou zoom à 400 % »).
      */
     max-height: calc(100vh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
     max-height: calc(100svh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
@@ -2874,14 +2863,18 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   }
 }
 
-/* Écran bas ou zoom à 400 % : la barre et le dock reprennent leur place dans la page. */
+/*
+ * Écran bas ou zoom à 400 % : le dock reprend sa place dans la page, la barre de l'Accueil et d'À propos aussi. Celle du
+ * Voyage et de Tailles reste fixe, resserrée, et glisse hors de l'écran quand on descend (plus bas) : sans elle, une
+ * page de 20 000 px n'offrait plus ni onglets, ni escales, ni langue en cours de lecture.
+ */
 @media (max-height: 30rem) {
   /*
-   * Seul le bouton « Tourner autour » du voyage reste fixé en haut (44 px, à 0,5 rem du bord) : ce qui reçoit le focus
-   * s'arrête 0,5 rem sous lui. En bas, rien de fixe, hors de la note d'échelle (plus bas).
+   * En haut, la barre fixe du Voyage et de Tailles (3,75 rem) : ce qui reçoit le focus s'arrête 0,5 rem sous elle,
+   * qu'elle soit là ou glissée hors de l'écran (elle peut revenir). En bas, rien de fixe, hors de la note d'échelle.
    */
   html {
-    scroll-padding-block: calc(env(safe-area-inset-top, 0px) + 3.75rem) 1rem;
+    scroll-padding-block: calc(env(safe-area-inset-top, 0px) + 4.25rem) 1rem;
   }
 
   /* Le dock rejoint la page : la plaque n'a plus à rester collée au-dessus de lui, ni à montrer le repos. */
@@ -2898,18 +2891,20 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     display: none;
   }
 
+  /* Accueil et À propos, et toute barre sans JavaScript (rien n'y glisserait) : la barre suit la page. */
   .bar {
     position: relative;
     top: auto;
   }
 
   /*
-   * La barre suit la page : la liste des escales (voyage) ou des étoiles (Tailles) s'ouvre en entier sous elle, et la
-   * page défile pour la parcourir. Mesurée sur la vue, sa hauteur tomberait à 0 à 400 % (175 px de haut, moins la
-   * barre et une réserve du dock qui n'a plus lieu d'être). Même règle pour « Menu » (SiteHeader.module.css).
+   * La liste des escales (voyage) ou des astres (Tailles) défile sous la barre fixe, jusqu'à 0,5 rem du bas de la vue,
+   * sans réserve pour le dock, qui a rejoint la page : à 400 % (175 px de haut), deux lignes et demie de 44 px. Même
+   * règle pour « Menu » (SiteHeader.module.css).
    */
   .stops-list {
-    max-height: none;
+    max-height: calc(100vh - 4.25rem - env(safe-area-inset-top, 0px));
+    max-height: calc(100svh - 4.25rem - env(safe-area-inset-top, 0px));
   }
 
   .dock {
@@ -2926,14 +2921,55 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* La barre suit la page : en haut, seulement le bouton fixé ; en bas, la note visible (hauteur mesurée). */
+  /* En haut, la barre fixe ; en bas, la note visible (hauteur mesurée). */
   html[data-scale-note] {
-    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 3.75rem);
+    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
     scroll-padding-bottom: calc(14px + var(--note-h, 11rem) + 0.75rem + env(safe-area-inset-bottom, 0px));
   }
 
   footer {
     padding-bottom: 2rem;
+  }
+}
+
+/*
+ * Écran bas, Voyage et Tailles (`data-autohide`), avec JavaScript : la barre reste fixe, resserrée à 0,5 rem autour de
+ * ses commandes de 44 px (3,75 rem), et « Tourner autour » y garde sa place. Sans JavaScript, elle ne glisserait pas :
+ * elle suit la page, comme celle de l'Accueil.
+ */
+@media (max-height: 30rem) and (scripting: enabled) {
+  .bar[data-autohide] {
+    position: fixed;
+    top: env(safe-area-inset-top, 0px);
+    padding-block: 0.5rem;
+  }
+}
+
+/*
+ * Voyage et Tailles, là où ni la règle ni les fondus ne bordent la page (mise en page compacte, écran bas : le
+ * complément exact de la requête des fondus) : la barre glisse hors de l'écran quand on descend (`data-concealed`,
+ * AutoHideBar) et revient dès qu'on remonte, en 0,25 s, sans animation en mouvement réduit (règle globale, plus bas).
+ * Elle reste tant qu'elle a le focus clavier ou un menu ouvert (escales, langue, menu replié). Sa place reste
+ * réservée : les scènes la lisent au repos (barSlide.ts), les marges de défilement la dégagent toujours, la note
+ * d'échelle et l'échelle graphique ne bougent pas. Après la section « Exploration », dont elle reprend les fondus.
+ */
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
+  .bar[data-autohide] {
+    transition:
+      transform 0.25s ease-out,
+      opacity 0.6s,
+      visibility 0s;
+  }
+
+  html[data-explore] .bar[data-autohide] {
+    transition:
+      transform 0.25s ease-out,
+      opacity 0.6s,
+      visibility 0.6s;
+  }
+
+  .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) {
+    transform: translateY(-100%);
   }
 }
 

@@ -17,6 +17,7 @@ import { createStarfieldBackground } from "@/components/scene/starfield";
 import { julianDate } from "@/lib/astro/ephemeris";
 import { solarActivity, sunspotLatitude } from "@/lib/astro/solarCycle";
 import { smootherstep } from "@/lib/journey/sections";
+import { restingRect } from "@/lib/site/barSlide";
 import { placeObjects } from "@/lib/sizes/layout";
 import { COMPARED_OBJECTS, layoutInput, visibleShare, type SizeObjectKey } from "@/lib/sizes/objects";
 import {
@@ -233,9 +234,8 @@ function disposeObject(object: Object3D): void {
   }
 }
 
-/** Boîte occupée par un élément de la page, en px de la vue. */
-function rectBox(element: Element): LabelBox {
-  const rect = element.getBoundingClientRect();
+/** Boîte occupée à l'écran par un rectangle de la page, en px de la vue. */
+function rectBox(rect: DOMRect): LabelBox {
   return [rect.left, rect.top, rect.right, rect.bottom];
 }
 
@@ -384,7 +384,8 @@ function setupScene(
 
   /**
    * Une passe de lecture : tailles des étiquettes (mesurées dans leur forme normale, puis remises dans la leur), boîtes
-   * à éviter (barre, règle), bas de la barre, bandes et zone libres.
+   * à éviter (barre, règle), bas de la barre, bandes et zone libres. La barre, qui glisse hors de l'écran quand on
+   * descend (téléphone), est mesurée à sa place de repos : aucune étiquette ne s'y pose, elle peut revenir à tout moment.
    */
   function measureLayout(): void {
     const forms = allSlots.map(({ mirrored, short }) => ({ mirrored, short }));
@@ -393,11 +394,12 @@ function setupScene(
       metrics[i] = { ring: ring ? measureMarker(ring.element) : null, limb: limb ? measureLimb(limb.element) : null };
     });
     sunRing = sunSlot ? measureMarker(sunSlot.element) : null;
-    measuredBoxes = [layout.bar, layout.rail]
-      .filter((element): element is Element => element !== null)
+    const barRect = layout.bar ? restingRect(layout.bar) : null;
+    measuredBoxes = [barRect, layout.rail?.getBoundingClientRect() ?? null]
+      .filter((rect): rect is DOMRect => rect !== null)
       .map(rectBox)
       .filter(([left, top, right, bottom]) => right > left && bottom > top);
-    barBottom = layout.bar?.getBoundingClientRect().bottom ?? 0;
+    barBottom = barRect?.bottom ?? 0;
     screenLayout.measure(view);
     scaleSize.measured = false;
     layoutSettled = false;

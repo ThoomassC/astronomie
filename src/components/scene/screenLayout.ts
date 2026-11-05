@@ -1,4 +1,5 @@
 import { freeBand, type ScreenBand, type ScreenZone } from "@/lib/journey/screen";
+import { restingRect } from "@/lib/site/barSlide";
 import { easeFactor } from "./math";
 
 /** Mise en page compacte (globals.css) : plaques repliées collées au bas de l'écran (téléphone, tablette en portrait). */
@@ -77,7 +78,8 @@ export function createScreenLayout<K extends string>(
    * plaque repliée de chaque escale. Une plaque ou une note dépliée garde la mesure de sa forme
    * repliée, pour que la caméra ne bouge pas ; la mesure des plaques se perd si la largeur change.
    * La note suspendue aux escales cosmiques (distances réelles toujours actives) garde sa place :
-   * le cadrage ne saute ni quand elle se tait, ni quand elle revient.
+   * le cadrage ne saute ni quand elle se tait, ni quand elle revient. La barre, qui glisse hors de
+   * l'écran quand on descend, est lue à sa place de repos : l'astre ne bouge pas quand elle part.
    * Sans barre fixe ni plaque collée en bas (écran bas), pas de bande.
    */
   function measureBands(view: { width: number; height: number }): void {
@@ -91,7 +93,7 @@ export function createScreenLayout<K extends string>(
       compactPlates.clear();
       return;
     }
-    let top = bar.getBoundingClientRect().bottom;
+    let top = restingRect(bar).bottom;
     if (note?.dataset.visible === "true") {
       if (!note.hasAttribute("data-open")) noteBottom = note.getBoundingClientRect().bottom;
       top = Math.max(top, noteBottom);
