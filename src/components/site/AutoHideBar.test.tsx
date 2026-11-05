@@ -108,11 +108,21 @@ describe("AutoHideBar", () => {
     expect(banner()).toHaveAttribute("data-concealed");
   });
 
-  it("devrait revenir quand la fenêtre change de taille (rotation du téléphone)", () => {
+  it("devrait revenir quand la fenêtre change de largeur (rotation du téléphone)", () => {
     render(<Bar />);
     scrollPageTo(2000);
+    vi.stubGlobal("innerWidth", 844);
     fireEvent(window, new Event("resize"));
     expect(banner()).not.toHaveAttribute("data-concealed");
+  });
+
+  /* La barre d'adresse du navigateur se replie quand on descend : la hauteur de la vue change, pas sa largeur. */
+  it("ne devrait pas revenir quand seule la hauteur de la vue change", () => {
+    render(<Bar />);
+    scrollPageTo(2000);
+    vi.stubGlobal("innerHeight", VIEW_HEIGHT + 56);
+    fireEvent(window, new Event("resize"));
+    expect(banner()).toHaveAttribute("data-concealed");
   });
 
   /*

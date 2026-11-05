@@ -3074,6 +3074,8 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     position: fixed;
     top: env(safe-area-inset-top, 0px);
     padding-block: 0.5rem;
+    /* Les plaques défilent dessous, sans fondu : le voile dense des téléphones garde la marque lisible. */
+    background: linear-gradient(rgba(6, 11, 24, 0.94) 55%, rgba(6, 11, 24, 0));
   }
 }
 

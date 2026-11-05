@@ -231,7 +231,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   **Barre qui glisse** (Voyage et Tailles, là où ni règle ni fondus ne la bordent : mise en page compacte et écran
   bas, en portrait comme en paysage) : elle glisse hors de l'écran (0,25 s, rien en mouvement réduit) après 16 px de
   descente, revient dès 8 px de remontée, et reste affichée en haut de page, quand le focus y entre (clavier, retour
-  de l'exploration), quand la fenêtre change de taille et tant qu'un de ses menus est ouvert. Sa place reste
+  de l'exploration), quand la fenêtre change de largeur (rotation ; pas quand la barre d'adresse du navigateur se
+  replie) et tant qu'un de ses menus est ouvert. Sa place reste
   réservée : la scène la lit au repos (l'astre ne bouge pas quand elle part, aucune étiquette ne se pose dessous) et
   le focus s'arrête toujours sous elle (marges de défilement). Sur écran bas (30 rem et moins), elle reste fixe,
   resserrée à 3,75 rem (0,5 rem autour des commandes de 44 px) ; sans JavaScript, elle y suit la page, comme celle de
