@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { markerLayouts, type LabelBox } from "@/components/scene/labels";
 import { nameParts, SIZES_STRINGS } from "@/components/sizes/sizes.strings";
+import { labelJetOf } from "@/components/sizes/sizesObjects";
 import {
   discBoxes,
   frameBoxes,
+  jetBoxes,
   labelOrder,
   layoutSizeLabels,
   placeLimbLabel,
@@ -18,7 +20,7 @@ import {
 import { LOCALES, type Locale } from "@/i18n/locales";
 import { smootherstep } from "@/lib/journey/sections";
 import { placeObjects } from "@/lib/sizes/layout";
-import { COMPARED_OBJECTS, layoutInput } from "@/lib/sizes/objects";
+import { COMPARED_OBJECTS, layoutInput, visibleShare } from "@/lib/sizes/objects";
 import { scaleBarBox } from "@/lib/sizes/scaleBar";
 import {
   railSideFade,
@@ -76,14 +78,14 @@ describe("placeLimbLabel", () => {
   const SIZE: LimbLabelSize = { width: 120, height: 24, shortWidth: 50 };
 
   it("devrait centrer l'étiquette complète au-dessus du limbe, à 8 px", () => {
-    expect(placeLimbLabel({ x: 500, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toEqual({
+    expect(placeLimbLabel({ x: 500, y: 400, upPx: 100, downPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toEqual({
       box: [440, 268, 560, 292],
       short: false,
     });
   });
 
   it("devrait la poser au-dessous du limbe quand le dessus passe sous la barre haute", () => {
-    expect(placeLimbLabel({ x: 500, y: 150, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toEqual({
+    expect(placeLimbLabel({ x: 500, y: 150, upPx: 100, downPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toEqual({
       box: [440, 258, 560, 282],
       short: false,
     });
@@ -91,19 +93,19 @@ describe("placeLimbLabel", () => {
 
   it("devrait la poser au-dessous du limbe quand le dessus recouvre une boîte déjà occupée", () => {
     const occupied = [[400, 250, 600, 300]] as const;
-    expect(placeLimbLabel({ x: 500, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, occupied)).toEqual({
+    expect(placeLimbLabel({ x: 500, y: 400, upPx: 100, downPx: 100, depth: 0.5 }, SIZE, VIEW, occupied)).toEqual({
       box: [440, 508, 560, 532],
       short: false,
     });
   });
 
   it("ne devrait rien poser quand ni le dessus ni le dessous ne tiennent dans la vue (astre plus grand que l'écran)", () => {
-    expect(placeLimbLabel({ x: 500, y: 400, radiusPx: 500, depth: 0.5 }, SIZE, VIEW, [])).toBeNull();
+    expect(placeLimbLabel({ x: 500, y: 400, upPx: 500, downPx: 500, depth: 0.5 }, SIZE, VIEW, [])).toBeNull();
   });
 
   it("devrait la glisser dans la vue quand, centrée, elle déborderait d'un côté : toujours au-dessus de l'astre", () => {
-    expect(placeLimbLabel({ x: 20, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])?.box).toEqual([8, 268, 128, 292]);
-    expect(placeLimbLabel({ x: 980, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])?.box).toEqual([872, 268, 992, 292]);
+    expect(placeLimbLabel({ x: 20, y: 400, upPx: 100, downPx: 100, depth: 0.5 }, SIZE, VIEW, [])?.box).toEqual([8, 268, 128, 292]);
+    expect(placeLimbLabel({ x: 980, y: 400, upPx: 100, downPx: 100, depth: 0.5 }, SIZE, VIEW, [])?.box).toEqual([872, 268, 992, 292]);
   });
 
   /*
@@ -112,24 +114,24 @@ describe("placeLimbLabel", () => {
    */
   it("devrait poser au-dessus de l'astre l'étiquette d'une supergéante cadrée à gauche d'un téléphone", () => {
     const phone = { width: 375, height: 812 };
-    const placed = placeLimbLabel({ x: 95, y: 300, radiusPx: 57.5, depth: 0.5 }, { width: 200, height: 20, shortWidth: 120 }, phone, []);
+    const placed = placeLimbLabel({ x: 95, y: 300, upPx: 57.5, downPx: 57.5, depth: 0.5 }, { width: 200, height: 20, shortWidth: 120 }, phone, []);
     expect(placed).toEqual({ box: [8, 214.5, 208, 234.5], short: false });
   });
 
   it("ne devrait rien poser quand le centre de l'astre sort de la vue : l'étiquette ne le désignerait plus", () => {
-    expect(placeLimbLabel({ x: 4, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toBeNull();
-    expect(placeLimbLabel({ x: 996, y: 400, radiusPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toBeNull();
+    expect(placeLimbLabel({ x: 4, y: 400, upPx: 100, downPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toBeNull();
+    expect(placeLimbLabel({ x: 996, y: 400, upPx: 100, downPx: 100, depth: 0.5 }, SIZE, VIEW, [])).toBeNull();
   });
 
   it("devrait passer au nom seul quand l'étiquette complète est plus large que la vue", () => {
-    expect(placeLimbLabel({ x: 500, y: 400, radiusPx: 100, depth: 0.5 }, { ...SIZE, width: 990 }, VIEW, [])).toEqual({
+    expect(placeLimbLabel({ x: 500, y: 400, upPx: 100, downPx: 100, depth: 0.5 }, { ...SIZE, width: 990 }, VIEW, [])).toEqual({
       box: [475, 268, 525, 292],
       short: true,
     });
   });
 
   it("ne devrait rien poser pour un astre derrière la caméra", () => {
-    expect(placeLimbLabel({ x: 500, y: 400, radiusPx: 100, depth: 1.2 }, SIZE, VIEW, [])).toBeNull();
+    expect(placeLimbLabel({ x: 500, y: 400, upPx: 100, downPx: 100, depth: 1.2 }, SIZE, VIEW, [])).toBeNull();
   });
 
   /*
@@ -140,7 +142,7 @@ describe("placeLimbLabel", () => {
   it("devrait se replier sur le nom seul plutôt que de recouvrir le grand disque voisin (Rigel à côté d'Antarès A)", () => {
     const phone = { width: 375, height: 812 };
     const occupied = discBoxes(150, 300, 110);
-    const placed = placeLimbLabel({ x: 318, y: 300, radiusPx: 12, depth: 0.5 }, { width: 120, height: 20, shortWidth: 44 }, phone, occupied);
+    const placed = placeLimbLabel({ x: 318, y: 300, upPx: 12, downPx: 12, depth: 0.5 }, { width: 120, height: 20, shortWidth: 44 }, phone, occupied);
     expect(placed).toEqual({ box: [296, 260, 340, 280], short: true });
   });
 
@@ -150,19 +152,31 @@ describe("placeLimbLabel", () => {
    */
   it("devrait glisser l'étiquette le long d'une boîte occupée plutôt que de la recouvrir, toujours au-dessus de l'astre", () => {
     const plates = [[0, 0, 553.7, 390]] as const;
-    const placed = placeLimbLabel({ x: 603, y: 195, radiusPx: 36, depth: 0.5 }, { width: 189, height: 20, shortWidth: 117 }, { width: 844, height: 390 }, plates);
+    const placed = placeLimbLabel({ x: 603, y: 195, upPx: 36, downPx: 36, depth: 0.5 }, { width: 189, height: 20, shortWidth: 117 }, { width: 844, height: 390 }, plates);
     expect(placed).toEqual({ box: [553.7, 131, 742.7, 151], short: false });
   });
 
   it("ne devrait pas glisser au point de ne plus couvrir le centre de l'astre", () => {
     const plates = [[0, 0, 610, 390]] as const;
-    const placed = placeLimbLabel({ x: 603, y: 195, radiusPx: 36, depth: 0.5 }, { width: 189, height: 20, shortWidth: 117 }, { width: 844, height: 390 }, plates);
+    const placed = placeLimbLabel({ x: 603, y: 195, upPx: 36, downPx: 36, depth: 0.5 }, { width: 189, height: 20, shortWidth: 117 }, { width: 844, height: 390 }, plates);
     expect(placed).toBeNull();
+  });
+
+  /*
+   * Trou noir : son encombrement va bien au-delà de ce qui se voit (anneau, disque). L'étiquette se pose à 8 px de ce qui
+   * se voit, au-dessus (upPx) ou au-dessous (downPx) de son centre.
+   */
+  it("devrait poser l'étiquette à 8 px au-dessus de ce qui se voit, et au-dessous de même quand le dessus est pris", () => {
+    expect(placeLimbLabel({ x: 500, y: 400, upPx: 30, downPx: 50, depth: 0.5 }, SIZE, VIEW, [])?.box).toEqual([440, 338, 560, 362]);
+    const occupied = [[400, 330, 600, 365]] as const;
+    expect(placeLimbLabel({ x: 500, y: 400, upPx: 30, downPx: 50, depth: 0.5 }, SIZE, VIEW, occupied)?.box).toEqual([
+      440, 458, 560, 482,
+    ]);
   });
 
   it("devrait poser le nom seul au-dessous quand le dessus est pris aussi", () => {
     const occupied = [[0, 200, 1000, 300]] as const;
-    expect(placeLimbLabel({ x: 500, y: 400, radiusPx: 100, depth: 0.5 }, { ...SIZE, width: 990 }, VIEW, occupied)).toEqual({
+    expect(placeLimbLabel({ x: 500, y: 400, upPx: 100, downPx: 100, depth: 0.5 }, { ...SIZE, width: 990 }, VIEW, occupied)).toEqual({
       box: [475, 508, 525, 532],
       short: true,
     });
@@ -190,6 +204,51 @@ describe("sunRinged", () => {
     [0.2, true],
   ])("devrait cercler le Soleil de l'anneau « ici » sous 14 px de diamètre (%f px : %s)", (diameterPx, ringed) => {
     expect(sunRinged(diameterPx)).toBe(ringed);
+  });
+});
+
+describe("jetBoxes", () => {
+  const VIEW = { width: 1000, height: 800 };
+  const CTX = { fovDeg: 36 };
+  /** Pixels par unité de tangente : à la profondeur `dist`, 1 r_s (1 R☉ ici) fait F / dist px. */
+  const F = 800 / (2 * Math.tan((18 * Math.PI) / 180));
+  /** Jet couché dans le plan des astres, vers la droite. */
+  const JET = { axis: { x: 1, y: 0, z: 0 }, lengthRs: 40, widthRs: 0.25, spread: 0 };
+  const FAR: SizesCam = { tx: 0, dist: 100, offX: 0, offY: 0 };
+
+  it("devrait couvrir le jet du centre du trou noir à son bout, de boîtes élargies de deux largeurs", () => {
+    const boxes = jetBoxes({ x: 0, rs: 1 }, JET, FAR, CTX, VIEW);
+    const half = (2 * 0.25 * F) / 100;
+    expect(Math.min(...boxes.map((box) => box[0]))).toBeCloseTo(500 - half, 6);
+    expect(Math.max(...boxes.map((box) => box[2]))).toBeCloseTo(500 + (40 * F) / 100 + half, 6);
+    for (const box of boxes) {
+      expect(box[1]).toBeCloseTo(400 - half, 6);
+      expect(box[3]).toBeCloseTo(400 + half, 6);
+    }
+  });
+
+  it("devrait s'élargir avec le jet : deux largeurs au bout, widthRs + lengthRs × spread", () => {
+    const boxes = jetBoxes({ x: 0, rs: 1 }, { ...JET, spread: 0.02 }, FAR, CTX, VIEW);
+    expect(Math.max(...boxes.map((box) => box[3])) - 400).toBeCloseTo((2 * (0.25 + 40 * 0.02) * F) / 100, 6);
+  });
+
+  it("devrait couper la part du jet derrière la caméra, et borner ses boîtes à la vue", () => {
+    const near: SizesCam = { tx: 0, dist: 20, offX: 0, offY: 0 };
+    const boxes = jetBoxes({ x: 0, rs: 1 }, { ...JET, axis: { x: 0.6, y: 0, z: 0.8 } }, near, CTX, VIEW);
+    expect(boxes.length).toBeGreaterThan(0);
+    for (const box of boxes) {
+      expect(box.every(Number.isFinite)).toBe(true);
+      expect(box[0]).toBeGreaterThanOrEqual(0);
+      expect(box[1]).toBeGreaterThanOrEqual(0);
+      expect(box[2]).toBeLessThanOrEqual(1000);
+      expect(box[3]).toBeLessThanOrEqual(800);
+      expect(box[2]).toBeGreaterThan(box[0]);
+      expect(box[3]).toBeGreaterThan(box[1]);
+    }
+  });
+
+  it("ne devrait rien réserver d'un jet tout entier hors de la vue", () => {
+    expect(jetBoxes({ x: -5000, rs: 1 }, JET, FAR, CTX, VIEW)).toEqual([]);
   });
 });
 
@@ -262,6 +321,20 @@ function sunMarkerFor(locale: Locale): RingMarker {
 
 const OBJECTS = placeObjects(COMPARED_OBJECTS.map(layoutInput));
 const SUN = COMPARED_OBJECTS.findIndex((object) => object.key === "sun");
+/** Ce qui se voit de chaque astre au-dessus et au-dessous de son centre, en part de son encombrement. */
+const REACH = COMPARED_OBJECTS.map(visibleShare);
+/** Jet de chaque trou noir qui en a un (M87*), que le moteur réserve. */
+const JETS = COMPARED_OBJECTS.map((object) => (object.kind === "black-hole" ? labelJetOf(object.key) : null));
+
+/**
+ * Ce qui se voit d'un astre à l'écran : la croix de son disque ; pour un trou noir, celle de son anneau, ou, pour un
+ * disque vu par la tranche (Cygnus X-1, plus haut que bas), la bande de son encombrement entre son haut et son bas.
+ */
+function visibleBoxes(index: number, disc: ScreenDisc): LabelBox[] {
+  const { up, down } = REACH[index];
+  if (up === down) return discBoxes(disc.x, disc.y, up * disc.radius);
+  return [[disc.x - disc.radius, disc.y - up * disc.radius, disc.x + disc.radius, disc.y + down * disc.radius]];
+}
 
 /**
  * Vues de référence de la demande, avec ce qui les borde dans la page : téléphones en portrait (mise en page compacte,
@@ -314,6 +387,12 @@ function layoutAt(view: View, locale: Locale, cam: SizesCam, drawn: number, curr
   );
   const scale = scaleBarBox({ compact: view.compact, zone, view: view.view, barBottom: 76, discs, measured: null });
   const reserved = frameBoxes(view.view, measuredBoxes(view), view.ctx.zone, view.ctx.band, scale);
+  // Comme le moteur : le jet d'un trou noir dessiné est réservé, aucune étiquette ne le coupe.
+  OBJECTS.slice(0, drawn).forEach((object, i) => {
+    const jet = JETS[i];
+    if (!jet || fits[i] === 0) return;
+    reserved.push(...jetBoxes({ x: object.x, rs: COMPARED_OBJECTS[i].radiusSolar }, jet, cam, view.ctx, view.view));
+  });
   const t = SIZES_STRINGS[locale];
   const metrics = COMPARED_OBJECTS.map((object) => metricsFor(t.names[object.key], t.size(object), nameParts(t, object.key).core));
   const modes: (StarLabelMode | null)[] = COMPARED_OBJECTS.map(() => null);
@@ -328,6 +407,7 @@ function layoutAt(view: View, locale: Locale, cam: SizesCam, drawn: number, curr
     reserved,
     modes,
     fits,
+    reach: REACH,
   });
   return { layout, discs, reserved, fits };
 }
@@ -354,13 +434,16 @@ function faults(view: View, layoutResult: ReturnType<typeof layoutAt>): string[]
     });
     for (const other of reserved) if (overlaps(box, other)) found.push(`sur une boîte réservée ${box} / ${other}`);
   });
-  // Un texte ne recouvre aucun astre dessiné de 24 px ou plus (sa croix) ; un anneau se pose sur son propre point, petit.
+  /*
+   * Un texte ne recouvre rien de ce qui se voit d'un astre dessiné de 24 px ou plus (visibleBoxes ; le jet d'un trou
+   * noir est parmi les boîtes réservées) ; un anneau se pose sur son propre point, petit.
+   */
   layout.objects.forEach((placement, i) => {
     if (placement.form === "hidden") return;
     discs.forEach((disc, j) => {
       if (2 * disc.radius < 24 || fits[j] === 0) return;
-      for (const cross of discBoxes(disc.x, disc.y, disc.radius)) {
-        if (overlaps(placement.box, cross)) found.push(`texte de ${COMPARED_OBJECTS[i].key} sur ${COMPARED_OBJECTS[j].key}`);
+      for (const shape of visibleBoxes(j, disc)) {
+        if (overlaps(placement.box, shape)) found.push(`texte de ${COMPARED_OBJECTS[i].key} sur ${COMPARED_OBJECTS[j].key}`);
       }
     });
   });
@@ -382,6 +465,28 @@ describe("étiquettes sur les vues de référence, au repos sur chaque escale", 
     const { layout } = layoutAt(view, locale, cam, visibleObjectCount(i, i, 0), i);
     const shown = i === SUN && layout.sun.form !== "hidden" ? layout.sun : layout.objects[i];
     expect(shown.form).not.toBe("hidden");
+  });
+});
+
+/*
+ * Au repos sur un trou noir, son étiquette se pose à 8 px de ce qui se voit (anneau, disque, ombre), au-dessus ou
+ * au-dessous, et non au bord de son encombrement (10 r_s), bien plus loin.
+ */
+describe("étiquettes des trous noirs, au repos sur chacun", () => {
+  const HOLES = OBJECTS.flatMap((object, i) => (COMPARED_OBJECTS[i].kind === "black-hole" ? [[object.key, i] as const] : []));
+  const CASES = VIEWS.flatMap((view) =>
+    LOCALES.flatMap((locale) => HOLES.map(([key, i]) => [view.name, locale, key, view, i] as const)),
+  );
+
+  it.each(CASES)("devrait poser l'étiquette à 8 px de ce qui se voit (%s, %s, repos sur %s)", (_name, locale, key, view, i) => {
+    const cam = sizesRestCamera(OBJECTS, key, view.ctx);
+    const { layout, discs } = layoutAt(view, locale, cam, visibleObjectCount(i, i, 0), i);
+    const placement = layout.objects[i];
+    if (placement.form !== "limb") throw new Error(`étiquette de ${key} : ${placement.form}`);
+    const { up, down } = REACH[i];
+    const above = discs[i].y - up * discs[i].radius - placement.box[3];
+    const below = placement.box[1] - (discs[i].y + down * discs[i].radius);
+    expect(Math.min(Math.abs(above - 8), Math.abs(below - 8))).toBeCloseTo(0, 9);
   });
 });
 
@@ -431,6 +536,57 @@ describe("layoutSizeLabels", () => {
     expect(layout.objects[0].form).toBe("limb");
     expect(layout.objects[1]).toEqual({ form: "hidden" });
     expect(modes[1]).toBeNull();
+  });
+
+  /*
+   * M87* au repos sur grand écran : encombrement de 10 r_s (200 px de rayon), anneau de 3,7 r_s. Son étiquette se pose à
+   * 8 px au-dessus de l'anneau, dans l'encombrement : sa propre croix ne l'en empêche pas.
+   */
+  it("devrait poser l'étiquette d'un trou noir à 8 px au-dessus de ce qui se voit, dans son propre encombrement", () => {
+    const layout = layoutSizeLabels({
+      discs: [{ x: 500, y: 400, radius: 200 }],
+      count: 1,
+      current: 0,
+      sun: 5,
+      metrics: [metrics],
+      sunMarker: null,
+      view: VIEW,
+      reserved: [],
+      modes: [null],
+      reach: [{ up: 0.37, down: 0.37 }],
+    });
+    const placement = layout.objects[0];
+    if (placement.form !== "limb") throw new Error(placement.form);
+    expect(placement.box[3]).toBeCloseTo(400 - 74 - 8, 9);
+  });
+
+  /*
+   * Une étoile tout près d'un trou noir, au bord droit de la vue : son texte à droite n'y tient pas, à gauche il
+   * mordrait l'encombrement du trou noir, que les autres étiquettes laissent libre ; le nom seul, à droite, tient.
+   */
+  it("devrait garder l'encombrement d'un trou noir aux étiquettes des autres astres", () => {
+    const layout = layoutSizeLabels({
+      discs: [
+        { x: 720, y: 400, radius: 5 },
+        { x: 500, y: 400, radius: 200 },
+      ],
+      count: 2,
+      current: 1,
+      sun: 5,
+      metrics: [metrics, metrics],
+      sunMarker: null,
+      view: { width: 800, height: 800 },
+      reserved: [],
+      modes: [null, null],
+      reach: [
+        { up: 1, down: 1 },
+        { up: 0.37, down: 0.37 },
+      ],
+    });
+    expect(layout.objects[1].form).toBe("limb");
+    const star = layout.objects[0];
+    if (star.form === "hidden") throw new Error("étoile sans étiquette");
+    for (const cross of discBoxes(500, 400, 200)) expect(overlaps(star.box, cross)).toBe(false);
   });
 
   it("devrait encore étiqueter un astre en partie effacé : il reste dessiné", () => {

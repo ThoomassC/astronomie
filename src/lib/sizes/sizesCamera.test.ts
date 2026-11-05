@@ -1,13 +1,16 @@
+import { PerspectiveCamera, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { placeObjects, type PlacedObject } from "@/lib/sizes/layout";
 import { COMPARED_OBJECTS, layoutInput } from "@/lib/sizes/objects";
 import {
   RAIL_FADE_PX,
   SIZES_FILL,
+  SIZES_VIEW_ELEV_DEG,
   haloOpacity,
   railSideFade,
   rightEdgePx,
   screenDisc,
+  screenPoint,
   sizesFlightCamera,
   sizesRestCamera,
   visibleObjectCount,
@@ -292,6 +295,46 @@ describe("screenDisc", () => {
   it("devrait écrire dans out et le renvoyer quand out est fourni", () => {
     const out = { x: 0, y: 0, radius: 0 };
     expect(screenDisc({ x: -1, extent: 2 }, CAM, DESK, VIEW, out)).toBe(out);
+  });
+});
+
+describe("screenPoint", () => {
+  const VIEW = { width: 1440, height: 900 };
+  const CAM: SizesCam = { tx: -3, dist: 20, offX: 0.15, offY: -0.1 };
+
+  /** Caméra de three posée comme celle du moteur (sizesEngine, updateCamera) : élévation, visée, décalage de vue. */
+  function engineCamera(cam: SizesCam, ctx: SizesFrameContext, view: { width: number; height: number }) {
+    const camera = new PerspectiveCamera(ctx.fovDeg, view.width / view.height, 0.01 * cam.dist, 100 * cam.dist);
+    const elevation = SIZES_VIEW_ELEV_DEG * DEG;
+    camera.position.set(cam.tx, cam.dist * Math.sin(elevation), cam.dist * Math.cos(elevation));
+    camera.lookAt(cam.tx, 0, 0);
+    camera.setViewOffset(view.width, view.height, -cam.offX * view.width, -cam.offY * view.height, view.width, view.height);
+    camera.updateMatrixWorld();
+    return camera;
+  }
+
+  it.each([
+    [-1, 0, 0],
+    [2, 3, -4],
+    [-6, -2, 5],
+    [0, 1.5, 12],
+  ])("devrait projeter le point (%f, %f, %f) comme la caméra du moteur", (x, y, z) => {
+    const ndc = new Vector3(x, y, z).project(engineCamera(CAM, DESK, VIEW));
+    const point = screenPoint({ x, y, z }, CAM, DESK, VIEW);
+    expect(point?.x).toBeCloseTo(((ndc.x + 1) / 2) * VIEW.width, 6);
+    expect(point?.y).toBeCloseTo(((1 - ndc.y) / 2) * VIEW.height, 6);
+  });
+
+  it("devrait poser un point de l'axe des astres au centre que donne screenDisc, à la profondeur de la cible", () => {
+    const point = screenPoint({ x: -1, y: 0, z: 0 }, CAM, DESK, VIEW);
+    const disc = screenDisc({ x: -1, extent: 2 }, CAM, DESK, VIEW);
+    expect(point?.x).toBeCloseTo(disc.x, 9);
+    expect(point?.y).toBeCloseTo(disc.y, 9);
+    expect(point?.depth).toBeCloseTo(CAM.dist, 9);
+  });
+
+  it("ne devrait rien donner pour un point derrière la caméra", () => {
+    expect(screenPoint({ x: -3, y: 0, z: 30 }, CAM, DESK, VIEW)).toBeNull();
   });
 });
 
