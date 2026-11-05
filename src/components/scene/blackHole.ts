@@ -72,15 +72,23 @@ export interface BlackHoleFlow {
   flicker: number;
 }
 
-/** Jet le long de l'axe du disque, côté qui s'approche ; le contre-jet, à l'opposé, en est une fraction. */
+/**
+ * Jet le long de l'axe du disque, côté qui s'approche ; le contre-jet, à l'opposé, en est une fraction. Faisceau fin
+ * et collimaté, nœuds brillants qui filent vers l'extérieur, éclat qui s'estompe. Il peut déborder de l'encombrement :
+ * le rectangle du trou noir s'agrandit pour lui, et hors du cœur tracé sa lumière s'ajoute au fond.
+ */
 export interface BlackHoleJet {
   gain: number;
-  /** Demi-ouverture du cône, en degrés. */
+  /** Longueur, en r_s. */
+  lengthRs: number;
+  /** Largeur (écart type) au pied, en r_s. */
+  widthRs: number;
+  /** Demi-ouverture de l'évasement, en degrés. */
   halfAngleDeg: number;
   /** Éclat du contre-jet rapporté à celui du jet, dans [0 ; 1[. */
   counterRatio: number;
-  /** Longueur, en r_s. */
-  lengthRs: number;
+  /** Contraste des nœuds, de 0 (jet lisse) à 1. */
+  knots: number;
   /** Couleur linéaire. */
   color: Color;
 }
@@ -163,17 +171,26 @@ export const BLACK_HOLE_LOOKS: Readonly<Record<BlackHoleLookName, BlackHoleLook>
     jet: null,
     glow: null,
   },
-  // Anneau et jet (M87*) : flot chaud plus brillant d'un côté (rotation horaire vue de la Terre : le côté sud-ouest
-  // s'approche), jet bleuté (synchrotron) vers l'ouest-nord-ouest (angle de position ≈ 288°), contre-jet très faible.
-  // Vu à 40° pour que le jet sorte de l'anneau ; publié : 17°, où ses 9 r_s ne dépasseraient pas l'ombre à l'écran.
+  // Anneau et jet (M87*) : anneau épais vers 2,7-3 r_s comme sur l'image de l'EHT, intérieur sombre, plus brillant au
+  // sud (rotation horaire vue de la Terre : ce côté s'approche) ; jet bleuté (synchrotron) vers l'ouest-nord-ouest
+  // (angle de position ≈ 288°), fin et collimaté, long de 40 r_s, nœuds qui filent, évasement léger ; contre-jet presque
+  // invisible. Vu à 40° pour que le jet s'étende à l'écran ; publié : 17°.
   "jet-ring": {
     inclinationDeg: 40,
     positionAngleDeg: 288,
     clockwise: true,
     orbitPeriodS: 10,
     disk: null,
-    flow: { innerRs: 1.6, outerRs: 2.8, temperatureK: 3600, gain: 0.8, thickness: 0.3, rotation: 0.7, flicker: 0.3 },
-    jet: { gain: 3, halfAngleDeg: 6, counterRatio: 0.08, lengthRs: 9, color: hdr("#9fc3ff", 1) },
+    flow: { innerRs: 1.7, outerRs: 3, temperatureK: 3600, gain: 0.7, thickness: 0.35, rotation: 0.9, flicker: 0.25 },
+    jet: {
+      gain: 0.1,
+      lengthRs: 40,
+      widthRs: 0.25,
+      halfAngleDeg: 1.2,
+      counterRatio: 0.01,
+      knots: 0.8,
+      color: hdr("#9fc3ff", 1),
+    },
     glow: null,
   },
   // Trou noir dormant (Fer à cheval cosmique) : il n'avale rien, ni disque ni jet ni gaz. L'ombre parfaitement noire se
@@ -195,7 +212,7 @@ export const BLACK_HOLE_LOOKS: Readonly<Record<BlackHoleLookName, BlackHoleLook>
 const MIN_EXTENT_RS = 3;
 /** Marge au-delà de l'image lentillée du bord du disque ou du gaz, en r_s. */
 const DISK_MARGIN_RS = 0.2;
-/** Marge au-delà du bout du jet et de la portée de la lueur, en r_s. */
+/** Marge au-delà de la portée de la lueur, en r_s. */
 const REACH_MARGIN_RS = 1;
 
 /** b(r) = r / √(1 − 1/r) : borne du rayon apparent de la lumière émise au rayon r (r_s = 1, r > 1). */
@@ -205,15 +222,14 @@ function lensedRadiusBound(radiusRs: number): number {
 
 /**
  * Encombrement minimal (r_s) d'un aspect, arrondi au 0,1 supérieur : max(3, b(disk.outerRs) + 0,2,
- * b(flow.outerRs) + 0,2, jet.lengthRs + 1, glow.reachRs + 1), où b(r) = r / √(1 − 1/r) borne le rayon apparent de
- * l'image lentillée de ce qui brille au rayon r.
+ * b(flow.outerRs) + 0,2, glow.reachRs + 1), où b(r) = r / √(1 − 1/r) borne le rayon apparent de l'image lentillée de
+ * ce qui brille au rayon r. Le jet n'y compte pas : faisceau de lumière additive, il peut déborder de l'encombrement.
  */
 export function requiredExtentRs(look: BlackHoleLook): number {
   const reach = Math.max(
     MIN_EXTENT_RS,
     look.disk ? lensedRadiusBound(look.disk.outerRs) + DISK_MARGIN_RS : 0,
     look.flow ? lensedRadiusBound(look.flow.outerRs) + DISK_MARGIN_RS : 0,
-    look.jet ? look.jet.lengthRs + REACH_MARGIN_RS : 0,
     look.glow ? look.glow.reachRs + REACH_MARGIN_RS : 0,
   );
   // Une erreur d'arrondi ne doit pas pousser 10 à 10,1.
@@ -256,8 +272,9 @@ export interface BlackHoleMeshOptions {
   /** Rayon de Schwarzschild, en unités de la scène (R☉ dans Tailles). */
   radius: number;
   /**
-   * Encombrement, en r_s : ce qui est lumineux s'y éteint (RangeError s'il est inférieur à requiredExtentRs(look)). Le
-   * rectangle couvre la sphère de rayon max(extentRs, LENS_QUAD_RS).
+   * Encombrement, en r_s : ce qui est lumineux s'y éteint, le jet excepté (RangeError s'il est inférieur à
+   * requiredExtentRs(look)). Le cœur tracé est la sphère de rayon max(extentRs, LENS_QUAD_RS) ; le rectangle s'agrandit
+   * au-delà pour un jet.
    */
   extentRs: number;
   /** Temps affiché partagé, en secondes : rotation du disque et sursauts (n'avance que pendant un vol). */
@@ -295,6 +312,8 @@ export interface BlackHoleMesh {
 
 /** Uniformes de l'aspect, réécrits par setLook. */
 interface LookUniforms {
+  /** Rayon de la sphère que couvre le rectangle, en r_s : le cœur tracé, ou plus pour contenir un jet. */
+  uQuadRs: Uniform<number>;
   /** Axe du disque, côté du jet qui s'approche. */
   uAxis: Uniform<Vector3>;
   /** Moment cinétique du gaz : ±uAxis. */
@@ -318,10 +337,12 @@ interface LookUniforms {
   uFlowRotation: Uniform<number>;
   uFlowFlicker: Uniform<number>;
   uJetGain: Uniform<number>;
+  uJetLength: Uniform<number>;
+  uJetWidth: Uniform<number>;
   /** Tangente de la demi-ouverture. */
   uJetTan: Uniform<number>;
   uJetCounter: Uniform<number>;
-  uJetLength: Uniform<number>;
+  uJetKnots: Uniform<number>;
   uJetColor: Uniform<Color>;
   uGlowGain: Uniform<number>;
   uGlowScale: Uniform<number>;
@@ -336,6 +357,7 @@ const DISK_OPAQUE_DEPTH = 8;
 
 function createLookUniforms(): LookUniforms {
   return {
+    uQuadRs: { value: LENS_QUAD_RS },
     uAxis: { value: new Vector3(0, 0, 1) },
     uSpin: { value: new Vector3(0, 0, 1) },
     uDiskE1: { value: new Vector3(1, 0, 0) },
@@ -353,9 +375,11 @@ function createLookUniforms(): LookUniforms {
     uFlowRotation: { value: 0 },
     uFlowFlicker: { value: 0 },
     uJetGain: { value: 0 },
+    uJetLength: { value: 1 },
+    uJetWidth: { value: 0.3 },
     uJetTan: { value: 0 },
     uJetCounter: { value: 0 },
-    uJetLength: { value: 1 },
+    uJetKnots: { value: 0 },
     uJetColor: { value: new Color(0, 0, 0) },
     uGlowGain: { value: 0 },
     uGlowScale: { value: 1 },
@@ -366,8 +390,14 @@ function createLookUniforms(): LookUniforms {
   };
 }
 
-/** Écrit un aspect dans ses uniformes ; copie les couleurs (un réglage du maillage ne touche pas l'aspect partagé). */
-function writeLook(look: BlackHoleLook, u: LookUniforms): void {
+/** Largeurs du jet à son bout, en écarts types, que le rectangle doit contenir. */
+const JET_REACH_WIDTHS = 3;
+
+/**
+ * Écrit un aspect dans ses uniformes ; copie les couleurs (un réglage du maillage ne touche pas l'aspect partagé).
+ * `coreRs` : rayon du cœur tracé, que le rectangle couvre au moins.
+ */
+function writeLook(look: BlackHoleLook, u: LookUniforms, coreRs: number): void {
   const axis = diskAxis(look.inclinationDeg, look.positionAngleDeg, u.uAxis.value);
   const spin = u.uSpin.value.copy(axis).multiplyScalar(look.clockwise ? -1 : 1);
   const reference = Math.abs(spin.y) < 0.9 ? new Vector3(0, 1, 0) : new Vector3(1, 0, 0);
@@ -392,11 +422,16 @@ function writeLook(look: BlackHoleLook, u: LookUniforms): void {
     u.uFlowFlicker.value = flow.flicker;
   }
   u.uJetGain.value = jet?.gain ?? 0;
+  u.uQuadRs.value = coreRs;
   if (jet) {
-    u.uJetTan.value = Math.tan(jet.halfAngleDeg * DEG);
-    u.uJetCounter.value = jet.counterRatio;
+    const tan = Math.tan(jet.halfAngleDeg * DEG);
     u.uJetLength.value = jet.lengthRs;
+    u.uJetWidth.value = jet.widthRs;
+    u.uJetTan.value = tan;
+    u.uJetCounter.value = jet.counterRatio;
+    u.uJetKnots.value = jet.knots;
     u.uJetColor.value.copy(jet.color);
+    u.uQuadRs.value = Math.max(coreRs, jet.lengthRs + JET_REACH_WIDTHS * (jet.widthRs + jet.lengthRs * tan));
   }
   u.uGlowGain.value = glow?.gain ?? 0;
   if (glow) {
@@ -431,15 +466,16 @@ export function createBlackHoleMesh(options: BlackHoleMeshOptions): BlackHoleMes
   const viewToWorld = new Matrix3();
   const opacity: Uniform<number> = { value: 1 };
   const horizonMark: Uniform<number> = { value: 1 };
+  const coreRs = Math.max(extentRs, LENS_QUAD_RS);
   const lookUniforms = createLookUniforms();
-  writeLook(look, lookUniforms);
+  writeLook(look, lookUniforms, coreRs);
   const material = new ShaderMaterial({
     uniforms: {
       ...starfield,
       ...lookUniforms,
       uTime: time,
       uRadius: { value: radius },
-      uQuadRs: { value: Math.max(extentRs, LENS_QUAD_RS) },
+      uCoreRs: { value: coreRs },
       uCamLocal: { value: cameraLocal },
       uViewToWorld: { value: viewToWorld },
       uOpacity: opacity,
@@ -451,6 +487,8 @@ export function createBlackHoleMesh(options: BlackHoleMeshOptions): BlackHoleMes
     vertexShader: BLACK_HOLE_VERTEX,
     fragmentShader: BLACK_HOLE_FRAGMENT,
     transparent: true,
+    // Le fragment prémultiplie sa couleur : le cœur couvre le fond selon son opacité, le jet hors du cœur s'y ajoute.
+    premultipliedAlpha: true,
     depthTest: false,
     depthWrite: false,
   });
@@ -475,7 +513,7 @@ export function createBlackHoleMesh(options: BlackHoleMeshOptions): BlackHoleMes
     },
     setLook(next) {
       checkLook(next);
-      writeLook(next, lookUniforms);
+      writeLook(next, lookUniforms, coreRs);
     },
   };
 }
