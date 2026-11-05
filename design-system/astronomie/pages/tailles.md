@@ -24,7 +24,10 @@ La mise en page est **celle du Voyage**, sans dock : on sait déjà la lire.
   règle (`nav`), `main#contenu` (introduction, dix plaques), pied de page commun. Scène, étiquettes et échelle graphique
   sont `aria-hidden` : la plaque porte les noms et les nombres.
 - Introduction : la mise en page `.hero` du Voyage, un titre, un texte, une ligne discrète (0,8125 rem `--brume`)
-  et l'**unique bouton plein** de la page, vers la plus petite étoile.
+  et l'**unique bouton plein** de la page, vers la plus petite étoile. En mise en page compacte, où la scène montre
+  déjà Cygnus X-1 au milieu de l'écran, derrière le texte, celui-ci se pose sur un panneau de plaque (`--plaque-a`,
+  filet `--filet`, `--r-lg`, 1 rem de marge) : son contraste tient sur toute sa hauteur, quoi que la scène montre
+  dessous (`--brume` 5,5:1 même sur un point blanc), au repos comme pendant le vol vers le premier astre.
 
 ## Plaques d'étoile (`StarPlate` sur `Plate`)
 
