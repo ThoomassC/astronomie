@@ -34,8 +34,14 @@ describe("followScroll", () => {
     expect(scrollThrough(500, 504, 508, 512, 516).concealed).toBe(true);
   });
 
-  it("devrait la cacher dès qu'on descend sous le haut de la page, la course comptée depuis le haut", () => {
-    expect(scrollThrough(0, TOP + CONCEAL_AFTER_PX).concealed).toBe(true);
+  it("devrait la cacher dès qu'on passe sous le haut de la page, la course comptée depuis le haut", () => {
+    expect(scrollThrough(0, TOP).concealed).toBe(false);
+    expect(scrollThrough(0, TOP + 1).concealed).toBe(true);
+  });
+
+  it("devrait repartir de zéro au bord du haut de la page : un pixel de plus ne la cache pas", () => {
+    expect(scrollThrough(0, TOP, TOP + 1).concealed).toBe(false);
+    expect(scrollThrough(0, TOP, TOP + CONCEAL_AFTER_PX).concealed).toBe(true);
   });
 
   it("devrait la laisser cachée tant qu'on descend", () => {
