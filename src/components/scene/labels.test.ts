@@ -5,12 +5,14 @@ import {
   LABEL_HALO_PX,
   LABEL_OFFSET_X,
   LABEL_OFFSET_Y,
+  RING_LABEL_GAP_PX,
   anchoredBox,
   clearanceShift,
   markerLayouts,
   placeLabel,
   placeMarkedLabel,
   pointBox,
+  ringLayouts,
   type LabelAnchor,
   type LabelBox,
   type MarkerMetrics,
@@ -479,5 +481,49 @@ describe("étoiles voisines en 375 × 812, étiquettes à nu : halo réservé et
     const points = POINTS.map(([x, y, size]) => pointBox(x, y, size));
     place(PROXIMA, 213.4, 393.4, occupied, points);
     expect(place(ALPHA, 214.9, 393, occupied, points)).toBeNull();
+  });
+
+  /*
+   * Cercle de distance : « 5 al » sur une graduation de laiton de 2 × 9 px, texte à 6,5 px d'elle. Sur la même ligne
+   * que « Soleil », sa graduation à 6,6 px du texte du Soleil se lisait « Soleil 5 al », collés. Graduation comprise,
+   * l'étiquette du cercle garde 8 px d'air avec toute autre ; sinon, elle se pose plus loin sur le cercle.
+   */
+  describe("cercles de distance", () => {
+    const FIVE_LY: MarkerMetrics = {
+      dotX: 4, dotY: 14.5, dotWidth: 2, textX: 11.5, textY: 5.5, textWidth: 26, textHeight: 18, detailWidth: 0,
+      halo: LABEL_HALO_PX,
+    };
+    const RING = ringLayouts(markerLayouts(FIVE_LY), 2, 9);
+    /** « Soleil » posé, et les points des étoiles : ce que trouve le cercle, posé en dernier. */
+    function afterSun(): { occupied: LabelBox[]; points: LabelBox[] } {
+      const occupied: LabelBox[] = [];
+      place(SOLEIL, SUN.x, SUN.y, occupied, []);
+      return { occupied, points: POINTS.map(([x, y, size]) => pointBox(x, y, size)) };
+    }
+    /** Place du cercle à droite de « Soleil », sur sa ligne : graduation à 6,6 px du texte du Soleil (232,4 px). */
+    const BESIDE_SUN = { x: 240, y: SUN.y, depth: 0.5 };
+
+    it("devrait étendre chaque disposition à sa graduation, posée sur le cercle", () => {
+      const [right, left] = RING;
+      expect(right.box).toEqual([-1, -9, 33.5, 9]);
+      expect(left.box).toEqual([-33.5, -9, 1, 9]);
+      expect(right.haloBox).toEqual(markerLayouts(FIVE_LY)[0].haloBox);
+    });
+
+    it("devrait refuser la place où sa graduation se collerait à « Soleil », que l'air entre textes laissait passer", () => {
+      const { occupied, points } = afterSun();
+      expect(placeMarkedLabel(BESIDE_SUN, markerLayouts(FIVE_LY), W, H, occupied, 0, { points, gap: LABEL_GAP_PX })).toBe(0);
+      expect(placeMarkedLabel(BESIDE_SUN, RING, W, H, occupied, 0, { points, gap: RING_LABEL_GAP_PX })).toBeNull();
+    });
+
+    it("devrait se poser plus loin sur le cercle, à 8 px au moins de « Soleil », graduation comprise", () => {
+      const { occupied, points } = afterSun();
+      const further = { ...BESIDE_SUN, x: 250 };
+      const index = placeMarkedLabel(further, RING, W, H, occupied, 0, { points, gap: RING_LABEL_GAP_PX });
+      expect(index).toBe(0);
+      const ring = anchoredBox(RING[index ?? 0].box, further.x, further.y);
+      const soleil = occupied[0];
+      expect(ring[0] - soleil[2]).toBeGreaterThanOrEqual(RING_LABEL_GAP_PX);
+    });
   });
 });

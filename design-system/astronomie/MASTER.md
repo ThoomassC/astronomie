@@ -125,7 +125,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   n'apparaisse) ; « Centre de la Galaxie » se lit sous son repère : à la même hauteur à l'écran, les deux textes
   ne se rencontrent jamais. Cercles de distance 5 et 10 al en laiton, étiquette 0,8125 rem, posée au premier point
   libre du cercle (côté opposé au Soleil d'abord, puis les côtés), sur une graduation de laiton de 2 × 9 px :
-  jamais l'anneau d'une étoile. Au-delà de la Voie lactée, mêmes textes à halo : les galaxies du Groupe local par leur
+  jamais l'anneau d'une étoile. Libre veut dire à 8 px au moins de toute autre étiquette, graduation comprise : « 5 al »
+  ne se lit jamais collé à « Soleil » ; sinon, plus loin sur le cercle. Au-delà de la Voie lactée, mêmes textes à halo : les galaxies du Groupe local par leur
   nom, puis « Toile cosmique », « Fond diffus cosmologique » et « Notre univers observable » ; les autres univers ont
   un repère en pointillés et un nom en italique qui dit l'hypothèse (« D'autres univers ? (hypothèse) »).
 - **Ciel profond (scène)** : étoiles voisines aux couleurs de leur classe, cœur de 3,5 à 10 px selon leur magnitude

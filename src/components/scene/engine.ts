@@ -114,12 +114,14 @@ import {
 import {
   LABEL_GAP_PX,
   LABEL_HALO_PX,
+  RING_LABEL_GAP_PX,
   anchoredBox,
   clearanceShift,
   markerLayouts,
   placeLabel,
   placeMarkedLabel,
   pointBox,
+  ringLayouts,
   type LabelBox,
   type MarkedPlacement,
   type MarkerLayout,
@@ -760,6 +762,11 @@ function setupScene(
   const points: LabelBox[] = [];
   /** Étiquettes à repère : points évités halo compris, et air entre voisines. Partagé : rien n'est alloué par image. */
   const markedPlacement: MarkedPlacement = { points, gap: LABEL_GAP_PX };
+  /**
+   * Étiquettes des cercles de distance, posées en dernier : 8 px d'air avec toute autre, graduation comprise
+   * (ringLayouts) ; sinon, plus loin sur le cercle. « 5 al » ne se lit plus collé à « Soleil ».
+   */
+  const ringPlacement: MarkedPlacement = { points, gap: RING_LABEL_GAP_PX };
   /** Position projetée de la dernière ancre, en px (la profondeur reste dans `projected.z`). */
   const onScreen = { x: 0, y: 0 };
 
@@ -793,6 +800,11 @@ function setupScene(
       slot.height = slot.element.offsetHeight;
     }
     for (const slot of markedSlots) slot.marker = measureMarker(slot.element);
+    // Cercles de distance : chaque disposition s'étend à la graduation posée sur le cercle.
+    for (const { slot } of ringLabels) {
+      const marker = slot?.marker;
+      if (slot && marker) slot.marker = { ...marker, layouts: ringLayouts(marker.layouts, marker.dotWidth, marker.dotHeight) };
+    }
     obstacleBoxes = obstacles.map((element) => {
       const rect = element.getBoundingClientRect();
       return [rect.left, rect.top, rect.right, rect.bottom] as const;
@@ -1359,9 +1371,10 @@ function setupScene(
 
   /**
    * Pose une étiquette à repère : repère exactement sur l'astre, texte dans la première disposition qui tient
-   * (placeMarkedLabel) ; texte et repère sont alors réservés. Renvoie faux sinon, sans rien changer.
+   * (placeMarkedLabel, avec l'air et les points de `placement`) ; texte et repère sont alors réservés. Renvoie faux
+   * sinon, sans rien changer.
    */
-  function fitMarkedSlot(slot: LabelSlot, at: Vector3, alpha: number): boolean {
+  function fitMarkedSlot(slot: LabelSlot, at: Vector3, alpha: number, placement = markedPlacement): boolean {
     const { marker } = slot;
     if (!marker) return false;
     project(at);
@@ -1373,7 +1386,7 @@ function setupScene(
       view.height,
       occupied,
       0,
-      markedPlacement,
+      placement,
     );
     if (index === null) return false;
     const layout = marker.layouts[index];
@@ -1465,14 +1478,16 @@ function setupScene(
 
   /**
    * Étiquette d'un cercle de distance (`radius` en unités de scène) : essaie les points de RING_LABEL_ANGLES,
-   * comptés depuis la direction de la caméra, et garde le premier où elle tient ; sinon, la masque.
+   * comptés depuis la direction de la caméra, et garde le premier où elle tient, à 8 px au moins de toute autre
+   * étiquette, graduation comprise (ringPlacement) ; sinon, la masque.
    */
   function placeRingSlot(slot: LabelSlot | undefined, radius: number, towardCamera: number, alpha: number): void {
     if (!slot) return;
     if (alpha >= LABEL_MIN_ALPHA) {
       for (const angle of RING_LABEL_ANGLES) {
         const around = towardCamera + angle;
-        if (fitMarkedSlot(slot, anchor.set(radius * Math.cos(around), 0, radius * Math.sin(around)), alpha)) return;
+        const at = anchor.set(radius * Math.cos(around), 0, radius * Math.sin(around));
+        if (fitMarkedSlot(slot, at, alpha, ringPlacement)) return;
       }
     }
     setLabelShown(slot, false);
