@@ -3081,8 +3081,9 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
  * complément exact de la requête des fondus) : la barre glisse hors de l'écran quand on descend (`data-concealed`,
  * AutoHideBar) et revient dès qu'on remonte, en 0,25 s, sans animation en mouvement réduit (règle globale, plus bas).
  * Elle reste tant qu'elle a le focus clavier ou un menu ouvert (escales, langue, menu replié). Sa place reste
- * réservée : les scènes la lisent au repos (barSlide.ts), les marges de défilement la dégagent toujours, la note
- * d'échelle et l'échelle graphique ne bougent pas. Après la section « Exploration », dont elle reprend les fondus.
+ * réservée : les scènes la lisent au repos (barSlide.ts), sans recadrer l'astre quand elle part ni poser d'étiquette
+ * dessous (Voyage et Tailles) ; les marges de défilement la dégagent toujours ; la note d'échelle et l'échelle
+ * graphique ne bougent pas. Après la section « Exploration », dont elle reprend les fondus.
  */
 @media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
   .bar[data-autohide] {

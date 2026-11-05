@@ -60,6 +60,7 @@ import {
 import { smootherstep } from "@/lib/journey/sections";
 import { journeyStore, type JourneyState } from "@/lib/journey/store";
 import { getClock, type ClockSnapshot } from "@/lib/sim/clock";
+import { restingRect } from "@/lib/site/barSlide";
 import {
   ASTEROID_BELT,
   BRASS_HEX,
@@ -791,6 +792,8 @@ function setupScene(
    * Une seule passe de lecture : taille des étiquettes (astres et ciel profond), zones à éviter, bandes et zone
    * libres. Les étiquettes à repère sont mesurées dans leur forme normale, puis reprennent la leur après toutes les
    * lectures : sur un écran à 120 Hz, la boucle saute une image sur deux, et la suivante pourrait être peinte sans elle.
+   * La barre haute est une zone à éviter, sur toute la largeur jusqu'à son bas, à sa place de repos : elle glisse hors
+   * de l'écran quand on descend (téléphone), mais peut revenir à tout moment ; sa hauteur suit l'encoche (59 à 132 px).
    */
   function measureLayout(): void {
     const forms = markedSlots.map(({ mirrored, short }) => ({ mirrored, short }));
@@ -809,6 +812,8 @@ function setupScene(
       const rect = element.getBoundingClientRect();
       return [rect.left, rect.top, rect.right, rect.bottom] as const;
     });
+    const barBottom = bar ? restingRect(bar).bottom : 0;
+    if (barBottom > 0) obstacleBoxes.push([0, 0, view.width, barBottom]);
     screenLayout.measure(view);
     layoutSettled = false;
     markedSlots.forEach((slot, i) => setLabelForm(slot, forms[i].mirrored, forms[i].short));

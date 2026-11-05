@@ -305,4 +305,34 @@ describe("étiquettes hors des obstacles", () => {
     expect(sun.style.visibility).toBe("visible");
     scene.dispose();
   });
+
+  /*
+   * La barre haute couvre le haut de l'écran, de 59 à 132 px selon l'encoche : aucune étiquette ne se pose dessous,
+   * même quand elle a glissé hors de l'écran (AutoHideBar), car elle peut revenir à tout moment.
+   */
+  it("devrait réserver la barre haute à sa place de repos, même glissée hors de l'écran", async () => {
+    const sun = document.createElement("button");
+    measured(sun, { left: 0, top: 0, width: 60, height: 24 });
+    document.body.append(sun);
+    const framed = async (bar: HTMLElement | null) => {
+      const scene = createSolarScene({ ...options(), labels: new Map([["sun", sun]]), bar });
+      if (!scene) throw new Error("Scène absente");
+      await Promise.resolve();
+      scene.frame(1 / 60);
+      return scene;
+    };
+    // Sans barre, « Soleil » se pose à `top` px du haut de l'écran.
+    (await framed(null)).dispose();
+    const top = Number(/translate3d\([-\d.]+px,([-\d.]+)px/.exec(sun.style.transform)?.[1]);
+    expect(top).toBeGreaterThan(0);
+    // Une barre qui descend jusque sous l'étiquette, glissée hors de l'écran de toute sa hauteur.
+    const bar = document.createElement("header");
+    const height = top + 30;
+    bar.style.transform = `matrix(1, 0, 0, 1, 0, ${-height})`;
+    vi.spyOn(bar, "getBoundingClientRect").mockReturnValue(new DOMRect(0, -height, window.innerWidth, height));
+    document.body.append(bar);
+    const scene = await framed(bar);
+    expect(sun.style.visibility).toBe("hidden");
+    scene.dispose();
+  });
 });
