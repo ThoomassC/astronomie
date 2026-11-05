@@ -42,8 +42,8 @@ describe("BlackHolePlate de M87*, en anglais", () => {
   it.each([
     ["Shadow radius", "72,000 R☉"],
     ["Shadow radius", "50 billion km"],
-    ["Event horizon radius", "28,000 R☉"],
-    ["Event horizon radius", "19 billion km"],
+    ["Event horizon radius (without rotation)", "28,000 R☉"],
+    ["Event horizon radius (without rotation)", "19 billion km"],
     ["Mass", "6.5 billion solar masses"],
     ["Mass", "5.4–7.2 billion solar masses, depending on the study"],
     ["Black hole type", "supermassive black hole"],
@@ -85,8 +85,8 @@ describe("BlackHolePlate de Cygnus X-1, en français", () => {
   it.each([
     ["Rayon de l'ombre", "163 km"],
     ["Rayon de l'ombre", "0,000234 R☉"],
-    ["Rayon de l'horizon", "62,6 km"],
-    ["Rayon de l'horizon", "0,0000900 R☉"],
+    ["Rayon de l'horizon (sans rotation)", "62,6 km"],
+    ["Rayon de l'horizon (sans rotation)", "0,0000900 R☉"],
     ["Masse", "21,2 masses solaires"],
     ["Masse", "de 12,7 à 23,4 masses solaires selon les études"],
     ["Distance de la Terre", "7\u202f200 années-lumière"],

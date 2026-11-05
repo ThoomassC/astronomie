@@ -82,8 +82,8 @@ export const SIZES_FR: SizesContent = {
   blackHoles: {
     "cygnus-x-1": {
       kind: "trou noir stellaire",
-      hook: "Plus de vingt fois la masse du Soleil, dans une ombre de quelques centaines de kilomètres.",
-      lede: "Cygnus X-1 est le premier objet que les astronomes ont reconnu comme un trou noir, au début des années 1970. Il tourne en 5,6 jours autour d'une étoile supergéante bleue, dont il avale le vent. En 1974, le physicien Stephen Hawking avait parié que ce n'en était pas un ; il a reconnu sa défaite en 1990. Son horizon ne mesure qu'environ 125 km de diamètre : la Terre est cent fois plus large.",
+      hook: "Environ 15 à 20 fois la masse du Soleil, dans une ombre de quelques centaines de kilomètres.",
+      lede: "Cygnus X-1 est le premier objet que les astronomes ont reconnu comme un trou noir, au début des années 1970. Il tourne en 5,6 jours autour d'une étoile supergéante bleue, dont il avale le vent. En 1974, le physicien Stephen Hawking avait parié que ce n'en était pas un ; il a reconnu sa défaite en 1990. Son horizon (sans rotation) ne mesure qu'une centaine de kilomètres de diamètre : la Terre est environ cent fois plus large.",
       simplification:
         "Rendu calculé : la lumière suit la courbure de l'espace autour d'un trou noir sans rotation. Le disque, qui brille surtout en rayons X, prend la couleur d'un corps noir de plusieurs millions de degrés ; il est vu plus incliné qu'en réalité, pour montrer son image déviée au-dessus de l'ombre.",
       caveat: "Sa masse fait débat : une étude de 2025 le trouve nettement plus léger que la mesure de 2021 retenue ici.",
@@ -122,7 +122,7 @@ export const SIZES_FR: SizesContent = {
     comparison: "Pour comparer",
     sunDistance: "8,3 minutes-lumière",
     shadow: "Rayon de l'ombre",
-    horizon: "Rayon de l'horizon",
+    horizon: "Rayon de l'horizon (sans rotation)",
     mass: "Masse",
     blackHoleType: "Type",
   },
