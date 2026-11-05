@@ -45,7 +45,7 @@ describe("BlackHolePlate de M87*, en anglais", () => {
     ["Event horizon radius (without rotation)", "28,000 R☉"],
     ["Event horizon radius (without rotation)", "19 billion km"],
     ["Mass", "6.5 billion solar masses"],
-    ["Mass", "5.4–7.2 billion solar masses, depending on the study"],
+    ["Mass", "5.1–7.2 billion solar masses, depending on the study"],
     ["Black hole type", "supermassive black hole"],
     ["Distance from Earth", "55 million light-years"],
     ["For scale", "In the Sun's place, its shadow would swallow the whole Solar System, out to 11 times Neptune's orbit."],

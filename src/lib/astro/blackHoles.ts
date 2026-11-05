@@ -63,9 +63,10 @@ export const COMPARED_BLACK_HOLES: readonly ComparedBlackHole[] = [
     sources: "GRAVITY Collaboration 2022, EHT Collaboration 2022",
   }),
   // Anneau de l'EHT : 6,5 ± 0,7 milliards de M☉ à 16,8 Mpc ≈ 55 millions d'al (EHT Collaboration 2019) ; dynamique
-  // stellaire : 5,37 (+0,37/−0,25) milliards (Liepold et al. 2023). Couleur : l'anneau, en fausses couleurs.
+  // stellaire : 5,37 (+0,37/−0,25) milliards (Liepold et al. 2023). Fourchette : l'enveloppe à 1σ des deux, de 5,12 à
+  // 7,2 milliards. Couleur : l'anneau, en fausses couleurs.
   blackHole({
-    key: "m87-star", massSolar: 6.5e9, massRange: [5.37e9, 7.2e9], significantDigits: 2, distanceLy: 55e6,
+    key: "m87-star", massSolar: 6.5e9, massRange: [5.12e9, 7.2e9], significantDigits: 2, distanceLy: 55e6,
     blackHoleClass: "supermassive", color: "#ffc07a",
     sources: "EHT Collaboration 2019, Liepold et al. 2023",
   }),
@@ -79,6 +80,13 @@ export const COMPARED_BLACK_HOLES: readonly ComparedBlackHole[] = [
     sources: "Melo-Carneiro et al. 2025, Planck Collaboration 2020",
   }),
 ];
+
+/**
+ * Masse de M87* par la dynamique de ses étoiles, en M☉ : 5,37 (+0,37/−0,25) milliards (Liepold, Ma et Walsh 2023), plus
+ * basse que celle de l'anneau de l'EHT, retenue. La mise en garde de sa fiche les oppose ; la fourchette, elle, est
+ * l'enveloppe à 1σ des deux mesures.
+ */
+export const M87_STELLAR_DYNAMICS_MASS_SOLAR = 5.37e9;
 
 /** Trous noirs comparés, par clé. */
 export const COMPARED_BLACK_HOLE_BY_KEY = Object.fromEntries(

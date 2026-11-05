@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getSizesContent } from "@/content/sizes/content";
 import { LOCALES, type Locale } from "@/i18n/locales";
-import { COMPARED_BLACK_HOLE_BY_KEY, COMPARED_BLACK_HOLES } from "@/lib/astro/blackHoles";
+import { COMPARED_BLACK_HOLE_BY_KEY, COMPARED_BLACK_HOLES, M87_STELLAR_DYNAMICS_MASS_SOLAR } from "@/lib/astro/blackHoles";
 import { SHADOW_RADIUS_RS, schwarzschildRadiusKm } from "@/lib/astro/schwarzschild";
 import { COMPARED_STAR_BY_KEY, COMPARED_STARS } from "@/lib/astro/starSizes";
 import { formatNumber } from "@/lib/format";
@@ -215,14 +215,15 @@ describe("nombres des textes des trous noirs", () => {
     const hole = COMPARED_BLACK_HOLE_BY_KEY["m87-star"];
     const ratio = hole.massSolar / COMPARED_BLACK_HOLE_BY_KEY["sagittarius-a-star"].massSolar;
     expect(Math.round(ratio / 100) * 100).toBe(1500);
-    const [low] = hole.massRange ?? [Number.NaN];
+    // La mise en garde oppose la masse de l'anneau à celle de la dynamique stellaire, gardée à part (pas le bas de la fourchette).
+    const dynamics = Math.round(M87_STELLAR_DYNAMICS_MASS_SOLAR / 1e8) * 1e8;
     for (const locale of LOCALES) {
       expect(text(locale, "m87-star")).toContain(n(1500, locale));
       // En espagnol, les milliards se disent en milliers de millions : « 6500 millones ».
       const scale = locale === "es" ? 1e6 : 1e9;
       const digits = locale === "es" ? 0 : 1;
       expect(text(locale, "m87-star")).toContain(n(hole.massSolar / scale, locale, digits));
-      expect(text(locale, "m87-star")).toContain(n(Math.round(low / 1e8) * 1e8 / scale, locale, digits));
+      expect(text(locale, "m87-star")).toContain(n(dynamics / scale, locale, digits));
     }
   });
 

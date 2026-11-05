@@ -191,7 +191,7 @@ describe("SIZES_STRINGS.mass et massRange", () => {
 
   it.each([
     ["fr", 12.7, 23.4, 3, "de 12,7 à 23,4 masses solaires selon les études"],
-    ["en", 5.37e9, 7.2e9, 2, "5.4–7.2 billion solar masses, depending on the study"],
+    ["en", 5.12e9, 7.2e9, 2, "5.1–7.2 billion solar masses, depending on the study"],
     ["es", 2.6e10, 5e10, 2, "entre 26 y 50 mil millones de masas solares según los estudios"],
   ] as const)("devrait écrire la fourchette publiée d'une masse débattue (%s)", (locale, low, high, digits, expected) => {
     expect(SIZES_STRINGS[locale].massRange(low, high, digits)).toBe(expected);
