@@ -2421,6 +2421,47 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 }
 
 /*
+ * Écran tactile : chaque commande du dock offre une cible de 44 px (pause, vitesses ou bouton qui les fait défiler,
+ * retour à aujourd'hui, distances réelles), la copie sombre des libellés à la hauteur de la piste. Le dock garde sa
+ * hauteur réservée (82 px : 70 px pris en mise en page compacte, 79 px avec la piste des vitesses).
+ */
+@media (pointer: coarse) {
+  .dock .ibtn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .dock .today,
+  .dock .seg button,
+  .dock .seg-ink > span {
+    min-height: 44px;
+  }
+
+  .dock .today:not(.cycle) {
+    min-width: 44px;
+  }
+}
+
+/*
+ * Téléphones étroits, au doigt : les 10 px gagnés par les cibles sont repris sur les écarts, la marge de la date et
+ * celle des deux boutons de droite. À 360 px, le dock tient encore sur une ligne, bascule enfoncée et date la plus
+ * longue (« 30 sept. 2026 ») comprises ; sous 360 px, il passe déjà sur deux lignes (116 px pris des 132 réservés).
+ */
+@media (max-width: 24rem) and (pointer: coarse) {
+  .dock {
+    gap: 0.1rem;
+  }
+
+  .date {
+    padding: 0 0.2rem;
+  }
+
+  .dock .today:not(.cycle) {
+    padding-inline: 0.3rem;
+  }
+}
+
+/*
  * Mise en page compacte, téléphone et tablette en portrait (même requête dans engine.ts) : la plaque
  * reste compacte (nom, accroche, boutons) et collée au bas de l'écran, au-dessus du dock ; la scène
  * cadre l'astre dans la bande libre au-dessus d'elle. L'escale reste haute pour que la caméra s'y

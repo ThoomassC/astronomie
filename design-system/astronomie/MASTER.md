@@ -180,7 +180,9 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   sombre des libellés, découpée à la forme de la bulle, inverse le texte exactement là où elle passe
   (jamais de texte sombre sur fond sombre). Le dock ne passe jamais à la ligne au-dessus de 360 px :
   complet au-delà de 900 px, boutons de droite réduits à leur icône jusqu'à 761 px, compact en dessous
-  (un seul bouton de vitesse, date courte). Aux escales lointaines (des étoiles voisines au multivers), où tout
+  (un seul bouton de vitesse, date courte). Au doigt (`pointer: coarse`), chaque commande offre une cible de 44 px
+  (40 à 42 px à la souris) ; à 384 px et moins, les écarts se resserrent d'autant, et le dock tient encore sur une
+  ligne à 360 px. Aux escales lointaines (des étoiles voisines au multivers), où tout
   est déjà à l'échelle, la bascule « Distances réelles » est indisponible : atténuée (opacité 0,45, sans survol),
   toujours focalisable, `aria-disabled` avec sa raison en description (« Ici, les distances sont déjà
   réelles. ») ; un clic ne change rien et le choix revient au retour dans le système solaire. La note
