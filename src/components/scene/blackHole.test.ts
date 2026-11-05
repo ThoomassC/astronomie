@@ -19,7 +19,7 @@ import {
 import { BLACK_HOLE_FRAGMENT, BLACK_HOLE_VERTEX } from "@/components/scene/blackHoleShaders";
 import { NOISE_GLSL } from "@/components/scene/shaders";
 import { STARFIELD_GLSL, STARFIELD_RENDER_ORDER, createStarfieldBackground } from "@/components/scene/starfield";
-import { DESKTOP_RAY_STEPS, LITE_RAY_STEPS } from "@/lib/astro/photonGeodesic";
+import { DESKTOP_RAY_STEPS, LITE_RAY_STEPS, blackbodyColor } from "@/lib/astro/photonGeodesic";
 import { ISCO_RS, PHOTON_SPHERE_RS, SHADOW_RADIUS_RS } from "@/lib/astro/schwarzschild";
 
 /*
@@ -79,7 +79,7 @@ function options(overrides: Partial<BlackHoleMeshOptions> = {}): BlackHoleMeshOp
 
 describe("requiredExtentRs", () => {
   it.each<[BlackHoleLookName, number]>([
-    ["x-ray-binary", 8.8],
+    ["x-ray-binary", 9.8],
     ["faint-ring", 3.2],
     ["jet-ring", 3.9],
     ["dormant", 10],
@@ -154,13 +154,27 @@ describe("BLACK_HOLE_LOOKS", () => {
     }
   });
 
-  it("devrait donner à la binaire X un disque mince et opaque, très chaud, qui commence à la dernière orbite stable", () => {
-    const { disk, flow } = BLACK_HOLE_LOOKS["x-ray-binary"];
+  it("devrait donner à la binaire X un disque mince et opaque, vu presque par la tranche, une couronne et un anneau", () => {
+    const { disk, flow, glow, inclinationDeg } = BLACK_HOLE_LOOKS["x-ray-binary"];
     expect(disk?.innerRs).toBe(ISCO_RS);
     expect(disk?.opacity).toBe(1);
-    // Bleu-blanc : au-delà de 25 000 K, la couleur approche la limite d'un corps noir très chaud.
-    expect(disk?.temperatureK).toBeGreaterThanOrEqual(25_000);
-    expect(flow).toBeNull();
+    // Presque par la tranche : le disque paraît mince, son image passe par-dessus et par-dessous l'ombre.
+    expect(inclinationDeg).toBeGreaterThanOrEqual(80);
+    // Couronne : gaz très chaud (couleur limite, bleutée) et ténu, en halo doux.
+    expect(flow?.temperatureK).toBeGreaterThanOrEqual(1e5);
+    expect(flow?.gain).toBeLessThan((disk?.gain ?? 0) / 10);
+    // Anneau de photons : un fil vif serré contre l'ombre.
+    expect(glow?.ring).toBeGreaterThan(10);
+    expect(glow?.ringWidthRs).toBeLessThanOrEqual(0.05);
+  });
+
+  it("devrait chauffer assez peu le disque d'affichage pour que l'effet Doppler se voie dans la couleur", () => {
+    const temperature = BLACK_HOLE_LOOKS["x-ray-binary"].disk?.temperatureK ?? 0;
+    // Vu presque par la tranche, g va d'environ 1,3 (côté qui s'approche) à 0,55 (côté qui s'éloigne).
+    const [redNear, , blueNear] = blackbodyColor(1.3 * temperature);
+    const [redFar, , blueFar] = blackbodyColor(0.55 * temperature);
+    expect(blueNear).toBeGreaterThan(redNear);
+    expect(redFar).toBeGreaterThan(blueFar);
   });
 
   it("devrait réserver le jet à l'anneau de M87*, long, fin et collimaté, contre-jet presque invisible", () => {

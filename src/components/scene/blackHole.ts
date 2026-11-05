@@ -143,19 +143,21 @@ const hdr = (hex: string, gain: number) => new Color(hex).multiplyScalar(gain);
  * l'EHT, plus claire là où l'anneau brille), à dire.
  */
 export const BLACK_HOLE_LOOKS: Readonly<Record<BlackHoleLookName, BlackHoleLook>> = {
-  // Binaire X (Cygnus X-1) : disque mince et très chaud, bleu-blanc, sans jet visible. Vu à 76° pour montrer l'image du
-  // disque par-dessus et par-dessous l'ombre ; l'orbite publiée n'est inclinée que de 27,5° (angle choisi pour la vue).
-  // Température d'affichage : le disque dépasse le million de kelvins (couleur limite ≈ #95b1ff) ; à 25 000 K au plus
-  // chaud, sa teinte varie encore assez pour que le côté qui s'approche bleuisse et que l'autre pâlisse.
+  // Binaire X (Cygnus X-1) : disque mince et très chaud, sans jet visible, vu presque par la tranche pour montrer
+  // l'image du disque par-dessus et par-dessous l'ombre (angle choisi pour la vue ; l'orbite publiée n'est inclinée que
+  // de 27,5°). Température d'affichage : le vrai disque dépasse le million de kelvins, dont la couleur limite (≈ #95b1ff)
+  // ne varie plus avec l'effet Doppler ; à 8 000 K au plus chaud, il se voit aussi dans la couleur : le côté qui
+  // s'approche brille et bleuit, celui qui s'éloigne s'assombrit et tire vers l'orangé, le bord intérieur paraît
+  // presque blanc. Couronne chaude (≈ 10⁶ K, bleutée) en halo doux autour du disque ; anneau de photons fin et vif.
   "x-ray-binary": {
-    inclinationDeg: 76,
+    inclinationDeg: 84,
     positionAngleDeg: 0,
     clockwise: false,
     orbitPeriodS: 5,
-    disk: { innerRs: ISCO_RS, outerRs: 8, temperatureK: 25_000, gain: 0.7, opacity: 1, turbulence: 0.75 },
-    flow: null,
+    disk: { innerRs: ISCO_RS, outerRs: 8, temperatureK: 8000, gain: 0.45, opacity: 1, turbulence: 0.85 },
+    flow: { innerRs: ISCO_RS, outerRs: 9, temperatureK: 1e6, gain: 0.007, thickness: 0.6, rotation: 0.5, flicker: 0 },
     jet: null,
-    glow: null,
+    glow: { gain: 0.03, scaleRs: 0.5, reachRs: 3.5, ring: 22, ringWidthRs: 0.03, color: hdr("#cfdcff", 1) },
   },
   // Anneau ténu (Sagittarius A*) : flot chaud, optiquement mince, en tore épais serré autour de la sphère des photons,
   // vu plutôt de face (i ≤ 30° favorisé par l'EHT), orangé ; il tourne dans le sens horaire (éruptions suivies par
@@ -204,7 +206,7 @@ export const BLACK_HOLE_LOOKS: Readonly<Record<BlackHoleLookName, BlackHoleLook>
     disk: null,
     flow: null,
     jet: null,
-    glow: { gain: 0.08, scaleRs: 1.2, reachRs: 9, ring: 4, ringWidthRs: 0.04, color: hdr("#ffdab3", 1) },
+    glow: { gain: 0.08, scaleRs: 1.2, reachRs: 9, ring: 7, ringWidthRs: 0.03, color: hdr("#ffdab3", 1) },
   },
 };
 
