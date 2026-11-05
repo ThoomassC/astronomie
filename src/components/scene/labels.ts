@@ -16,7 +16,11 @@ export interface LabelAnchor {
 export const LABEL_OFFSET_X = 8;
 export const LABEL_OFFSET_Y = 15;
 
-/** Zones exclues : sous la barre haute, au-dessus du dock ; léger débord permis sur les côtés. */
+/**
+ * Zones exclues d'office : les 72 premiers px (la barre haute sans encoche), au-dessus du dock ; léger débord permis
+ * sur les côtés. Le moteur ajoute la barre mesurée, à sa place de repos, aux boîtes occupées : avec une encoche, elle
+ * descend jusqu'à 132 px.
+ */
 const TOP_MARGIN = 72;
 const BOTTOM_MARGIN = 90;
 const SIDE_TOLERANCE = 40;

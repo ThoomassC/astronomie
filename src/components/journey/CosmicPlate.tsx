@@ -174,15 +174,13 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
           </>
         }
         sections={sections}
+        steps={<JourneySteps stop={stop} locale={locale} />}
         footer={
-          <>
-            <div className="actions">
-              <GoToLink className="btn ghost" href={sunHref} stop="sun">
-                {content.plate.back}
-              </GoToLink>
-            </div>
-            <JourneySteps stop={stop} locale={locale} />
-          </>
+          <div className="actions">
+            <GoToLink className="btn ghost" href={sunHref} stop="sun">
+              {content.plate.back}
+            </GoToLink>
+          </div>
         }
       />
     </section>

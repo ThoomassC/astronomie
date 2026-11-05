@@ -24,7 +24,10 @@ La mise en page est **celle du Voyage**, sans dock : on sait déjà la lire.
   règle (`nav`), `main#contenu` (introduction, dix plaques), pied de page commun. Scène, étiquettes et échelle graphique
   sont `aria-hidden` : la plaque porte les noms et les nombres.
 - Introduction : la mise en page `.hero` du Voyage, un titre, un texte, une ligne discrète (0,8125 rem `--brume`)
-  et l'**unique bouton plein** de la page, vers la plus petite étoile.
+  et l'**unique bouton plein** de la page, vers la plus petite étoile. En mise en page compacte, où la scène montre
+  déjà Cygnus X-1 au milieu de l'écran, derrière le texte, celui-ci se pose sur un panneau de plaque (`--plaque-a`,
+  filet `--filet`, `--r-lg`, 1 rem de marge) : son contraste tient sur toute sa hauteur, quoi que la scène montre
+  dessous (`--brume` 5,5:1 même sur un point blanc), au repos comme pendant le vol vers le premier astre.
 
 ## Plaques d'étoile (`StarPlate` sur `Plate`)
 
@@ -35,7 +38,8 @@ La mise en page est **celle du Voyage**, sans dock : on sait déjà la lire.
 | Nom (h2) | barème du Voyage ; mise en page compacte : `clamp(2.25rem, 7vw, 3.25rem)` (« VY Canis Majoris » tient sur une ligne à 375 px) |
 | Accroche | la comparaison qui frappe, visible même repliée ; Soleil : « Vu de l'espace, le Soleil est presque blanc. » |
 | Fiche (`.facts`, deux colonnes) | Rayon (dd en R☉ ; `small` : kilomètres à 4 chiffres significatifs, puis la fourchette publiée si le rayon est débattu) · Type (catégorie ; `small` : type spectral) · Température, **pleine largeur** (dd en K ; `small` : couleur en mots et comparaison au Soleil, puis la réglette) · Distance (en toutes lettres) · Comparaison, **pleine largeur**, en graisse de texte courant |
-| Pied | `.fact-caveat` (seulement les quatre rayons débattus) puis `.fact-source` ; dernière plaque : `.btn.ghost` « Revenir au plus petit » ; puis, en mise en page compacte, les astres voisins (MASTER, « Escales voisines ») : « ← Antarès A », « VY Canis Majoris → », nom court affiché, nom entier dans le nom accessible (« Astre suivant : Trou noir du Fer à cheval cosmique ») ; rien avant le plus petit, rien après le plus grand |
+| Pied | `.fact-caveat` (seulement les quatre rayons débattus) puis `.fact-source` ; dernière plaque : `.btn.ghost` « Revenir au plus petit » |
+| Astres voisins | MASTER, « Escales voisines » : dans la plaque compacte, deux flèches au bout de « Lire la fiche » ; ailleurs (paysage bas, sans JavaScript), pilules « ← Antarès A », « VY Canis Majoris → », nom court ; nom entier dans le nom accessible (« Astre suivant : Trou noir du Fer à cheval cosmique ») ; rien avant le plus petit, rien après le plus grand |
 
 **Couleur en mots** : orangée sous 3 800 K, orange pâle jusqu'à 5 200 K, blanche jusqu'à 7 500 K, blanc bleuté
 au-delà, toujours suivie de « plus froide / plus chaude que le Soleil (5 772 K) ».

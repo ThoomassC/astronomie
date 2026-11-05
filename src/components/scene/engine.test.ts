@@ -1,6 +1,7 @@
 import * as Three from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSolarScene, type SolarSceneOptions } from "@/components/scene/engine";
+import { RING_LABEL_GAP_PX, type LabelBox } from "@/components/scene/labels";
 import type { ExtragalacticLabelKey } from "@/components/scene/extragalactic";
 import { FakeRenderer } from "@/components/scene/testRenderer";
 import type { TextureKey } from "@/components/scene/textureSet";
@@ -305,4 +306,94 @@ describe("étiquettes hors des obstacles", () => {
     expect(sun.style.visibility).toBe("visible");
     scene.dispose();
   });
+
+  /*
+   * La barre haute couvre le haut de l'écran, de 59 à 132 px selon l'encoche : aucune étiquette ne se pose dessous,
+   * même quand elle a glissé hors de l'écran (AutoHideBar), car elle peut revenir à tout moment.
+   */
+  it("devrait réserver la barre haute à sa place de repos, même glissée hors de l'écran", async () => {
+    const sun = document.createElement("button");
+    measured(sun, { left: 0, top: 0, width: 60, height: 24 });
+    document.body.append(sun);
+    const framed = async (bar: HTMLElement | null) => {
+      const scene = createSolarScene({ ...options(), labels: new Map([["sun", sun]]), bar });
+      if (!scene) throw new Error("Scène absente");
+      await Promise.resolve();
+      scene.frame(1 / 60);
+      return scene;
+    };
+    // Sans barre, « Soleil » se pose à `top` px du haut de l'écran.
+    (await framed(null)).dispose();
+    const top = Number(/translate3d\([-\d.]+px,([-\d.]+)px/.exec(sun.style.transform)?.[1]);
+    expect(top).toBeGreaterThan(0);
+    // Une barre qui descend jusque sous l'étiquette, glissée hors de l'écran de toute sa hauteur.
+    const bar = document.createElement("header");
+    const height = top + 30;
+    bar.style.transform = `matrix(1, 0, 0, 1, 0, ${-height})`;
+    vi.spyOn(bar, "getBoundingClientRect").mockReturnValue(new DOMRect(0, -height, window.innerWidth, height));
+    document.body.append(bar);
+    const scene = await framed(bar);
+    expect(sun.style.visibility).toBe("hidden");
+    scene.dispose();
+  });
 });
+
+/*
+ * Cercles de distance aux étoiles voisines, en 375 × 812 : le cercle de 10 al passe à la hauteur du Soleil. Son
+ * premier point libre à 2 px d'air, texte seul, posait la graduation à 3,5 px du texte de « Soleil », sur sa ligne :
+ * on lisait « Soleil | 10 al ». Le moteur demande 8 px, graduation comprise : l'étiquette se pose plus loin sur le
+ * cercle. Retirer l'une ou l'autre exigence (ringPlacement, ringLayouts) ramène la graduation contre « Soleil ».
+ */
+describe("étiquettes des cercles de distance", () => {
+  afterEach(() => {
+    journeyStore.update("hero", "hero", 0);
+    document.body.replaceChildren();
+  });
+
+  /** Étiquette à repère telle que la rend la page : repère, puis le texte 6 px plus loin ; 30 px de haut. */
+  function markedLabel(text: { width: number; height: number }, dot: { width: number; height: number }, deep: boolean) {
+    const label = document.createElement("span");
+    if (deep) label.dataset.deep = "";
+    const marker = document.createElement("i");
+    const span = document.createElement("span");
+    label.append(marker, span);
+    measured(label, { left: 0, top: 0, width: 4 + dot.width + 6 + text.width, height: 30 });
+    measured(marker, { left: 4, top: 15 - dot.height / 2, width: dot.width, height: dot.height });
+    measured(span, { left: 4 + dot.width + 6, top: 6, width: text.width, height: text.height });
+    document.body.append(label);
+    return label;
+  }
+
+  /** Coin haut gauche d'une étiquette posée, lu dans sa transformation. */
+  const cornerOf = (label: HTMLElement) => {
+    const [, x, y] = /translate3d\(([-\d.]+)px,([-\d.]+)px/.exec(label.style.transform) ?? [];
+    return { x: Number(x), y: Number(y) };
+  };
+
+  /** Air entre deux boîtes, en px : le plus grand écart, horizontal ou vertical (négatif si elles se chevauchent). */
+  const airBetween = (a: LabelBox, b: LabelBox) => Math.max(a[0] - b[2], b[0] - a[2], a[1] - b[3], b[1] - a[3]);
+
+  it("devrait garder 8 px d'air entre « 10 al », graduation comprise, et « Soleil »", async () => {
+    vi.stubGlobal("innerWidth", 375);
+    vi.stubGlobal("innerHeight", 812);
+    journeyStore.update("stars", "stars", 0);
+    // « Soleil » : anneau de 10 px, texte de 40 × 20 px ; « 10 al » : graduation de 2 × 9 px, texte de 32 × 18 px.
+    const sun = markedLabel({ width: 40, height: 20 }, { width: 10, height: 10 }, false);
+    const ring = markedLabel({ width: 32, height: 18 }, { width: 2, height: 9 }, true);
+    const scene = createSolarScene({ ...options(), labels: new Map([["sun", sun]]), deepLabels: new Map([["ring-10", ring]]) });
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    scene.frame(1 / 60);
+    expect(sun.style.visibility).toBe("visible");
+    expect(ring.style.visibility).toBe("visible");
+    expect(sun).not.toHaveAttribute("data-mirrored");
+    const s = cornerOf(sun);
+    const r = cornerOf(ring);
+    // Texte de « Soleil » ; graduation et texte de « 10 al », de part ou d'autre l'un de l'autre (même emprise).
+    const sunText: LabelBox = [s.x + 20, s.y + 6, s.x + 60, s.y + 26];
+    const ringBox: LabelBox = [r.x + 4, r.y + 6, r.x + 44, r.y + 24];
+    expect(airBetween(sunText, ringBox)).toBeGreaterThanOrEqual(RING_LABEL_GAP_PX);
+    scene.dispose();
+  });
+});
+

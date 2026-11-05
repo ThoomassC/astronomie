@@ -13,21 +13,24 @@ const SMALLEST = COMPARED_OBJECTS[0].key;
 /**
  * Introduction de la page « Tailles », dans la mise en page de l'accueil du Voyage (`.hero`) : titre de la page,
  * promesse, une ligne discrète sur ce qui est à l'échelle et ce qui est calculé, et l'unique bouton plein, vers le plus
- * petit astre (défilement piloté, ancre native sans JavaScript).
+ * petit astre (défilement piloté, ancre native sans JavaScript). Le texte forme un bloc : sur téléphone, où la scène
+ * montre déjà le plus petit astre derrière lui, la feuille de style le pose sur un panneau de plaque.
  */
 export function SizesIntro({ locale }: { locale: Locale }) {
   const { intro } = getSizesContent(locale);
   return (
     <section className="hero" id={INTRO_ID} data-stop="intro" tabIndex={-1} aria-labelledby={TITLE_ID}>
-      <h1 id={TITLE_ID}>{intro.title}</h1>
-      <p>{intro.text}</p>
-      <p className={styles.introNote}>{intro.note}</p>
-      {/* La scène 3D est décorative (aria-hidden) : cette phrase dit ce qu'elle montre. */}
-      <p className="sr">{intro.sceneDescription}</p>
-      <div className="actions">
-        <GoToLink className="btn" href={sizeStopAnchor(SMALLEST)} stop={SMALLEST}>
-          {intro.start}
-        </GoToLink>
+      <div className={styles.introText}>
+        <h1 id={TITLE_ID}>{intro.title}</h1>
+        <p>{intro.text}</p>
+        <p className={styles.introNote}>{intro.note}</p>
+        {/* La scène 3D est décorative (aria-hidden) : cette phrase dit ce qu'elle montre. */}
+        <p className="sr">{intro.sceneDescription}</p>
+        <div className="actions">
+          <GoToLink className="btn" href={sizeStopAnchor(SMALLEST)} stop={SMALLEST}>
+            {intro.start}
+          </GoToLink>
+        </div>
       </div>
     </section>
   );

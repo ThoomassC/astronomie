@@ -1352,17 +1352,21 @@ main > section > * {
 
 /* ---------- Escales voisines ---------- */
 /*
- * D'escale en escale sur téléphone (StopSteps) : au bas de la plaque compacte, et sous la citation de l'interlude, un
- * lien vers l'escale précédente (flèche, nom court) à gauche, un vers la suivante (nom court, flèche) à droite.
- * Pilules de 44 px, en retrait des titres-boutons de la plaque (filet --filet, comme « Replier »), flèche en laiton.
- * Un nom n'est jamais coupé : quand les deux ne tiennent pas côte à côte, la suivante passe dessous, toujours à
- * droite ; un nom trop long pour la ligne passe lui-même à la ligne. Hors de la mise en page compacte, la règle suffit.
+ * D'escale en escale (StopSteps), partout où la règle cède la place au menu des escales (téléphone en portrait et en
+ * paysage, fenêtres de 860 px et moins ; même requête que la liste des escales, plus bas) et, sans JavaScript, en mise
+ * en page compacte : un lien vers l'escale précédente (flèche, nom court) à gauche, un vers la suivante (nom court,
+ * flèche) à droite. Pilules de 44 px, en retrait des titres-boutons de la plaque (filet --filet, comme « Replier »),
+ * flèche en laiton. Un nom n'est jamais coupé : quand les deux ne tiennent pas côte à côte, la suivante passe dessous,
+ * toujours à droite ; un nom trop long pour la ligne passe lui-même à la ligne. Sur grand écran, la règle suffit.
  */
 .stop-steps {
   display: none;
 }
 
-@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait) {
+@media (max-width: 640px),
+  (max-width: 1100px) and (orientation: portrait),
+  (max-width: 860px) and (scripting: enabled),
+  (max-height: 34.125rem) and (scripting: enabled) {
   .stop-steps {
     display: flex;
     flex-wrap: wrap;
@@ -1431,6 +1435,52 @@ main > section > * {
 @media (max-width: 640px) {
   .interlude .stop-steps {
     margin-left: 0;
+  }
+}
+
+/*
+ * Plaque compacte, avec JavaScript (titres-boutons affichés) : la plaque collée en bas borde la bande libre de la scène,
+ * et une rangée de plus la rognerait, jusqu'à la perdre sur un téléphone court (screen.test.ts). Les liens se réduisent
+ * à leur flèche, 44 × 44, le nom restant dans le nom accessible, et se posent hors du flux au bout du premier
+ * titre-bouton, seul sur sa rangée, qui leur garde la place : deux flèches, une seule aux bouts du parcours. Dans
+ * l'ordre de tabulation, ils suivent les titres-boutons.
+ */
+@media (max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled) {
+  .plate-sections {
+    position: relative;
+  }
+
+  .plate-sections > .stop-steps {
+    position: absolute;
+    top: 0;
+    right: 0;
+    flex-wrap: nowrap;
+    margin: 0;
+  }
+
+  .plate-sections > .more-heading:first-child {
+    flex-basis: 100%;
+    margin-right: calc(2 * 44px + 2 * 0.5rem);
+  }
+
+  .plate-sections:has(> .stop-steps > :only-child) > .more-heading:first-child {
+    margin-right: calc(44px + 0.5rem);
+  }
+
+  .plate-sections > .stop-steps .stop-step {
+    justify-content: center;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .plate-sections > .stop-steps .stop-step > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 }
 
@@ -2626,10 +2676,9 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 }
 
 @media (max-width: 640px) {
-  /* Les plaques défilent sous la barre : un voile plus dense garde la marque lisible. */
+  /* Le voile de la barre, sous laquelle passent les plaques : en fin de feuille (« Voile de la barre qui glisse »). */
   .bar {
     gap: 0.6rem;
-    background: linear-gradient(rgba(6, 11, 24, 0.94) 55%, rgba(6, 11, 24, 0));
   }
 
   .brand {
@@ -3074,8 +3123,6 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     position: fixed;
     top: env(safe-area-inset-top, 0px);
     padding-block: 0.5rem;
-    /* Les plaques défilent dessous, sans fondu : le voile dense des téléphones garde la marque lisible. */
-    background: linear-gradient(rgba(6, 11, 24, 0.94) 55%, rgba(6, 11, 24, 0));
   }
 }
 
@@ -3084,8 +3131,9 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
  * complément exact de la requête des fondus) : la barre glisse hors de l'écran quand on descend (`data-concealed`,
  * AutoHideBar) et revient dès qu'on remonte, en 0,25 s, sans animation en mouvement réduit (règle globale, plus bas).
  * Elle reste tant qu'elle a le focus clavier ou un menu ouvert (escales, langue, menu replié). Sa place reste
- * réservée : les scènes la lisent au repos (barSlide.ts), les marges de défilement la dégagent toujours, la note
- * d'échelle et l'échelle graphique ne bougent pas. Après la section « Exploration », dont elle reprend les fondus.
+ * réservée : les scènes la lisent au repos (barSlide.ts), sans recadrer l'astre quand elle part ni poser d'étiquette
+ * dessous (Voyage et Tailles) ; les marges de défilement la dégagent toujours ; la note d'échelle et l'échelle
+ * graphique ne bougent pas. Après la section « Exploration », dont elle reprend les fondus.
  */
 @media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
   .bar[data-autohide] {
@@ -3104,6 +3152,38 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 
   .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) {
     transform: translateY(-100%);
+  }
+}
+
+/*
+ * Voile de la barre qui glisse : les plaques passent sous elle, sans fondu pour les effacer (en 844 × 390, « 6e planète
+ * en partant du Soleil » se lisait sous la marque). Comme à l'Accueil, nuit pleine jusqu'au bas des commandes, puis un
+ * fondu sur sa marge basse, qui change avec la mise en page : 0,9 rem, 0,6 rem sur téléphone court, 0,5 rem sur écran
+ * bas. La scène n'y perd rien : elle ne cadre ni n'étiquette rien sous la barre. En couleurs forcées, le fond du système.
+ */
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
+  .bar[data-autohide] {
+    background: linear-gradient(var(--nuit) calc(100% - 0.9rem), rgba(6, 11, 24, 0));
+  }
+}
+
+@media (max-width: 640px) and (max-height: 700px) {
+  .bar[data-autohide] {
+    background: linear-gradient(var(--nuit) calc(100% - 0.6rem), rgba(6, 11, 24, 0));
+  }
+}
+
+@media (max-height: 30rem) and (scripting: enabled) {
+  .bar[data-autohide] {
+    background: linear-gradient(var(--nuit) calc(100% - 0.5rem), rgba(6, 11, 24, 0));
+  }
+}
+
+@media (forced-colors: active) {
+  @media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
+    .bar[data-autohide] {
+      background: Canvas;
+    }
   }
 }
 

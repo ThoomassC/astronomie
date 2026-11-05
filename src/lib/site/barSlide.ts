@@ -42,6 +42,34 @@ export function followScroll(bar: BarSlide, y: number, top: number): BarSlide {
 }
 
 /**
+ * La barre après un défilement programmé jusqu'à `y` (saut de scrollInstantly : repli d'une plaque, caméra posée avant
+ * l'exploration) : ce n'est pas un geste de la personne. Cachée ou affichée, elle reste comme elle est ; sa course
+ * repart de la nouvelle position.
+ */
+export function rebaseBar(bar: BarSlide, y: number): BarSlide {
+  return { concealed: bar.concealed, y, travel: 0 };
+}
+
+/** Abonnés aux défilements programmés (AutoHideBar). */
+const jumpListeners = new Set<() => void>();
+
+/**
+ * Prévient que la page vient de sauter d'elle-même (scrollInstantly), et non sous la main de la personne. Appelé juste
+ * après le saut : le défilement lu est déjà le nouveau, et l'événement `scroll` qui suivra ne bougera plus rien.
+ */
+export function announceScrollJump(): void {
+  for (const listener of jumpListeners) listener();
+}
+
+/** Suit les défilements programmés ; renvoie le désabonnement. */
+export function onScrollJump(listener: () => void): () => void {
+  jumpListeners.add(listener);
+  return () => {
+    jumpListeners.delete(listener);
+  };
+}
+
+/**
  * Translation verticale (px) d'une transformation calculée, telle que le navigateur l'écrit : `none`, `matrix(…)` ou
  * `matrix3d(…)`. 0 pour toute autre forme.
  */

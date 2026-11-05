@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { followScroll, shownBar } from "@/lib/site/barSlide";
+import { followScroll, onScrollJump, rebaseBar, shownBar } from "@/lib/site/barSlide";
 
 interface AutoHideBarProps {
   /** Classes de la barre commune (`bar` et celle de son module). */
@@ -18,10 +18,12 @@ interface AutoHideBarProps {
  * descend et revient dès qu'on remonte (`data-concealed`, barSlide.ts). Elle revient aussi quand le focus y entre,
  * clavier ou programme (retour du focus au bouton « Tourner autour »), et quand la fenêtre change de largeur
  * (rotation), mais pas de sa seule hauteur : la barre d'adresse du navigateur la change en se repliant quand on
- * descend. Le défilement est borné à la page : le rebond du bas (iOS) ne la fait pas revenir. La feuille de style
- * décide où elle glisse vraiment (mise en page compacte, écran bas, là où il n'y a pas de fondus), sans animation en
- * mouvement réduit, et la garde tant qu'elle a le focus clavier ou un menu ouvert. Quand la page est masquée
- * (<Activity>), la barre ne suit plus rien et reviendra affichée. Le contenu reste rendu par le serveur (SiteHeader).
+ * descend. Le défilement est borné à la page : le rebond du bas (iOS) ne la fait pas revenir. Un saut programmé
+ * (scrollInstantly : repli d'une plaque, caméra posée avant l'exploration) n'est pas un geste : elle reste comme elle
+ * est, et compte la suite depuis la nouvelle position. La feuille de style décide où elle glisse vraiment (mise en
+ * page compacte, écran bas, là où il n'y a pas de fondus), sans animation en mouvement réduit, et la garde tant qu'elle
+ * a le focus clavier ou un menu ouvert. Quand la page est masquée (<Activity>), la barre ne suit plus rien et reviendra
+ * affichée. Le contenu reste rendu par le serveur (SiteHeader).
  */
 export function AutoHideBar({ className, page, controls, children }: AutoHideBarProps) {
   const barRef = useRef<HTMLElement>(null);
@@ -53,7 +55,11 @@ export function AutoHideBar({ className, page, controls, children }: AutoHideBar
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
     bar.addEventListener("focusin", reveal);
+    const stopJumps = onScrollJump(() => {
+      state = rebaseBar(state, scrollTop());
+    });
     return () => {
+      stopJumps();
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       bar.removeEventListener("focusin", reveal);

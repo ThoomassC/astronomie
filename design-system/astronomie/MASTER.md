@@ -83,14 +83,18 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   de l'au-delà y est centrée. Écran court (≤ 700 px de haut) : plaque plus serrée. Sur grand écran
   ou sans JavaScript, tout est visible et les boutons sont masqués ; sur grand écran, l'astre est
   centré dans la zone libre entre la plaque et la règle, et recule s'il n'y tient pas.
-  **Escales voisines** (mise en page compacte seulement : ailleurs, la règle suffit) : la plaque se ferme sur deux
-  liens, « ← Vénus » à gauche, « Mars → » à droite : pilules de 44 px au filet `--filet` (en retrait des
-  titres-boutons), flèche en laiton, nom court de la barre ; le nom accessible dit le sens et le nom entier
-  (« Escale suivante : Mars », « Astre suivant : Trou noir du Fer à cheval cosmique »). Défilement doux vers
-  l'escale, immédiat en mouvement réduit. Ni précédente à la première escale (la vue d'ensemble n'en est pas une), ni
-  suivante à la dernière, dont la plaque ramène déjà au départ. Quand les deux ne tiennent pas côte à côte, la
-  suivante passe dessous, toujours à droite ; aucun nom n'est coupé. L'interlude de la ceinture, escale de la règle,
-  les a aussi, sous sa citation, sur le fond `.92` des pilules.
+  **Escales voisines** (là où la règle cède la place au menu des escales : téléphone en portrait et en paysage,
+  860 px et moins ; sans JavaScript, en mise en page compacte ; sur grand écran, la règle suffit) : un lien vers
+  l'escale précédente, un vers la suivante, dont le nom accessible dit le sens et le nom entier (« Escale suivante :
+  Mars », « Astre suivant : Trou noir du Fer à cheval cosmique »). Défilement doux vers l'escale, immédiat en
+  mouvement réduit. Ni précédente à la première escale (la vue d'ensemble n'en est pas une), ni suivante à la
+  dernière, dont la plaque ramène déjà au départ. Dans la plaque compacte : deux flèches rondes de 44 px au filet
+  `--filet`, flèche en laiton, au bout du premier titre-bouton, seul sur sa rangée, qui leur garde la place (une seule
+  flèche aux bouts du parcours) : aucune rangée de plus, qui rognerait la bande libre de la scène jusqu'à la perdre sur
+  un téléphone court (Voie lactée en 375 × 553, note d'échelle visible). Ailleurs (plaque en paysage bas, interlude de
+  la ceinture, sans JavaScript) : pilules « ← Vénus », « Mars → », nom court de la barre ; quand les deux ne tiennent
+  pas côte à côte, la suivante passe dessous, toujours à droite, aucun nom coupé. L'interlude les pose sous sa
+  citation, sur le fond `.92` des pilules.
 - **Accueil** : sur téléphone, le bouton « Partir du Soleil » est visible sans défiler, au-dessus du
   dock ; la date de départ passe sous les boutons.
 - **Fiche** : grille 2 colonnes `dt` / `dd`, une ligne « ce jour » recalculée avec la date simulée.
@@ -225,14 +229,18 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Voyage) : 800 px de contenu pour 829 disponibles à 861 px en paysage ; en portrait, où le menu des escales remplace
   l'escale, 860 px qui ne tiennent qu'à 892 px : la grille y attend 900 px, la ligne d'origine sert avant. Hauteur
   inchangée, une seule ligne ; à 860 px et moins, les onglets passent dans « Menu ». Fond : au Voyage et à Tailles,
-  un voile léger (`--voile` vers transparent, plus dense à 640 px et moins), pour que la scène 3D se devine dessous ;
-  à l'Accueil et à À propos, où le texte défile sous la barre, `--nuit` plein jusqu'au bas des commandes puis un
-  fondu sur la marge basse (0,9 rem) : rien ne se lit derrière la marque ni les onglets.
+  sur grand écran, un voile léger (`--voile` vers transparent), pour que la scène 3D se devine dessous (les fondus
+  effacent les plaques avant elle) ; à l'Accueil et à À propos, où le texte défile sous la barre, et au Voyage et à
+  Tailles là où la barre glisse (mise en page compacte, écran bas : les plaques y passent dessous sans fondu), `--nuit`
+  plein jusqu'au bas des commandes puis un fondu sur la marge basse (0,9 rem ; 0,6 sur téléphone court, 0,5 sur écran
+  bas) : rien ne se lit derrière la marque ni les commandes. En couleurs forcées, la barre qui glisse prend le fond du
+  système.
   **Barre qui glisse** (Voyage et Tailles, là où ni règle ni fondus ne la bordent : mise en page compacte et écran
   bas, en portrait comme en paysage) : elle glisse hors de l'écran (0,25 s, rien en mouvement réduit) après 16 px de
   descente, revient dès 8 px de remontée, et reste affichée en haut de page, quand le focus y entre (clavier, retour
   de l'exploration), quand la fenêtre change de largeur (rotation ; pas quand la barre d'adresse du navigateur se
-  replie) et tant qu'un de ses menus est ouvert. Sa place reste
+  replie) et tant qu'un de ses menus est ouvert. Un saut que fait la page d'elle-même (repli d'une plaque, caméra
+  posée avant l'exploration) ne la fait ni partir ni revenir : seul compte le geste. Sa place reste
   réservée : la scène la lit au repos (l'astre ne bouge pas quand elle part, aucune étiquette ne se pose dessous) et
   le focus s'arrête toujours sous elle (marges de défilement). Sur écran bas (30 rem et moins), elle reste fixe,
   resserrée à 3,75 rem (0,5 rem autour des commandes de 44 px) ; sans JavaScript, elle y suit la page, comme celle de

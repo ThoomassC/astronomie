@@ -30,7 +30,7 @@ function radiusParts(radiusSolar: number, digits: number, t: SizesStrings): { va
  * type ; distance, avec le temps de trajet de la lumière d'un trou noir lointain ; comparaison ; mise en garde ; ce que
  * la vue simplifie (« Rendu calculé ») ; sources. Sur téléphone, la fiche se déplie à la demande. `restartTo` ajoute
  * sous la fiche un lien vers cette escale (le plus petit astre, sur la dernière plaque) ; les astres voisins
- * ferment la plaque (SizesSteps, téléphone).
+ * sont au bout des titres-boutons (SizesSteps, téléphone).
  */
 export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlackHole; locale: Locale; restartTo?: SizeStopKey }) {
   const content = getSizesContent(locale);
@@ -121,17 +121,15 @@ export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlac
             ),
           },
         ]}
+        steps={<SizesSteps object={hole.key} locale={locale} />}
         footer={
-          <>
-            {restartTo ? (
-              <div className="actions">
-                <GoToLink className="btn ghost" href={sizeStopAnchor(restartTo)} stop={restartTo}>
-                  {content.plate.restart}
-                </GoToLink>
-              </div>
-            ) : null}
-            <SizesSteps object={hole.key} locale={locale} />
-          </>
+          restartTo ? (
+            <div className="actions">
+              <GoToLink className="btn ghost" href={sizeStopAnchor(restartTo)} stop={restartTo}>
+                {content.plate.restart}
+              </GoToLink>
+            </div>
+          ) : undefined
         }
       />
     </section>

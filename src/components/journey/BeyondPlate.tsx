@@ -81,16 +81,14 @@ export function BeyondPlate({ locale, sunHref }: { locale: Locale; sunHref: `#${
             ),
           },
         ]}
+        steps={<JourneySteps stop="beyond" locale={locale} />}
         footer={
-          <>
-            <div className="actions">
-              <ScaleToggle className="btn" />
-              <GoToLink className="btn ghost" href={sunHref} stop="sun">
-                {beyond.back}
-              </GoToLink>
-            </div>
-            <JourneySteps stop="beyond" locale={locale} />
-          </>
+          <div className="actions">
+            <ScaleToggle className="btn" />
+            <GoToLink className="btn ghost" href={sunHref} stop="sun">
+              {beyond.back}
+            </GoToLink>
+          </div>
         }
       />
     </section>

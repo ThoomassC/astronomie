@@ -25,6 +25,11 @@ interface PlateProps {
   /** Rang, nom, accroche : toujours visibles. */
   header: ReactNode;
   sections: readonly PlateSection[];
+  /**
+   * Escales voisines (StopSteps), au bout de la rangée des titres-boutons : sur téléphone, la feuille de style y pose
+   * leurs flèches sans rangée de plus, qui rognerait la bande libre de la scène.
+   */
+  steps?: ReactNode;
   /** Toujours visible, sous les sections. */
   footer?: ReactNode;
 }
@@ -86,7 +91,7 @@ function Chevron() {
  * JavaScript, tout est visible et les boutons sont masqués (globals.css). « Replier » est dans la
  * langue de la page ; les libellés des sections viennent de qui rend la plaque.
  */
-export function Plate({ id, name, color, header, sections, footer }: PlateProps) {
+export function Plate({ id, name, color, header, sections, steps, footer }: PlateProps) {
   const t = JOURNEY_STRINGS[useLocale()];
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const articleRef = useRef<HTMLElement>(null);
@@ -197,6 +202,7 @@ export function Plate({ id, name, color, header, sections, footer }: PlateProps)
             <Chevron />
           </button>
         )}
+        {steps}
       </div>
       {footer}
     </article>

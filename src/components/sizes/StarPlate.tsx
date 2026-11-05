@@ -59,7 +59,7 @@ function TemperatureScale({ star, words, sunName }: { star: ComparedStar; words:
  * publiée s'il est débattu ; type ; température, sa couleur en mots et la réglette ; distance ; comparaison ; mise en
  * garde ; sources. Sur téléphone, la fiche se déplie à la demande, comme au voyage. `restartTo` ajoute sous la fiche
  * un lien vers cette escale (le plus petit astre, sur la dernière plaque) ; les astres voisins
- * ferment la plaque (SizesSteps, téléphone).
+ * sont au bout des titres-boutons (SizesSteps, téléphone).
  */
 export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; locale: Locale; restartTo?: SizeStopKey }) {
   const content = getSizesContent(locale);
@@ -152,17 +152,15 @@ export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; loc
             ),
           },
         ]}
+        steps={<SizesSteps object={star.key} locale={locale} />}
         footer={
-          <>
-            {restartTo ? (
-              <div className="actions">
-                <GoToLink className="btn ghost" href={sizeStopAnchor(restartTo)} stop={restartTo}>
-                  {content.plate.restart}
-                </GoToLink>
-              </div>
-            ) : null}
-            <SizesSteps object={star.key} locale={locale} />
-          </>
+          restartTo ? (
+            <div className="actions">
+              <GoToLink className="btn ghost" href={sizeStopAnchor(restartTo)} stop={restartTo}>
+                {content.plate.restart}
+              </GoToLink>
+            </div>
+          ) : undefined
         }
       />
     </section>

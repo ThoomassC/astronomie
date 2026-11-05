@@ -30,8 +30,8 @@ function Rank({ ordinal, label }: { ordinal?: Ordinal; label: string }) {
 
 /**
  * Escale d'un astre, dans la langue de la page : plaque de lecture, fiche avec la ligne « ce jour », module
- * explicatif. Sur téléphone, la fiche et le module se déplient à la demande pour laisser voir l'astre, et les escales
- * voisines ferment la plaque.
+ * explicatif. Sur téléphone, la fiche et le module se déplient à la demande pour laisser voir l'astre ; les escales
+ * voisines sont au bout de leurs titres-boutons.
  */
 export function StopPlate({ locale, stop }: { locale: Locale; stop: BodyStopStructure }) {
   const content = getVoyageContent(locale);
@@ -95,7 +95,7 @@ export function StopPlate({ locale, stop }: { locale: Locale; stop: BodyStopStru
             ),
           },
         ]}
-        footer={<JourneySteps stop={stop.key} locale={locale} />}
+        steps={<JourneySteps stop={stop.key} locale={locale} />}
       />
     </section>
   );

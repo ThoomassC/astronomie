@@ -15,6 +15,12 @@
 
 /* ---------- Introduction ---------- */
 
+/* Le texte de l'introduction, en un bloc : la colonne de `.hero`, ses écarts inchangés (pas de marges fusionnées). */
+.introText {
+  display: flex;
+  flex-direction: column;
+}
+
 /* Ligne discrète sous la promesse : ce qui est à l'échelle, et ce qui ne l'est pas. */
 :global(.hero) p.introNote {
   font-size: 0.8125rem;
@@ -234,6 +240,18 @@
 
   .scaleText {
     font-size: 0.75rem;
+  }
+
+  /*
+   * La scène montre déjà le plus petit astre au milieu de l'écran, derrière le texte (en 375 × 812, le disque lumineux
+   * de Cygnus X-1 sous le paragraphe) : le texte se pose sur un panneau de plaque, qui lui garde son contraste sur
+   * toute sa hauteur, quoi que la scène montre dessous (--brume 5,5:1 sur un point blanc), au repos comme en vol.
+   */
+  .introText {
+    padding: 1rem;
+    border: 1px solid var(--filet);
+    border-radius: var(--r-lg);
+    background: var(--plaque-a);
   }
 }
 
