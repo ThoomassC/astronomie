@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { markerLayouts, type LabelBox } from "@/components/scene/labels";
-import { SIZES_STRINGS } from "@/components/sizes/sizes.strings";
+import { nameParts, SIZES_STRINGS } from "@/components/sizes/sizes.strings";
 import {
   discBoxes,
   frameBoxes,
@@ -218,7 +218,8 @@ const CHAR_PX = 7.2;
 const PILL_PX = 2 * 7.2 + 2;
 const TEXT_HEIGHT = 20.2;
 
-function metricsFor(name: string, size: string): ObjectLabelMetrics {
+/** `core` : ce que garde la forme courte, le nom court d'un astre au nom long (`nameParts`), sans la taille. */
+function metricsFor(name: string, size: string, core: string = name): ObjectLabelMetrics {
   const detail = ` · ${size}`;
   const width = (name.length + detail.length) * CHAR_PX + PILL_PX;
   const ring: RingMarker = {
@@ -230,13 +231,13 @@ function metricsFor(name: string, size: string): ObjectLabelMetrics {
       textY: 5.6,
       textWidth: width,
       textHeight: TEXT_HEIGHT,
-      detailWidth: detail.length * CHAR_PX,
+      detailWidth: (name.length - core.length + detail.length) * CHAR_PX,
     }),
     dotY: 15.7,
     dotWidth: 12,
     dotHeight: 12,
   };
-  return { ring, limb: { width, height: TEXT_HEIGHT, shortWidth: name.length * CHAR_PX + PILL_PX } };
+  return { ring, limb: { width, height: TEXT_HEIGHT, shortWidth: core.length * CHAR_PX + PILL_PX } };
 }
 
 /** Anneau « ici » du Soleil : texte centré au-dessus d'un anneau de 14 px. */
@@ -314,7 +315,7 @@ function layoutAt(view: View, locale: Locale, cam: SizesCam, drawn: number, curr
   const scale = scaleBarBox({ compact: view.compact, zone, view: view.view, barBottom: 76, discs, measured: null });
   const reserved = frameBoxes(view.view, measuredBoxes(view), view.ctx.zone, view.ctx.band, scale);
   const t = SIZES_STRINGS[locale];
-  const metrics = COMPARED_OBJECTS.map((object) => metricsFor(t.names[object.key], t.size(object)));
+  const metrics = COMPARED_OBJECTS.map((object) => metricsFor(t.names[object.key], t.size(object), nameParts(t, object.key).core));
   const modes: (StarLabelMode | null)[] = COMPARED_OBJECTS.map(() => null);
   const layout = layoutSizeLabels({
     discs,

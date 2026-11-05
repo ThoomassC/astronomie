@@ -113,6 +113,11 @@ describe("BlackHolePlate, distance cosmologique, mise en garde et lien de retour
     ]);
   });
 
+  it("devrait titrer la plaque du nom entier du trou noir, sans le confondre avec sa galaxie (en)", () => {
+    render(<BlackHolePlate hole={COMPARED_BLACK_HOLE_BY_KEY["cosmic-horseshoe"]} locale="en" />);
+    expect(screen.getByRole("heading", { level: 2, name: "Cosmic Horseshoe black hole" })).toBeInTheDocument();
+  });
+
   it("devrait proposer de revenir au plus petit astre quand la page le demande", () => {
     render(<BlackHolePlate hole={COMPARED_BLACK_HOLE_BY_KEY["cosmic-horseshoe"]} locale="fr" restartTo="cygnus-x-1" />);
     expect(screen.getByRole("link", { name: "Revenir au plus petit" })).toHaveAttribute("href", "#cygnus-x-1");

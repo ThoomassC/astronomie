@@ -68,7 +68,8 @@ export interface SizesSceneOptions {
   ringLabels: ReadonlyMap<SizeObjectKey, HTMLElement>;
   /**
    * Étiquette de chaque astre posée au-dessus de son limbe (grand à l'écran) : texte seul, le nom puis sa taille dans un
-   * `.dist`, que la forme courte masque (`data-short`).
+   * `.dist`, que la forme courte masque (`data-short`), avec ce qui encadre le nom court d'un astre au nom long
+   * (`[data-long]`).
    */
   limbLabels: ReadonlyMap<SizeObjectKey, HTMLElement>;
   /** Le Soleil devenu un point : anneau « ici » en `--soleil` (`.lbl.deep.here`). */
@@ -168,10 +169,17 @@ function showAt(slot: LabelSlot, left: number, top: number): void {
   setShown(slot, true);
 }
 
-/** Étiquette de limbe, mesurée dans sa forme complète : sa taille, et la largeur du nom seul (sans le `.dist`). */
+/** Largeur (px) de ce que la forme courte (`data-short`) masque : la taille (`.dist`), ce qui encadre le nom court. */
+function shortenedWidth(element: HTMLElement): number {
+  let width = 0;
+  for (const part of element.querySelectorAll<HTMLElement>(".dist, [data-long]")) width += part.offsetWidth;
+  return width;
+}
+
+/** Étiquette de limbe, mesurée dans sa forme complète : sa taille, et la largeur de sa forme courte (le nom court). */
 function measureLimb(element: HTMLElement): LimbLabelSize {
   const width = element.offsetWidth;
-  return { width, height: element.offsetHeight, shortWidth: width - (element.querySelector<HTMLElement>(".dist")?.offsetWidth ?? 0) };
+  return { width, height: element.offsetHeight, shortWidth: width - shortenedWidth(element) };
 }
 
 /** Écrit dans les deux étiquettes d'un astre la disposition retenue pour l'image. */
@@ -205,7 +213,7 @@ function measureMarker(element: HTMLElement): RingMarker | null {
       textY: text.offsetTop,
       textWidth: text.offsetWidth,
       textHeight: text.offsetHeight,
-      detailWidth: text.querySelector<HTMLElement>(".dist")?.offsetWidth ?? 0,
+      detailWidth: shortenedWidth(text),
     }),
     dotY,
     dotWidth: dot.offsetWidth,

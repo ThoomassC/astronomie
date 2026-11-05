@@ -7,7 +7,7 @@ import { useLocale } from "@/i18n/LocaleProvider";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { COMPARED_OBJECTS, isSizeObjectKey, type SizeObjectKey } from "@/lib/sizes/objects";
 import { shownSceneLayout } from "./sceneElements";
-import { SIZES_STRINGS } from "./sizes.strings";
+import { nameParts, SIZES_STRINGS, type ObjectNameParts } from "./sizes.strings";
 import { createSizesScene, type SizesScene as SceneEngine } from "./sizesEngine";
 import styles from "./SizesPage.module.css";
 
@@ -19,6 +19,25 @@ function labelsBy(layer: HTMLElement, attribute: "ring" | "limb"): Map<SizeObjec
     if (isSizeObjectKey(key)) labels.set(key, element);
   }
   return labels;
+}
+
+/** Nom d'un astre dans son étiquette ; ce qui encadre le nom court (`[data-long]`), la forme courte le masque. */
+function LabelName({ parts: { lead, core, tail } }: { parts: ObjectNameParts }) {
+  return (
+    <>
+      {lead && (
+        <span className={styles.longName} data-long="">
+          {lead}
+        </span>
+      )}
+      {core}
+      {tail && (
+        <span className={styles.longName} data-long="">
+          {tail}
+        </span>
+      )}
+    </>
+  );
 }
 
 /**
@@ -87,16 +106,16 @@ export default function SizesScene() {
           <span key={object.key} className="lbl deep" data-ring={object.key} style={cssVars({ "--lc": object.color })}>
             <i />
             <span>
-              {t.names[object.key]}
+              <LabelName parts={nameParts(t, object.key)} />
               <span className="dist"> · {t.size(object)}</span>
             </span>
           </span>
         ))}
-        {/* La forme courte (`data-short`) masque la taille (`.dist`) : le nom seul, quand la complète ne tient pas. */}
+        {/* La forme courte (`data-short`) masque la taille (`.dist`) : le nom seul (court), quand la complète ne tient pas. */}
         {COMPARED_OBJECTS.map((object) => (
           <span key={`${object.key}-limb`} className={`lbl deep ${styles.limbLabel}`} data-limb={object.key}>
             <span>
-              {t.names[object.key]}
+              <LabelName parts={nameParts(t, object.key)} />
               <span className="dist"> · {t.size(object)}</span>
             </span>
           </span>

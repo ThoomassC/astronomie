@@ -51,7 +51,7 @@ describe("SizesRail", () => {
   it("devrait nommer chaque trou noir par son ombre, en kilomètres sous 0,01 R☉ (fr : « Cygnus X-1, 163 km »)", () => {
     renderIn("fr");
     expect(screen.getByRole("link", { name: "Cygnus X-1, 163 km" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Fer à cheval cosmique, 400\u202f000 R☉" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Trou noir du Fer à cheval cosmique, 400\u202f000 R☉" })).toBeInTheDocument();
   });
 
   it("devrait nommer chaque repère par l'étoile et son rayon, dans la langue (es : « Sirio A, 1,711 R☉ »)", () => {
