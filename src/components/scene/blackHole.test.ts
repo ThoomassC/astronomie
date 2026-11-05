@@ -5,16 +5,21 @@ import {
   BLACK_HOLE_RENDER_ORDER,
   LENS_QUAD_RS,
   createBlackHoleMesh,
+  diskAxis,
+  rayDefines,
   requiredExtentRs,
   type BlackHoleDisk,
+  type BlackHoleFlow,
   type BlackHoleGlow,
   type BlackHoleJet,
   type BlackHoleLook,
   type BlackHoleLookName,
   type BlackHoleMeshOptions,
 } from "@/components/scene/blackHole";
-import { BLACK_HOLE_VERTEX } from "@/components/scene/blackHoleShaders";
+import { BLACK_HOLE_FRAGMENT, BLACK_HOLE_VERTEX } from "@/components/scene/blackHoleShaders";
+import { NOISE_GLSL } from "@/components/scene/shaders";
 import { STARFIELD_GLSL, STARFIELD_RENDER_ORDER, createStarfieldBackground } from "@/components/scene/starfield";
+import { DESKTOP_RAY_STEPS, LITE_RAY_STEPS } from "@/lib/astro/photonGeodesic";
 import { ISCO_RS, PHOTON_SPHERE_RS, SHADOW_RADIUS_RS } from "@/lib/astro/schwarzschild";
 
 /*
@@ -25,11 +30,32 @@ import { ISCO_RS, PHOTON_SPHERE_RS, SHADOW_RADIUS_RS } from "@/lib/astro/schwarz
 
 const LOOK_NAMES = Object.keys(BLACK_HOLE_LOOKS) as BlackHoleLookName[];
 /** Aspect sans rien de lumineux : l'ombre seule. */
-const BARE: BlackHoleLook = { inclinationDeg: 0, positionAngleDeg: 0, disk: null, jet: null, glow: null };
+const BARE: BlackHoleLook = {
+  inclinationDeg: 0,
+  positionAngleDeg: 0,
+  clockwise: false,
+  orbitPeriodS: 6,
+  disk: null,
+  flow: null,
+  jet: null,
+  glow: null,
+};
 const WHITE = new Color(1, 1, 1);
-const DISK: BlackHoleDisk = { innerRs: 3, outerRs: 5, innerColor: WHITE, outerColor: WHITE, gain: 1, opacity: 1 };
+const DISK: BlackHoleDisk = { innerRs: 3, outerRs: 5, temperatureK: 20_000, gain: 1, opacity: 1, turbulence: 0.5 };
+const FLOW: BlackHoleFlow = {
+  innerRs: 1.5,
+  outerRs: 4,
+  temperatureK: 3000,
+  gain: 1,
+  thickness: 0.5,
+  rotation: 0.6,
+  flicker: 0.4,
+};
 const JET: BlackHoleJet = { gain: 0.3, halfAngleDeg: 8, counterRatio: 0.1, lengthRs: 6.42, color: WHITE };
-const GLOW: BlackHoleGlow = { gain: 0.3, scaleRs: 2, reachRs: 4, color: WHITE };
+const GLOW: BlackHoleGlow = { gain: 0.3, scaleRs: 2, reachRs: 4, ring: 1, ringWidthRs: 0.05, color: WHITE };
+
+/** Nombre d'occurrences de `needle` dans `text`. */
+const occurrences = (text: string, needle: string) => text.split(needle).length - 1;
 
 function options(overrides: Partial<BlackHoleMeshOptions> = {}): BlackHoleMeshOptions {
   return {
@@ -63,6 +89,11 @@ describe("requiredExtentRs", () => {
     expect(requiredExtentRs({ ...BARE, disk: DISK })).toBe(5.8);
   });
 
+  it("devrait borner de même le gaz chaud par son rayon extérieur", () => {
+    // 4 / √0,75 = 4,619 ; + 0,2 = 4,819 → 4,9.
+    expect(requiredExtentRs({ ...BARE, flow: FLOW })).toBe(4.9);
+  });
+
   it("devrait laisser 1 r_s au-delà du bout du jet et de la portée de la lueur", () => {
     expect(requiredExtentRs({ ...BARE, jet: JET })).toBe(7.5);
     expect(requiredExtentRs({ ...BARE, glow: GLOW })).toBe(5);
@@ -75,6 +106,10 @@ describe("BLACK_HOLE_LOOKS", () => {
     const { disk } = BLACK_HOLE_LOOKS[name];
     return disk ? [[name, disk] as const] : [];
   });
+  const flows = LOOK_NAMES.flatMap((name) => {
+    const { flow } = BLACK_HOLE_LOOKS[name];
+    return flow ? [[name, flow] as const] : [];
+  });
 
   it.each(LOOK_NAMES)("devrait orienter l'aspect %s : inclinaison de 0 à 90°, angle de position de 0 à 360°", (name) => {
     const look = BLACK_HOLE_LOOKS[name];
@@ -82,6 +117,7 @@ describe("BLACK_HOLE_LOOKS", () => {
     expect(look.inclinationDeg).toBeLessThanOrEqual(90);
     expect(look.positionAngleDeg).toBeGreaterThanOrEqual(0);
     expect(look.positionAngleDeg).toBeLessThan(360);
+    expect(look.orbitPeriodS).toBeGreaterThan(0);
   });
 
   it.each(disks)("devrait tenir le disque de %s hors de la sphère des photons, opacité dans ]0 ; 1]", (_name, disk) => {
@@ -90,23 +126,101 @@ describe("BLACK_HOLE_LOOKS", () => {
     expect(disk.opacity).toBeGreaterThan(0);
     expect(disk.opacity).toBeLessThanOrEqual(1);
     expect(disk.gain).toBeGreaterThan(0);
+    expect(disk.temperatureK).toBeGreaterThan(1000);
+    expect(disk.turbulence).toBeGreaterThanOrEqual(0);
+    expect(disk.turbulence).toBeLessThanOrEqual(1);
   });
 
-  it("devrait donner à la binaire X un disque mince, qui commence à la dernière orbite stable", () => {
-    expect(BLACK_HOLE_LOOKS["x-ray-binary"].disk?.innerRs).toBe(ISCO_RS);
-    expect(BLACK_HOLE_LOOKS["x-ray-binary"].disk?.opacity).toBe(1);
+  it.each(flows)("devrait tenir le gaz chaud de %s hors de la sphère des photons, réglages dans leurs bornes", (_name, flow) => {
+    expect(flow.innerRs).toBeGreaterThanOrEqual(PHOTON_SPHERE_RS);
+    expect(flow.outerRs).toBeGreaterThan(flow.innerRs);
+    expect(flow.gain).toBeGreaterThan(0);
+    expect(flow.thickness).toBeGreaterThan(0);
+    for (const share of [flow.rotation, flow.flicker]) {
+      expect(share).toBeGreaterThanOrEqual(0);
+      expect(share).toBeLessThanOrEqual(1);
+    }
   });
 
-  it("devrait réserver le jet à l'anneau de M87*, vu à 17° de son axe, contre-jet plus faible que le jet", () => {
+  it("devrait donner à la binaire X un disque mince et opaque, très chaud, qui commence à la dernière orbite stable", () => {
+    const { disk, flow } = BLACK_HOLE_LOOKS["x-ray-binary"];
+    expect(disk?.innerRs).toBe(ISCO_RS);
+    expect(disk?.opacity).toBe(1);
+    // Bleu-blanc : au-delà de 25 000 K, la couleur approche la limite d'un corps noir très chaud.
+    expect(disk?.temperatureK).toBeGreaterThanOrEqual(25_000);
+    expect(flow).toBeNull();
+  });
+
+  it("devrait réserver le jet à l'anneau de M87*, contre-jet plus faible que le jet", () => {
     expect(LOOK_NAMES.filter((name) => BLACK_HOLE_LOOKS[name].jet !== null)).toEqual(["jet-ring"]);
-    expect(BLACK_HOLE_LOOKS["jet-ring"].inclinationDeg).toBe(17);
     expect(BLACK_HOLE_LOOKS["jet-ring"].jet?.counterRatio).toBeLessThan(1);
+    // Jet vers l'ouest-nord-ouest (≈ 288°), vers la droite de l'image.
+    expect(BLACK_HOLE_LOOKS["jet-ring"].positionAngleDeg).toBe(288);
   });
 
-  it("ne devrait donner au trou noir dormant ni disque ni jet : l'ombre sur la lumière de sa galaxie", () => {
-    expect(BLACK_HOLE_LOOKS.dormant.disk).toBeNull();
-    expect(BLACK_HOLE_LOOKS.dormant.jet).toBeNull();
-    expect(BLACK_HOLE_LOOKS.dormant.glow?.reachRs).toBeGreaterThan(SHADOW_RADIUS_RS);
+  it("devrait faire tourner les anneaux de M87* et de Sagittarius A* dans le sens horaire, comme observé", () => {
+    expect(BLACK_HOLE_LOOKS["jet-ring"].clockwise).toBe(true);
+    expect(BLACK_HOLE_LOOKS["faint-ring"].clockwise).toBe(true);
+  });
+
+  it("ne devrait donner à Sagittarius A* qu'un gaz ténu, vu plutôt de face : ni disque éclatant ni jet", () => {
+    const look = BLACK_HOLE_LOOKS["faint-ring"];
+    expect(look.disk).toBeNull();
+    expect(look.jet).toBeNull();
+    expect(look.flow).not.toBeNull();
+    expect(look.inclinationDeg).toBeLessThanOrEqual(30);
+  });
+
+  it("ne devrait donner au trou noir dormant ni disque, ni gaz, ni jet : l'ombre noire, un anneau très fin, une lueur", () => {
+    const look = BLACK_HOLE_LOOKS.dormant;
+    expect(look.disk).toBeNull();
+    expect(look.flow).toBeNull();
+    expect(look.jet).toBeNull();
+    expect(look.glow?.reachRs).toBeGreaterThan(SHADOW_RADIUS_RS);
+    // Anneau de photons : la lumière de la galaxie serrée contre l'ombre, sur quelques centièmes de r_s.
+    expect(look.glow?.ring).toBeGreaterThan(1);
+    expect(look.glow?.ringWidthRs).toBeLessThanOrEqual(0.1);
+  });
+});
+
+describe("diskAxis", () => {
+  const close = (axis: Vector3, x: number, y: number, z: number) => {
+    expect(axis.x).toBeCloseTo(x, 12);
+    expect(axis.y).toBeCloseTo(y, 12);
+    expect(axis.z).toBeCloseTo(z, 12);
+  };
+
+  it("devrait pointer vers la caméra vu de face, vers le haut par la tranche, vers la gauche à 90° de position", () => {
+    close(diskAxis(0, 0), 0, 0, 1);
+    close(diskAxis(90, 0), 0, 1, 0);
+    close(diskAxis(90, 90), -1, 0, 0);
+  });
+
+  it("devrait pencher l'axe de M87* vers la droite et vers la caméra (288°, 17°)", () => {
+    const axis = diskAxis(17, 288);
+    expect(axis.x).toBeGreaterThan(0);
+    expect(axis.z).toBeCloseTo(Math.cos((17 * Math.PI) / 180), 12);
+    expect(axis.length()).toBeCloseTo(1, 12);
+  });
+});
+
+describe("rayDefines", () => {
+  it.each([
+    [false, DESKTOP_RAY_STEPS],
+    [true, LITE_RAY_STEPS],
+  ] as const)("devrait tirer les pas du shader du modèle TypeScript (allégé : %s)", (lite, steps) => {
+    const defines = rayDefines(lite);
+    expect(defines.BH_STEPS).toBe(String(steps.maxSteps));
+    expect(defines.BH_MAX_CROSSINGS).toBe(String(steps.maxCrossings));
+    expect(Number(defines.BH_STEP_FACTOR)).toBe(steps.stepFactor);
+    expect(Number(defines.BH_MIN_STEP)).toBe(steps.minStep);
+    expect(Number(defines.BH_MAX_STEP)).toBe(steps.maxStep);
+    expect(Number(defines.BH_FAR_STEP_FACTOR)).toBe(steps.farStepFactor);
+    // Flottants GLSL : toujours un point décimal.
+    for (const key of ["BH_STEP_FACTOR", "BH_MIN_STEP", "BH_MAX_STEP", "BH_FAR_STEP_FACTOR"]) {
+      expect(defines[key]).toMatch(/\./);
+    }
+    expect(defines.BH_LITE).toBe(lite ? "" : undefined);
   });
 });
 
@@ -171,14 +285,29 @@ describe("createBlackHoleMesh", () => {
     expect(fragmentShader.split(STARFIELD_GLSL)).toHaveLength(2);
     expect(fragmentShader).toContain("precision highp float;");
     expect(fragmentShader).toContain("#include <tonemapping_fragment>");
-    expect(fragmentShader).toMatch(/gl_FragColor = vec4\(\w+, uOpacity\);/);
+    expect(fragmentShader).toMatch(/gl_FragColor = vec4\(\w+, uOpacity \* \w+\);/);
   });
 
   it("devrait copier les couleurs de l'aspect : un réglage du maillage ne touche pas l'aspect partagé", () => {
-    const innerColor = new Color(0.5, 0.6, 0.7);
-    const { mesh } = createBlackHoleMesh(options({ look: { ...BARE, disk: { ...DISK, innerColor } }, extentRs: 10 }));
+    const color = new Color(0.5, 0.6, 0.7);
+    const look = { ...BARE, jet: { ...JET, color }, glow: { ...GLOW, color } };
+    const { mesh } = createBlackHoleMesh(options({ look, extentRs: 10 }));
     // Aucun uniforme ne garde l'objet couleur de l'aspect : il est copié.
-    expect(Object.values(mesh.material.uniforms).map((uniform) => uniform.value)).not.toContain(innerColor);
+    expect(Object.values(mesh.material.uniforms).map((uniform) => uniform.value)).not.toContain(color);
+    expect((mesh.material.uniforms.uJetColor.value as Color).equals(color)).toBe(true);
+  });
+
+  it("devrait déclarer dans ses shaders chaque uniforme qu'il fournit, et fournir chaque uniforme déclaré", () => {
+    const { material } = createBlackHoleMesh(options()).mesh;
+    const source = `${material.vertexShader}\n${material.fragmentShader}`;
+    const declared = new Set([...source.matchAll(/uniform \w+ (\w+)/g)].map((match) => match[1]));
+    expect([...declared].sort()).toEqual(Object.keys(material.uniforms).sort());
+  });
+
+  it("devrait fournir chaque define qu'emploie le fragment", () => {
+    const { material } = createBlackHoleMesh(options({ lite: true })).mesh;
+    const used = new Set([...material.fragmentShader.matchAll(/\bBH_[A-Z_]+\b/g)].map((match) => match[0]));
+    for (const name of used) expect(Object.keys(material.defines)).toContain(name);
   });
 
   it.each([0, -2, Number.NaN, Number.POSITIVE_INFINITY])(
@@ -194,6 +323,105 @@ describe("createBlackHoleMesh", () => {
       expect(() => createBlackHoleMesh(options({ look: BLACK_HOLE_LOOKS["jet-ring"], extentRs }))).toThrow(RangeError);
     },
   );
+});
+
+describe("BlackHoleMesh.setLook", () => {
+  it("devrait écrire l'aspect dans les uniformes : gains nuls pour ce qui manque", () => {
+    const hole = createBlackHoleMesh(options({ look: BLACK_HOLE_LOOKS["x-ray-binary"], extentRs: 10 }));
+    const { uniforms } = hole.mesh.material;
+    expect(uniforms.uDiskGain.value).toBe(BLACK_HOLE_LOOKS["x-ray-binary"].disk?.gain);
+    expect(uniforms.uFlowGain.value).toBe(0);
+    expect(uniforms.uJetGain.value).toBe(0);
+    expect(uniforms.uGlowGain.value).toBe(0);
+    hole.setLook({ ...BARE, glow: GLOW });
+    expect(uniforms.uDiskGain.value).toBe(0);
+    expect(uniforms.uGlowGain.value).toBe(GLOW.gain);
+  });
+
+  it("devrait poser l'axe du disque, le moment cinétique du gaz et une base directe de son plan", () => {
+    const hole = createBlackHoleMesh(options({ look: { ...BARE, inclinationDeg: 30, positionAngleDeg: 40, clockwise: true } }));
+    const { uAxis, uSpin, uDiskE1, uDiskE2 } = hole.mesh.material.uniforms;
+    const axis = uAxis.value as Vector3;
+    const spin = uSpin.value as Vector3;
+    const e1 = uDiskE1.value as Vector3;
+    const e2 = uDiskE2.value as Vector3;
+    expect(axis.distanceTo(diskAxis(30, 40))).toBeLessThan(1e-12);
+    // Sens horaire vu de la caméra : moment cinétique opposé à l'axe tourné vers elle.
+    expect(spin.dot(axis)).toBeCloseTo(-1, 12);
+    expect(e1.dot(spin)).toBeCloseTo(0, 12);
+    expect(e2.dot(spin)).toBeCloseTo(0, 12);
+    expect(e1.clone().cross(e2).distanceTo(spin)).toBeLessThan(1e-12);
+  });
+
+  it("devrait convertir l'opacité en épaisseur optique et la période en vitesse angulaire", () => {
+    const hole = createBlackHoleMesh(options({ look: { ...BARE, orbitPeriodS: 8, disk: { ...DISK, opacity: 0.5 } } }));
+    const { uniforms } = hole.mesh.material;
+    expect(uniforms.uDiskDepth.value).toBeCloseTo(Math.LN2, 12);
+    expect(uniforms.uOrbitRate.value).toBeCloseTo((2 * Math.PI) / 8, 12);
+  });
+
+  it("devrait refuser un aspect qui déborde de l'encombrement du maillage", () => {
+    const hole = createBlackHoleMesh(options({ look: BLACK_HOLE_LOOKS["faint-ring"], extentRs: 3.2 }));
+    expect(() => hole.setLook(BLACK_HOLE_LOOKS["jet-ring"])).toThrow(RangeError);
+  });
+});
+
+describe("BLACK_HOLE_FRAGMENT", () => {
+  /** Corps de la boucle du tracé : de son ouverture à l'accolade qui la ferme. */
+  function marchLoop(): string {
+    const start = BLACK_HOLE_FRAGMENT.indexOf("for (int i = 0; i < BH_STEPS; i++)");
+    expect(start).toBeGreaterThan(0);
+    let depth = 0;
+    for (let i = BLACK_HOLE_FRAGMENT.indexOf("{", start); i < BLACK_HOLE_FRAGMENT.length; i++) {
+      if (BLACK_HOLE_FRAGMENT[i] === "{") depth++;
+      if (BLACK_HOLE_FRAGMENT[i] === "}" && --depth === 0) return BLACK_HOLE_FRAGMENT.slice(start, i + 1);
+    }
+    throw new Error("boucle non fermée");
+  }
+
+  it("devrait tracer dans une boucle bornée par un define, sans dérivée ni discard", () => {
+    expect(marchLoop()).not.toMatch(/\b(fwidth|dFdx|dFdy|discard)\b/);
+    // Aucun discard nulle part : hors du cercle, alpha nul, et les dérivées restent définies pour les voisins.
+    expect(BLACK_HOLE_FRAGMENT).not.toMatch(/\bdiscard\b/);
+  });
+
+  it("devrait prendre ses dérivées dans main seulement, hors de toute boucle et de toute branche du tracé", () => {
+    const main = BLACK_HOLE_FRAGMENT.slice(BLACK_HOLE_FRAGMENT.indexOf("void main()"));
+    const before = BLACK_HOLE_FRAGMENT.slice(0, BLACK_HOLE_FRAGMENT.indexOf("void main()"));
+    expect(before).not.toMatch(/\b(fwidth|dFdx|dFdy)\b/);
+    expect(main).toMatch(/\bdFdx\(dir\)/);
+    expect(main).toMatch(/clamp\(length\(fwidth\(\w+\)\), uPixelAngle, 4\.0 \* uPixelAngle\)/);
+  });
+
+  it("devrait inclure une fois le ciel et le bruit, et raccorder son ciel à la lentille faible du fond", () => {
+    expect(occurrences(BLACK_HOLE_FRAGMENT, STARFIELD_GLSL)).toBe(1);
+    expect(occurrences(BLACK_HOLE_FRAGMENT, NOISE_GLSL)).toBe(1);
+    expect(BLACK_HOLE_FRAGMENT).toContain("lensSky(dir, vec3(0.0))");
+    // Déviation tracée ajoutée à celles des autres trous noirs, comme le fond les somme.
+    expect(BLACK_HOLE_FRAGMENT).toContain("lensVector(dir, uCamLocal)");
+    expect(BLACK_HOLE_FRAGMENT).toContain("rotateBy(dir, turnVector(dir, skies[0]) + others)");
+    // Raccord sur le dernier dixième du rectangle, selon le paramètre d'impact de la droite du pixel.
+    expect(BLACK_HOLE_FRAGMENT).toContain("smoothstep(0.9 * uQuadRs, uQuadRs, dist * sin(angle))");
+  });
+
+  it("devrait équilibrer accolades et parenthèses", () => {
+    expect(occurrences(BLACK_HOLE_FRAGMENT, "{")).toBe(occurrences(BLACK_HOLE_FRAGMENT, "}"));
+    expect(occurrences(BLACK_HOLE_FRAGMENT, "(")).toBe(occurrences(BLACK_HOLE_FRAGMENT, ")"));
+  });
+
+  it("ne devrait nommer aucune variable d'un mot réservé de GLSL ES 3.00 ni d'une fonction du préambule de three", () => {
+    const reserved =
+      /\b(?:float|int|uint|bool|vec[234]|ivec[234]|uvec[234]|mat[234])\s+(sample|filter|input|output|common|flat|smooth|active|partition|patch|half|fixed|long|short|double|this|union|enum|class|namespace|using|cast|sizeof|template|typedef|static|public|extern|external|interface|inline|noinline|volatile|goto|asm|superp|resource|subroutine|unsigned|luminance|saturate|toneMapping|linearToOutputTexel)\b/;
+    expect(BLACK_HOLE_FRAGMENT).not.toMatch(reserved);
+  });
+
+  it("devrait suivre le modèle TypeScript : départ, pas et décalages spectraux aux mêmes formules", () => {
+    expect(BLACK_HOLE_FRAGMENT).toContain("START_IMPACT_RATIO * impact");
+    expect(BLACK_HOLE_FRAGMENT).toContain("inversesqrt(max(1.0 - 1.0 / dist, 1e-6))");
+    expect(BLACK_HOLE_FRAGMENT).toContain("max(BH_MIN_STEP, BH_FAR_STEP_FACTOR * r)");
+    expect(BLACK_HOLE_FRAGMENT).toContain("clamp(BH_STEP_FACTOR * r, BH_MIN_STEP, BH_MAX_STEP)");
+    expect(BLACK_HOLE_FRAGMENT).toContain("-1.5 * h2");
+  });
 });
 
 describe("BlackHoleMesh.update", () => {

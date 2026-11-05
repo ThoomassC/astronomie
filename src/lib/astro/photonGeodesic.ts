@@ -280,8 +280,8 @@ export function flowRedshift(position: Vec3, velocity: Vec3, axis: Vec3, rotatio
 
 /** Rayon du maximum de température d'un disque mince, en rayons intérieurs : 49/36. */
 const DISK_PEAK_RATIO = 49 / 36;
-/** x^(−3/4) (1 − x^(−1/2))^(1/4) en x = 49/36. */
-const DISK_PEAK_SHAPE = DISK_PEAK_RATIO ** -0.75 * (1 - 1 / Math.sqrt(DISK_PEAK_RATIO)) ** 0.25;
+/** x^(−3/4) (1 − x^(−1/2))^(1/4) en x = 49/36 : la normalisation de diskTemperatureRatio, reprise par le GLSL. */
+export const DISK_PEAK_SHAPE = DISK_PEAK_RATIO ** -0.75 * (1 - 1 / Math.sqrt(DISK_PEAK_RATIO)) ** 0.25;
 
 /**
  * Température d'un disque mince rapportée à son maximum : T ∝ r^(−3/4) (1 − √(r_in/r))^(1/4) (Shakura et Sunyaev,
