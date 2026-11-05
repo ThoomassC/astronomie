@@ -78,15 +78,17 @@ void main() {
  *   s'efface au bord extérieur ; turbulence en spirales logarithmiques, advectée à la vitesse képlérienne par deux
  *   couches fondues l'une dans l'autre (l'enroulement reste borné, rien ne se répète), détail effacé sous deux pixels.
  * - Gaz chaud : émission j g³ dλ le long des pas (paramètre affine), couleur de corps noir au g moyen, sursauts lents.
- * - Jet : cône d'émission le long de l'axe, contre-jet affaibli. Lueur et son anneau de photons : fonction de b, hors
- *   de l'ombre seulement.
+ * - Jet : faisceau fin le long de l'axe, intégré analytiquement le long de la visée (nœuds qui filent, évasement léger,
+ *   contre-jet affaibli et caché derrière l'ombre) ; il peut déborder du cœur tracé, dans un rectangle agrandi (uQuadRs)
+ *   où il s'ajoute au fond. Lueur et son anneau de photons : fonction de b, hors de l'ombre seulement.
  * - Bord de l'ombre et anneau de photons : cercle exact de Synge. Dans une couronne fine autour de lui (d'un demi-pixel
  *   dedans à RING_BAND pixels dehors), le pixel trace EDGE_SAMPLES rayons répartis sur sa largeur radiale ; la part de
  *   chaque tranche qui tombe dans l'ombre prend l'émission d'avant-plan de son rayon (couverture exacte). Bord net,
  *   anneau de photons fin et continu, sans scintillement ; ailleurs, un seul rayon par pixel.
  * - Ciel : déviation tracée, ajoutée à celles des autres trous noirs comme dans le fond (approximation de Born) ; au
  *   bord du rectangle, raccord à la lentille faible du fond, sans couture. Empreinte des étoiles hors de toute boucle.
- * - Ni discard ni dérivée dans le tracé ; hors du cercle apparent de la sphère, alpha nul.
+ * - Repère de l'horizon : cercle de laiton en pointillés, 1 px CSS, à 35 % (uHorizonMark le dose).
+ * - Ni discard ni dérivée dans le tracé ; hors du cercle apparent du cœur, alpha nul (sortie prémultipliée).
  */
 export const BLACK_HOLE_FRAGMENT = /* glsl */ `
 precision highp float;
@@ -95,7 +97,7 @@ ${NOISE_GLSL}
 uniform float uTime;
 uniform vec3 uCamLocal;
 uniform mat3 uViewToWorld;
-uniform float uQuadRs;
+uniform float uCoreRs;
 uniform float uOpacity;
 uniform float uHorizonMark;
 uniform vec3 uHorizonColor;
@@ -116,9 +118,11 @@ uniform float uFlowFlatten;
 uniform float uFlowRotation;
 uniform float uFlowFlicker;
 uniform float uJetGain;
+uniform float uJetLength;
+uniform float uJetWidth;
 uniform float uJetTan;
 uniform float uJetCounter;
-uniform float uJetLength;
+uniform float uJetKnots;
 uniform vec3 uJetColor;
 uniform float uGlowGain;
 uniform float uGlowScale;
@@ -162,12 +166,13 @@ const int TURB_OCTAVES = 2;
 #else
 const int TURB_OCTAVES = 3;
 #endif
-// Jet : pied (r_s), montée de l'éclat le long de l'axe (il sort de l'anneau au lieu de voiler l'ombre), largeur au
-// pied.
+// Jet : pied et montée de l'éclat le long de l'axe, en r_s.
 const float JET_BASE = 1.5;
-const float JET_RISE = 2.5;
-const float JET_WIDTH = 0.3;
+const float JET_RISE = 5.0;
 const float FLARE_SHARPNESS = 5.0;
+// Repère de l'horizon : opacité, période des pointillés en px CSS (moitié trait, moitié vide).
+const float HORIZON_ALPHA = 0.35;
+const float HORIZON_DASH = 6.0;
 
 // Couleur d'un corps noir, linéaire, de luminance 1 (photonGeodesic.ts, blackbodyColor) : lieu de Planck de Krystek en
 // uv CIE 1960, raccordé à la limite de Rayleigh-Jeans, puis XYZ → sRGB linéaire (D65).
@@ -249,7 +254,7 @@ float flowFlicker(vec3 center, float radius) {
   if (uFlowFlicker <= 0.0) return 1.0;
   vec2 plane = vec2(dot(center, uDiskE1), dot(center, uDiskE2));
   float localized = clamp(length(plane) / max(radius, 1e-3), 0.0, 1.0);
-  float phi = atan(plane.y, plane.x);
+  float phi = atan(plane.y, plane.x + 1e-9);
   float spin = uOrbitRate * uFlowRotation * pow(ISCO / max(radius, 1.5), 1.5);
   float flares = 0.0;
   for (int k = 0; k < 3; k++) {
@@ -275,7 +280,7 @@ float marchRay(vec3 rayDir, float pixelSize, out vec3 light, out vec3 inner, out
   vec3 vel = radial * along + (rayDir - radial * along) * inversesqrt(max(1.0 - 1.0 / dist, 1e-6));
   vec3 momentum = cross(uCamLocal, vel);
   impact = length(momentum);
-  float escapeRs = max(uQuadRs, START_IMPACT_RATIO * impact);
+  float escapeRs = max(uCoreRs, START_IMPACT_RATIO * impact);
   vec3 pos = uCamLocal;
   if (dist > escapeRs) {
     float speed = sqrt(1.0 + impact * impact / (escapeRs * escapeRs * escapeRs));
@@ -296,15 +301,13 @@ float marchRay(vec3 rayDir, float pixelSize, out vec3 light, out vec3 inner, out
   float flowShift = 0.0;
   float flowRadius = 0.0;
   vec3 flowCenter = vec3(0.0);
-  float jetSum = 0.0;
   bool frontTaken = false;
   vec3 frontLight = vec3(0.0);
   float frontFlow = 0.0;
   float frontShift = 0.0;
-  float frontJet = 0.0;
   float escaped = 0.0;
   for (int i = 0; i < BH_STEPS; i++) {
-    float dl = r > uQuadRs ? max(BH_MIN_STEP, BH_FAR_STEP_FACTOR * r) : clamp(BH_STEP_FACTOR * r, BH_MIN_STEP, BH_MAX_STEP);
+    float dl = r > uCoreRs ? max(BH_MIN_STEP, BH_FAR_STEP_FACTOR * r) : clamp(BH_STEP_FACTOR * r, BH_MIN_STEP, BH_MAX_STEP);
     vec3 prev = pos;
     vel += acc * (0.5 * dl);
     pos += vel * dl;
@@ -324,18 +327,6 @@ float marchRay(vec3 rayDir, float pixelSize, out vec3 light, out vec3 inner, out
       flowShift += emitted * g;
       flowRadius += emitted * rm;
       flowCenter += emitted * mid;
-    }
-    // Jet : cône le long de l'axe, plein du côté qui s'approche, contre-jet affaibli ; il s'élargit et s'estompe.
-    if (uJetGain > 0.0) {
-      float height = dot(mid, uAxis);
-      float reach = abs(height);
-      if (reach > JET_BASE && reach < uJetLength) {
-        float width = JET_WIDTH + reach * uJetTan;
-        float off = max(rm * rm - height * height, 0.0);
-        float fade = smoothstep(JET_BASE, JET_BASE + JET_RISE, reach) * exp(-reach / (0.4 * uJetLength))
-          * (1.0 - smoothstep(0.6 * uJetLength, uJetLength, reach));
-        jetSum += (height > 0.0 ? 1.0 : uJetCounter) * fade * exp(-off / (width * width)) / (width * width) * dl * transmit;
-      }
     }
     // Disque mince : traversée du plan, point interpolé entre deux pas (photonGeodesic.ts, diskRedshift).
     float z = dot(pos, uSpin);
@@ -363,7 +354,6 @@ float marchRay(vec3 rayDir, float pixelSize, out vec3 light, out vec3 inner, out
       frontLight = light;
       frontFlow = flowSum;
       frontShift = flowShift;
-      frontJet = jetSum;
     }
     if (r < 1.0 || transmit < 0.004) break;
     if (r > escapeRs && dot(pos, vel) > 0.0) {
@@ -376,14 +366,44 @@ float marchRay(vec3 rayDir, float pixelSize, out vec3 light, out vec3 inner, out
     frontLight = light;
     frontFlow = flowSum;
     frontShift = flowShift;
-    frontJet = jetSum;
   }
   float flicker = flowSum > 0.0 ? flowFlicker(flowCenter / flowSum, flowRadius / flowSum) : 1.0;
   if (flowSum > 0.0) light += blackbody(uFlowTemperature * flowShift / flowSum) * (uFlowGain * flowSum * flicker);
   if (frontFlow > 0.0) frontLight += blackbody(uFlowTemperature * frontShift / frontFlow) * (uFlowGain * frontFlow * flicker);
-  light += uJetColor * (uJetGain * jetSum);
-  inner = frontLight + uJetColor * (uJetGain * frontJet);
+  inner = frontLight;
   return escaped;
+}
+
+// Nœuds du jet : deux trains de bosses de pas incommensurables, qui filent vers l'extérieur avec le temps affiché.
+float jetKnots(float reach) {
+  float a = pow(0.5 + 0.5 * cos(6.2831853 * (reach / 4.7 - 0.21 * uTime)), 10.0);
+  float b = pow(0.5 + 0.5 * cos(6.2831853 * (reach / 7.9 - 0.13 * uTime) + 1.7), 14.0);
+  return a + 0.7 * b;
+}
+
+// Jet : faisceau fin et collimaté le long de l'axe, intégré le long de la visée droite depuis la caméra (sa lumière,
+// devant le trou noir, n'est guère déviée). Gaussienne de largeur w = uJetWidth + |s| uJetTan autour de l'axe, au point
+// de la visée le plus proche de lui : ∫ e^(−ρ²/w²) / w² = √π / (w sin θ) e^(−ρmin²/w²). Éclat qui monte au pied,
+// s'estompe et s'éteint au bout ; nœuds brillants ; contre-jet affaibli, caché derrière l'ombre.
+vec3 jetLight(vec3 d) {
+  if (uJetGain <= 0.0) return vec3(0.0);
+  vec3 c = uCamLocal;
+  float da = dot(d, uAxis);
+  float sin2 = max(1.0 - da * da, 0.01);
+  float cd = dot(c, d);
+  float ca = dot(c, uAxis);
+  float t = (da * ca - cd) / sin2;
+  float s = ca + t * da;
+  float reach = abs(s);
+  if (t <= 0.0 || reach < JET_BASE || reach > uJetLength) return vec3(0.0);
+  vec3 gap = c + t * d - s * uAxis;
+  float width = uJetWidth + reach * uJetTan;
+  float fade = smoothstep(JET_BASE, JET_BASE + JET_RISE, reach) * exp(-reach / (0.45 * uJetLength))
+    * (1.0 - smoothstep(0.75 * uJetLength, uJetLength, reach));
+  float side = s > 0.0 ? 1.0 : uJetCounter;
+  if (length(cross(c, d)) < SHADOW_RS && t > -cd) side = 0.0;
+  float column = 1.7724539 / (width * sqrt(sin2)) * exp(-dot(gap, gap) / (width * width));
+  return uJetColor * (uJetGain * side * fade * (1.0 + uJetKnots * jetKnots(reach)) * column);
 }
 
 // Rotation qui mène from à to (unitaires), en vecteur perpendiculaire à from de longueur l'angle : la déviation tracée,
@@ -410,7 +430,8 @@ void main() {
   vec3 toCenter = -uCamLocal / dist;
   // Angle du pixel au centre, précis aux petits angles (un trou noir de quelques pixels).
   float angle = atan(length(cross(dir, toCenter)), dot(dir, toCenter));
-  float covered = dist > uQuadRs && angle > asin(uQuadRs / dist) ? 0.0 : 1.0;
+  // Cœur tracé : le cône de la sphère uCoreRs. Au-delà, dans un rectangle agrandi pour un jet, le jet seul.
+  float covered = dist > uCoreRs && angle > asin(uCoreRs / dist) ? 0.0 : 1.0;
   // Bord exact de l'ombre (Synge), en pixels : positif au-dehors.
   float shadowAngle = asin(min(1.0, SHADOW_RS * sqrt(1.0 - 1.0 / dist) / dist));
   float edge = (angle - shadowAngle) / pixelSize;
@@ -451,24 +472,43 @@ void main() {
     }
   }
   // Ciel : déviation tracée plus celles des autres trous noirs (même somme que le fond, où la sienne est en champ
-  // faible) ; au bord, celui du fond, sans couture. L'empreinte des étoiles se mesure sur le premier rayon, hors de
-  // toute branche.
-  vec3 background = lensSky(dir, vec3(0.0));
-  vec3 others = lensVector(dir, uCamLocal);
-  float blend = smoothstep(0.9 * uQuadRs, uQuadRs, dist * sin(angle));
+  // faible) ; au bord, celui du fond, sans couture. Empreinte des étoiles : racine de l'aire que couvre le pixel dans le
+  // ciel source, mesurée sur le premier rayon hors de toute branche ; un arc étiré par la lentille garde l'éclat de son
+  // étoile, une image écrasée près de l'ombre pâlit.
+  vec3 background = covered > 0.0 ? lensSky(dir, vec3(0.0)) : dir;
+  vec3 others = covered > 0.0 ? lensVector(dir, uCamLocal) : vec3(0.0);
+  float blend = smoothstep(0.9 * uCoreRs, uCoreRs, dist * sin(angle));
   vec3 sky = normalize(mix(rotateBy(dir, turnVector(dir, skies[0]) + others), background, blend));
-  float footprint = clamp(length(fwidth(sky)), uPixelAngle, 4.0 * uPixelAngle);
-  color += skyShare[0] * starfield(sky, footprint);
-  for (int k = 1; k < EDGE_SAMPLES; k++) {
-    if (skyShare[k] > 0.0) {
-      color += skyShare[k] * starfield(normalize(mix(rotateBy(dir, turnVector(dir, skies[k]) + others), background, blend)), footprint);
+  float footprint = clamp(sqrt(length(cross(dFdx(sky), dFdy(sky)))), uPixelAngle, 4.0 * uPixelAngle);
+  if (covered > 0.0) {
+    color += skyShare[0] * starfield(sky, footprint);
+    for (int k = 1; k < EDGE_SAMPLES; k++) {
+      if (skyShare[k] > 0.0) {
+        color += skyShare[k] * starfield(normalize(mix(rotateBy(dir, turnVector(dir, skies[k]) + others), background, blend)), footprint);
+      }
     }
+    // Repère de l'horizon (r_s), non dévié : cercle fin de laiton en pointillés, 1 px CSS, comme un trait d'instrument.
+    vec3 across = cross(toCenter, uViewToWorld[1]);
+    vec3 imageRight = across / max(length(across), 1e-6);
+    vec3 imageUp = cross(imageRight, toCenter);
+    float horizon = asin(min(1.0 / dist, 1.0));
+    float dashes = max(floor(6.2831853 * horizon / (HORIZON_DASH * uPixelAngle) + 0.5), 8.0);
+    float around = atan(dot(outward, imageUp), dot(outward, imageRight) + 1e-9) / 6.2831853;
+    float phase = fract(around * dashes + 0.25) - 0.5;
+    float onDash = clamp((0.25 - abs(phase)) * 6.2831853 * horizon / (dashes * pixelSize) + 0.5, 0.0, 1.0);
+    float onLine = clamp((0.5 * uPixelAngle - abs(angle - horizon)) / pixelSize + 0.5, 0.0, 1.0);
+    color = mix(color, uHorizonColor, HORIZON_ALPHA * onLine * onDash * uHorizonMark);
   }
-  // Cercle de laiton de l'horizon (r_s), non dévié, 1,5 px CSS.
-  float horizon = asin(min(1.0 / dist, 1.0));
-  float mark = 1.0 - smoothstep(0.75 * uPixelAngle, 1.75 * uPixelAngle, abs(angle - horizon));
-  color = mix(color, uHorizonColor, mark * uHorizonMark);
   gl_FragColor = vec4(color, uOpacity * covered);
   ${OUTPUT}
+  // Alpha prémultiplié (matériau premultipliedAlpha) : le cœur couvre le fond selon son opacité.
+  gl_FragColor.rgb *= gl_FragColor.a;
+  // Jet, devant tout le reste : lumière ajoutée à l'écran, tone mapping à part, de la même façon dans le cœur et
+  // au-delà (alpha nul), pour qu'il traverse le bord du cœur sans couture.
+  vec4 jet = vec4(jetLight(dir) * uOpacity, 1.0);
+  #ifdef TONE_MAPPING
+  jet.rgb = toneMapping(jet.rgb);
+  #endif
+  gl_FragColor.rgb += linearToOutputTexel(jet).rgb;
 }
 `;

@@ -160,8 +160,9 @@ describe("createStarfieldBackground", () => {
   it("devrait dévier le ciel par toutes les lentilles, puis mesurer l'étirement des étoiles hors de toute boucle", () => {
     const { fragmentShader } = createStarfieldBackground().mesh.material;
     expect(fragmentShader).toContain("lensSky(dir, vec3(0.0))");
-    expect(fragmentShader).toMatch(/clamp\(length\(fwidth\(\w+\)\), uPixelAngle, 4\.0 \* uPixelAngle\)/);
-    expect(fragmentShader.indexOf("fwidth")).toBeGreaterThan(fragmentShader.indexOf("void main"));
+    // Racine de l'aire du pixel dans le ciel source : un arc étiré garde l'éclat de son étoile.
+    expect(fragmentShader).toContain("clamp(sqrt(length(cross(dFdx(sky), dFdy(sky)))), uPixelAngle, 4.0 * uPixelAngle)");
+    expect(fragmentShader.indexOf("dFdx")).toBeGreaterThan(fragmentShader.indexOf("void main"));
   });
 });
 
