@@ -80,7 +80,8 @@ export function ReleasesPage({ locale }: { locale: Locale }) {
           <p id={TOC_TITLE_ID} className={styles.tocTitle}>
             {toc}
           </p>
-          <ul className={styles.tocList}>
+          {/* `role="list"` : Safari retire le rôle de liste aux listes sans puces. */}
+          <ul role="list" className={styles.tocList}>
             {releases.map((release) => {
               const date = releaseDate(release.version);
               return (
