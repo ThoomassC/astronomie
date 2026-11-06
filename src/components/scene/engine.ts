@@ -151,7 +151,7 @@ export interface SolarSceneOptions {
    * la feuille de style mesure une boîte vide).
    */
   obstacles: readonly Element[];
-  /** Plaques des escales : sur téléphone, l'astre est cadré dans la bande libre au-dessus de la sienne. */
+  /** Plaques des escales : sur téléphone, l'astre est cadré dans la bande libre sous sa carte fixée en haut. */
   plates: ReadonlyMap<StopKey, HTMLElement>;
   /** Barre du haut : la bande libre commence sous elle. */
   bar: Element | null;
@@ -656,7 +656,7 @@ function setupScene(
   // ---------- État ----------
   const view = { width: 1, height: 1 };
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  /** Mise en page compacte (téléphone, tablette en portrait) : plaques collées en bas, noms des astres au-dessus d'eux. */
+  /** Mise en page compacte (téléphone, tablette en portrait) : carte fixée en haut, noms des astres au-dessus d'eux. */
   const compactLayout = window.matchMedia(COMPACT_LAYOUT_QUERY);
   /** Bandes libres (téléphone) et zone libre (grand écran) autour de la scène, mesurées dans la page. */
   const screenLayout = createScreenLayout({ bar, rail, note, plates }, compactLayout);
@@ -1208,7 +1208,7 @@ function setupScene(
   }
 
   /**
-   * Espace libre où se cadre l'escale `stop`, en px CSS : la bande au-dessus de sa plaque (téléphone), sinon la zone
+   * Espace libre où se cadre l'escale `stop`, en px CSS : la bande sous sa carte (téléphone), sinon la zone
    * entre les plaques et la règle (grand écran), sinon tout l'écran.
    */
   function freeBox(stop: StopKey): ScreenBox {
@@ -1636,6 +1636,13 @@ function setupScene(
     occupied.push(...obstacleBoxes);
     points.length = 0;
     /*
+     * Mise en page compacte : la carte de l'escale (ou le squelette du passage), fixée en haut sous la barre, couvre
+     * l'écran jusqu'au haut de la bande libre. Aucune étiquette ne s'y pose, ciel profond compris ; elle n'est mesurée
+     * que là où l'escale affichée a une carte (ni à l'accueil ni à la ceinture, où rien ne s'affiche en haut).
+     */
+    const band = compact ? screenLayout.band(journey.current) : null;
+    if (band) occupied.push([0, 0, view.width, band.top * view.height - BAND_MARGIN_PX]);
+    /*
      * Le Soleil devenu un point parmi les étoiles : « Soleil » prend la disposition du ciel profond (seul son texte
      * occupe la place, à droite ou à gauche du point). Son bouton entier chasserait Proxima du Centaure. Premier de
      * LABEL_PRIORITY, il est placé avant les astres, et hors de la bande libre qui ne vaut que pour eux.
@@ -1643,18 +1650,12 @@ function setupScene(
     const sunPoint = weights.sunPoint > 0;
     if (sunPoint) placeMarkedSlot(sunSlot, anchor.set(0, 0, 0), alpha * sunFade);
     /*
-     * Mise en page compacte : le nom d'un astre reste entre la barre (ou la note d'échelle) et la plaque repliée de
-     * l'escale, jamais dessous. Ces deux boîtes ne valent que pour les astres (placeBodySlot) : le ciel profond, et le
-     * Soleil réduit à un point, gardent leurs règles.
+     * Mise en page compacte : le nom d'un astre reste aussi au-dessus de ce qui borde le bas de la bande (la note
+     * d'échelle, le dock), jamais dessous. Cette boîte ne vaut que pour les astres (placeBodySlot) : le ciel profond,
+     * et le Soleil réduit à un point, gardent leurs règles.
      */
-    const band = compact ? screenLayout.band(journey.current) : null;
     const bandAt = occupied.length;
-    if (band) {
-      occupied.push(
-        [0, 0, view.width, band.top * view.height - BAND_MARGIN_PX],
-        [0, band.bottom * view.height + BAND_MARGIN_PX, view.width, view.height],
-      );
-    }
+    if (band) occupied.push([0, band.bottom * view.height + BAND_MARGIN_PX, view.width, view.height]);
     for (const key of LABEL_PRIORITY) {
       // Mise en page compacte : l'astre au repos garde son nom, lisible au-dessus de lui, même vu de près.
       const near = compact ? Math.max(alpha, restWeight(journey, key)) : alpha;
@@ -1665,7 +1666,7 @@ function setupScene(
         placeBodySlot(sunSlot, key, anchor.set(0, 0, 0), near * sunFade, compact, solarScale);
       }
     }
-    if (band) occupied.splice(bandAt, 2);
+    if (band) occupied.splice(bandAt, 1);
     /*
      * Points visibles : nul texte du ciel profond ne les recouvre, ni son halo de nuit. « Soleil », texte sans ce halo
      * qui ne masque aucun point, est placé avant eux : sur téléphone, les points qui serrent le Soleil (Lacaille 9352,

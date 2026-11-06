@@ -59,7 +59,7 @@ export interface SizesFrameContext {
   aspect: number;
   /** Champ vertical de la caméra, en degrés. */
   fovDeg: number;
-  /** Mise en page compacte : bande libre au-dessus de la plaque repliée, `null` ailleurs. Prioritaire sur la zone. */
+  /** Mise en page compacte : bande libre sous la carte repliée fixée en haut, `null` ailleurs. Prioritaire sur la zone. */
   band: ScreenBand | null;
   /** Grand écran : zone libre entre la plaque (à gauche) et la règle des tailles (à droite), `null` ailleurs. */
   zone: ScreenZone | null;

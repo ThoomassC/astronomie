@@ -159,6 +159,7 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
     <section className="stop" id={id} data-stop={stop} tabIndex={-1} aria-labelledby={titleId}>
       <Plate
         id={id}
+        stop={stop}
         name={text.name}
         color={stopColor(stop)}
         header={

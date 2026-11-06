@@ -58,6 +58,7 @@ export function StopPlate({ locale, stop }: { locale: Locale; stop: BodyStopStru
     <section className="stop" id={id} data-stop={stop.key} tabIndex={-1} aria-labelledby={titleId}>
       <Plate
         id={id}
+        stop={stop.key}
         name={name}
         color={stop.color}
         header={<Rank ordinal={stop.ordinal === undefined ? undefined : content.ordinal(stop.ordinal)} label={texts.rank} />}

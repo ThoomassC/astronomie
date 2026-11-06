@@ -523,7 +523,7 @@ function setupScene(
    * Étiquettes de l'image (layoutSizeLabels) : chaque astre dessiné réservé, puis posées dans l'ordre (astre affiché,
    * précédent, Soleil, puis du plus grand au plus petit), au-dessus du limbe d'un astre grand à l'écran, sur un anneau
    * pour un petit, anneau « ici » pour le Soleil devenu un point. Barre, règle, échelle graphique et place des plaques
-   * (à gauche de la zone libre sur grand écran, sous la bande libre de l'escale en mise en page compacte) sont réservées
+   * (à gauche de la zone libre sur grand écran, carte fixée en haut et bas de l'écran en mise en page compacte) sont réservées
    * d'avance, avec le jet d'un trou noir dessiné, qui sort de son encombrement. L'étiquette d'un trou noir se pose à
    * 8 px de ce qui se voit de lui (`reach`). Une étiquette qui ne tient nulle part n'est pas montrée, ni celle que
    * toucherait le texte de l'introduction (`veil`, à l'écran) : masquée à sa place, elle y revient quand il est passé.

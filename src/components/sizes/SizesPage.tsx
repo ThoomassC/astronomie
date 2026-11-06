@@ -12,6 +12,7 @@ import { SizesIntro } from "./SizesIntro";
 import { SizesMenu } from "./SizesMenu";
 import styles from "./SizesPage.module.css";
 import { SizesRail } from "./SizesRail";
+import { SizesCards } from "./SizesCards";
 import { SizesSceneMount } from "./SizesSceneMount";
 import { SizesTracker } from "./SizesTracker";
 import { StarPlate } from "./StarPlate";
@@ -19,6 +20,8 @@ import { StarPlate } from "./StarPlate";
 /** Rang du plus grand astre : sa plaque ramène au plus petit. */
 const LARGEST = COMPARED_OBJECTS.length - 1;
 const SMALLEST = COMPARED_OBJECTS[0].key;
+/** Escales qui ont une plaque, donc une carte sur téléphone : tous les astres, pas l'introduction. */
+const CARD_STOPS = COMPARED_OBJECTS.map((object) => object.key);
 
 /**
  * Page « Tailles », dans la langue de l'adresse : une section par astre (dix étoiles, quatre trous noirs), du plus petit
@@ -43,14 +46,16 @@ export function SizesPage({ locale }: { locale: Locale }) {
       <SizesRail />
       <main id={MAIN_ID} tabIndex={-1}>
         <SizesIntro locale={locale} />
-        {COMPARED_OBJECTS.map((object, i) => {
-          const restartTo = i === LARGEST ? SMALLEST : undefined;
-          return object.kind === "star" ? (
-            <StarPlate key={object.key} star={object} locale={locale} restartTo={restartTo} />
-          ) : (
-            <BlackHolePlate key={object.key} hole={object} locale={locale} restartTo={restartTo} />
-          );
-        })}
+        <SizesCards cards={CARD_STOPS}>
+          {COMPARED_OBJECTS.map((object, i) => {
+            const restartTo = i === LARGEST ? SMALLEST : undefined;
+            return object.kind === "star" ? (
+              <StarPlate key={object.key} star={object} locale={locale} restartTo={restartTo} />
+            ) : (
+              <BlackHolePlate key={object.key} hole={object} locale={locale} restartTo={restartTo} />
+            );
+          })}
+        </SizesCards>
       </main>
       <footer>
         <div className={styles.contact}>

@@ -264,8 +264,11 @@ describe("frameBoxes", () => {
     ]);
   });
 
-  it("devrait réserver, en mise en page compacte, le bas de l'écran sous la bande libre (la plaque)", () => {
-    expect(frameBoxes(VIEW, [], null, { top: 0.1, bottom: 0.6 }, null)).toEqual([[0, 480, 1000, 800]]);
+  it("devrait réserver, en mise en page compacte, la carte fixée en haut au-dessus de la bande libre, et le bas sous elle", () => {
+    expect(frameBoxes(VIEW, [], null, { top: 0.1, bottom: 0.6 }, null)).toEqual([
+      [0, 0, 1000, 80 - 8],
+      [0, 480, 1000, 800],
+    ]);
   });
 });
 

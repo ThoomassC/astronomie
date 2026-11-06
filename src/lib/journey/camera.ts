@@ -99,7 +99,7 @@ export interface StopCameraContext {
   /** Champ vertical de la caméra, en degrés. */
   fov: number;
   /**
-   * Mise en page mobile seulement : bande libre au-dessus de la plaque compacte de l'escale,
+   * Mise en page mobile seulement : bande libre sous la carte de l'escale, fixée en haut,
    * mesurée dans la page. Le Soleil et les planètes y sont cadrés, la vue d'ensemble de l'au-delà
    * y est centrée. `null` ou absente ailleurs.
    */

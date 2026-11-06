@@ -2,8 +2,10 @@
 
 import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useLocale } from "@/i18n/LocaleProvider";
+import { FIXED_CARD_QUERY } from "@/lib/journey/card";
 import { clampToRest, restRange } from "@/lib/journey/sections";
 import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
+import { useIsCurrentCard } from "./CardTrack";
 import { cssVars } from "./cssVars";
 import { JOURNEY_STRINGS } from "./journey.strings";
 import { measureSections, scrollInstantly, shownElements } from "./navigation";
@@ -26,6 +28,11 @@ export interface PlateSection {
 interface PlateProps {
   /** Identifiant de l'escale, préfixe des zones dépliables. */
   id: string;
+  /**
+   * Clé de l'escale (`data-stop`) dans son parcours (CardTrack) : sur téléphone, seule la plaque de l'escale courante se
+   * voit, fixée en haut de l'écran (`data-current`).
+   */
+  stop?: string;
   /** Nom de l'astre, lu après « Replier » pour distinguer les plaques entre elles. */
   name: string;
   /** Couleur de l'astre : filet du haut et puce du rang. */
@@ -63,6 +70,14 @@ const COMPACT_PLATE_QUERY =
  */
 function exclusiveSections(): boolean {
   return typeof matchMedia === "function" && matchMedia(COMPACT_PLATE_QUERY).matches;
+}
+
+/**
+ * Carte fixe (globals.css) : la plaque est fixée en haut de l'écran, hors du flux, et son contenu défile en elle-même.
+ * La déplier ou la replier ne change pas la hauteur de l'escale : la page ne défile pas. Lu au moment d'agir.
+ */
+function fixedCard(): boolean {
+  return typeof matchMedia === "function" && matchMedia(FIXED_CARD_QUERY).matches;
 }
 
 /** Juste avant un repli : défilement, plage de repos et hauteur de l'escale encore dépliée. */
@@ -134,8 +149,9 @@ function Chevron() {
  * JavaScript, tout est visible et les boutons sont masqués (globals.css). « Replier » est dans la
  * langue de la page ; les libellés des sections viennent de qui rend la plaque.
  */
-export function Plate({ id, name, color, header, title, hook, sections, steps, footer }: PlateProps) {
+export function Plate({ id, stop, name, color, header, title, hook, sections, steps, footer }: PlateProps) {
   const t = JOURNEY_STRINGS[useLocale()];
+  const current = useIsCurrentCard(stop);
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const articleRef = useRef<HTMLElement>(null);
   const pending = useRef<ScrollRequest | null>(null);
@@ -178,10 +194,14 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
 
   const toggle = (button: HTMLElement, key: string) => {
     const exclusive = exclusiveSections();
-    const before = open.has(key) ? beforeFold(articleRef.current) : null;
-    // Plaque compacte : la zone s'ouvre sous la rangée des boutons, c'est elle qu'on amène à l'écran.
-    const zone = exclusive ? document.getElementById(zoneIdOf(key)) : null;
-    pending.current = before ? { before, focusFirst: false } : { reveal: zone ?? button };
+    if (fixedCard()) {
+      pending.current = null;
+    } else {
+      const before = open.has(key) ? beforeFold(articleRef.current) : null;
+      // Plaque compacte : la zone s'ouvre sous la rangée des boutons, c'est elle qu'on amène à l'écran.
+      const zone = exclusive ? document.getElementById(zoneIdOf(key)) : null;
+      pending.current = before ? { before, focusFirst: false } : { reveal: zone ?? button };
+    }
     setOpen((current) => {
       if (current.has(key)) {
         const next = new Set(current);
@@ -193,8 +213,9 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
   };
 
   const foldAll = () => {
-    const before = beforeFold(articleRef.current);
+    const before = fixedCard() ? null : beforeFold(articleRef.current);
     pending.current = before ? { before, focusFirst: true } : null;
+    if (!before) articleRef.current?.querySelector<HTMLElement>(".more-btn")?.focus({ preventScroll: true });
     setOpen(new Set());
   };
 
@@ -211,6 +232,7 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
       className="plate"
       style={cssVars({ "--c": color })}
       data-expanded={expanded || undefined}
+      data-current={current || undefined}
     >
       {header}
       {/*

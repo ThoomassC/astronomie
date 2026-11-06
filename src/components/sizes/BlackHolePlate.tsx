@@ -47,6 +47,7 @@ export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlac
     <section className="stop" id={id} data-stop={hole.key} tabIndex={-1} aria-labelledby={titleId}>
       <Plate
         id={id}
+        stop={hole.key}
         name={name}
         color={hole.color}
         header={

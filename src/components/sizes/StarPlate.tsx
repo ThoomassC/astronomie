@@ -82,6 +82,7 @@ export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; loc
     <section className="stop" id={id} data-stop={star.key} tabIndex={-1} aria-labelledby={titleId}>
       <Plate
         id={id}
+        stop={star.key}
         name={name}
         color={star.color}
         header={

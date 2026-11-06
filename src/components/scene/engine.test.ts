@@ -446,26 +446,29 @@ describe("étiquettes au-dessus des astres, en mise en page compacte", () => {
   /** Hauteur de la vue d'un téléphone court (iPhone SE). */
   const SHORT = 667;
   const BAR_BOTTOM = 64;
-  /** Bas de la note d'échelle visible, sous la barre. */
-  const NOTE_BOTTOM = 150;
-  /** Écart de la plaque repliée au bas de l'écran (dock). */
+  /** Bas de la carte repliée de l'escale, fixée sous la barre. */
+  const CARD_BOTTOM = 150;
+  /** Écart du dock au bas de l'écran : plancher de la carte. */
   const DOCK_CLEAR = 82;
 
   /**
-   * Barre fixe de 64 px, note d'échelle visible jusqu'à 150 px et plaque repliée de l'escale `key`, haute de `plate`
-   * px, collée à 82 px du bas : la bande libre va de 158 px à `SHORT − 82 − plate − 8` px.
+   * Barre fixe de 64 px, carte repliée de l'escale `key` fixée dessous jusqu'à 150 px, note d'échelle visible posée
+   * au-dessus du dock, son haut à `noteTop` px : la bande libre va de 158 px à `noteTop − 8` px.
    */
-  function compactPage(key: "sun" | "saturn", plate: number) {
+  function compactPage(key: "sun" | "saturn", noteTop: number) {
     const bar = document.createElement("header");
     bar.style.position = "fixed";
     vi.spyOn(bar, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 375, BAR_BOTTOM));
     const note = document.createElement("div");
     note.dataset.visible = "true";
-    vi.spyOn(note, "getBoundingClientRect").mockReturnValue(new DOMRect(16, 84, 343, NOTE_BOTTOM - 84));
+    vi.spyOn(note, "getBoundingClientRect").mockReturnValue(new DOMRect(16, noteTop, 343, 56));
     const article = document.createElement("article");
-    article.style.position = "sticky";
-    article.style.bottom = `${DOCK_CLEAR}px`;
-    Object.defineProperty(article, "offsetHeight", { configurable: true, value: plate });
+    article.style.position = "fixed";
+    article.style.maxHeight = `${SHORT - DOCK_CLEAR - BAR_BOTTOM}px`;
+    vi.spyOn(article, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(16, BAR_BOTTOM, 343, CARD_BOTTOM - BAR_BOTTOM),
+    );
+    Object.defineProperty(article, "offsetHeight", { configurable: true, value: CARD_BOTTOM - BAR_BOTTOM });
     document.body.append(bar, note, article);
     return { bar, note, plates: new Map([[key, article]]) };
   }
@@ -473,14 +476,14 @@ describe("étiquettes au-dessus des astres, en mise en page compacte", () => {
   async function framedAt(
     key: "sun" | "saturn",
     compact: boolean,
-    { height = 812, plate, textHeight }: { height?: number; plate?: number; textHeight?: number } = {},
+    { height = 812, noteTop, textHeight }: { height?: number; noteTop?: number; textHeight?: number } = {},
   ) {
     vi.stubGlobal("innerWidth", 375);
     vi.stubGlobal("innerHeight", height);
     stubMatchMedia(false, compact);
     journeyStore.update(key, key, 0);
     const label = bodyLabel(textHeight);
-    const page = plate === undefined ? {} : compactPage(key, plate);
+    const page = noteTop === undefined ? {} : compactPage(key, noteTop);
     const scene = createSolarScene({ ...options(), ...page, labels: new Map([[key, label]]) });
     if (!scene) throw new Error("Scène absente");
     await Promise.resolve();
@@ -508,24 +511,25 @@ describe("étiquettes au-dessus des astres, en mise en page compacte", () => {
   });
 
   /*
-   * 375 × 667, note d'échelle visible, plaque repliée de 220 px : la bande libre va de 158 à 357 px. Le Soleil y est
-   * cadré sur 90 % de sa hauteur ; au-dessus de lui ne restent qu'une dizaine de px, pour un texte de 18 px.
+   * 375 × 667, carte repliée jusqu'à 150 px, note d'échelle visible à partir de 365 px : la bande libre va de 158 à
+   * 357 px. Le Soleil y est cadré sur 90 % de sa hauteur ; au-dessus de lui ne restent qu'une dizaine de px, pour un
+   * texte de 18 px.
    */
   it("devrait rendre au nom sa disposition ordinaire quand il ne tient pas au-dessus du disque (téléphone court)", async () => {
-    const { scene, label: sun } = await framedAt("sun", true, { height: SHORT, plate: 220 });
+    const { scene, label: sun } = await framedAt("sun", true, { height: SHORT, noteTop: 365 });
     expect(vi.mocked(placeAboveDisc)).toHaveLastReturnedWith(null);
     expect(sun.style.visibility).toBe("visible");
     expect(sun).not.toHaveAttribute("data-above");
-    // Son bouton entier reste dans la bande libre : ni sous la note, ni sur la plaque.
+    // Son bouton entier reste dans la bande libre : ni sous la carte, ni sur la note.
     const corner = cornerOf(sun);
-    expect(corner.y).toBeGreaterThanOrEqual(NOTE_BOTTOM);
-    expect(corner.y + 29).toBeLessThanOrEqual(SHORT - DOCK_CLEAR - 220);
+    expect(corner.y).toBeGreaterThanOrEqual(CARD_BOTTOM);
+    expect(corner.y + 29).toBeLessThanOrEqual(365);
     scene.dispose();
   });
 
-  it("devrait le masquer quand il ne tient ni au-dessus du disque ni sur lui, sans passer sous la note ni la plaque", async () => {
-    // Bande de 67 px (plaque de 352 px), texte très agrandi (70 px de haut) : aucune place dans la bande.
-    const { scene, label: sun } = await framedAt("sun", true, { height: SHORT, plate: 352, textHeight: 70 });
+  it("devrait le masquer quand il ne tient ni au-dessus du disque ni sur lui, sans passer sous la carte ni la note", async () => {
+    // Bande de 67 px (note à partir de 233 px), texte très agrandi (70 px de haut) : aucune place dans la bande.
+    const { scene, label: sun } = await framedAt("sun", true, { height: SHORT, noteTop: 233, textHeight: 70 });
     expect(sun.style.visibility).toBe("hidden");
     scene.dispose();
   });
