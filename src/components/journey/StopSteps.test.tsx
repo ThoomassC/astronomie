@@ -132,6 +132,14 @@ describe("feuille de style des escales voisines", () => {
     expect(name).toMatch(/text-align: left;/);
     expect(name).toMatch(/overflow-wrap: break-word;/);
     expect(name).not.toMatch(/text-overflow|white-space: nowrap/);
+    // Un nom propre ne se coupe pas d'un trait d'union (« obser-vable ») : il passe à la ligne entre ses mots.
+    expect(name).toMatch(/hyphens: manual;/);
+    expect(name).not.toMatch(/hyphens: auto/);
+  });
+
+  it("devrait réduire le nom sous 360 px, pour qu'aucun mot n'y soit coupé", () => {
+    const small = ruleIn("(max-width: 360px) and (scripting: enabled)", ".plate .plate-title > h2");
+    expect(small).toMatch(/font-size: clamp\(1\.75rem, 9vw, 2\.5rem\);/);
   });
 
   it("devrait réduire chaque lien de la plaque compacte à sa flèche, 44 × 44, le nom gardé pour les lecteurs d'écran", () => {
