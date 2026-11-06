@@ -3,8 +3,10 @@ import { resolve } from "node:path";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderToString } from "react-dom/server";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CardTrack } from "@/components/journey/CardTrack";
+import { setSectionRanges, trackAims } from "@/components/journey/navigation";
 import { Plate, type PlateSection } from "@/components/journey/Plate";
 import { FIXED_CARD_QUERY } from "@/lib/journey/card";
 import { createStopStore } from "@/lib/journey/store";
@@ -364,7 +366,8 @@ describe("Plate", () => {
     const row = document.querySelector(".plate-sections");
     expect(row?.lastElementChild).toHaveClass("stop-steps");
     expect(within(row as HTMLElement).getAllByRole("link").map((link) => link.textContent)).toEqual(["Terre", "Jupiter"]);
-    expect(row?.nextElementSibling).toBe(screen.getByText("Pied de plaque"));
+    // Le pied, dans son conteneur (que pilote le nom en carte fixe).
+    expect(row?.nextElementSibling).toBe(screen.getByText("Pied de plaque").parentElement);
   });
 
   it("ne devrait rien poser autour du nom sans escales voisines", () => {
@@ -443,14 +446,23 @@ describe("carte fixe : le nom déplie la carte", () => {
   type Key = "earth" | "mars";
 
   /** La plaque de Mars, dans le parcours de la Terre à Mars, au repos sur Mars. */
-  function renderCard() {
+  function renderCard({ footer }: { footer?: ReactNode } = {}) {
     const store = createStopStore<Key>("earth");
     store.update("mars", "mars", 0);
     render(
       <CardTrack store={store} cards={["earth", "mars"]}>
-        <section data-stop="mars" aria-labelledby="mars-titre">
-          <Plate id="mars" stop="mars" name="Mars" color="#DA6A43" titleId="mars-titre" sections={SECTIONS} />
+        <section data-stop="mars" aria-labelledby="mars-titre" tabIndex={-1}>
+          <Plate
+            id="mars"
+            stop="mars"
+            name="Mars"
+            color="#DA6A43"
+            titleId="mars-titre"
+            sections={SECTIONS}
+            footer={footer}
+          />
         </section>
+        <button type="button">Hors de la carte</button>
       </CardTrack>,
     );
     return { store, article: screen.getByRole("article") };
@@ -531,6 +543,139 @@ describe("carte fixe : le nom déplie la carte", () => {
     act(() => store.update("mars", "mars", 0));
     expect(article).toHaveAttribute("data-current");
     expect(screen.getByRole("button", { name: "Mars" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  /** Frontière navigateur : carte fixe qui bascule (rotation, fenêtre redimensionnée) ; `turn` prévient les abonnés. */
+  function stubTurningCard(initial: boolean) {
+    let fixed = initial;
+    const listeners = new Set<() => void>();
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      get matches() {
+        return fixed && (query === FIXED_CARD_QUERY || query === COMPACT_SCRIPTED);
+      },
+      media: query,
+      addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
+    }));
+    return (next: boolean) => {
+      fixed = next;
+      act(() => listeners.forEach((listener) => listener()));
+    };
+  }
+
+  it("devrait garder « Replier » efficace quand la carte dépliée passe en paysage", async () => {
+    const turn = stubTurningCard(true);
+    const user = userEvent.setup();
+    const { article } = renderCard();
+    await user.click(nameButton());
+    turn(false);
+    expect(article).not.toHaveAttribute("data-unfolded");
+    expect(article).toHaveAttribute("data-expanded");
+    await user.click(screen.getByRole("button", { name: "Replier, Mars" }));
+    expect(article).not.toHaveAttribute("data-expanded");
+    expect(screen.queryByRole("button", { name: "Replier, Mars" })).not.toBeInTheDocument();
+  });
+
+  it("devrait déplier la carte courante qui arrive en portrait avec une section ouverte", async () => {
+    const turn = stubTurningCard(false);
+    const user = userEvent.setup();
+    const { article } = renderCard();
+    await user.click(screen.getByRole("button", { name: "Lire la fiche" }));
+    turn(true);
+    expect(article).toHaveAttribute("data-unfolded");
+    expect(nameButton()).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Lire la fiche" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("devrait replier la plaque non courante qui arrive en portrait avec une section ouverte", async () => {
+    const turn = stubTurningCard(false);
+    const user = userEvent.setup();
+    const { store, article } = renderCard();
+    await user.click(screen.getByRole("button", { name: "Lire la fiche" }));
+    act(() => store.update("earth", "earth", 0));
+    turn(true);
+    expect(article).not.toHaveAttribute("data-unfolded");
+    expect(article).not.toHaveAttribute("data-expanded");
+  });
+
+  it("devrait piloter aussi le pied de la carte, que le dépliage affiche", () => {
+    stubFixedCard();
+    const { article } = renderCard({ footer: <p>Pied de plaque</p> });
+    const ids = nameButton().getAttribute("aria-controls")?.split(" ") ?? [];
+    expect(ids.map((id) => document.getElementById(id))).toEqual([
+      article.querySelector(".plate-sections"),
+      screen.getByText("Pied de plaque").parentElement,
+    ]);
+  });
+
+  /*
+   * La carte cesse d'être courante (défilement au clavier depuis son nom) : masquée, elle garderait le focus hors de
+   * vue. Il passe à la section de l'escale, sans faire défiler.
+   */
+  it("devrait rendre le focus à la section quand la carte qui l'a cesse d'être courante", () => {
+    stubFixedCard();
+    const { store } = renderCard();
+    nameButton().focus();
+    act(() => store.update("mars", "jupiter" as Key, 0.3));
+    expect(screen.getByRole("region", { name: "Mars" })).toHaveFocus();
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("devrait se replier quand le focus la quitte pour un autre élément, sans le reprendre", async () => {
+    stubFixedCard();
+    const user = userEvent.setup();
+    const { article } = renderCard();
+    await user.click(nameButton());
+    // Focus perdu sans destination (toucher hors de toute commande) : la carte reste dépliée.
+    act(() => nameButton().blur());
+    expect(article).toHaveAttribute("data-unfolded");
+    nameButton().focus();
+    const outside = screen.getByRole("button", { name: "Hors de la carte" });
+    act(() => outside.focus());
+    expect(article).not.toHaveAttribute("data-unfolded");
+    expect(article.querySelectorAll(".more-zone[data-open]")).toHaveLength(0);
+    expect(outside).toHaveFocus();
+  });
+
+  it("devrait donner à la page la hauteur de la carte courante repliée, où le focus s'arrête", () => {
+    stubFixedCard();
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(84);
+    renderCard();
+    expect(document.documentElement.style.getPropertyValue("--card-h")).toBe("84px");
+    document.documentElement.style.removeProperty("--card-h");
+  });
+
+  /*
+   * Lecture linéaire et liste des titres : les cartes non courantes restent lues, masquées à l'œil seulement. Le focus
+   * qui entre dans l'une (Tab, lecteur d'écran) rend son escale courante d'un saut, sans animation.
+   */
+  it("devrait rendre courante, d'un saut, la carte où entre le focus", () => {
+    stubFixedCard();
+    const store = createStopStore<Key>("earth");
+    store.update("earth", "earth", 0);
+    const untrack = trackAims((key) => store.aim(key === "earth" || key === "mars" ? key : null));
+    setSectionRanges([
+      { key: "earth", arrive: 0, depart: 600 },
+      { key: "mars", arrive: 1400, depart: 2100 },
+    ]);
+    render(
+      <CardTrack store={store} cards={["earth", "mars"]}>
+        <section data-stop="earth">
+          <Plate id="terre" stop="earth" name="Terre" color="#5B9BE6" titleId="terre-titre" sections={SECTIONS} />
+        </section>
+        <section data-stop="mars">
+          <Plate id="mars" stop="mars" name="Mars" color="#DA6A43" titleId="mars-titre" sections={SECTIONS} />
+        </section>
+      </CardTrack>,
+    );
+    const mars = screen.getByRole("heading", { level: 2, name: "Mars" }).closest("article");
+    expect(mars).not.toHaveAttribute("data-current");
+    act(() => nameButton().focus());
+    expect(mars).toHaveAttribute("data-current");
+    expect(nameButton()).toHaveFocus();
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1402, behavior: "instant" });
+    untrack();
+    setSectionRanges([]);
   });
 
   it("hors de la carte fixe (grand écran, paysage bas, sans JavaScript), devrait garder le nom en simple titre", () => {
@@ -645,28 +790,86 @@ describe("feuille de style de la plaque compacte", () => {
   });
 
   /*
-   * Carte fixe : les plaques des autres escales restent dans la mise en page (la scène mesure leur forme repliée), mais
-   * ni visibles, ni focalisables, ni lues. Repliée, la carte ne garde que le rang et le nom ; le nom est une cible de
-   * 44 px.
+   * Carte fixe : les plaques des autres escales restent dans la mise en page (la scène mesure leur forme repliée), et
+   * lues dans l'ordre du document (lecture linéaire, liste des titres) : masquées à l'œil seulement, par découpe.
+   * Repliée, la carte ne garde que le rang et le nom ; le nom est une cible de 44 px.
    */
-  it("devrait masquer sans les retirer de la mise en page les plaques qui ne sont pas courantes", () => {
-    const hidden = ruleIn(FIXED_CARD_QUERY, ".plate:not([data-current])");
-    expect(hidden).toMatch(/visibility: hidden;/);
-    expect(hidden).not.toMatch(/display: none/);
+  it("devrait masquer à l'œil seulement, sans les retirer de la mise en page, les plaques qui ne sont pas courantes", () => {
+    const hidden = ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate:not([data-current])");
+    expect(hidden).toMatch(/clip-path: inset\(50%\);/);
+    expect(hidden).not.toMatch(/display: none|visibility: hidden/);
+  });
+
+  /*
+   * Carte dépliée : fond opaque (les étiquettes de la scène ne transparaissent pas sous le texte) ; toute la carte
+   * défile si son haut remplit le plafond (texte à 200 %), la zone ouverte gardant une hauteur minimale ; au-dessus de
+   * la note d'échelle visible, elle s'arrête avant elle.
+   */
+  it("devrait garder la carte dépliée lisible et atteignable jusqu'à « Replier »", () => {
+    const card = ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate[data-expanded]");
+    expect(card).toMatch(/background: var\(--plaque\);/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate[data-unfolded]")).toMatch(/overflow-y: auto;/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-sections")).toMatch(/min-height: min\(7rem, 30vh\);/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card][data-scale-note] .plate[data-unfolded]")).toMatch(
+      /max-height: calc\(100dvh - var\(--card-top\) - var\(--dock-clear\) - 0\.5rem - var\(--note-h, 11rem\) - 0\.5rem\);/,
+    );
+  });
+
+  /*
+   * Flèches : le cercle de 32 px est leur seul filet (sans bordure propre, pas deux anneaux en couleurs forcées), et
+   * leur cible de 44 px ne chevauche pas celle du nom, même long.
+   */
+  it("devrait donner aux flèches un seul anneau et des cibles qui ne chevauchent pas le nom", () => {
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-title .stop-step")).toMatch(/border-style: none;/);
+    // Débord de 6 px de chaque cible (44 px pour une colonne de 32) : l'écart en vaut autant.
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-title")).toMatch(/column-gap: 0\.375rem;/);
+  });
+
+  it("devrait arrêter le focus sous la carte repliée, de sa hauteur mesurée", () => {
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card]")).toMatch(
+      /scroll-padding-top: calc\(var\(--card-top\) \+ var\(--card-h, 5rem\) \+ 0\.75rem\);/,
+    );
   });
 
   it("devrait réduire la carte repliée au rang et au nom, le nom en cible de 44 px", () => {
-    expect(ruleIn(FIXED_CARD_QUERY, ".plate:not([data-unfolded]) > .plate-sections ~ *")).toMatch(/display: none;/);
-    expect(ruleIn(FIXED_CARD_QUERY, ".plate-name")).toMatch(/min-height: 44px;/);
-    expect(ruleIn(FIXED_CARD_QUERY, ".plate-title .stop-step")).toMatch(/width: 44px;/);
-    const sections = ruleIn(FIXED_CARD_QUERY, ".plate-sections");
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate:not([data-unfolded]) > .plate-sections ~ *")).toMatch(/display: none;/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-name")).toMatch(/min-height: 44px;/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-title .stop-step")).toMatch(/width: 44px;/);
+    const sections = ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-sections");
     expect(sections).toMatch(/overflow-y: auto;/);
     expect(sections).toMatch(/overscroll-behavior: contain;/);
   });
 
-  it("devrait faire balayer le squelette, et l'arrêter en mouvement réduit (règle globale)", () => {
-    expect(ruleIn(FIXED_CARD_QUERY, ".plate-skeleton::after")).toMatch(/animation: skeleton-sweep/);
+  it("devrait faire balayer le squelette trois fois au plus, et l'arrêter en mouvement réduit (règle globale)", () => {
+    // Arrêté entre deux escales, rien ne bouge sans fin (2.2.2).
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-skeleton::after")).toMatch(
+      /animation: skeleton-sweep 1\.6s ease-in-out 3;/,
+    );
     expect(ruleIn("(prefers-reduced-motion: reduce)", "*::after")).toMatch(/animation: none !important;/);
+  });
+
+  /*
+   * Avant l'hydratation (réseau lent, script en échec), la plaque reste entière et lue : chaque règle de la carte fixe
+   * attend le client prêt (`html[data-fixed-card]`, posé par CardTrack). Seules les variables n'attendent pas.
+   */
+  it("devrait n'activer la carte fixe qu'une fois le client prêt", () => {
+    const media = FIXED_CARD_QUERY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/, /g, ",\\s+");
+    const blocks = [...css.matchAll(new RegExp(`@media ${media} \\{([\\s\\S]*?)\\n\\}`, "g"))];
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const [, block] of blocks) {
+      // Une règle par sélecteur de liste, un par ligne ; commentaires ôtés.
+      const rules = block.replace(/\/\*[\s\S]*?\*\//g, "");
+      const selectors = [...rules.matchAll(/\n {2,4}([^\s@}][^;{}]*?)\s*\{/g)].flatMap(([, list]) =>
+        list.split(/,\s*\n\s*/),
+      );
+      expect(selectors.length).toBeGreaterThan(0);
+      for (const selector of selectors) {
+        if (selector === ":root") continue;
+        expect(selector).toMatch(/^html\[data-fixed-card\]/);
+      }
+    }
+    const sizes = readFileSync(resolve(process.cwd(), "src/components/sizes/SizesPage.module.css"), "utf8");
+    expect(sizes).toMatch(/:global\(html\[data-fixed-card\]\) \.scaleBar \{/);
   });
 
   it("devrait garder l'accroche hors de la plaque compacte (grand écran, sans JavaScript)", () => {

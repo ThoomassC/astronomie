@@ -171,6 +171,27 @@ describe("createScreenLayout en mise en page compacte", () => {
     expect(bandBottom()).toBeCloseTo((812 - 82 - 8) / 812, 12);
   });
 
+  /*
+   * Repli de la carte fixe (avant l'hydratation, navigateurs sans la requête `scripting`) : la plaque compacte reste
+   * collée en bas, au-dessus du dock ; la bande va de la barre (ou de la note d'échelle, alors en haut) à son haut.
+   */
+  it("devrait cadrer au-dessus de la plaque collée en bas quand la carte fixe n'est pas active", () => {
+    const plate = fixedCard(240);
+    plate.style.position = "sticky";
+    plate.style.bottom = "82px";
+    const layout = createScreenLayout(elements({ plates: new Map([["sun", plate]]) }));
+    layout.measure(PHONE);
+    layout.settle(1 / 60, true);
+    expect(layout.band("sun")).toEqual(freeBand(812, 64, 812 - 82 - 240));
+    const note = document.createElement("div");
+    note.dataset.visible = "true";
+    stubBox(note, { top: 84, width: 375, height: 56 });
+    const noted = createScreenLayout(elements({ note, plates: new Map([["sun", plate]]) }));
+    noted.measure(PHONE);
+    noted.settle(1 / 60, true);
+    expect(noted.band("sun")).toEqual(freeBand(812, 84 + 56, 812 - 82 - 240));
+  });
+
   it("ne devrait mesurer aucune bande sans barre fixe ni carte fixe (écran bas, sans JavaScript)", () => {
     const bar = fixedBar();
     bar.style.position = "static";

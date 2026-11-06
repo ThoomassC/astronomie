@@ -31,13 +31,16 @@ const NONE: CardView<never> = { kind: "none" };
 const SKELETON: CardView<never> = { kind: "skeleton" };
 
 /**
- * Ce que montre la carte fixe pour le vol `flight` ; `hasCard` dit si une escale a une plaque. Au repos (ou à moins de
- * CARD_EDGE d'un bout du vol), la carte de l'escale, s'il y en a une. En plein vol, le squelette, tant que l'escale
+ * Ce que montre la carte fixe pour le vol `flight` ; `hasCard` dit si une escale a une plaque. Vers une escale visée
+ * (navigation programmée : flèche, lien, focus entré dans sa carte), sa carte dès le départ, sans squelette ni carte
+ * des escales survolées : le focus, posé sur elle ou sur sa section, ne quitte pas ce qui se voit. Au repos (ou à moins
+ * de CARD_EDGE d'un bout du vol), la carte de l'escale, s'il y en a une. En plein vol, le squelette, tant que l'escale
  * affichée (celle de départ jusqu'à mi-vol, celle d'arrivée ensuite) a une carte ; rien sinon : en quittant l'accueil,
  * le squelette ne paraît qu'à mi-vol, et il s'efface à mi-vol vers la ceinture.
  */
 export function cardView<K extends string>(flight: StopFlight<K>, hasCard: (key: K) => boolean): CardView<K> {
   const atRest = (key: K): CardView<K> => (hasCard(key) ? { kind: "card", key } : NONE);
+  if (flight.target !== undefined) return atRest(flight.target);
   if (flight.from === flight.to || flight.t <= CARD_EDGE) return atRest(flight.from);
   if (flight.t >= 1 - CARD_EDGE) return atRest(flight.to);
   return hasCard(flight.current) ? SKELETON : NONE;

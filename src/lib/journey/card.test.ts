@@ -45,6 +45,31 @@ describe("cardView", () => {
   });
 });
 
+/*
+ * Saut par une flèche, un lien d'escale ou le focus entré dans une carte : le focus est déjà sur l'escale visée (sa
+ * section, ou sa carte). Sa carte se voit dès le départ, sans squelette, et les escales survolées ne clignotent pas.
+ */
+describe("cardView vers une escale visée", () => {
+  const aimed = (from: Key, to: Key, t: number, target: Key): StopFlight<Key> => ({ ...flight(from, to, t), target });
+
+  it("devrait montrer la carte visée dès le départ, encore au repos sur l'escale quittée", () => {
+    expect(cardView(aimed("sun", "sun", 0, "jupiter"), hasCard)).toEqual({ kind: "card", key: "jupiter" });
+  });
+
+  it.each([
+    ["sun", "mars", 0.5],
+    ["mars", "belt", 0.3],
+    ["mars", "mars", 0],
+    ["belt", "jupiter", 0.02],
+  ] as const)("devrait garder la carte visée en survolant %s → %s (t = %f), sans squelette", (from, to, t) => {
+    expect(cardView(aimed(from, to, t, "jupiter"), hasCard)).toEqual({ kind: "card", key: "jupiter" });
+  });
+
+  it("ne devrait montrer aucune carte vers une escale visée qui n'en a pas", () => {
+    expect(cardView(aimed("mars", "sun", 0.5, "hero"), hasCard)).toEqual({ kind: "none" });
+  });
+});
+
 describe("showsCard et showsSkeleton", () => {
   it("devrait désigner une seule carte courante, et aucune pendant le squelette", () => {
     const rest = flight("mars", "mars", 0);

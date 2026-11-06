@@ -1,13 +1,13 @@
 "use client";
 
-import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useRef, useState, type FocusEvent, type ReactNode } from "react";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { clampToRest, restRange } from "@/lib/journey/sections";
 import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
 import { useFixedCard, useIsCurrentCard } from "./CardTrack";
 import { cssVars } from "./cssVars";
 import { JOURNEY_STRINGS } from "./journey.strings";
-import { measureSections, scrollInstantly, shownElements } from "./navigation";
+import { jumpTo, measureSections, scrollInstantly, shownElements } from "./navigation";
 import { PlateIcon, type PlateIconName } from "./PlateIcon";
 
 export interface PlateSection {
@@ -90,6 +90,20 @@ function topClearance(): number {
   return parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
 }
 
+/**
+ * Carte fixe repliée de l'escale courante : sa hauteur (`--card-h`, sur la racine) règle le `scroll-padding-top` de la
+ * page, pour que ce qui reçoit le focus s'arrête sous elle. Suivie tant qu'elle reste courante et repliée.
+ */
+function trackCardHeight(article: HTMLElement): () => void {
+  const root = document.documentElement;
+  const write = () => root.style.setProperty("--card-h", `${article.offsetHeight}px`);
+  write();
+  if (typeof ResizeObserver !== "function") return () => {};
+  const observer = new ResizeObserver(write);
+  observer.observe(article);
+  return () => observer.disconnect();
+}
+
 /** Escale de la plaque, et sa boîte dans le document. */
 function measureStop(article: HTMLElement | null) {
   const section = article?.closest<HTMLElement>("[data-stop]");
@@ -158,7 +172,9 @@ function NameLabel({ name }: { name: string }) {
  * `h2 > button[aria-expanded][aria-controls]`). Dépliée, la rangée des pictogrammes paraît, la première section
  * ouverte ; une seule section s'ouvre à la fois (comme des onglets), son contenu défile dans la carte, la page ne
  * bouge pas. « Replier » ou un second toucher sur le nom replient tout, le focus revient au nom ; la carte d'une escale
- * qu'on quitte se replie. Ailleurs, dans la plaque compacte qui suit la page (paysage bas), chaque titre-bouton déplie
+ * qu'on quitte se replie, comme celle que le focus quitte pour un autre élément ; si elle avait le focus, il passe à sa
+ * section. Les autres cartes, masquées à l'œil seulement, restent lues ; le focus qui entre dans l'une rend son escale
+ * courante d'un saut. Ailleurs, dans la plaque compacte qui suit la page (paysage bas), chaque titre-bouton déplie
  * sa section juste en dessous de lui, « Replier » referme tout ; un dépliage amène le bouton touché (plaque compacte :
  * sa zone) sous la barre sans quitter la plage de repos de l'escale ; un repli ne déplace jamais la caméra. Les
  * titres-boutons sont rendus dès le serveur, pour que la page ne change pas de hauteur à l'hydratation ; le nom n'y
@@ -174,12 +190,14 @@ export function Plate({ id, stop, name, titleId, color, header, hook, sections, 
   /** Carte fixe dépliée : rangée des pictogrammes et pied affichés. */
   const [unfolded, setUnfolded] = useState(false);
   const [wasCurrent, setWasCurrent] = useState(current);
+  const [wasFixed, setWasFixed] = useState(fixed);
   const articleRef = useRef<HTMLElement>(null);
   const nameRef = useRef<HTMLButtonElement>(null);
   const pending = useRef<ScrollRequest | null>(null);
   const expanded = open.size > 0;
   const zoneIdOf = (key: string) => `${id}-${key}`;
   const sectionsId = `${id}-sections`;
+  const footerId = `${id}-footer`;
 
   // La carte fixe d'une escale qu'on quitte se replie : la suivante arrive repliée, et celle-ci aussi quand on y revient.
   if (current !== wasCurrent) {
@@ -189,6 +207,34 @@ export function Plate({ id, stop, name, titleId, color, header, hook, sections, 
       setOpen(NO_SECTION);
     }
   }
+  /*
+   * La mise en page bascule (rotation, fenêtre redimensionnée) : `unfolded` ne vaut qu'en carte fixe. En y entrant, la
+   * carte courante qui a une section ouverte arrive dépliée (sinon « Replier » serait sans effet et la scène la perdrait
+   * de vue), les autres se replient ; en la quittant, seule compte la section ouverte.
+   */
+  if (fixed !== wasFixed) {
+    setWasFixed(fixed);
+    if (!fixed) setUnfolded(false);
+    else if (open.size > 0 && current) setUnfolded(true);
+    else if (open.size > 0) setOpen(NO_SECTION);
+  }
+
+  // Carte courante repliée : sa hauteur règle l'arrêt du focus sous elle (globals.css, « Carte fixe »).
+  useLayoutEffect(() => {
+    const article = articleRef.current;
+    if (!fixed || !current || unfolded || !article) return;
+    return trackCardHeight(article);
+  }, [fixed, current, unfolded]);
+
+  /*
+   * La carte cesse d'être courante (défilement au clavier ou au doigt) avec le focus sur son nom ou dans son contenu :
+   * masquée, elle le garderait hors de vue. Il passe à sa section, comme après une ancre, sans faire défiler.
+   */
+  useLayoutEffect(() => {
+    const article = articleRef.current;
+    if (!fixed || current || !article?.contains(document.activeElement)) return;
+    article.closest<HTMLElement>("[data-stop]")?.focus({ preventScroll: true });
+  }, [fixed, current]);
 
   useLayoutEffect(() => {
     const request = pending.current;
@@ -262,6 +308,7 @@ export function Plate({ id, stop, name, titleId, color, header, hook, sections, 
     }
     const before = beforeFold(articleRef.current);
     pending.current = before ? { before, focusFirst: true } : null;
+    setUnfolded(false);
     setOpen(NO_SECTION);
   };
 
@@ -274,6 +321,27 @@ export function Plate({ id, stop, name, titleId, color, header, hook, sections, 
     pending.current = null;
     setUnfolded(true);
     setOpen(sections.length > 0 ? new Set([sections[0].key]) : NO_SECTION);
+  };
+
+  /*
+   * Carte fixe : le focus entre dans une carte masquée, parce qu'elle n'est pas courante (Tab, lecteur d'écran) ; son
+   * escale devient courante tout de suite, d'un saut, pour que ce qui a le focus se voie dès l'image suivante.
+   */
+  const showOnFocus = () => {
+    if (fixed && !current && stop !== undefined) jumpTo(stop);
+  };
+
+  /*
+   * Carte fixe dépliée : le focus la quitte pour un autre élément (Tab, flèche d'escale) ; elle se replie, sans le
+   * reprendre, pour ne pas couvrir ce qui le reçoit. Un focus perdu sans destination (toucher hors de toute commande,
+   * fenêtre quittée) ne la replie pas.
+   */
+  const foldOnLeave = (event: FocusEvent<HTMLElement>) => {
+    const next = event.relatedTarget;
+    if (!fixed || !unfolded || !(next instanceof Node) || event.currentTarget.contains(next)) return;
+    pending.current = null;
+    setUnfolded(false);
+    setOpen(NO_SECTION);
   };
 
   // Le focus arrive dans une zone fermée (passage du grand écran au téléphone) : elle s'ouvre, seule en plaque compacte.
@@ -292,6 +360,8 @@ export function Plate({ id, stop, name, titleId, color, header, hook, sections, 
       data-expanded={expanded || undefined}
       data-current={current || undefined}
       data-unfolded={unfolded || undefined}
+      onFocus={showOnFocus}
+      onBlur={foldOnLeave}
     >
       {header}
       {/*
@@ -306,7 +376,7 @@ export function Plate({ id, stop, name, titleId, color, header, hook, sections, 
               type="button"
               className="plate-name"
               aria-expanded={unfolded}
-              aria-controls={sectionsId}
+              aria-controls={footer ? `${sectionsId} ${footerId}` : sectionsId}
               onClick={toggleCard}
             >
               <NameLabel name={name} />
@@ -359,7 +429,11 @@ export function Plate({ id, stop, name, titleId, color, header, hook, sections, 
         )}
         {steps}
       </div>
-      {footer}
+      {footer ? (
+        <div id={footerId} className="plate-footer">
+          {footer}
+        </div>
+      ) : null}
     </article>
   );
 }

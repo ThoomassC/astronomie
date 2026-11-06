@@ -3,7 +3,14 @@ import { restProgress, scrollState } from "@/lib/journey/sections";
 import type { StopStore } from "@/lib/journey/store";
 import { FRAME_ORDER, useFrame } from "@/lib/sim/frameLoop";
 import { useReducedMotion } from "@/lib/sim/reducedMotion";
-import { getSectionRanges, measureSections, setSectionRanges, shownElements, takeSkipSmoothing } from "./navigation";
+import {
+  getSectionRanges,
+  measureSections,
+  setSectionRanges,
+  shownElements,
+  takeSkipSmoothing,
+  trackAims,
+} from "./navigation";
 
 /** Plaque d'une escale, et dernier avancement du repos écrit (au millième). */
 interface PlateRest {
@@ -34,6 +41,7 @@ const SCROLL_SMOOTHING_RATE = 5;
  *   (`takeSkipSmoothing`) ou en mouvement réduit ; se pose dessus à moins de 0,5 px.
  * - Écrit l'avancement du repos (`--rest`, de 0 à 1, au millième) sur la plaque de l'escale (`[data-stop] > .plate`) :
  *   sur téléphone, son filet de couleur se remplit jusqu'au départ de la caméra.
+ * - Reçoit l'escale visée par les navigations programmées de la page (`trackAims`) et la retient dans `store`.
  * - Ne publie que si (from, to, t) change : la scène compare ces valeurs pour sauter les images inutiles. Une section
  *   dont `isKey` refuse la clé n'est pas publiée.
  * - Au démontage, rend le parcours à son état initial (`store.reset()`) et oublie les plages mesurées : la page
@@ -59,6 +67,8 @@ export function useScrollTracker<K extends string>(
       if (isKey(key)) plates.current.set(key, { element, rest: -1 });
     }
     measureSections();
+    // Escale visée par une navigation programmée (goTo, jumpTo) : la carte fixe la montre dès le départ.
+    const untrackAims = trackAims((key) => store.aim(key !== null && isKey(key) ? key : null));
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onResize = () => {
       clearTimeout(timer);
@@ -77,6 +87,7 @@ export function useScrollTracker<K extends string>(
       clearTimeout(timer);
       window.removeEventListener("resize", onResize);
       observer.disconnect();
+      untrackAims();
       store.reset();
       setSectionRanges([]);
     };

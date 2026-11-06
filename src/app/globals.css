@@ -3238,13 +3238,18 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
  * Carte fixe (ADR 0007) : mise en page compacte assez haute (plus de 30 rem ; en paysage bas, la plaque suit la page),
  * avec JavaScript (FIXED_CARD_QUERY, lib/journey/card.ts). La plaque de l'escale courante (`data-current`, posé depuis
  * le parcours : CardTrack) se fixe en haut de l'écran, sous la barre, et remonte avec elle quand elle glisse hors de
- * l'écran (même course, même durée ; rien en mouvement réduit) ; les autres, fixées au même endroit, restent
- * invisibles, ni focalisables ni lues. Aucune ne prend de place dans son escale, qui garde sa hauteur : le défilement
+ * l'écran (même course, même durée ; rien en mouvement réduit) ; les autres, fixées au même endroit et mesurables,
+ * sont découpées à rien (masquées à l'œil seulement) : lues dans l'ordre du document, leur nom dans la liste des
+ * titres, et focalisables (le focus qui y entre rend leur escale courante d'un saut : Plate). Aucune ne prend de place
+ * dans son escale, qui garde sa hauteur : le défilement
  * mène toujours la caméra, et la plaque des escales suivantes ne monte plus de l'écran. Dépliée, la carte s'allonge
  * jusqu'à son plancher (la réserve du dock, ou le bas de l'écran à Tailles) et son contenu défile en elle-même ; la
  * scène ne recadre rien (screenLayout lit la carte repliée, à sa place de repos, et son plancher par sa hauteur
  * maximale). Une seule source pour le DOM : les identifiants restent uniques et, sans JavaScript, la plaque reste
- * entière dans la page.
+ * entière dans la page. Chaque règle attend le client prêt (`html[data-fixed-card]`, posé par CardTrack, retiré à son
+ * démontage ou quand la requête ne correspond plus) : avant l'hydratation, réseau lent ou script en échec, la plaque
+ * garde la forme compacte collée en bas de l'écran, visible et lue. Les variables (`--card-top`, `--card-name-size`)
+ * n'attendent pas : seules ces règles les lisent.
  */
 @media (max-width: 640px) and (min-height: 30.0625rem) and (scripting: enabled),
   (max-width: 1100px) and (orientation: portrait) and (min-height: 30.0625rem) and (scripting: enabled) {
@@ -3255,8 +3260,8 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     --card-name-size: clamp(1.5rem, 5vw, 1.75rem);
   }
 
-  .plate,
-  .plate[data-expanded] {
+  html[data-fixed-card] .plate,
+  html[data-fixed-card] .plate[data-expanded] {
     position: fixed;
     z-index: 1;
     top: var(--card-top);
@@ -3272,11 +3277,38 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     max-height: calc(100dvh - var(--card-top) - var(--dock-clear) - 0.5rem);
     margin: 0 auto;
     padding: 0.5rem;
+    /*
+     * Fond opaque : la carte dépliée couvre la scène sans la recadrer, les étiquettes des astres ne transparaissent pas
+     * sous son texte.
+     */
+    background: var(--plaque);
     transition: transform 0.25s ease-out;
   }
 
-  .plate:not([data-current]) {
-    visibility: hidden;
+  /*
+   * Carte dépliée : si son haut (rang, nom, rangée des pictogrammes) remplit presque le plafond (texte à 200 %), toute
+   * la carte défile, la zone de la section ouverte gardant sa hauteur minimale (règle suivante) : rien n'est perdu.
+   */
+  html[data-fixed-card] .plate[data-unfolded] {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /*
+   * Note d'échelle visible, posée au-dessus du dock : la carte dépliée s'arrête 0,5 rem au-dessus d'elle, pour que la
+   * fin du contenu et « Replier » restent atteignables. La carte repliée garde son plancher (mesuré par la scène).
+   */
+  html[data-fixed-card][data-scale-note] .plate[data-unfolded] {
+    max-height: calc(100vh - var(--card-top) - var(--dock-clear) - 0.5rem - var(--note-h, 11rem) - 0.5rem);
+    max-height: calc(100dvh - var(--card-top) - var(--dock-clear) - 0.5rem - var(--note-h, 11rem) - 0.5rem);
+  }
+
+  /*
+   * Masquée à l'œil seulement (motif « visually hidden » par découpe) : sa taille et sa place restent, pour la mesure de
+   * la scène ; la découpe retire aussi les touchers.
+   */
+  html[data-fixed-card] .plate:not([data-current]) {
+    clip-path: inset(50%);
   }
 
   /*
@@ -3284,18 +3316,18 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
    * rangée de 44 px (deux lignes au plus pour les noms longs). Ni rangée de pictogrammes, ni pied : le nom est le
    * bouton qui les déplie (Plate, motif accordéon). L'avertissement d'hypothèse du multivers reste, au-dessus du rang.
    */
-  .plate:not([data-unfolded]) > .plate-sections,
-  .plate:not([data-unfolded]) > .plate-sections ~ * {
+  html[data-fixed-card] .plate:not([data-unfolded]) > .plate-sections,
+  html[data-fixed-card] .plate:not([data-unfolded]) > .plate-sections ~ * {
     display: none;
   }
 
-  .plate .rank {
+  html[data-fixed-card] .plate .rank {
     margin: 0 0 2px;
     font-size: 0.8125rem;
     line-height: 1.3;
   }
 
-  .plate .hypothesis {
+  html[data-fixed-card] .plate .hypothesis {
     margin-bottom: 0.4rem;
     padding: 0.35rem 0.6rem;
     font-size: 0.8125rem;
@@ -3304,22 +3336,24 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 
   /*
    * Flèches des escales voisines : cible de 44 px, cercle visible de 32 px (filet --filet, ivoire au survol), qui
-   * débordent de 6 px sur le rembourrage de la carte. Le nom gagne la place entre elles.
+   * débordent de 6 px sur le rembourrage de la carte et sur l'écart du nom (6 px : les cibles ne chevauchent pas celle
+   * du nom). Le nom gagne la place entre elles. Le cercle est le seul filet : sans bordure propre, la flèche n'a pas
+   * deux anneaux en couleurs forcées.
    */
-  .plate-title {
+  html[data-fixed-card] .plate-title {
     grid-template-columns: 32px minmax(0, 1fr) 32px;
-    column-gap: 0.25rem;
+    column-gap: 0.375rem;
     margin-bottom: 0;
   }
 
-  .plate-title .stop-step {
+  html[data-fixed-card] .plate-title .stop-step {
     position: relative;
     width: 44px;
     margin-inline: -6px;
-    border-color: transparent;
+    border-style: none;
   }
 
-  .plate-title .stop-step::before {
+  html[data-fixed-card] .plate-title .stop-step::before {
     content: "";
     position: absolute;
     inset: 6px;
@@ -3329,16 +3363,12 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   }
 
   @media (hover: hover) {
-    .plate-title .stop-step:hover {
-      border-color: transparent;
-    }
-
-    .plate-title .stop-step:hover::before {
+    html[data-fixed-card] .plate-title .stop-step:hover::before {
       border-color: var(--ivoire);
     }
   }
 
-  .plate .plate-title > h2 {
+  html[data-fixed-card] .plate .plate-title > h2 {
     font-size: var(--card-name-size);
     line-height: 1.05;
   }
@@ -3348,7 +3378,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
    * petit chevron en laiton, retourné carte dépliée, qui ne quitte jamais le dernier mot. Une cible de 44 px de haut au
    * moins ; passé à la ligne entre ses mots, jamais coupé.
    */
-  .plate-name {
+  html[data-fixed-card] .plate-name {
     display: flex;
     align-items: center;
     min-height: 44px;
@@ -3361,11 +3391,11 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     text-align: left;
   }
 
-  .plate-name-end {
+  html[data-fixed-card] .plate-name-end {
     white-space: nowrap;
   }
 
-  .plate-name-chevron {
+  html[data-fixed-card] .plate-name-chevron {
     width: 0.5em;
     height: 0.5em;
     margin-left: 0.25em;
@@ -3374,7 +3404,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     transition: transform 0.25s;
   }
 
-  .plate-name[aria-expanded="true"] .plate-name-chevron {
+  html[data-fixed-card] .plate-name[aria-expanded="true"] .plate-name-chevron {
     transform: rotate(180deg);
   }
 
@@ -3383,34 +3413,35 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
    * défile dans la carte, sans entraîner la page. Son rembourrage laisse entier le contour de focus des titres-boutons
    * (et l'anneau du bouton ouvert) au bord de la zone qui défile ; sa marge négative le rend à la carte.
    */
-  .plate-sections {
-    min-height: 0;
+  html[data-fixed-card] .plate-sections {
+    /* Elle rétrécit pour la carte, jamais en dessous de la rangée des pictogrammes et d'une ou deux lignes. */
+    min-height: min(7rem, 30vh);
     margin-inline: -0.5rem;
     padding: 0.5rem;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
 
-  .plate > .actions {
+  html[data-fixed-card] .plate-footer {
     flex: none;
     margin-top: 0.5rem;
   }
 
   /* La barre glisse hors de l'écran (AutoHideBar) : la carte monte au bord haut, zone sûre comprise. */
-  .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) ~ main .plate,
-  .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) ~ .plate-skeleton {
+  html[data-fixed-card] .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) ~ main .plate,
+  html[data-fixed-card] .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) ~ .plate-skeleton {
     transform: translateY(calc(env(safe-area-inset-top, 0px) - var(--card-top)));
   }
 
   /*
    * Squelette du passage d'une escale à l'autre (`data-shown`), à la place de la carte et de la taille de la carte
    * repliée : rembourrage, rang (0,8125 rem, interligne 1,3), rangée du nom de 44 px. Une barre pour le rang, une pour
-   * le nom, deux cercles éteints de 32 px pour les flèches, le tout en ivoire à 10 %, sur le fond et le filet de la
-   * plaque. Un balayage lumineux discret le traverse en 1,6 s ; en mouvement réduit, il ne part pas (règle globale) et
-   * le squelette reste immobile. Décoratif (aria-hidden), il ne reçoit aucun toucher. Rendu après `main`, il passe
-   * devant les étiquettes de la scène comme lui (z-index 2).
+   * le nom, deux cercles éteints de 32 px pour les flèches, le tout en ivoire à 10 %, sur le fond (opaque) et le filet
+   * de la carte. Un balayage lumineux discret le traverse trois fois en 1,6 s ; en mouvement réduit, il ne part pas
+   * (règle globale) et le squelette reste immobile. Décoratif (aria-hidden), il ne reçoit aucun toucher. Rendu après
+   * `main`, il passe devant les étiquettes de la scène comme lui (z-index 2).
    */
-  .plate-skeleton[data-shown] {
+  html[data-fixed-card] .plate-skeleton[data-shown] {
     position: fixed;
     z-index: 2;
     top: var(--card-top);
@@ -3423,7 +3454,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     overflow: hidden;
     border: 1px solid var(--filet);
     border-radius: var(--r-lg);
-    background: var(--plaque-a);
+    background: var(--plaque);
     pointer-events: none;
     /* Le glissement de la barre, et le fondu de l'exploration (`data-hide-on-explore`), qu'il garde. */
     transition:
@@ -3432,61 +3463,69 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
       visibility 0s;
   }
 
-  .skeleton-rank,
-  .skeleton-name,
-  .skeleton-step {
+  html[data-fixed-card] .skeleton-rank,
+  html[data-fixed-card] .skeleton-name,
+  html[data-fixed-card] .skeleton-step {
     display: block;
     border-radius: var(--r-pill);
   }
 
-  .skeleton-rank,
-  .skeleton-name {
+  html[data-fixed-card] .skeleton-rank,
+  html[data-fixed-card] .skeleton-name {
     background: rgba(236, 229, 211, 0.1);
   }
 
-  .skeleton-rank {
+  html[data-fixed-card] .skeleton-rank {
     width: min(9rem, 45%);
     height: 0.5rem;
     margin: calc((0.8125rem * 1.3 - 0.5rem) / 2) auto calc((0.8125rem * 1.3 - 0.5rem) / 2 + 2px);
   }
 
-  .skeleton-title {
+  html[data-fixed-card] .skeleton-title {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr) 44px;
-    column-gap: 0.25rem;
+    column-gap: 0.375rem;
     align-items: center;
     justify-items: center;
     height: 44px;
   }
 
-  .skeleton-step {
+  html[data-fixed-card] .skeleton-step {
     width: 32px;
     height: 32px;
     border: 1px solid rgba(236, 229, 211, 0.1);
   }
 
-  .skeleton-name {
+  html[data-fixed-card] .skeleton-name {
     width: min(11rem, 75%);
     height: 1.25rem;
   }
 
-  .plate-skeleton::after {
+  html[data-fixed-card] .plate-skeleton::after {
     content: "";
     position: absolute;
     inset: 0;
     background: linear-gradient(100deg, transparent 35%, rgba(236, 229, 211, 0.07) 50%, transparent 65%);
     transform: translateX(-100%);
-    animation: skeleton-sweep 1.6s ease-in-out infinite;
+    /* Trois passages, puis immobile : un arrêt entre deux escales ne laisse rien bouger sans fin (2.2.2). */
+    animation: skeleton-sweep 1.6s ease-in-out 3;
   }
 
   /* Le haut de l'écran est à la carte : la note d'échelle passe au-dessus du dock, et le focus s'arrête avant elle. */
-  .scale-note {
+  html[data-fixed-card] .scale-note {
     top: auto;
     bottom: calc(var(--dock-clear) + 0.5rem);
   }
 
-  html[data-scale-note] {
-    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 5rem);
+  /*
+   * Ce qui reçoit le focus s'arrête sous la carte repliée, à sa place de repos (`--card-h` : sa hauteur, mesurée par
+   * Plate ; 5 rem avant la mesure), et au-dessus de la note d'échelle visible.
+   */
+  html[data-fixed-card] {
+    scroll-padding-top: calc(var(--card-top) + var(--card-h, 5rem) + 0.75rem);
+  }
+
+  html[data-fixed-card][data-scale-note] {
     scroll-padding-bottom: calc(var(--dock-clear) + 0.5rem + var(--note-h, 11rem) + 0.75rem);
   }
 }
