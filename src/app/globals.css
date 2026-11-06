@@ -3277,7 +3277,30 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     max-height: calc(100dvh - var(--card-top) - var(--dock-clear) - 0.5rem);
     margin: 0 auto;
     padding: 0.5rem;
+    /*
+     * Fond opaque : la carte dépliée couvre la scène sans la recadrer, les étiquettes des astres ne transparaissent pas
+     * sous son texte.
+     */
+    background: var(--plaque);
     transition: transform 0.25s ease-out;
+  }
+
+  /*
+   * Carte dépliée : si son haut (rang, nom, rangée des pictogrammes) remplit presque le plafond (texte à 200 %), toute
+   * la carte défile, la zone de la section ouverte gardant sa hauteur minimale (règle suivante) : rien n'est perdu.
+   */
+  html[data-fixed-card] .plate[data-unfolded] {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /*
+   * Note d'échelle visible, posée au-dessus du dock : la carte dépliée s'arrête 0,5 rem au-dessus d'elle, pour que la
+   * fin du contenu et « Replier » restent atteignables. La carte repliée garde son plancher (mesuré par la scène).
+   */
+  html[data-fixed-card][data-scale-note] .plate[data-unfolded] {
+    max-height: calc(100vh - var(--card-top) - var(--dock-clear) - 0.5rem - var(--note-h, 11rem) - 0.5rem);
+    max-height: calc(100dvh - var(--card-top) - var(--dock-clear) - 0.5rem - var(--note-h, 11rem) - 0.5rem);
   }
 
   /*
@@ -3393,7 +3416,8 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
    * (et l'anneau du bouton ouvert) au bord de la zone qui défile ; sa marge négative le rend à la carte.
    */
   html[data-fixed-card] .plate-sections {
-    min-height: 0;
+    /* Elle rétrécit pour la carte, jamais en dessous de la rangée des pictogrammes et d'une ou deux lignes. */
+    min-height: min(7rem, 30vh);
     margin-inline: -0.5rem;
     padding: 0.5rem;
     overflow-y: auto;
@@ -3414,8 +3438,8 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   /*
    * Squelette du passage d'une escale à l'autre (`data-shown`), à la place de la carte et de la taille de la carte
    * repliée : rembourrage, rang (0,8125 rem, interligne 1,3), rangée du nom de 44 px. Une barre pour le rang, une pour
-   * le nom, deux cercles éteints de 32 px pour les flèches, le tout en ivoire à 10 %, sur le fond et le filet de la
-   * plaque. Un balayage lumineux discret le traverse en 1,6 s ; en mouvement réduit, il ne part pas (règle globale) et
+   * le nom, deux cercles éteints de 32 px pour les flèches, le tout en ivoire à 10 %, sur le fond (opaque) et le filet
+   * de la carte. Un balayage lumineux discret le traverse en 1,6 s ; en mouvement réduit, il ne part pas (règle globale) et
    * le squelette reste immobile. Décoratif (aria-hidden), il ne reçoit aucun toucher. Rendu après `main`, il passe
    * devant les étiquettes de la scène comme lui (z-index 2).
    */
@@ -3432,7 +3456,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     overflow: hidden;
     border: 1px solid var(--filet);
     border-radius: var(--r-lg);
-    background: var(--plaque-a);
+    background: var(--plaque);
     pointer-events: none;
     /* Le glissement de la barre, et le fondu de l'exploration (`data-hide-on-explore`), qu'il garde. */
     transition:

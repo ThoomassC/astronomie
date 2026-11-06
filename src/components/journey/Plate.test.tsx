@@ -800,6 +800,21 @@ describe("feuille de style de la plaque compacte", () => {
     expect(hidden).not.toMatch(/display: none|visibility: hidden/);
   });
 
+  /*
+   * Carte dépliée : fond opaque (les étiquettes de la scène ne transparaissent pas sous le texte) ; toute la carte
+   * défile si son haut remplit le plafond (texte à 200 %), la zone ouverte gardant une hauteur minimale ; au-dessus de
+   * la note d'échelle visible, elle s'arrête avant elle.
+   */
+  it("devrait garder la carte dépliée lisible et atteignable jusqu'à « Replier »", () => {
+    const card = ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate[data-expanded]");
+    expect(card).toMatch(/background: var\(--plaque\);/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate[data-unfolded]")).toMatch(/overflow-y: auto;/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-sections")).toMatch(/min-height: min\(7rem, 30vh\);/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card][data-scale-note] .plate[data-unfolded]")).toMatch(
+      /max-height: calc\(100dvh - var\(--card-top\) - var\(--dock-clear\) - 0\.5rem - var\(--note-h, 11rem\) - 0\.5rem\);/,
+    );
+  });
+
   it("devrait arrêter le focus sous la carte repliée, de sa hauteur mesurée", () => {
     expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card]")).toMatch(
       /scroll-padding-top: calc\(var\(--card-top\) \+ var\(--card-h, 5rem\) \+ 0\.75rem\);/,
