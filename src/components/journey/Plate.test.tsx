@@ -815,6 +815,16 @@ describe("feuille de style de la plaque compacte", () => {
     );
   });
 
+  /*
+   * Flèches : le cercle de 32 px est leur seul filet (sans bordure propre, pas deux anneaux en couleurs forcées), et
+   * leur cible de 44 px ne chevauche pas celle du nom, même long.
+   */
+  it("devrait donner aux flèches un seul anneau et des cibles qui ne chevauchent pas le nom", () => {
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-title .stop-step")).toMatch(/border-style: none;/);
+    // Débord de 6 px de chaque cible (44 px pour une colonne de 32) : l'écart en vaut autant.
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-title")).toMatch(/column-gap: 0\.375rem;/);
+  });
+
   it("devrait arrêter le focus sous la carte repliée, de sa hauteur mesurée", () => {
     expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card]")).toMatch(
       /scroll-padding-top: calc\(var\(--card-top\) \+ var\(--card-h, 5rem\) \+ 0\.75rem\);/,
@@ -830,8 +840,11 @@ describe("feuille de style de la plaque compacte", () => {
     expect(sections).toMatch(/overscroll-behavior: contain;/);
   });
 
-  it("devrait faire balayer le squelette, et l'arrêter en mouvement réduit (règle globale)", () => {
-    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-skeleton::after")).toMatch(/animation: skeleton-sweep/);
+  it("devrait faire balayer le squelette trois fois au plus, et l'arrêter en mouvement réduit (règle globale)", () => {
+    // Arrêté entre deux escales, rien ne bouge sans fin (2.2.2).
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-skeleton::after")).toMatch(
+      /animation: skeleton-sweep 1\.6s ease-in-out 3;/,
+    );
     expect(ruleIn("(prefers-reduced-motion: reduce)", "*::after")).toMatch(/animation: none !important;/);
   });
 

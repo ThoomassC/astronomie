@@ -78,10 +78,13 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Mise en page compacte (téléphone ≤ 640 px, et tablette en portrait jusqu'à 1024 px de large), avec JavaScript et
   plus de 30 rem de haut : **carte fixe** (ADR 0007, demande du 6/11/2026). Une seule plaque se voit, celle de
   l'escale courante, fixée en haut de l'écran sous la barre (`data-current`, posé depuis le parcours ; les autres,
-  `visibility: hidden`, ni focalisables ni lues) ; quand la barre glisse hors de l'écran, la carte monte au bord haut,
+  découpées à rien, masquées à l'œil seulement, restent lues et focalisables : le focus qui y entre rend leur escale
+  courante d'un saut). Active une fois le client prêt (`html[data-fixed-card]`) : avant, la plaque compacte reste
+  collée en bas ; quand la barre glisse hors de l'écran, la carte monte au bord haut,
   zone sûre comprise, et redescend avec elle (0,25 s, rien en mouvement réduit). Ni à l'accueil du Voyage, ni à
   l'introduction de Tailles, ni à la ceinture d'astéroïdes. Les escales gardent leur hauteur : le défilement mène
   toujours la caméra, rien ne monte plus du bas de l'écran.
+  Fond opaque `--plaque` (carte et squelette) : les étiquettes de la scène ne transparaissent pas.
   **Repliée** (environ 80 px rembourrage compris, 0,5 rem) : le rang (0,8125 rem, interligne 1,3, version courte sur
   téléphone, centré), puis « ‹ Nom › ». Le nom, en Bodoni de 1,5 à 1,75 rem (1,25 à 1,5 rem sous 360 px), sur deux
   lignes au plus, jamais coupé d'un trait d'union, est le bouton qui déplie la carte (motif accordéon :
@@ -105,12 +108,17 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   après son bouton. Le contour de focus d'un bouton ouvert se pose à 5 px, détaché de son anneau (`CanvasText` en
   couleurs forcées). Le contenu défile dans la carte (`overflow: auto`, `overscroll-behavior: contain`), jusqu'à
   0,5 rem au-dessus du dock (à Tailles, du bas de l'écran) ; la page ne bouge pas. « Replier » ou un second toucher sur
-  le nom replient tout, le focus revient au nom ; quand l'escale courante change, la nouvelle carte arrive repliée.
+  le nom replient tout, le focus revient au nom ; quand l'escale courante change, la nouvelle carte arrive repliée, et
+  la carte se replie aussi quand le focus la quitte pour un autre élément. Note d'échelle visible : la carte dépliée
+  s'arrête 0,5 rem au-dessus d'elle. Texte à 200 % : toute la carte dépliée défile, la zone ouverte gardant au moins
+  min(7 rem, 30 vh). Le focus s'arrête sous la carte repliée (`scroll-padding-top` lit sa hauteur, `--card-h`).
   **Squelette du passage** : entre deux escales, la carte cède la place à un squelette de la taille de la carte
   repliée (une barre pour le rang, une pour le nom, deux cercles éteints de 32 px pour les flèches, ivoire à 10 % sur
-  le fond et le filet de la plaque), traversé d'un balayage lumineux discret en 1,6 s, immobile en mouvement réduit ;
+  le fond et le filet de la plaque), traversé trois fois d'un balayage lumineux discret en 1,6 s, puis immobile
+  (immobile d'emblée en mouvement réduit) ;
   décoratif (`aria-hidden`, rien d'annoncé). La carte quittée reste jusqu'à 4 % du vol, celle d'arrivée paraît dès
-  96 % : un frôlement du bout du repos ne fait pas clignoter le squelette. En couleurs forcées, ses formes passent en
+  96 % : un frôlement du bout du repos ne fait pas clignoter le squelette. Un saut (flèche, lien d'escale) montre la
+  carte visée dès le départ, sans squelette. En couleurs forcées, ses formes passent en
   filets `GrayText`.
   Pendant le repos de la caméra, le filet de couleur
   (atténué à 50 %) s'éclaire de gauche à droite ; plein, le vol vers l'escale suivante commence
@@ -130,7 +138,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Mars », « Astre suivant : Trou noir du Fer à cheval cosmique »). Défilement doux vers l'escale, immédiat en
   mouvement réduit. Ni précédente à la première escale (la vue d'ensemble n'en est pas une), ni suivante à la
   dernière, dont la plaque ramène déjà au départ. Dans la plaque compacte : deux flèches rondes de 44 px au filet
-  `--filet` (sur la carte fixe, cible de 44 px pour un cercle visible de 32 px, qui déborde sur le rembourrage), flèche
+  `--filet` (sur la carte fixe, cible de 44 px pour un cercle visible de 32 px, seul filet, qui déborde sur le
+  rembourrage et sur l'écart de 6 px qui la sépare du nom, sans chevaucher sa cible), flèche
   en laiton, de part et d'autre du nom (« ‹ Soleil › »), aux bords de la plaque, centrées sur lui ;
   le rang se centre au-dessus. Chacune garde sa colonne : au bout du parcours, une place vide, et le nom ne saute pas.
   Le nom se centre entre elles ; trop long pour une ligne, il passe à la ligne, aligné à gauche, jamais coupé ni
