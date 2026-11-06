@@ -266,15 +266,24 @@ export function riseAbove(discPx: number, ringPx: number, poleDotUp: number): nu
   return Math.max(discPx, ringPx * Math.sqrt(Math.max(0, 1 - poleDotUp * poleDotUp)));
 }
 
+/** Étiquette d'astre posée au-dessus de lui : boîte de son texte depuis le coin haut gauche du bouton, taille du bouton (px). */
+export interface AboveLabel {
+  text: LabelBox;
+  width: number;
+  height: number;
+}
+
 /**
- * Boîte du texte (`text`, en px) centré au-dessus de l'astre en (x, y), son bas à ABOVE_DISC_GAP_PX px au-dessus de
- * `rise` (riseAbove) : il ne recouvre jamais le disque. `null` si l'astre est derrière la caméra, si le texte sortirait
- * de l'écran (EDGE_MARGIN), passerait sous la barre haute ou sur le dock, ou recouvrirait une boîte occupée (barre,
- * note d'échelle, plaque, étiquette plus prioritaire) : l'étiquette est alors masquée.
+ * Boîte du bouton d'étiquette entier (`label`, en px) dont le texte se centre au-dessus de l'astre en (x, y), son bas à
+ * ABOVE_DISC_GAP_PX px au-dessus de `rise` (riseAbove) : le texte ne recouvre jamais le disque. Le bouton entier
+ * (anneau masqué, rembourrage) reçoit les touchers : c'est lui qui ne recouvre aucune boîte occupée, et lui que le
+ * moteur réserve. `null` si l'astre est derrière la caméra, si le texte sortirait de l'écran (EDGE_MARGIN), passerait
+ * sous la barre haute ou sur le dock, ou si le bouton recouvrirait une boîte occupée (barre, note d'échelle, plaque,
+ * étiquette plus prioritaire).
  */
 export function placeAboveDisc(
   anchor: MarkerAnchor,
-  text: { width: number; height: number },
+  label: AboveLabel,
   rise: number,
   viewWidth: number,
   viewHeight: number,
@@ -282,10 +291,15 @@ export function placeAboveDisc(
 ): LabelBox | null {
   const { x, y, depth } = anchor;
   if (depth > 1) return null;
+  const [textLeft, textTop, textRight, textBottom] = label.text;
+  const halfText = (textRight - textLeft) / 2;
   const bottom = y - rise - ABOVE_DISC_GAP_PX;
-  const box: LabelBox = [x - text.width / 2, bottom - text.height, x + text.width / 2, bottom];
-  if (box[0] < EDGE_MARGIN || box[2] > viewWidth - EDGE_MARGIN) return null;
-  if (box[1] < Math.max(EDGE_MARGIN, TOP_MARGIN) || box[3] > viewHeight - Math.max(EDGE_MARGIN, BOTTOM_MARGIN)) return null;
+  const top = bottom - (textBottom - textTop);
+  if (x - halfText < EDGE_MARGIN || x + halfText > viewWidth - EDGE_MARGIN) return null;
+  if (top < Math.max(EDGE_MARGIN, TOP_MARGIN) || bottom > viewHeight - Math.max(EDGE_MARGIN, BOTTOM_MARGIN)) return null;
+  const left = x - halfText - textLeft;
+  const buttonTop = top - textTop;
+  const box: LabelBox = [left, buttonTop, left + label.width, buttonTop + label.height];
   return isFree(box[0], box[1], box[2], box[3], occupied) ? box : null;
 }
 

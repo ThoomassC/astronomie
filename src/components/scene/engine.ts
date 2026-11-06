@@ -1526,24 +1526,32 @@ function setupScene(
 
   /**
    * Pose le nom d'un astre au-dessus de son disque, qui s'élève de `rise` px au-dessus de son centre (placeAboveDisc),
-   * repère effacé ; seul le texte (`text`, mesuré dans l'étiquette) est réservé. Renvoie faux sinon, sans rien changer.
+   * repère effacé ; le texte (`text`, mesuré dans l'étiquette) se centre sur l'astre, et le bouton entier, qui reçoit
+   * les touchers, est réservé. Renvoie faux sinon, sans rien changer.
    */
   function fitAboveSlot(slot: LabelSlot, text: LabelBox, at: Vector3, alpha: number, rise: number): boolean {
     project(at);
-    const size = { width: text[2] - text[0], height: text[3] - text[1] };
-    const box = placeAboveDisc({ x: onScreen.x, y: onScreen.y, depth: projected.z }, size, rise, view.width, view.height, occupied);
+    const box = placeAboveDisc(
+      { x: onScreen.x, y: onScreen.y, depth: projected.z },
+      { text, width: slot.width, height: slot.height },
+      rise,
+      view.width,
+      view.height,
+      occupied,
+    );
     if (!box) return false;
     occupied.push(box);
     setLabelForm(slot, false, false);
     setLabelAbove(slot, true);
-    showLabel(slot, box[0] - text[0], box[1] - text[1], alpha);
+    showLabel(slot, box[0], box[1], alpha);
     return true;
   }
 
   /**
    * Étiquette de l'astre `key`, posé en `at` : en mise en page compacte (`compact`), au-dessus de son disque dès qu'il
-   * déborde du repère, comme le nom d'une galaxie à côté du sien, et masquée si elle n'y tient pas ; sinon, son bouton
-   * sur l'astre (fitSlot). Masquée sous LABEL_MIN_ALPHA.
+   * déborde du repère, comme le nom d'une galaxie à côté du sien ; sinon, ou s'il n'y tient pas (téléphone court, astre
+   * cadré sur toute la bande libre), son bouton sur l'astre (fitSlot). Masquée sous LABEL_MIN_ALPHA, ou si rien ne
+   * tient.
    */
   function placeBodySlot(
     slot: LabelSlot | undefined,
@@ -1561,10 +1569,7 @@ function setupScene(
     const { text } = slot;
     if (compact && text) {
       const rise = bodyRisePx(key, at, solarScale);
-      if (rise > slot.dotRadius) {
-        if (!fitAboveSlot(slot, text, at, alpha, rise)) setLabelShown(slot, false);
-        return;
-      }
+      if (rise > slot.dotRadius && fitAboveSlot(slot, text, at, alpha, rise)) return;
     }
     if (!fitSlot(slot, at, alpha)) setLabelShown(slot, false);
   }
@@ -1631,10 +1636,19 @@ function setupScene(
     occupied.push(...obstacleBoxes);
     points.length = 0;
     /*
+     * Le Soleil devenu un point parmi les étoiles : « Soleil » prend la disposition du ciel profond (seul son texte
+     * occupe la place, à droite ou à gauche du point). Son bouton entier chasserait Proxima du Centaure. Premier de
+     * LABEL_PRIORITY, il est placé avant les astres, et hors de la bande libre qui ne vaut que pour eux.
+     */
+    const sunPoint = weights.sunPoint > 0;
+    if (sunPoint) placeMarkedSlot(sunSlot, anchor.set(0, 0, 0), alpha * sunFade);
+    /*
      * Mise en page compacte : le nom d'un astre reste entre la barre (ou la note d'échelle) et la plaque repliée de
-     * l'escale, jamais dessous. Ces deux boîtes ne valent que pour les astres : le ciel profond garde ses règles.
+     * l'escale, jamais dessous. Ces deux boîtes ne valent que pour les astres (placeBodySlot) : le ciel profond, et le
+     * Soleil réduit à un point, gardent leurs règles.
      */
     const band = compact ? screenLayout.band(journey.current) : null;
+    const bandAt = occupied.length;
     if (band) {
       occupied.push(
         [0, 0, view.width, band.top * view.height - BAND_MARGIN_PX],
@@ -1647,15 +1661,11 @@ function setupScene(
       if (key !== "sun") {
         const at = anchor.copy(bodyOf(key).position).multiplyScalar(solarScale);
         placeBodySlot(bodySlots.get(key), key, at, near * weights.planetLabels, compact, solarScale);
-      } else if (weights.sunPoint > 0) {
-        // Le Soleil devenu un point parmi les étoiles : « Soleil » prend la disposition du ciel profond (seul son
-        // texte occupe la place, à droite ou à gauche du point). Son bouton entier chasserait Proxima du Centaure.
-        placeMarkedSlot(sunSlot, anchor.set(0, 0, 0), alpha * sunFade);
-      } else {
+      } else if (!sunPoint) {
         placeBodySlot(sunSlot, key, anchor.set(0, 0, 0), near * sunFade, compact, solarScale);
       }
     }
-    if (band) occupied.splice(obstacleBoxes.length, 2);
+    if (band) occupied.splice(bandAt, 2);
     /*
      * Points visibles : nul texte du ciel profond ne les recouvre, ni son halo de nuit. « Soleil », texte sans ce halo
      * qui ne masque aucun point, est placé avant eux : sur téléphone, les points qui serrent le Soleil (Lacaille 9352,
