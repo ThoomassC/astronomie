@@ -1,7 +1,7 @@
 import { isLocale, type Locale } from "./locales";
 
 /** Pages du site, dans l'ordre des onglets. */
-export const PAGES = ["home", "voyage", "sizes", "about"] as const;
+export const PAGES = ["home", "voyage", "sizes", "about", "releases"] as const;
 
 export type PageKey = (typeof PAGES)[number];
 
@@ -14,12 +14,13 @@ export const PAGE_SEGMENTS = {
   voyage: "voyage",
   sizes: "tailles",
   about: "a-propos",
+  releases: "notes-de-version",
 } as const satisfies Record<PageKey, string>;
 
 /** Chemin d'une page dans une langue. */
 export type LocalizedPath = `/${Locale}` | `/${Locale}/${string}`;
 
-/** « /fr », « /en/voyage », « /es/tailles », « /fr/a-propos ». */
+/** « /fr », « /en/voyage », « /es/tailles », « /fr/a-propos », « /en/notes-de-version ». */
 export function pathFor(page: PageKey, locale: Locale): LocalizedPath {
   const segment = PAGE_SEGMENTS[page];
   return segment === "" ? `/${locale}` : `/${locale}/${segment}`;

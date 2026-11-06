@@ -28,7 +28,7 @@ const PAGE_TITLES = LOCALES.flatMap((locale) =>
 );
 
 describe("getCommonContent", () => {
-  it("devrait couvrir les quatre pages dans chaque langue", () => {
+  it("devrait couvrir les cinq pages dans chaque langue", () => {
     expect(LOCALES.map((locale) => Object.keys(getCommonContent(locale).pages).sort())).toEqual(
       LOCALES.map(() => [...PAGES].sort()),
     );

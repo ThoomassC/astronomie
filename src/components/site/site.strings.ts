@@ -11,7 +11,10 @@ export interface SiteStrings {
   brandHome: string;
   /** Groupe des onglets (repère de navigation, titre de groupe) : « Rubriques ». */
   tabsLabel: string;
-  /** Libellés des onglets. */
+  /**
+   * Libellés des onglets, aussi ceux du menu replié. Celui des notes de version est court (« Versions ») : cinq onglets
+   * tiennent ainsi sur une ligne de 861 à 1 440 px dans les trois langues ; le nom complet est le titre de la page.
+   */
   tabs: Readonly<Record<PageKey, string>>;
   /** Bouton du menu replié, à 860 px et moins : « Menu ». */
   menu: string;
@@ -37,7 +40,7 @@ export const SITE_STRINGS: Readonly<Record<Locale, SiteStrings>> = {
   fr: {
     brandHome: `${SITE_NAME}, accueil`,
     tabsLabel: "Rubriques",
-    tabs: { home: "Accueil", voyage: "Voyage", sizes: "Tailles", about: "À propos" },
+    tabs: { home: "Accueil", voyage: "Voyage", sizes: "Tailles", about: "À propos", releases: "Versions" },
     menu: "Menu",
     language: "Langue",
     currentLanguage: "langue : français",
@@ -48,7 +51,7 @@ export const SITE_STRINGS: Readonly<Record<Locale, SiteStrings>> = {
   en: {
     brandHome: `${SITE_NAME}, home`,
     tabsLabel: "Sections",
-    tabs: { home: "Home", voyage: "Journey", sizes: "Sizes", about: "About" },
+    tabs: { home: "Home", voyage: "Journey", sizes: "Sizes", about: "About", releases: "Releases" },
     menu: "Menu",
     language: "Language",
     currentLanguage: "language: English",
@@ -59,7 +62,7 @@ export const SITE_STRINGS: Readonly<Record<Locale, SiteStrings>> = {
   es: {
     brandHome: `${SITE_NAME}, inicio`,
     tabsLabel: "Secciones",
-    tabs: { home: "Inicio", voyage: "Viaje", sizes: "Tamaños", about: "Acerca de" },
+    tabs: { home: "Inicio", voyage: "Viaje", sizes: "Tamaños", about: "Acerca de", releases: "Versiones" },
     menu: "Menú",
     language: "Idioma",
     currentLanguage: "idioma: español",

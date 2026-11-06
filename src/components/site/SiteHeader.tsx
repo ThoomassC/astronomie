@@ -32,7 +32,7 @@ interface SiteHeaderProps {
 const PINNED_PAGES: ReadonlySet<PageKey> = new Set(["voyage", "sizes"]);
 
 /**
- * Barre haute commune aux quatre pages, rendue par chaque page : l'onglet courant est connu sans `usePathname`, et
+ * Barre haute commune aux cinq pages, rendue par chaque page : l'onglet courant est connu sans `usePathname`, et
  * chaque page y glisse ses commandes. Dans l'ordre du DOM, qui est l'ordre de tabulation : marque (retour à
  * l'accueil), onglets (plus de 860 px), puis un bloc à droite : commandes de la page, langue (plus de 860 px), menu
  * replié (860 px et moins). Ces trois parties sont les trois colonnes de la grille qui centre les onglets dans la

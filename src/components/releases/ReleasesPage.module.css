@@ -1,0 +1,26 @@
+/* Notes de version : une page de lecture, comme À propos, entre les marges de la barre. */
+
+/* Gouttière de la barre, celle d'À propos : le début suit le logo, réduit à son pictogramme centré dans 44 px. */
+.page,
+.footer {
+  --start: var(--gl);
+}
+
+@media (min-width: 861px) and (max-width: 1100px), (max-width: 359px), (max-width: 860px) and (scripting: none) {
+  .page,
+  .footer {
+    --start: calc(var(--gl) + 8px);
+  }
+}
+
+/* Le `main` global est celui du voyage (clics vers la scène, place de la règle) : ici, ni scène ni règle. */
+.page {
+  pointer-events: auto;
+  padding-block: calc(env(safe-area-inset-top, 0px) + 6.75rem) 4rem;
+  padding-inline: var(--start) var(--gr);
+}
+
+/* Le `footer` global est celui du voyage (place de la règle et du dock) : ici, les marges de la page. */
+.footer {
+  padding: 0 var(--gr) calc(3rem + env(safe-area-inset-bottom, 0px)) var(--start);
+}

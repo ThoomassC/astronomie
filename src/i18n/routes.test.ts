@@ -3,8 +3,8 @@ import { LOCALES, isLocale } from "@/i18n/locales";
 import { PAGE_SEGMENTS, PAGES, negotiatedPathFor, parsePath, pathFor, switchLocale } from "@/i18n/routes";
 
 describe("PAGE_SEGMENTS", () => {
-  it("devrait donner à chacune des 4 pages un segment distinct", () => {
-    expect(PAGES).toHaveLength(4);
+  it("devrait donner à chacune des 5 pages un segment distinct", () => {
+    expect(PAGES).toHaveLength(5);
     expect(new Set(Object.values(PAGE_SEGMENTS)).size).toBe(PAGES.length);
   });
 
@@ -26,6 +26,7 @@ describe("pathFor", () => {
     ["voyage", "en", "/en/voyage"],
     ["sizes", "es", "/es/tailles"],
     ["about", "fr", "/fr/a-propos"],
+    ["releases", "en", "/en/notes-de-version"],
   ] as const)("devrait placer la page %s en %s à « %s »", (page, locale, expected) => {
     expect(pathFor(page, locale)).toBe(expected);
   });
@@ -37,6 +38,7 @@ describe("negotiatedPathFor", () => {
     ["voyage", "/voyage"],
     ["sizes", "/tailles"],
     ["about", "/a-propos"],
+    ["releases", "/notes-de-version"],
   ] as const)("devrait donner à la page %s un chemin sans langue, que le proxy négocie (« %s »)", (page, expected) => {
     expect(negotiatedPathFor(page)).toBe(expected);
   });
@@ -49,6 +51,8 @@ describe("parsePath", () => {
     { pathname: "/fr/", expected: { locale: "fr", page: "home" } },
     { pathname: "/es/voyage/", expected: { locale: "es", page: "voyage" } },
     { pathname: "/en/a-propos", expected: { locale: "en", page: "about" } },
+    { pathname: "/es/notes-de-version", expected: { locale: "es", page: "releases" } },
+    { pathname: "/fr/notes-de-version/", expected: { locale: "fr", page: "releases" } },
   ])("devrait lire la langue et la page de « $pathname »", ({ pathname, expected }) => {
     expect(parsePath(pathname)).toEqual(expected);
   });
@@ -61,6 +65,7 @@ describe("parsePath", () => {
     { why: "racine", pathname: "/" },
     { why: "vide", pathname: "" },
     { why: "sous-chemin d'une page", pathname: "/fr/voyage/saturne" },
+    { why: "ancien nom de page", pathname: "/fr/notes" },
     { why: "sans barre initiale", pathname: "fr/voyage" },
   ])("devrait rendre null quand le chemin n'est pas une page du site ($why : « $pathname »)", ({ pathname }) => {
     expect(parsePath(pathname)).toBeNull();
@@ -79,6 +84,7 @@ describe("switchLocale", () => {
     ["/fr/voyage", "en", "/en/voyage"],
     ["/fr", "es", "/es"],
     ["/en/a-propos", "fr", "/fr/a-propos"],
+    ["/fr/notes-de-version", "es", "/es/notes-de-version"],
     ["/es/tailles/", "en", "/en/tailles/"],
   ] as const)("devrait passer « %s » en %s (« %s ») en gardant le reste du chemin", (pathname, locale, expected) => {
     expect(switchLocale(pathname, locale)).toBe(expected);

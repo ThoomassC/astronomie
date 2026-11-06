@@ -379,7 +379,7 @@ main > section:focus {
 
 /* ---------- Barre haute ---------- */
 /*
- * Barre commune aux quatre pages (SiteHeader, rendue par chaque page) : marque, onglets, commandes de la page (voyage :
+ * Barre commune aux cinq pages (SiteHeader, rendue par chaque page) : marque, onglets, commandes de la page (voyage :
  * escale en cours, menu des escales, « Tourner autour »), langue ; à 860 px et moins, « Menu » remplace onglets et
  * langue. Ici la ligne, la marque et l'escale en cours ; onglets, langue et menu dans SiteHeader.module.css. Une seule
  * ligne de 320 à 1 440 px, dans les trois langues : rien n'y passe à la ligne, et l'escale en cours (ou le menu des
