@@ -61,7 +61,7 @@ export const RELEASES_FR: ReleasesContent = {
             "Au Voyage et à Tailles, une carte fixe en haut de l'écran montre l'escale en cours, avec des flèches vers la précédente et la suivante.",
             "Toucher le nom de l'astre déplie ses détails, qui défilent dans la carte.",
             "Pendant le passage d'une escale à l'autre, une carte d'attente garde la place.",
-            "La barre du haut reste toujours fixe, en portrait comme en paysage.",
+            "Au Voyage et à Tailles, la barre du haut reste toujours fixe, en portrait comme en paysage.",
             "Les boutons du bas sont plus faciles à toucher, et les noms des astres évitent la barre.",
           ],
         },

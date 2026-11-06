@@ -93,7 +93,15 @@ describe("formatReleaseDate", () => {
   });
 
   it("devrait garder le jour de la date ISO, quel que soit le fuseau du serveur", () => {
-    expect(formatReleaseDate("2026-11-03", "fr")).toBe("3 novembre 2026");
+    // Un fuseau à l'ouest de Greenwich ferait tomber minuit UTC la veille, sans le fuseau UTC du formatage.
+    const tz = process.env.TZ;
+    process.env.TZ = "America/Los_Angeles";
+    try {
+      expect(formatReleaseDate("2026-11-03", "fr")).toBe("3 novembre 2026");
+    } finally {
+      if (tz === undefined) delete process.env.TZ;
+      else process.env.TZ = tz;
+    }
   });
 });
 

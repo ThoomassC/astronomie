@@ -20,7 +20,7 @@ export const RELEASES_ES: ReleasesContent = {
         {
           heading: "Novedades",
           items: [
-            "Cuatro agujeros negros en la pestaña Tamaños: Cygnus X-1, Sagittarius A*, M87* y el agujero negro de la Herradura Cósmica.",
+            "Cuatro agujeros negros en la pestaña Tamaños: Cygnus X-1, Sagitario A*, M87* y el agujero negro de la Herradura Cósmica.",
             "En el móvil, la ficha del astro que estás viendo se queda arriba de la pantalla durante todo el recorrido.",
             "Esta página, Notas de la versión, cuenta lo que cambia en cada versión.",
           ],
@@ -30,7 +30,7 @@ export const RELEASES_ES: ReleasesContent = {
           items: [
             "Los agujeros negros se colocan entre las estrellas según el tamaño de su sombra, unas 2,6 veces el de su horizonte.",
             "Cada agujero negro se calcula en pantalla: su sombra, su anillo de luz y las estrellas del fondo, desviadas como por una lupa.",
-            "Cygnus X-1 está rodeado por un disco de gas abrasador, M87* lanza un largo chorro y Sagittarius A* luce un anillo tenue.",
+            "Cygnus X-1 está rodeado por un disco de gas abrasador, M87* lanza un largo chorro y Sagitario A* luce un anillo tenue.",
             `El agujero negro de la Herradura Cósmica, pesado en 2025, es uno de los más grandes conocidos: ${n(36_000)} millones de veces la masa del Sol.`,
             "Cada agujero negro tiene su ficha y sus fuentes, y la regla de tamaños va de una diezmilésima a un millón de radios solares.",
             "Rigel y Sirio, dos estrellas muy calientes, tienen ahora un borde más oscuro y un halo azulado.",
@@ -62,7 +62,7 @@ export const RELEASES_ES: ReleasesContent = {
             "En el Viaje y en Tamaños, una tarjeta fija arriba de la pantalla muestra la escala actual, con flechas hacia la anterior y la siguiente.",
             "Al tocar el nombre del astro se despliegan sus detalles, que se desplazan dentro de la tarjeta.",
             "Mientras pasas de una escala a otra, una tarjeta de espera guarda el sitio.",
-            "La barra superior se queda siempre fija, en vertical y en horizontal.",
+            "En el Viaje y en Tamaños, la barra superior se queda siempre fija, en vertical y en horizontal.",
             "Los botones de abajo son más fáciles de tocar, y los nombres de los astros evitan la barra.",
           ],
         },
