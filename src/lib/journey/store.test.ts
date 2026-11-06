@@ -171,6 +171,51 @@ describe("createStopStore", () => {
   });
 });
 
+/*
+ * Escale visée par une navigation programmée (flèche, lien, focus entré dans une carte) : retenue jusqu'au repos sur
+ * elle, pour que la carte fixe la montre dès le départ (lib/journey/card.ts).
+ */
+describe("createStopStore.aim", () => {
+  it("devrait retenir l'escale visée, en prévenant les abonnés du vol, jusqu'au repos sur elle", () => {
+    const { aim, update, get, subscribe, subscribeFlight } = createStopStore<SizeKey>("intro");
+    const flight = vi.fn();
+    const current = vi.fn();
+    subscribeFlight(flight);
+    subscribe(current);
+    aim("sirius-a");
+    expect(get().target).toBe("sirius-a");
+    expect(flight).toHaveBeenCalledTimes(1);
+    expect(current).not.toHaveBeenCalled();
+    // Le vol survole le Soleil, puis frôle l'arrivée : la visée tient.
+    update("sun", "sun", 0);
+    update("sun", "sirius-a", 0.99);
+    expect(get().target).toBe("sirius-a");
+    update("sirius-a", "sirius-a", 0);
+    expect(get().target).toBeUndefined();
+  });
+
+  it("ne devrait rien viser quand le parcours est déjà au repos sur l'escale, ni prévenir pour rien", () => {
+    const { aim, update, get, subscribeFlight } = createStopStore<SizeKey>("intro");
+    update("sun", "sun", 0);
+    const flight = vi.fn();
+    subscribeFlight(flight);
+    aim("sun");
+    expect(get().target).toBeUndefined();
+    aim(null);
+    expect(flight).not.toHaveBeenCalled();
+  });
+
+  it("devrait oublier la visée quand on reprend la main (null) et au retour à l'état initial", () => {
+    const { aim, get, reset } = createStopStore<SizeKey>("intro");
+    aim("sun");
+    aim(null);
+    expect(get().target).toBeUndefined();
+    aim("sun");
+    reset();
+    expect(get().target).toBeUndefined();
+  });
+});
+
 describe("useStopStoreCurrent", () => {
   afterEach(cleanup);
 

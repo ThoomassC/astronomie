@@ -3238,8 +3238,10 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
  * Carte fixe (ADR 0007) : mise en page compacte assez haute (plus de 30 rem ; en paysage bas, la plaque suit la page),
  * avec JavaScript (FIXED_CARD_QUERY, lib/journey/card.ts). La plaque de l'escale courante (`data-current`, posé depuis
  * le parcours : CardTrack) se fixe en haut de l'écran, sous la barre, et remonte avec elle quand elle glisse hors de
- * l'écran (même course, même durée ; rien en mouvement réduit) ; les autres, fixées au même endroit, restent
- * invisibles, ni focalisables ni lues. Aucune ne prend de place dans son escale, qui garde sa hauteur : le défilement
+ * l'écran (même course, même durée ; rien en mouvement réduit) ; les autres, fixées au même endroit et mesurables,
+ * sont découpées à rien (masquées à l'œil seulement) : lues dans l'ordre du document, leur nom dans la liste des
+ * titres, et focalisables (le focus qui y entre rend leur escale courante d'un saut : Plate). Aucune ne prend de place
+ * dans son escale, qui garde sa hauteur : le défilement
  * mène toujours la caméra, et la plaque des escales suivantes ne monte plus de l'écran. Dépliée, la carte s'allonge
  * jusqu'à son plancher (la réserve du dock, ou le bas de l'écran à Tailles) et son contenu défile en elle-même ; la
  * scène ne recadre rien (screenLayout lit la carte repliée, à sa place de repos, et son plancher par sa hauteur
@@ -3278,8 +3280,12 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     transition: transform 0.25s ease-out;
   }
 
+  /*
+   * Masquée à l'œil seulement (motif « visually hidden » par découpe) : sa taille et sa place restent, pour la mesure de
+   * la scène ; la découpe retire aussi les touchers.
+   */
   html[data-fixed-card] .plate:not([data-current]) {
-    visibility: hidden;
+    clip-path: inset(50%);
   }
 
   /*
@@ -3394,7 +3400,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     overscroll-behavior: contain;
   }
 
-  html[data-fixed-card] .plate > .actions {
+  html[data-fixed-card] .plate-footer {
     flex: none;
     margin-top: 0.5rem;
   }
@@ -3488,8 +3494,15 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     bottom: calc(var(--dock-clear) + 0.5rem);
   }
 
+  /*
+   * Ce qui reçoit le focus s'arrête sous la carte repliée, à sa place de repos (`--card-h` : sa hauteur, mesurée par
+   * Plate ; 5 rem avant la mesure), et au-dessus de la note d'échelle visible.
+   */
+  html[data-fixed-card] {
+    scroll-padding-top: calc(var(--card-top) + var(--card-h, 5rem) + 0.75rem);
+  }
+
   html[data-fixed-card][data-scale-note] {
-    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 5rem);
     scroll-padding-bottom: calc(var(--dock-clear) + 0.5rem + var(--note-h, 11rem) + 0.75rem);
   }
 }

@@ -312,3 +312,62 @@ describe("holdAt", () => {
     expect(scrollTo).toHaveBeenCalledWith({ top: 500, behavior: "instant" });
   });
 });
+
+/*
+ * Escale visée : le parcours de la page la reçoit (trackAims) pour que la carte fixe la montre dès le départ. Elle tombe
+ * au premier geste qui reprend la main, mais pas sur Tab, qui mène justement à la carte visée.
+ */
+describe("escale visée", () => {
+  it("devrait viser l'escale de goTo, et la lâcher au premier geste qui fait défiler, pas sur Tab", async () => {
+    const { trackAims } = await import("@/components/journey/navigation");
+    const aim = vi.fn<(key: string | null) => void>();
+    const untrack = trackAims(aim);
+    setSectionRanges(RANGES);
+    goTo("sun");
+    expect(aim).toHaveBeenLastCalledWith("sun");
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab" }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift" }));
+    expect(aim).toHaveBeenCalledTimes(1);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "PageDown" }));
+    expect(aim).toHaveBeenLastCalledWith(null);
+    window.dispatchEvent(new Event("wheel"));
+    expect(aim).toHaveBeenCalledTimes(2);
+    untrack();
+    goTo("hero");
+    expect(aim).toHaveBeenCalledTimes(2);
+  });
+
+  it("devrait lâcher la visée avant l'exploration (holdAt)", async () => {
+    const { trackAims, holdAt } = await import("@/components/journey/navigation");
+    const aim = vi.fn<(key: string | null) => void>();
+    trackAims(aim);
+    setSectionRanges(RANGES);
+    goTo("sun");
+    holdAt("sun");
+    expect(aim).toHaveBeenLastCalledWith(null);
+  });
+
+  /*
+   * Le focus est entré dans une carte masquée (Tab, lecteur d'écran) : son escale devient courante d'un saut, sans
+   * animation et sans que le focus bouge.
+   */
+  it("devrait sauter sans animation sur l'escale visée par jumpTo, sans déplacer le focus", async () => {
+    const { trackAims, jumpTo, takeSkipSmoothing } = await import("@/components/journey/navigation");
+    const aim = vi.fn<(key: string | null) => void>();
+    trackAims(aim);
+    const section = document.createElement("section");
+    section.dataset.stop = "sun";
+    section.tabIndex = -1;
+    const button = document.createElement("button");
+    section.append(button);
+    document.body.append(section);
+    button.focus();
+    expect(jumpTo("sun")).toBe(false);
+    setSectionRanges(RANGES);
+    expect(jumpTo("sun")).toBe(true);
+    expect(aim).toHaveBeenLastCalledWith("sun");
+    expect(scrollTo).toHaveBeenCalledWith({ top: SUN_TARGET, behavior: "instant" });
+    expect(takeSkipSmoothing()).toBe(true);
+    expect(document.activeElement).toBe(button);
+  });
+});

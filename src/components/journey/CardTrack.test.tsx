@@ -78,6 +78,22 @@ describe("CardTrack", () => {
   });
 
   /*
+   * Saut par une flèche ou un lien : le focus est déjà sur l'escale visée. Sa carte se voit dès le départ, sans
+   * squelette ; la carte quittée cède aussitôt.
+   */
+  it("devrait marquer la carte de l'escale visée dès le départ, sans squelette pendant le vol", () => {
+    const { store, ui } = renderTrack();
+    const { container } = render(ui);
+    act(() => store.update("sun", "sun", 0));
+    act(() => store.aim("sirius-a"));
+    expect(plateOf("Sirius A")).toHaveAttribute("data-current");
+    expect(plateOf("Soleil")).not.toHaveAttribute("data-current");
+    act(() => store.update("sun", "sirius-a", 0.5));
+    expect(container.querySelector(".plate-skeleton")).not.toHaveAttribute("data-shown");
+    expect(plateOf("Sirius A")).toHaveAttribute("data-current");
+  });
+
+  /*
    * Squelette du passage : de la taille de la carte repliée, à sa place, décoratif (ni lu ni annoncé). Il ne paraît
    * qu'en plein vol, la carte d'arrivée revient dès le repos.
    */
