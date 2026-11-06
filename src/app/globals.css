@@ -3335,7 +3335,8 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   }
 
   /*
-   * Flèches des escales voisines : cible de 44 px, cercle visible de 32 px (filet --filet, ivoire au survol), qui
+   * Flèches des escales voisines : cible de 44 px, cercle visible de 32 px de côté, centré dans la cible quelle que
+   * soit la hauteur de la rangée du nom (un nom sur deux lignes l'étirait en ovale), filet --filet, ivoire au survol ; qui
    * débordent de 6 px sur le rembourrage de la carte et sur l'écart du nom (6 px : les cibles ne chevauchent pas celle
    * du nom). Le nom gagne la place entre elles. Le cercle est le seul filet : sans bordure propre, la flèche n'a pas
    * deux anneaux en couleurs forcées.
@@ -3356,7 +3357,10 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   html[data-fixed-card] .plate-title .stop-step::before {
     content: "";
     position: absolute;
-    inset: 6px;
+    inset: 0;
+    width: 32px;
+    height: 32px;
+    margin: auto;
     border: 1px solid var(--filet);
     border-radius: 50%;
     pointer-events: none;
