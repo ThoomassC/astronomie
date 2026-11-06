@@ -222,7 +222,8 @@ describe("feuille de style de la barre qui glisse", () => {
   }
 
   it("devrait la faire glisser seulement là où ni la règle ni les fondus ne bordent la page", () => {
-    const { query } = queryAround(".bar[data-concealed]");
+    // La règle de la barre même : la carte fixe du téléphone (« Carte fixe ») suit aussi `.bar[data-concealed]`.
+    const { query } = queryAround('.bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) {');
     expect(query).toBe(SLIDING);
   });
 
