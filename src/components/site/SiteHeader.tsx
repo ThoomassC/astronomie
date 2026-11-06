@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Locale } from "@/i18n/locales";
 import { pathFor, type PageKey } from "@/i18n/routes";
-import { AutoHideBar } from "./AutoHideBar";
 import { LanguageMenu } from "./LanguageMenu";
 import { SITE_NAME, SITE_STRINGS } from "./site.strings";
 import styles from "./SiteHeader.module.css";
@@ -29,8 +28,8 @@ interface SiteHeaderProps {
   children?: ReactNode;
 }
 
-/** Pages à scène, longues, où la barre glisse hors de l'écran quand on descend (AutoHideBar). */
-const SLIDING_PAGES: ReadonlySet<PageKey> = new Set(["voyage", "sizes"]);
+/** Pages à scène, longues, où la barre reste fixe en haut de l'écran (`data-pinned`), toujours à portée. */
+const PINNED_PAGES: ReadonlySet<PageKey> = new Set(["voyage", "sizes"]);
 
 /**
  * Barre haute commune aux quatre pages, rendue par chaque page : l'onglet courant est connu sans `usePathname`, et
@@ -38,8 +37,8 @@ const SLIDING_PAGES: ReadonlySet<PageKey> = new Set(["voyage", "sizes"]);
  * l'accueil), onglets (plus de 860 px), puis un bloc à droite : commandes de la page, langue (plus de 860 px), menu
  * replié (860 px et moins). Ces trois parties sont les trois colonnes de la grille qui centre les onglets dans la
  * barre (SiteHeader.module.css). `data-page` et `data-controls` (commandes présentes) règlent la mise en page ; la
- * barre s'efface pendant l'exploration du voyage (`data-hide-on-explore`). Au Voyage et à Tailles, elle suit le
- * défilement (AutoHideBar, seule feuille client ici) ; son contenu reste rendu par le serveur.
+ * barre s'efface pendant l'exploration du voyage (`data-hide-on-explore`). Au Voyage et à Tailles, elle reste fixe en
+ * haut de l'écran (`data-pinned`), en descendant comme en remontant. Rendue entièrement par le serveur.
  */
 export function SiteHeader({ locale, page, children }: SiteHeaderProps) {
   const t = SITE_STRINGS[locale];
@@ -62,15 +61,14 @@ export function SiteHeader({ locale, page, children }: SiteHeaderProps) {
       </div>
     </>
   );
-  if (SLIDING_PAGES.has(page)) {
-    return (
-      <AutoHideBar className={className} page={page} controls={hasControls}>
-        {content}
-      </AutoHideBar>
-    );
-  }
   return (
-    <header className={className} data-hide-on-explore data-page={page} data-controls={hasControls ? "" : undefined}>
+    <header
+      className={className}
+      data-hide-on-explore
+      data-pinned={PINNED_PAGES.has(page) ? "" : undefined}
+      data-page={page}
+      data-controls={hasControls ? "" : undefined}
+    >
       {content}
     </header>
   );

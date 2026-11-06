@@ -407,7 +407,7 @@
  * du bas de la vue, sans réserve pour le dock, qui a rejoint la page. Même règle pour la liste des escales.
  */
 @media (max-height: 30rem) and (scripting: enabled) {
-  .header[data-autohide] .menuPanel {
+  .header[data-pinned] .menuPanel {
     max-height: calc(100vh - 4.25rem - env(safe-area-inset-top, 0px));
     max-height: calc(100svh - 4.25rem - env(safe-area-inset-top, 0px));
   }

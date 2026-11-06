@@ -320,9 +320,9 @@ describe("étiquettes hors des obstacles", () => {
 
   /*
    * La barre haute couvre le haut de l'écran, de 59 à 132 px selon l'encoche : aucune étiquette ne se pose dessous,
-   * même quand elle a glissé hors de l'écran (AutoHideBar), car elle peut revenir à tout moment.
+   * mesurée à sa place de repos, sans une translation passagère (barSlide.ts).
    */
-  it("devrait réserver la barre haute à sa place de repos, même glissée hors de l'écran", async () => {
+  it("devrait réserver la barre haute à sa place de repos, même translatée", async () => {
     const sun = document.createElement("button");
     measured(sun, { left: 0, top: 0, width: 60, height: 24 });
     document.body.append(sun);
@@ -337,7 +337,7 @@ describe("étiquettes hors des obstacles", () => {
     (await framed(null)).dispose();
     const top = Number(/translate3d\([-\d.]+px,([-\d.]+)px/.exec(sun.style.transform)?.[1]);
     expect(top).toBeGreaterThan(0);
-    // Une barre qui descend jusque sous l'étiquette, glissée hors de l'écran de toute sa hauteur.
+    // Une barre qui descend jusque sous l'étiquette, translatée hors de l'écran de toute sa hauteur.
     const bar = document.createElement("header");
     const height = top + 30;
     bar.style.transform = `matrix(1, 0, 0, 1, 0, ${-height})`;

@@ -832,8 +832,8 @@ function setupScene(
    * Une seule passe de lecture : taille des étiquettes (astres et ciel profond), zones à éviter, bandes et zone
    * libres. Les étiquettes à repère sont mesurées dans leur forme normale, puis reprennent la leur après toutes les
    * lectures : sur un écran à 120 Hz, la boucle saute une image sur deux, et la suivante pourrait être peinte sans elle.
-   * La barre haute est une zone à éviter, sur toute la largeur jusqu'à son bas, à sa place de repos : elle glisse hors
-   * de l'écran quand on descend (téléphone), mais peut revenir à tout moment ; sa hauteur suit l'encoche (59 à 132 px).
+   * La barre haute est une zone à éviter, sur toute la largeur jusqu'à son bas, à sa place de repos (barSlide.ts) ;
+   * sa hauteur suit l'encoche (59 à 132 px).
    */
   function measureLayout(): void {
     const forms = markedSlots.map(({ mirrored, short }) => ({ mirrored, short }));

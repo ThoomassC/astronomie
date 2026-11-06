@@ -243,17 +243,6 @@ describe("scrollInstantly", () => {
     expect(takeSkipSmoothing()).toBe(false);
   });
 
-  it("devrait prévenir la barre haute du saut, une fois la page à sa nouvelle position : ce n'est pas un geste", async () => {
-    const { scrollInstantly } = await import("@/components/journey/navigation");
-    const { onScrollJump } = await import("@/lib/site/barSlide");
-    scrollTo.mockImplementation(({ top }) => scrolledTo(top ?? 0));
-    const seen: number[] = [];
-    const stop = onScrollJump(() => seen.push(window.scrollY));
-    scrollInstantly(1200);
-    stop();
-    expect(seen).toEqual([1200]);
-  });
-
   it("devrait demander au suivi du voyage de sauter une seule fois à la nouvelle position, sans lisser", async () => {
     const { scrollInstantly, takeSkipSmoothing } = await import("@/components/journey/navigation");
     expect(takeSkipSmoothing()).toBe(false);

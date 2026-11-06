@@ -413,9 +413,8 @@ function setupScene(
 
   /**
    * Une passe de lecture : tailles des étiquettes (mesurées dans leur forme normale, puis remises dans la leur), boîtes
-   * à éviter (barre, règle), bas de la barre, texte de l'introduction, bandes et zone libres. La barre, qui glisse hors
-   * de l'écran quand on descend (téléphone), est mesurée à sa place de repos : aucune étiquette ne s'y pose, elle peut
-   * revenir à tout moment.
+   * à éviter (barre, règle), bas de la barre, texte de l'introduction, bandes et zone libres. La barre, fixe en haut de
+   * l'écran, est mesurée à sa place de repos (barSlide.ts) : aucune étiquette ne s'y pose.
    */
   function measureLayout(): void {
     const forms = allSlots.map(({ mirrored, short }) => ({ mirrored, short }));
