@@ -53,6 +53,8 @@ const SAME_AS_FRENCH: Readonly<Record<Translated, readonly string[]>> = {
     "Volume",
     "Pause",
     "Date",
+    // « Version » 1.1.0, titre de chaque version des notes de version.
+    "Version",
   ],
   // « sem » abrège « semaine » comme « semana ».
   es: ["Kuiper", "Voyager 1", "Voyager 2", "1 sem/s"],
@@ -120,8 +122,8 @@ const SOURCES: readonly { name: string; read: (locale: Locale) => unknown }[] = 
 const shapeOf = (value: unknown) => textLeaves(value).map(({ path, value: leaf }) => `${path} (${typeof leaf})`);
 
 describe("complétude des trois langues", () => {
-  it("devrait lire les six contenus serveur et toutes les tables client, chacune en trois langues exactement", () => {
-    expect(SOURCES.length).toBeGreaterThanOrEqual(6 + 17);
+  it("devrait lire les sept contenus serveur et toutes les tables client, chacune en trois langues exactement", () => {
+    expect(SOURCES.length).toBeGreaterThanOrEqual(7 + 17);
     for (const { name, strings } of tables) expect(Object.keys(strings).sort(), name).toEqual([...LOCALES].sort());
     // Garde contre le test vide : un peu plus de 800 feuilles en français aujourd'hui.
     const leaves = SOURCES.reduce((sum, { read }) => sum + textLeaves(read("fr")).length, 0);
