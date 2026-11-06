@@ -171,7 +171,7 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
             </p>
           </>
         }
-        title={<h2 id={titleId}>{text.name}</h2>}
+        titleId={titleId}
         hook={text.hook}
         sections={sections}
         steps={<JourneySteps stop={stop} locale={locale} />}

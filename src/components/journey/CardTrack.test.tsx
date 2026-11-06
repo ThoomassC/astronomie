@@ -17,10 +17,10 @@ function renderTrack() {
   const ui = (
     <CardTrack store={store} cards={["sun", "sirius-a"]}>
       <section data-stop="sun">
-        <Plate id="soleil" stop="sun" name="Soleil" color="#ffb547" title={<h2>Soleil</h2>} sections={SECTIONS} />
+        <Plate id="soleil" stop="sun" name="Soleil" color="#ffb547" titleId="soleil-titre" sections={SECTIONS} />
       </section>
       <section data-stop="sirius-a">
-        <Plate id="sirius-a" stop="sirius-a" name="Sirius A" color="#cfe0ff" title={<h2>Sirius A</h2>} sections={SECTIONS} />
+        <Plate id="sirius-a" stop="sirius-a" name="Sirius A" color="#cfe0ff" titleId="sirius-a-titre" sections={SECTIONS} />
       </section>
     </CardTrack>
   );
@@ -80,7 +80,7 @@ describe("CardTrack", () => {
   });
 
   it("hors de tout suivi, ne devrait marquer aucune plaque", () => {
-    render(<Plate id="soleil" stop="sun" name="Soleil" color="#ffb547" title={<h2>Soleil</h2>} sections={SECTIONS} />);
+    render(<Plate id="soleil" stop="sun" name="Soleil" color="#ffb547" titleId="soleil-titre" sections={SECTIONS} />);
     expect(plateOf("Soleil")).not.toHaveAttribute("data-current");
   });
 });

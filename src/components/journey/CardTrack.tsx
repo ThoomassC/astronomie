@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { showsCard, showsSkeleton } from "@/lib/journey/card";
+import { FIXED_CARD_QUERY, showsCard, showsSkeleton } from "@/lib/journey/card";
 import type { StopStore } from "@/lib/journey/store";
 
 /** Parcours que suit la carte fixe du téléphone : son vol, et les escales qui ont une plaque. */
@@ -78,4 +78,23 @@ export function useIsCurrentCard(stop: string | undefined): boolean {
     () => track !== null && stop !== undefined && showsCard(track.store.get(), track.hasCard, stop),
     serverSnapshot,
   );
+}
+
+/** Suit la requête de la carte fixe ; sans `matchMedia` (rendu serveur, tests), rien à suivre. */
+function subscribeFixedCard(listener: () => void): () => void {
+  if (typeof matchMedia !== "function") return () => {};
+  const query = matchMedia(FIXED_CARD_QUERY);
+  if (typeof query.addEventListener !== "function") return () => {};
+  query.addEventListener("change", listener);
+  return () => query.removeEventListener("change", listener);
+}
+
+const fixedCardSnapshot = () => typeof matchMedia === "function" && matchMedia(FIXED_CARD_QUERY).matches;
+
+/**
+ * La mise en page est celle de la carte fixe (FIXED_CARD_QUERY : téléphone ou tablette en portrait, assez haut, avec
+ * JavaScript). Faux au rendu serveur : le nom y reste un simple titre, comme sans JavaScript.
+ */
+export function useFixedCard(): boolean {
+  return useSyncExternalStore(subscribeFixedCard, fixedCardSnapshot, serverSnapshot);
 }

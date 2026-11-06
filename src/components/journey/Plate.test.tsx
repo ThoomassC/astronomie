@@ -4,7 +4,10 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CardTrack } from "@/components/journey/CardTrack";
 import { Plate, type PlateSection } from "@/components/journey/Plate";
+import { FIXED_CARD_QUERY } from "@/lib/journey/card";
+import { createStopStore } from "@/lib/journey/store";
 import { renderIn } from "@/components/modules/testUtils";
 
 const SECTIONS: readonly PlateSection[] = [
@@ -47,7 +50,7 @@ function renderPlate({ last = false }: { last?: boolean } = {}) {
           id="mars"
           name="Mars"
           color="#DA6A43"
-          title={<h2>Mars</h2>}
+          titleId="mars-titre"
           sections={SECTIONS}
           footer={<p>Pied de plaque</p>}
         />
@@ -117,7 +120,7 @@ describe("Plate", () => {
 
   it("devrait rendre la plaque repliée dès le serveur, pour une hauteur stable à l'hydratation", () => {
     const html = renderToString(
-      <Plate id="mars" name="Mars" color="#DA6A43" title={<h2>Mars</h2>} sections={SECTIONS} />,
+      <Plate id="mars" name="Mars" color="#DA6A43" titleId="mars-titre" sections={SECTIONS} />,
     );
     expect(html).toContain('aria-expanded="false"');
     expect(html).not.toContain("data-open");
@@ -331,7 +334,7 @@ describe("Plate", () => {
         name="Mars"
         color="#DA6A43"
         header={<p className="rank">4e planète</p>}
-        title={<h2>Mars</h2>}
+        titleId="mars-titre"
         hook="La planète rouge."
         sections={SECTIONS}
         steps={
@@ -381,7 +384,7 @@ describe("Plate", () => {
         id="mars"
         name="Mars"
         color="#DA6A43"
-        title={<h2>Mars</h2>}
+        titleId="mars-titre"
         sections={[{ ...SECTIONS[0], context: "Mars" }, SECTIONS[1]]}
       />,
     );
@@ -410,13 +413,138 @@ describe("Plate", () => {
   it("devrait donner des identifiants de zone uniques par plaque", () => {
     render(
       <>
-        <Plate id="terre" name="Terre" color="#5B9BE6" title={<h2>Terre</h2>} sections={SECTIONS} />
-        <Plate id="mars" name="Mars" color="#DA6A43" title={<h2>Mars</h2>} sections={SECTIONS} />
+        <Plate id="terre" name="Terre" color="#5B9BE6" titleId="terre-titre" sections={SECTIONS} />
+        <Plate id="mars" name="Mars" color="#DA6A43" titleId="mars-titre" sections={SECTIONS} />
       </>,
     );
     const ids = screen.getAllByRole("button", { expanded: false }).map((button) => button.getAttribute("aria-controls"));
     expect(ids).toHaveLength(4);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+/*
+ * Carte fixe du téléphone (ADR 0007) : repliée, la carte ne montre que le rang et « ‹ Nom › ». Le nom est le bouton qui
+ * la déplie (motif accordéon : `h2 > button[aria-expanded][aria-controls]`) ; dépliée, la rangée des pictogrammes
+ * paraît, la première section ouverte, et son contenu défile dans la carte, sans faire défiler la page. « Replier » ou
+ * un second toucher sur le nom replient tout ; la carte d'une escale qu'on quitte se replie.
+ */
+describe("carte fixe : le nom déplie la carte", () => {
+  /** Frontière navigateur : carte fixe (et plaque compacte), lues par les requêtes de la feuille de style. */
+  function stubFixedCard(fixed = true) {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: fixed && (query === FIXED_CARD_QUERY || query === COMPACT_SCRIPTED),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+  }
+
+  type Key = "earth" | "mars";
+
+  /** La plaque de Mars, dans le parcours de la Terre à Mars, au repos sur Mars. */
+  function renderCard() {
+    const store = createStopStore<Key>("earth");
+    store.update("mars", "mars", 0);
+    render(
+      <CardTrack store={store} cards={["earth", "mars"]}>
+        <section data-stop="mars" aria-labelledby="mars-titre">
+          <Plate id="mars" stop="mars" name="Mars" color="#DA6A43" titleId="mars-titre" sections={SECTIONS} />
+        </section>
+      </CardTrack>,
+    );
+    return { store, article: screen.getByRole("article") };
+  }
+
+  /** Le nom, bouton de la carte. */
+  const nameButton = () => screen.getByRole("button", { name: "Mars" });
+
+  it("devrait faire du nom le bouton de la carte, replié, qui pilote ses sections", () => {
+    stubFixedCard();
+    const { article } = renderCard();
+    const name = nameButton();
+    const heading = screen.getByRole("heading", { level: 2, name: "Mars" });
+    expect(heading).toHaveAttribute("id", "mars-titre");
+    expect(name.parentElement).toBe(heading);
+    expect(name).toHaveAttribute("aria-expanded", "false");
+    expect(document.getElementById(name.getAttribute("aria-controls") ?? "")).toBe(
+      article.querySelector(".plate-sections"),
+    );
+    expect(name.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(article).not.toHaveAttribute("data-unfolded");
+    // La section nommée par son titre l'est une fois, pas deux.
+    expect(screen.getByRole("region", { name: "Mars" })).toBeInTheDocument();
+  });
+
+  it("devrait déplier la carte au toucher du nom, première section ouverte, sans faire défiler la page", async () => {
+    stubFixedCard();
+    const user = userEvent.setup();
+    const { article } = renderCard();
+    const name = nameButton();
+    await user.click(name);
+    expect(name).toHaveAttribute("aria-expanded", "true");
+    expect(article).toHaveAttribute("data-unfolded");
+    const fiche = screen.getByRole("button", { name: "Lire la fiche" });
+    expect(fiche).toHaveAttribute("aria-expanded", "true");
+    expect(zoneOf(fiche)).toHaveAttribute("data-open");
+    await user.click(screen.getByRole("button", { name: "Votre poids sur chaque astre" }));
+    expect(fiche).toHaveAttribute("aria-expanded", "false");
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("devrait tout replier d'un second toucher sur le nom", async () => {
+    stubFixedCard();
+    const user = userEvent.setup();
+    const { article } = renderCard();
+    const name = nameButton();
+    await user.click(name);
+    await user.click(name);
+    expect(name).toHaveAttribute("aria-expanded", "false");
+    expect(article).not.toHaveAttribute("data-unfolded");
+    expect(article.querySelectorAll(".more-zone[data-open]")).toHaveLength(0);
+    expect(name).toHaveFocus();
+  });
+
+  it("devrait tout replier avec « Replier » et rendre le focus au nom", async () => {
+    stubFixedCard();
+    const user = userEvent.setup();
+    const { article } = renderCard();
+    const name = nameButton();
+    await user.click(name);
+    await user.click(screen.getByRole("button", { name: "Replier, Mars" }));
+    expect(name).toHaveAttribute("aria-expanded", "false");
+    expect(article).not.toHaveAttribute("data-unfolded");
+    expect(name).toHaveFocus();
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("devrait replier la carte d'une escale qu'on quitte : on y revient carte repliée", async () => {
+    stubFixedCard();
+    const user = userEvent.setup();
+    const { store, article } = renderCard();
+    const name = nameButton();
+    await user.click(name);
+    act(() => store.update("earth", "earth", 0));
+    expect(article).not.toHaveAttribute("data-current");
+    expect(article).not.toHaveAttribute("data-unfolded");
+    expect(article.querySelectorAll(".more-zone[data-open]")).toHaveLength(0);
+    act(() => store.update("mars", "mars", 0));
+    expect(article).toHaveAttribute("data-current");
+    expect(screen.getByRole("button", { name: "Mars" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("hors de la carte fixe (grand écran, paysage bas, sans JavaScript), devrait garder le nom en simple titre", () => {
+    stubFixedCard(false);
+    renderCard();
+    expect(screen.getByRole("heading", { level: 2, name: "Mars" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mars" })).not.toBeInTheDocument();
+  });
+
+  it("devrait rendre le nom en simple titre dès le serveur", () => {
+    const html = renderToString(
+      <Plate id="mars" name="Mars" color="#DA6A43" titleId="mars-titre" sections={SECTIONS} />,
+    );
+    expect(html).toContain('<h2 id="mars-titre">Mars</h2>');
   });
 });
 
@@ -429,7 +557,7 @@ describe("Plate en anglais et en espagnol", () => {
     renderIn(
       t.locale,
       <section data-stop="mars">
-        <Plate id="mars" name={t.name} color="#DA6A43" title={<h2>{t.name}</h2>} sections={SECTIONS} />
+        <Plate id="mars" name={t.name} color="#DA6A43" titleId="mars-titre" sections={SECTIONS} />
       </section>,
     );
     const fiche = screen.getByRole("button", { name: "Lire la fiche" });
@@ -451,7 +579,9 @@ describe("feuille de style de la plaque compacte", () => {
   /** Déclarations de la règle `selector` (indentation de 2), cherchée dans chaque bloc média de requête `query`. */
   function ruleIn(query: string, selector: string): string {
     const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const blocks = css.matchAll(new RegExp(`@media ${escaped(query)} \\{([\\s\\S]*?)\\n\\}`, "g"));
+    // Une requête longue passe à la ligne après ses virgules.
+    const media = escaped(query).replace(/, /g, ",\\s+");
+    const blocks = css.matchAll(new RegExp(`@media ${media} \\{([\\s\\S]*?)\\n\\}`, "g"));
     for (const [, block] of blocks) {
       const rule = new RegExp(`\\n {2}${escaped(selector)} \\{([^}]*)\\}`).exec(block)?.[1];
       if (rule !== undefined) return rule;
@@ -512,6 +642,31 @@ describe("feuille de style de la plaque compacte", () => {
   it("devrait ne retourner que le chevron des grands boutons, jamais le pictogramme", () => {
     expect(css).not.toMatch(/\.more-btn\[aria-expanded="true"\] svg/);
     expect(css).toMatch(/\.more-btn\[aria-expanded="true"\] \.more-chevron,/);
+  });
+
+  /*
+   * Carte fixe : les plaques des autres escales restent dans la mise en page (la scène mesure leur forme repliée), mais
+   * ni visibles, ni focalisables, ni lues. Repliée, la carte ne garde que le rang et le nom ; le nom est une cible de
+   * 44 px.
+   */
+  it("devrait masquer sans les retirer de la mise en page les plaques qui ne sont pas courantes", () => {
+    const hidden = ruleIn(FIXED_CARD_QUERY, ".plate:not([data-current])");
+    expect(hidden).toMatch(/visibility: hidden;/);
+    expect(hidden).not.toMatch(/display: none/);
+  });
+
+  it("devrait réduire la carte repliée au rang et au nom, le nom en cible de 44 px", () => {
+    expect(ruleIn(FIXED_CARD_QUERY, ".plate:not([data-unfolded]) > .plate-sections ~ *")).toMatch(/display: none;/);
+    expect(ruleIn(FIXED_CARD_QUERY, ".plate-name")).toMatch(/min-height: 44px;/);
+    expect(ruleIn(FIXED_CARD_QUERY, ".plate-title .stop-step")).toMatch(/width: 44px;/);
+    const sections = ruleIn(FIXED_CARD_QUERY, ".plate-sections");
+    expect(sections).toMatch(/overflow-y: auto;/);
+    expect(sections).toMatch(/overscroll-behavior: contain;/);
+  });
+
+  it("devrait faire balayer le squelette, et l'arrêter en mouvement réduit (règle globale)", () => {
+    expect(ruleIn(FIXED_CARD_QUERY, ".plate-skeleton::after")).toMatch(/animation: skeleton-sweep/);
+    expect(ruleIn("(prefers-reduced-motion: reduce)", "*::after")).toMatch(/animation: none !important;/);
   });
 
   it("devrait garder l'accroche hors de la plaque compacte (grand écran, sans JavaScript)", () => {

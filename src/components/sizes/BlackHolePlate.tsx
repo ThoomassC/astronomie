@@ -58,7 +58,7 @@ export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlac
             {rank.total} · {text.kind}
           </p>
         }
-        title={<h2 id={titleId}>{name}</h2>}
+        titleId={titleId}
         hook={text.hook}
         sections={[
           {

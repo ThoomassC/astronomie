@@ -93,7 +93,7 @@ export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; loc
             {rank.total} · {text.kind}
           </p>
         }
-        title={<h2 id={titleId}>{name}</h2>}
+        titleId={titleId}
         hook={text.hook}
         sections={[
           {

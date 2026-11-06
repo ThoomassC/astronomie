@@ -126,6 +126,18 @@ describe("createScreenLayout en mise en page compacte", () => {
     expect(layout.band("sun")).toEqual(bandUnder());
   });
 
+  it("devrait garder la mesure repliée d'une carte dépliée par son nom, même sans section ouverte", () => {
+    const plate = fixedCard();
+    const layout = createScreenLayout(elements({ plates: new Map([["sun", plate]]) }));
+    layout.measure(PHONE);
+    layout.settle(1 / 60, false);
+    plate.setAttribute("data-unfolded", "");
+    stubOffsetHeight(plate, 136);
+    layout.measure(PHONE);
+    expect(layout.settle(1 / 60, false)).toBe(true);
+    expect(layout.band("sun")).toEqual(bandUnder());
+  });
+
   it("devrait oublier la mesure repliée quand la largeur change, la carte dépliée n'ayant plus de bande", () => {
     const plate = fixedCard();
     const layout = createScreenLayout(elements({ plates: new Map([["sun", plate]]) }));

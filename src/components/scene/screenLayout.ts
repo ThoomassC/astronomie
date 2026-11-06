@@ -105,7 +105,8 @@ export function createScreenLayout<K extends string>(
       noteTop = Infinity;
     }
     for (const [key, plate] of plates) {
-      if (!plate.hasAttribute("data-expanded")) {
+      // Dépliée par son nom (`data-unfolded`), même sans section ouverte, ou par un titre-bouton (`data-expanded`).
+      if (!plate.hasAttribute("data-expanded") && !plate.hasAttribute("data-unfolded")) {
         const style = getComputedStyle(plate);
         if (style.position === "fixed") {
           const top = restingRect(plate).top;

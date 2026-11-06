@@ -258,12 +258,18 @@
 /*
  * Carte fixe (globals.css, ADR 0007) : le haut de l'écran, sous la barre, est à la carte de l'astre ; l'échelle
  * graphique passe en bas à droite, au-dessus de la zone sûre. Les étiquettes l'évitent toujours (boîte mesurée).
+ * Placé après les règles de la mise en page compacte, qu'il précise.
  */
 @media (max-width: 640px) and (min-height: 30.0625rem) and (scripting: enabled),
   (max-width: 1100px) and (orientation: portrait) and (min-height: 30.0625rem) and (scripting: enabled) {
   .scaleBar {
     top: auto;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  /* Le nom de la carte suit celui du Voyage, pas la grande taille des plaques de Tailles (plus haut). */
+  .page :global(.plate .plate-title > h2) {
+    font-size: var(--card-name-size);
   }
 }
 
