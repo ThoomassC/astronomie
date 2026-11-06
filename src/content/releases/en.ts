@@ -58,7 +58,7 @@ export const RELEASES_EN: ReleasesContent = {
             "In the Journey and in Sizes, a card fixed at the top of the screen shows the current stop, with arrows to the previous and next ones.",
             "Tapping the name opens its details, which scroll inside the card.",
             "While moving from one stop to the next, a placeholder card holds its place.",
-            "The top bar always stays in place, in portrait and in landscape.",
+            "In the Journey and Sizes, the top bar always stays in place, in portrait and in landscape.",
             "The buttons at the bottom are easier to tap, and the names of bodies keep clear of the bar.",
           ],
         },
