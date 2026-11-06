@@ -94,12 +94,20 @@ describe("StarPlate de Bételgeuse, en anglais", () => {
     expect(screen.queryByRole("link", { name: "Back to the smallest" })).not.toBeInTheDocument();
   });
 
-  /* Sur téléphone, d'astre en astre sans ouvrir le menu : les liens sont au bout de la rangée des titres-boutons. */
-  it("devrait mener à Antares A et à VY Canis Majoris, au bout de la rangée des titres-boutons", () => {
+  /*
+   * Sur téléphone, d'astre en astre sans ouvrir le menu : les liens encadrent le nom dans la plaque compacte ; leurs
+   * pilules (paysage bas, sans JavaScript) sont au bout de la rangée des titres-boutons.
+   */
+  it("devrait mener à Antares A et à VY Canis Majoris, de part et d'autre du nom", () => {
     const { container } = renderBetelgeuse();
+    const title = container.querySelector<HTMLElement>(".plate-title");
+    if (!title) throw new Error("Rangée du nom absente");
+    expect(within(title).getByRole("link", { name: "Previous object: Antares A" })).toHaveAttribute("href", "#antares-a");
+    expect(within(title).getByRole("link", { name: "Next object: VY Canis Majoris" })).toHaveAttribute(
+      "href",
+      "#vy-canis-majoris",
+    );
     expect(container.querySelector(".plate-sections")?.lastElementChild).toHaveClass("stop-steps");
-    expect(screen.getByRole("link", { name: "Previous object: Antares A" })).toHaveAttribute("href", "#antares-a");
-    expect(screen.getByRole("link", { name: "Next object: VY Canis Majoris" })).toHaveAttribute("href", "#vy-canis-majoris");
   });
 });
 

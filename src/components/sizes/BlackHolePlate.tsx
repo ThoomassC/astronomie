@@ -30,7 +30,7 @@ function radiusParts(radiusSolar: number, digits: number, t: SizesStrings): { va
  * type ; distance, avec le temps de trajet de la lumière d'un trou noir lointain ; comparaison ; mise en garde ; ce que
  * la vue simplifie (« Rendu calculé ») ; sources. Sur téléphone, la fiche se déplie à la demande. `restartTo` ajoute
  * sous la fiche un lien vers cette escale (le plus petit astre, sur la dernière plaque) ; les astres voisins
- * sont au bout des titres-boutons (SizesSteps, téléphone).
+ * encadrent son nom (SizesSteps, téléphone).
  */
 export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlackHole; locale: Locale; restartTo?: SizeStopKey }) {
   const content = getSizesContent(locale);
@@ -50,17 +50,15 @@ export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlac
         name={name}
         color={hole.color}
         header={
-          <>
-            <p className={`rank ${styles.rank}`}>
-              <i aria-hidden="true" />
-              {rank.value}
-              {rank.superscript ? <sup>{rank.suffix}</sup> : rank.suffix}
-              {rank.total} · {text.kind}
-            </p>
-            <h2 id={titleId}>{name}</h2>
-            <p className="hook">{text.hook}</p>
-          </>
+          <p className={`rank ${styles.rank}`}>
+            <i aria-hidden="true" />
+            {rank.value}
+            {rank.superscript ? <sup>{rank.suffix}</sup> : rank.suffix}
+            {rank.total} · {text.kind}
+          </p>
         }
+        title={<h2 id={titleId}>{name}</h2>}
+        hook={text.hook}
         sections={[
           {
             key: "fiche",

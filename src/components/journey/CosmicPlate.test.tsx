@@ -98,12 +98,16 @@ describe("l'escale du multivers", () => {
 
   it("devrait ne mener qu'à l'Univers observable, avant « Revenir au Soleil » : c'est la dernière escale", () => {
     renderStops("fr");
-    const links = within(section(STOP_IDS.multiverse)).getAllByRole("link");
-    expect(links.map((link) => link.getAttribute("aria-label") ?? link.textContent)).toEqual([
+    const region = section(STOP_IDS.multiverse);
+    // Autour du nom (plaque compacte), la précédente seule ; ses pilules (ailleurs) au bout de la rangée des sections.
+    const title = region.querySelector<HTMLElement>(".plate-title");
+    if (!title) throw new Error("Rangée du nom absente");
+    expect(within(title).getAllByRole("link").map((link) => link.getAttribute("aria-label"))).toEqual([
       "Escale précédente\u00a0: Univers observable",
-      getCosmicContent("fr").plate.back,
     ]);
-    expect(section(STOP_IDS.multiverse).querySelector(".plate-sections > .stop-steps")).not.toBeNull();
+    expect(region.querySelector(".plate-sections > .stop-steps")).not.toBeNull();
+    expect(within(region).getAllByRole("link", { name: getCosmicContent("fr").plate.back })).toHaveLength(1);
+    expect(within(region).queryByRole("link", { name: /^Escale suivante/ })).toBeNull();
   });
 
   it.each(LOCALES)("ne devrait afficher d'avertissement d'hypothèse qu'au multivers (%s)", (locale) => {

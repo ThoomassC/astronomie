@@ -75,9 +75,9 @@ export interface SizesContent {
   /** Bouton de la fiche, lien vers le plus petit astre, mention qui précède les sources de l'astre. */
   plate: { story: string; restart: string; sources: string };
   /**
-   * Astres voisins, au bas de la plaque compacte (téléphone) : nom accessible du lien vers le précédent et vers le
-   * suivant, nom entier de l'astre déjà écrit (« Astre suivant : Trou noir du Fer à cheval cosmique »). Le lien
-   * n'affiche que la flèche et le nom court.
+   * Astres voisins, autour du nom dans la plaque compacte (téléphone) : nom accessible du lien vers le précédent et
+   * vers le suivant, nom entier de l'astre déjà écrit (« Astre suivant : Trou noir du Fer à cheval cosmique »). Le lien
+   * n'affiche que la flèche et le nom court (la flèche seule autour du nom).
    */
   steps: { previous: (name: string) => string; next: (name: string) => string };
 }

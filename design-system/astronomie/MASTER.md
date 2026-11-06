@@ -89,9 +89,11 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Mars », « Astre suivant : Trou noir du Fer à cheval cosmique »). Défilement doux vers l'escale, immédiat en
   mouvement réduit. Ni précédente à la première escale (la vue d'ensemble n'en est pas une), ni suivante à la
   dernière, dont la plaque ramène déjà au départ. Dans la plaque compacte : deux flèches rondes de 44 px au filet
-  `--filet`, flèche en laiton, au bout du premier titre-bouton, seul sur sa rangée, qui leur garde la place (une seule
-  flèche aux bouts du parcours) : aucune rangée de plus, qui rognerait la bande libre de la scène jusqu'à la perdre sur
-  un téléphone court (Voie lactée en 375 × 553, note d'échelle visible). Ailleurs (plaque en paysage bas, interlude de
+  `--filet`, flèche en laiton, de part et d'autre du nom (« ‹ Soleil › »), aux bords de la plaque, centrées sur lui ;
+  le rang se centre au-dessus. Chacune garde sa colonne : au bout du parcours, une place vide, et le nom ne saute pas.
+  Le nom se centre entre elles ; trop long pour une ligne, il passe à la ligne, aligné à gauche, jamais coupé ni
+  recouvert. Lues après le nom, avant les titres-boutons. Aucune rangée de plus, qui rognerait la bande libre de la
+  scène jusqu'à la perdre sur un téléphone court (Voie lactée en 375 × 553, note d'échelle visible). Ailleurs (plaque en paysage bas, interlude de
   la ceinture, sans JavaScript) : pilules « ← Vénus », « Mars → », nom court de la barre ; quand les deux ne tiennent
   pas côte à côte, la suivante passe dessous, toujours à droite, aucun nom coupé. L'interlude les pose sous sa
   citation, sur le fond `.92` des pilules.

@@ -36,15 +36,13 @@ export function BeyondPlate({ locale, sunHref }: { locale: Locale; sunHref: `#${
         name={beyond.name}
         color="var(--laiton)"
         header={
-          <>
-            <p className="rank">
-              <i aria-hidden="true" />
-              {beyond.rank}
-            </p>
-            <h2 id={TITLE_ID}>{beyond.name}</h2>
-            <p className="hook">{beyond.hook}</p>
-          </>
+          <p className="rank">
+            <i aria-hidden="true" />
+            {beyond.rank}
+          </p>
         }
+        title={<h2 id={TITLE_ID}>{beyond.name}</h2>}
+        hook={beyond.hook}
         sections={[
           {
             key: "suite",

@@ -74,8 +74,9 @@ describe("BlackHolePlate de M87*, en anglais", () => {
   });
 
   it("devrait mener au Fer à cheval cosmique par son nom court, dit en entier aux lecteurs d'écran", () => {
-    renderM87();
-    const next = screen.getByRole("link", { name: "Next object: Cosmic Horseshoe black hole" });
+    const title = renderM87().container.querySelector<HTMLElement>(".plate-title");
+    if (!title) throw new Error("Rangée du nom absente");
+    const next = within(title).getByRole("link", { name: "Next object: Cosmic Horseshoe black hole" });
     expect(next).toHaveTextContent("Cosmic Horseshoe");
     expect(next).toHaveAttribute("href", "#fer-a-cheval-cosmique");
   });
@@ -131,10 +132,15 @@ describe("BlackHolePlate, distance cosmologique, mise en garde et lien de retour
   });
 
   it("ne devrait proposer au plus grand astre que le précédent, avant le retour au plus petit, sans le doubler", () => {
-    render(<BlackHolePlate hole={COMPARED_BLACK_HOLE_BY_KEY["cosmic-horseshoe"]} locale="fr" restartTo="cygnus-x-1" />);
-    expect(screen.getAllByRole("link").map((link) => link.getAttribute("aria-label") ?? link.textContent)).toEqual([
+    const { container } = render(
+      <BlackHolePlate hole={COMPARED_BLACK_HOLE_BY_KEY["cosmic-horseshoe"]} locale="fr" restartTo="cygnus-x-1" />,
+    );
+    const title = container.querySelector<HTMLElement>(".plate-title");
+    if (!title) throw new Error("Rangée du nom absente");
+    expect(within(title).getAllByRole("link").map((link) => link.getAttribute("aria-label"))).toEqual([
       "Astre précédent\u00a0: M87*",
-      "Revenir au plus petit",
     ]);
+    expect(screen.getAllByRole("link", { name: "Revenir au plus petit" })).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: /^Astre suivant/ })).toBeNull();
   });
 });

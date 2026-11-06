@@ -1363,6 +1363,11 @@ main > section > * {
   display: none;
 }
 
+/* Copie posée autour du nom (Plate) : seulement dans la plaque compacte, avec JavaScript (plus bas). */
+.plate-title > .stop-steps {
+  display: none;
+}
+
 @media (max-width: 640px),
   (max-width: 1100px) and (orientation: portrait),
   (max-width: 860px) and (scripting: enabled),
@@ -1441,40 +1446,62 @@ main > section > * {
 /*
  * Plaque compacte, avec JavaScript (titres-boutons affichés) : la plaque collée en bas borde la bande libre de la scène,
  * et une rangée de plus la rognerait, jusqu'à la perdre sur un téléphone court (screen.test.ts). Les liens se réduisent
- * à leur flèche, 44 × 44, le nom restant dans le nom accessible, et se posent hors du flux au bout du premier
- * titre-bouton, seul sur sa rangée, qui leur garde la place : deux flèches, une seule aux bouts du parcours. Dans
- * l'ordre de tabulation, ils suivent les titres-boutons.
+ * à leur flèche, ronds de 44 px, le nom restant dans le nom accessible, et se posent de part et d'autre du nom
+ * (« ‹ Soleil › »), aux bords de la plaque, centrés sur lui. Chacun garde sa colonne : un bout de parcours laisse une
+ * place vide et le nom ne saute pas d'une escale à l'autre. Le nom se centre entre eux ; trop long pour une ligne, il
+ * passe à la ligne, aligné à gauche, jamais coupé ni recouvert. Lus après le nom, ils précèdent les titres-boutons dans
+ * l'ordre de tabulation. Leurs pilules, au bout de la rangée des titres-boutons, restent masquées.
  */
 @media (max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled) {
-  .plate-sections {
-    position: relative;
-  }
-
   .plate-sections > .stop-steps {
-    position: absolute;
-    top: 0;
-    right: 0;
-    flex-wrap: nowrap;
+    display: none;
+  }
+
+  .plate-title > .stop-steps {
+    display: contents;
+  }
+
+  /* Le rang se centre au-dessus du nom, entre les flèches. */
+  .plate .rank {
+    text-align: center;
+  }
+
+  .plate-title {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    column-gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.35rem;
+  }
+
+  .plate-title > h2 {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
     margin: 0;
+    text-align: left;
+    overflow-wrap: break-word;
+    hyphens: auto;
   }
 
-  .plate-sections > .more-heading:first-child {
-    flex-basis: 100%;
-    margin-right: calc(2 * 44px + 2 * 0.5rem);
-  }
-
-  .plate-sections:has(> .stop-steps > :only-child) > .more-heading:first-child {
-    margin-right: calc(44px + 0.5rem);
-  }
-
-  .plate-sections > .stop-steps .stop-step {
+  .plate-title .stop-step {
     justify-content: center;
     width: 44px;
     min-height: 44px;
     padding: 0;
+    grid-row: 1;
   }
 
-  .plate-sections > .stop-steps .stop-step > span {
+  .plate-title .stop-step[data-step="previous"] {
+    grid-column: 1;
+  }
+
+  .plate-title .stop-step[data-step="next"] {
+    grid-column: 3;
+    margin-left: 0;
+  }
+
+  .plate-title .stop-step > span {
     position: absolute;
     width: 1px;
     height: 1px;

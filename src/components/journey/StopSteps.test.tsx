@@ -69,8 +69,8 @@ describe("JourneySteps", () => {
 /*
  * Où paraissent les escales voisines (globals.css, lue telle quelle) : partout où la règle cède la place au menu des
  * escales (téléphone en portrait et en paysage, fenêtres de 860 px et moins), et, sans JavaScript, en mise en page
- * compacte. Dans la plaque compacte, deux flèches au bout de la rangée des titres-boutons, hors du flux : aucune rangée
- * de plus, qui rognerait la bande libre de la scène (screen.test.ts, téléphone court).
+ * compacte. Dans la plaque compacte, deux flèches de part et d'autre du nom (« ‹ Soleil › ») : aucune rangée de plus,
+ * qui rognerait la bande libre de la scène (screen.test.ts, téléphone court).
  */
 describe("feuille de style des escales voisines", () => {
   const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
@@ -107,28 +107,38 @@ describe("feuille de style des escales voisines", () => {
     ]);
   });
 
-  it("devrait poser les flèches de la plaque compacte hors du flux, au bout de la rangée des titres-boutons", () => {
-    const steps = ruleIn(COMPACT_SCRIPTED, ".plate-sections > .stop-steps");
-    expect(steps).toMatch(/position: absolute;/);
-    expect(steps).toMatch(/top: 0;/);
-    expect(steps).toMatch(/right: 0;/);
-    expect(ruleIn(COMPACT_SCRIPTED, ".plate-sections")).toMatch(/position: relative;/);
+  it("devrait n'en montrer qu'une copie : autour du nom en plaque compacte, en pilules ailleurs", () => {
+    expect(css).toMatch(/\n\.plate-title > \.stop-steps \{\s*display: none;\s*\}/);
+    expect(ruleIn(COMPACT_SCRIPTED, ".plate-title > .stop-steps")).toMatch(/display: contents;/);
+    expect(ruleIn(COMPACT_SCRIPTED, ".plate-sections > .stop-steps")).toMatch(/display: none;/);
   });
 
-  it("devrait leur réserver la place au bout du premier titre-bouton, seul sur sa rangée : deux flèches, ou une", () => {
-    const first = ruleIn(COMPACT_SCRIPTED, ".plate-sections > .more-heading:first-child");
-    expect(first).toMatch(/flex-basis: 100%;/);
-    expect(first).toMatch(/margin-right: calc\(2 \* 44px \+ 2 \* 0\.5rem\);/);
-    expect(
-      ruleIn(COMPACT_SCRIPTED, ".plate-sections:has(> .stop-steps > :only-child) > .more-heading:first-child"),
-    ).toMatch(/margin-right: calc\(44px \+ 0\.5rem\);/);
+  it("devrait poser les flèches de part et d'autre du nom, aux bords de la plaque, centrées sur lui", () => {
+    const row = ruleIn(COMPACT_SCRIPTED, ".plate-title");
+    expect(row).toMatch(/display: grid;/);
+    expect(row).toMatch(/grid-template-columns: 44px minmax\(0, 1fr\) 44px;/);
+    expect(row).toMatch(/align-items: center;/);
+  });
+
+  it("devrait garder sa colonne à chaque flèche : un bout de parcours laisse une place vide, le nom ne saute pas", () => {
+    expect(ruleIn(COMPACT_SCRIPTED, ".plate-title > h2")).toMatch(/grid-column: 2;/);
+    expect(ruleIn(COMPACT_SCRIPTED, '.plate-title .stop-step[data-step="previous"]')).toMatch(/grid-column: 1;/);
+    expect(ruleIn(COMPACT_SCRIPTED, '.plate-title .stop-step[data-step="next"]')).toMatch(/grid-column: 3;/);
+  });
+
+  it("devrait centrer le nom, et l'aligner à gauche quand il passe à la ligne, sans le couper", () => {
+    const name = ruleIn(COMPACT_SCRIPTED, ".plate-title > h2");
+    expect(name).toMatch(/justify-self: center;/);
+    expect(name).toMatch(/text-align: left;/);
+    expect(name).toMatch(/overflow-wrap: break-word;/);
+    expect(name).not.toMatch(/text-overflow|white-space: nowrap/);
   });
 
   it("devrait réduire chaque lien de la plaque compacte à sa flèche, 44 × 44, le nom gardé pour les lecteurs d'écran", () => {
-    const link = ruleIn(COMPACT_SCRIPTED, ".plate-sections > .stop-steps .stop-step");
+    const link = ruleIn(COMPACT_SCRIPTED, ".plate-title .stop-step");
     expect(link).toMatch(/width: 44px;/);
     expect(link).toMatch(/min-height: 44px;/);
-    expect(ruleIn(COMPACT_SCRIPTED, ".plate-sections > .stop-steps .stop-step > span")).toMatch(/clip: rect\(0 0 0 0\);/);
+    expect(ruleIn(COMPACT_SCRIPTED, ".plate-title .stop-step > span")).toMatch(/clip: rect\(0 0 0 0\);/);
   });
 });
 

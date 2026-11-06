@@ -22,12 +22,17 @@ interface PlateProps {
   name: string;
   /** Couleur de l'astre : filet du haut et puce du rang. */
   color: string;
-  /** Rang, nom, accroche : toujours visibles. */
-  header: ReactNode;
+  /** Avant le nom, toujours visible : avertissement d'hypothèse (multivers), rang. */
+  header?: ReactNode;
+  /** Nom de l'astre, titre de l'escale (`h2`) : toujours visible. */
+  title: ReactNode;
+  /** Accroche, sous le nom. */
+  hook?: string;
   sections: readonly PlateSection[];
   /**
-   * Escales voisines (StopSteps), au bout de la rangée des titres-boutons : sur téléphone, la feuille de style y pose
-   * leurs flèches sans rangée de plus, qui rognerait la bande libre de la scène.
+   * Escales voisines (StopSteps), rendues deux fois, la feuille de style n'en montrant qu'une : de part et d'autre du
+   * nom dans la plaque compacte (« ‹ Soleil › », sans rangée de plus, qui rognerait la bande libre de la scène),
+   * lues après lui ; ailleurs (paysage bas, sans JavaScript), en pilules au bout de la rangée des titres-boutons.
    */
   steps?: ReactNode;
   /** Toujours visible, sous les sections. */
@@ -91,7 +96,7 @@ function Chevron() {
  * JavaScript, tout est visible et les boutons sont masqués (globals.css). « Replier » est dans la
  * langue de la page ; les libellés des sections viennent de qui rend la plaque.
  */
-export function Plate({ id, name, color, header, sections, steps, footer }: PlateProps) {
+export function Plate({ id, name, color, header, title, hook, sections, steps, footer }: PlateProps) {
   const t = JOURNEY_STRINGS[useLocale()];
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const articleRef = useRef<HTMLElement>(null);
@@ -163,6 +168,11 @@ export function Plate({ id, name, color, header, sections, steps, footer }: Plat
       data-expanded={expanded || undefined}
     >
       {header}
+      <div className="plate-title">
+        {title}
+        {steps}
+      </div>
+      {hook ? <p className="hook">{hook}</p> : null}
       {/* Sur téléphone, les titres-boutons se rangent sur une ligne quand ils y tiennent (globals.css). */}
       <div className="plate-sections">
         {sections.map((section) => {

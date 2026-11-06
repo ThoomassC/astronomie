@@ -169,10 +169,10 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
               <i aria-hidden="true" />
               {text.rank}
             </p>
-            <h2 id={titleId}>{text.name}</h2>
-            <p className="hook">{text.hook}</p>
           </>
         }
+        title={<h2 id={titleId}>{text.name}</h2>}
+        hook={text.hook}
         sections={sections}
         steps={<JourneySteps stop={stop} locale={locale} />}
         footer={

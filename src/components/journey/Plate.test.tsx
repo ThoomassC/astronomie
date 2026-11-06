@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,7 +41,7 @@ function renderPlate({ last = false }: { last?: boolean } = {}) {
           id="mars"
           name="Mars"
           color="#DA6A43"
-          header={<h2>Mars</h2>}
+          title={<h2>Mars</h2>}
           sections={SECTIONS}
           footer={<p>Pied de plaque</p>}
         />
@@ -111,7 +111,7 @@ describe("Plate", () => {
 
   it("devrait rendre la plaque repliée dès le serveur, pour une hauteur stable à l'hydratation", () => {
     const html = renderToString(
-      <Plate id="mars" name="Mars" color="#DA6A43" header={<h2>Mars</h2>} sections={SECTIONS} />,
+      <Plate id="mars" name="Mars" color="#DA6A43" title={<h2>Mars</h2>} sections={SECTIONS} />,
     );
     expect(html).toContain('aria-expanded="false"');
     expect(html).not.toContain("data-open");
@@ -244,25 +244,51 @@ describe("Plate", () => {
   });
 
   /*
-   * Escales voisines (téléphone) : au bout de la rangée des titres-boutons, et non dans une rangée à part sous la
-   * plaque, qui rognerait la bande libre de la scène ; dans l'ordre de tabulation, après les sections, avant le pied.
+   * Escales voisines (téléphone) : dans la plaque compacte, de part et d'autre du nom (« ‹ Mars › »), lues après lui ;
+   * ailleurs (paysage bas, sans JavaScript), en pilules au bout de la rangée des titres-boutons, avant le pied. La
+   * feuille de style n'affiche que l'une des deux (StopSteps.test.tsx).
    */
-  it("devrait poser les escales voisines au bout de la rangée des titres-boutons, avant le pied", async () => {
+  it("devrait encadrer le nom des escales voisines, lues après lui, et en garder les pilules avant le pied", () => {
     render(
       <Plate
         id="mars"
         name="Mars"
         color="#DA6A43"
-        header={<h2>Mars</h2>}
+        header={<p className="rank">4e planète</p>}
+        title={<h2>Mars</h2>}
+        hook="La planète rouge."
         sections={SECTIONS}
-        steps={<a href="#jupiter">Jupiter</a>}
+        steps={
+          <div className="stop-steps">
+            <a data-step="previous" href="#terre">
+              Terre
+            </a>
+            <a data-step="next" href="#jupiter">
+              Jupiter
+            </a>
+          </div>
+        }
         footer={<p>Pied de plaque</p>}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Lire la fiche" }));
+    const title = document.querySelector<HTMLElement>(".plate-title");
+    if (!title) throw new Error("Rangée du nom absente");
+    // Rang, puis la rangée du nom, puis l'accroche.
+    expect(title.previousElementSibling).toHaveTextContent("4e planète");
+    expect(title.nextElementSibling).toHaveTextContent("La planète rouge.");
+    expect(title.firstElementChild).toBe(screen.getByRole("heading", { level: 2, name: "Mars" }));
+    expect(within(title).getAllByRole("link").map((link) => link.textContent)).toEqual(["Terre", "Jupiter"]);
     const row = document.querySelector(".plate-sections");
-    expect(row?.lastElementChild).toBe(screen.getByRole("link", { name: "Jupiter" }));
+    expect(row?.lastElementChild).toHaveClass("stop-steps");
+    expect(within(row as HTMLElement).getAllByRole("link").map((link) => link.textContent)).toEqual(["Terre", "Jupiter"]);
     expect(row?.nextElementSibling).toBe(screen.getByText("Pied de plaque"));
+  });
+
+  it("ne devrait rien poser autour du nom sans escales voisines", () => {
+    renderPlate();
+    const title = document.querySelector(".plate-title");
+    expect(title?.children).toHaveLength(1);
+    expect(document.querySelector(".plate-sections > .stop-steps")).toBeNull();
   });
 
   it("devrait garder le pied de plaque visible après les sections", () => {
@@ -273,8 +299,8 @@ describe("Plate", () => {
   it("devrait donner des identifiants de zone uniques par plaque", () => {
     render(
       <>
-        <Plate id="terre" name="Terre" color="#5B9BE6" header={null} sections={SECTIONS} />
-        <Plate id="mars" name="Mars" color="#DA6A43" header={null} sections={SECTIONS} />
+        <Plate id="terre" name="Terre" color="#5B9BE6" title={<h2>Terre</h2>} sections={SECTIONS} />
+        <Plate id="mars" name="Mars" color="#DA6A43" title={<h2>Mars</h2>} sections={SECTIONS} />
       </>,
     );
     const ids = screen.getAllByRole("button", { expanded: false }).map((button) => button.getAttribute("aria-controls"));
@@ -292,7 +318,7 @@ describe("Plate en anglais et en espagnol", () => {
     renderIn(
       t.locale,
       <section data-stop="mars">
-        <Plate id="mars" name={t.name} color="#DA6A43" header={<h2>{t.name}</h2>} sections={SECTIONS} />
+        <Plate id="mars" name={t.name} color="#DA6A43" title={<h2>{t.name}</h2>} sections={SECTIONS} />
       </section>,
     );
     const fiche = screen.getByRole("button", { name: "Lire la fiche" });

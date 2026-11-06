@@ -31,7 +31,7 @@ function Rank({ ordinal, label }: { ordinal?: Ordinal; label: string }) {
 /**
  * Escale d'un astre, dans la langue de la page : plaque de lecture, fiche avec la ligne « ce jour », module
  * explicatif. Sur téléphone, la fiche et le module se déplient à la demande pour laisser voir l'astre ; les escales
- * voisines sont au bout de leurs titres-boutons.
+ * voisines encadrent son nom.
  */
 export function StopPlate({ locale, stop }: { locale: Locale; stop: BodyStopStructure }) {
   const content = getVoyageContent(locale);
@@ -45,13 +45,9 @@ export function StopPlate({ locale, stop }: { locale: Locale; stop: BodyStopStru
         id={id}
         name={name}
         color={stop.color}
-        header={
-          <>
-            <Rank ordinal={stop.ordinal === undefined ? undefined : content.ordinal(stop.ordinal)} label={texts.rank} />
-            <h2 id={titleId}>{name}</h2>
-            <p className="hook">{texts.hook}</p>
-          </>
-        }
+        header={<Rank ordinal={stop.ordinal === undefined ? undefined : content.ordinal(stop.ordinal)} label={texts.rank} />}
+        title={<h2 id={titleId}>{name}</h2>}
+        hook={texts.hook}
         sections={[
           {
             key: "fiche",
