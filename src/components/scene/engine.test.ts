@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSolarScene, type SolarSceneOptions } from "@/components/scene/engine";
 import { RING_LABEL_GAP_PX, type LabelBox } from "@/components/scene/labels";
 import type { ExtragalacticLabelKey } from "@/components/scene/extragalactic";
+import { COMPACT_LAYOUT_QUERY } from "@/components/scene/screenLayout";
 import { FakeRenderer } from "@/components/scene/testRenderer";
 import type { TextureKey } from "@/components/scene/textureSet";
 import { journeyStore } from "@/lib/journey/store";
@@ -31,9 +32,9 @@ vi.mock("@/components/scene/textureLoader", () => ({
 }));
 
 /** Frontière navigateur : requêtes média lues par le moteur (pointeur, mouvement réduit, mise en page compacte). */
-function stubMatchMedia(reducedMotion = false): void {
+function stubMatchMedia(reducedMotion = false, compact = false): void {
   vi.stubGlobal("matchMedia", (query: string) => ({
-    matches: reducedMotion && query === "(prefers-reduced-motion: reduce)",
+    matches: (reducedMotion && query === "(prefers-reduced-motion: reduce)") || (compact && query === COMPACT_LAYOUT_QUERY),
     media: query,
     addEventListener() {},
     removeEventListener() {},
@@ -393,6 +394,69 @@ describe("étiquettes des cercles de distance", () => {
     const sunText: LabelBox = [s.x + 20, s.y + 6, s.x + 60, s.y + 26];
     const ringBox: LabelBox = [r.x + 4, r.y + 6, r.x + 44, r.y + 24];
     expect(airBetween(sunText, ringBox)).toBeGreaterThanOrEqual(RING_LABEL_GAP_PX);
+    scene.dispose();
+  });
+});
+
+/*
+ * Mise en page compacte (téléphone), au repos sur le Soleil en 375 × 812 : son nom se lisait à peine, posé au milieu de
+ * son disque et presque effacé (vue rapprochée). Il se pose désormais au-dessus du disque, entier, repère effacé
+ * (`data-above`) ; sur grand écran, la disposition ordinaire ne change pas.
+ */
+describe("étiquettes au-dessus des astres, en mise en page compacte", () => {
+  afterEach(() => {
+    journeyStore.update("hero", "hero", 0);
+    document.body.replaceChildren();
+  });
+
+  /** Étiquette d'astre telle que la rend la page : bouton de 64 × 29 px, anneau de 10 px, puis le nom (40 × 18 px). */
+  function bodyLabel(): HTMLElement {
+    const label = document.createElement("button");
+    const ring = document.createElement("i");
+    const text = document.createElement("span");
+    label.append(ring, text);
+    measured(label, { left: 0, top: 0, width: 64, height: 29 });
+    measured(ring, { left: 3, top: 9.5, width: 10, height: 10 });
+    measured(text, { left: 20, top: 5.5, width: 40, height: 18 });
+    document.body.append(label);
+    return label;
+  }
+
+  /** Coin haut gauche d'une étiquette posée, lu dans sa transformation. */
+  const cornerOf = (label: HTMLElement) => {
+    const [, x, y] = /translate3d\(([-\d.]+)px,([-\d.]+)px/.exec(label.style.transform) ?? [];
+    return { x: Number(x), y: Number(y) };
+  };
+
+  async function framedAtSun(compact: boolean) {
+    vi.stubGlobal("innerWidth", 375);
+    vi.stubGlobal("innerHeight", 812);
+    stubMatchMedia(false, compact);
+    journeyStore.update("sun", "sun", 0);
+    const sun = bodyLabel();
+    const scene = createSolarScene({ ...options(), labels: new Map([["sun", sun]]) });
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    scene.frame(1 / 60);
+    return { scene, sun };
+  }
+
+  it("devrait poser « Soleil » au-dessus de son disque, entier, centré sur lui, sans le recouvrir", async () => {
+    const { scene, sun } = await framedAtSun(true);
+    expect(sun.style.visibility).toBe("visible");
+    expect(Number(sun.style.opacity)).toBe(1);
+    expect(sun).toHaveAttribute("data-above");
+    const corner = cornerOf(sun);
+    // Sans plaque mesurée, le Soleil est cadré au centre de la vue (187,5 ; 406) ; son disque déborde largement du repère.
+    expect(corner.x + 20 + 40 / 2).toBeCloseTo(187.5, 0);
+    expect(corner.y + 5.5 + 18).toBeLessThan(406 - 40);
+    expect(corner.y + 5.5).toBeGreaterThanOrEqual(72);
+    scene.dispose();
+  });
+
+  it("devrait garder la disposition ordinaire sur grand écran", async () => {
+    const { scene, sun } = await framedAtSun(false);
+    expect(sun).not.toHaveAttribute("data-above");
     scene.dispose();
   });
 });

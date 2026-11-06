@@ -7,11 +7,19 @@ import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
 import { cssVars } from "./cssVars";
 import { JOURNEY_STRINGS } from "./journey.strings";
 import { measureSections, scrollInstantly, shownElements } from "./navigation";
+import { PlateIcon, type PlateIconName } from "./PlateIcon";
 
 export interface PlateSection {
   key: string;
-  /** Libellé du bouton qui déplie la section (téléphones). */
-  label: ReactNode;
+  /** Libellé du bouton qui déplie la section (téléphones) : nom accessible et infobulle, « Lire la fiche ». */
+  label: string;
+  /**
+   * Lu après le libellé quand il revient à chaque escale (« Lire la fiche, Mars ») : le nom de l'astre distingue les
+   * boutons de la page à l'oreille.
+   */
+  context?: string;
+  /** Pictogramme du bouton, seul visible dans la plaque compacte. */
+  icon: PlateIconName;
   content: ReactNode;
 }
 
@@ -22,12 +30,17 @@ interface PlateProps {
   name: string;
   /** Couleur de l'astre : filet du haut et puce du rang. */
   color: string;
-  /** Rang, nom, accroche : toujours visibles. */
-  header: ReactNode;
+  /** Avant le nom, toujours visible : avertissement d'hypothèse (multivers), rang. */
+  header?: ReactNode;
+  /** Nom de l'astre, titre de l'escale (`h2`) : toujours visible. */
+  title: ReactNode;
+  /** Accroche, sous le nom. */
+  hook?: string;
   sections: readonly PlateSection[];
   /**
-   * Escales voisines (StopSteps), au bout de la rangée des titres-boutons : sur téléphone, la feuille de style y pose
-   * leurs flèches sans rangée de plus, qui rognerait la bande libre de la scène.
+   * Escales voisines (StopSteps), rendues deux fois, la feuille de style n'en montrant qu'une : de part et d'autre du
+   * nom dans la plaque compacte (« ‹ Soleil › », sans rangée de plus, qui rognerait la bande libre de la scène),
+   * lues après lui ; ailleurs (paysage bas, sans JavaScript), en pilules au bout de la rangée des titres-boutons.
    */
   steps?: ReactNode;
   /** Toujours visible, sous les sections. */
@@ -67,9 +80,22 @@ function beforeFold(article: HTMLElement | null): BeforeFold | null {
   return { scrollY: window.scrollY, ...restRange(stop.box, window.innerHeight), height: stop.box.height };
 }
 
+/** Libellé d'un titre-bouton, suivi de ce qui le distingue à l'oreille : masqué à l'œil dans la plaque compacte. */
+function ButtonLabel({ label, context }: { label: string; context?: string }) {
+  return (
+    <span className="more-label">
+      {label}
+      {context ? <span className="sr">, {context}</span> : null}
+    </span>
+  );
+}
+
+/** Infobulle d'un titre-bouton : son nom accessible entier, pour qu'elle ne s'y ajoute pas en description. */
+const tooltip = (label: string, context?: string) => (context ? `${label}, ${context}` : label);
+
 function Chevron() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+    <svg className="more-chevron" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
       <path
         d="M2.5 4.5 6 8l3.5-3.5"
         fill="none"
@@ -91,7 +117,7 @@ function Chevron() {
  * JavaScript, tout est visible et les boutons sont masqués (globals.css). « Replier » est dans la
  * langue de la page ; les libellés des sections viennent de qui rend la plaque.
  */
-export function Plate({ id, name, color, header, sections, steps, footer }: PlateProps) {
+export function Plate({ id, name, color, header, title, hook, sections, steps, footer }: PlateProps) {
   const t = JOURNEY_STRINGS[useLocale()];
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const articleRef = useRef<HTMLElement>(null);
@@ -163,6 +189,11 @@ export function Plate({ id, name, color, header, sections, steps, footer }: Plat
       data-expanded={expanded || undefined}
     >
       {header}
+      <div className="plate-title">
+        {title}
+        {steps}
+      </div>
+      {hook ? <p className="hook">{hook}</p> : null}
       {/* Sur téléphone, les titres-boutons se rangent sur une ligne quand ils y tiennent (globals.css). */}
       <div className="plate-sections">
         {sections.map((section) => {
@@ -176,9 +207,11 @@ export function Plate({ id, name, color, header, sections, steps, footer }: Plat
                   className="more-btn"
                   aria-expanded={isOpen}
                   aria-controls={zoneId}
+                  title={tooltip(section.label, section.context)}
                   onClick={(event) => toggle(event.currentTarget, section.key)}
                 >
-                  <span>{section.label}</span>
+                  <PlateIcon name={section.icon} />
+                  <ButtonLabel label={section.label} context={section.context} />
                   <Chevron />
                 </button>
               </h3>
@@ -194,11 +227,9 @@ export function Plate({ id, name, color, header, sections, steps, footer }: Plat
           );
         })}
         {expanded && (
-          <button type="button" className="more-btn more-fold" onClick={foldAll}>
-            <span>
-              {t.fold}
-              <span className="sr">, {name}</span>
-            </span>
+          <button type="button" className="more-btn more-fold" title={tooltip(t.fold, name)} onClick={foldAll}>
+            <PlateIcon name="fold" />
+            <ButtonLabel label={t.fold} context={name} />
             <Chevron />
           </button>
         )}

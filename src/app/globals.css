@@ -176,6 +176,14 @@ main > section:focus {
   flex-direction: row-reverse;
 }
 
+/*
+ * Nom posé au-dessus du disque de l'astre (`data-above`, posé par la scène en mise en page compacte) : le disque tient
+ * lieu de repère. L'anneau garde sa place, l'étiquette ses mesures.
+ */
+.lbl[data-above] i {
+  visibility: hidden;
+}
+
 .real .lbl:not(.deep) i {
   transform: scale(1.6);
   border-width: 1.5px;
@@ -303,6 +311,29 @@ main > section:focus {
 
 .lbl.deep.hypothesis > span {
   font-style: italic;
+}
+
+/*
+ * Mise en page compacte (téléphone, tablette en portrait ; même requête dans screenLayout.ts) : étiquettes plus petites,
+ * à la demande de l'utilisateur, au Voyage et à Tailles : 0,75 rem, sous le minimum de 0,8125 rem du MASTER (exception
+ * notée), rembourrage et pastilles plus fins. Ivoire sur la nuit, détaché du ciel par son ombre ou sa pastille : le
+ * contraste reste bien au-dessus de 4,5:1.
+ */
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait) {
+  .lbl,
+  .lbl.deep.ring {
+    font-size: 0.75rem;
+  }
+
+  .lbl {
+    gap: 0.35rem;
+    padding: 0.2rem 0.4rem 0.2rem 0.15rem;
+  }
+
+  .lbl.deep > span {
+    padding: 0 0.35rem;
+    line-height: 1.3;
+  }
 }
 
 /* Repli sans scène 3D : le canvas (qui garderait sa dernière image) disparaît, un Soleil CSS le remplace. */
@@ -1172,11 +1203,14 @@ main > section > * {
 
 .more-btn svg {
   flex: none;
+}
+
+.more-btn .more-chevron {
   transition: transform 0.25s;
 }
 
-.more-btn[aria-expanded="true"] svg,
-.more-fold svg {
+.more-btn[aria-expanded="true"] .more-chevron,
+.more-fold .more-chevron {
   transform: rotate(180deg);
 }
 
@@ -1363,6 +1397,11 @@ main > section > * {
   display: none;
 }
 
+/* Copie posée autour du nom (Plate) : seulement dans la plaque compacte, avec JavaScript (plus bas). */
+.plate-title > .stop-steps {
+  display: none;
+}
+
 @media (max-width: 640px),
   (max-width: 1100px) and (orientation: portrait),
   (max-width: 860px) and (scripting: enabled),
@@ -1441,40 +1480,62 @@ main > section > * {
 /*
  * Plaque compacte, avec JavaScript (titres-boutons affichés) : la plaque collée en bas borde la bande libre de la scène,
  * et une rangée de plus la rognerait, jusqu'à la perdre sur un téléphone court (screen.test.ts). Les liens se réduisent
- * à leur flèche, 44 × 44, le nom restant dans le nom accessible, et se posent hors du flux au bout du premier
- * titre-bouton, seul sur sa rangée, qui leur garde la place : deux flèches, une seule aux bouts du parcours. Dans
- * l'ordre de tabulation, ils suivent les titres-boutons.
+ * à leur flèche, ronds de 44 px, le nom restant dans le nom accessible, et se posent de part et d'autre du nom
+ * (« ‹ Soleil › »), aux bords de la plaque, centrés sur lui. Chacun garde sa colonne : un bout de parcours laisse une
+ * place vide et le nom ne saute pas d'une escale à l'autre. Le nom se centre entre eux ; trop long pour une ligne, il
+ * passe à la ligne, aligné à gauche, jamais coupé ni recouvert. Lus après le nom, ils précèdent les titres-boutons dans
+ * l'ordre de tabulation. Leurs pilules, au bout de la rangée des titres-boutons, restent masquées.
  */
 @media (max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled) {
-  .plate-sections {
-    position: relative;
-  }
-
   .plate-sections > .stop-steps {
-    position: absolute;
-    top: 0;
-    right: 0;
-    flex-wrap: nowrap;
+    display: none;
+  }
+
+  .plate-title > .stop-steps {
+    display: contents;
+  }
+
+  /* Le rang se centre au-dessus du nom, entre les flèches. */
+  .plate .rank {
+    text-align: center;
+  }
+
+  .plate-title {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    column-gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .plate-title > h2 {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
     margin: 0;
+    text-align: left;
+    overflow-wrap: break-word;
+    hyphens: auto;
   }
 
-  .plate-sections > .more-heading:first-child {
-    flex-basis: 100%;
-    margin-right: calc(2 * 44px + 2 * 0.5rem);
-  }
-
-  .plate-sections:has(> .stop-steps > :only-child) > .more-heading:first-child {
-    margin-right: calc(44px + 0.5rem);
-  }
-
-  .plate-sections > .stop-steps .stop-step {
+  .plate-title .stop-step {
     justify-content: center;
     width: 44px;
     min-height: 44px;
     padding: 0;
+    grid-row: 1;
   }
 
-  .plate-sections > .stop-steps .stop-step > span {
+  .plate-title .stop-step[data-step="previous"] {
+    grid-column: 1;
+  }
+
+  .plate-title .stop-step[data-step="next"] {
+    grid-column: 3;
+    margin-left: 0;
+  }
+
+  .plate-title .stop-step > span {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -2672,6 +2733,91 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
    */
   html[data-scale-note] {
     scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 5.25rem + var(--note-h, 11rem) + 0.75rem);
+  }
+}
+
+/*
+ * Plaque compacte, avec JavaScript (titres-boutons affichés) : rang, nom encadré des escales voisines (« Escales
+ * voisines »), puis la rangée des titres-boutons. L'accroche cède sa ligne à l'astre, qui gagne autant de bande libre ;
+ * masquée à l'œil seulement, elle reste lue, une fois, après le nom. Sur grand écran et sans JavaScript, elle reste.
+ *
+ * Titres-boutons : ronds de 44 px, pictogramme seul au trait de laiton (PlateIcon), sur une rangée centrée sous le nom,
+ * « Replier » au bout quand une section est ouverte. Le libellé, masqué à l'œil, reste le nom accessible et paraît en
+ * infobulle au survol. Une section ouverte passe sous la rangée, dans l'ordre des boutons. Bouton ouvert : fond
+ * `--soleil`, pictogramme sombre et anneau `--soleil` détaché de la plaque, un changement de fond et pas une teinte
+ * seule.
+ */
+@media (max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled) {
+  .plate .hook {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .plate-sections {
+    justify-content: center;
+  }
+
+  .more-heading {
+    flex: none;
+  }
+
+  .more-zone {
+    order: 1;
+  }
+
+  .more-btn {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    color: var(--laiton);
+  }
+
+  .more-btn .more-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .more-btn .more-chevron {
+    display: none;
+  }
+
+  .more-btn[aria-expanded="true"] {
+    border-color: var(--soleil);
+    background: var(--soleil);
+    color: var(--encre);
+    box-shadow: 0 0 0 2px var(--plaque), 0 0 0 3px var(--soleil);
+  }
+
+  /* « Replier » : au bout de la rangée, en retrait (filet --filet, pictogramme --brume). */
+  .more-fold {
+    flex-basis: auto;
+    color: var(--brume);
+  }
+}
+
+/* Couleurs forcées : le filet des titres-boutons prend la couleur du texte ; le bouton ouvert, le fond de sélection. */
+@media (forced-colors: active) {
+  .more-btn {
+    border-color: ButtonText;
+  }
+
+  .more-btn[aria-expanded="true"] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+    box-shadow: none;
   }
 }
 

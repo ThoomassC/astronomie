@@ -45,6 +45,11 @@ O `#9BB0FF`, B `#AABFFF`, A `#CAD7FF`, F `#F8F7FF`, G `#FFF4EA`, K `#FFD2A1`, M 
   public scolaire). Chiffres en `tabular-nums` dès qu'ils changent en direct.
 - Pas de capitales espacées pour les étiquettes, pas de police mono décorative.
 - Échelle : 0.8125 / 0.9375 / 1.0625 (texte) / 1.375 / 2 / 3.5–7 rem (noms d'astres).
+- **Exception** (demande explicite de l'utilisateur, 6/11/2026) : en mise en page compacte seulement (téléphone,
+  tablette en portrait), les étiquettes de la scène, au Voyage et à Tailles (astres, ciel profond, cercles de distance),
+  passent à 0,75 rem, sous le minimum de 0,8125 rem, avec un rembourrage plus fin (0,2 rem) et des pastilles plus
+  basses (interligne 1,3, 0,35 rem de côté). Ivoire ou brume sur la nuit, détachées par leur ombre ou leur pastille :
+  contraste bien au-dessus de 4,5:1. Le grand écran garde 0,8125 rem.
 - Espaces du français, sur tout texte affiché (canevas compris) : espace fine insécable (U+202F) entre les milliers
   et avant « ; ! ? », espace insécable (U+00A0) avant « : » et dans les guillemets « », jamais d'espace ordinaire à
   ces places (règle du README, gardée par un test). Anglais et espagnol : rien avant la ponctuation.
@@ -68,12 +73,21 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 - **Plaque** : panneau de lecture semi-opaque `--plaque` à 88 %, filet laiton 1 px, angles `--r-lg`,
   filet de la couleur de l'astre qui suit l'arrondi du haut.
   Mise en page compacte (téléphone ≤ 640 px, et tablette en portrait jusqu'à 1024 px de large) :
-  elle est collée en bas, au-dessus du dock, et centrée : rang (version courte sur téléphone), nom,
-  accroche, puis un titre-bouton par
+  elle est collée en bas, au-dessus du dock, et centrée : rang (version courte sur téléphone), nom
+  (l'accroche y cède sa ligne à l'astre : masquée à l'œil, lue une fois après le nom ; avec JavaScript seulement, elle
+  reste sur grand écran et sans JavaScript), puis un titre-bouton par
   section (`h3` > `button[aria-expanded]`, motif accordéon), « Lire la fiche » et un libellé propre
-  au module (« Votre poids sur chaque astre »), qui remplace le titre du module. Les titres-boutons
-  se rangent côte à côte quand ils tiennent. Chaque section s'ouvre sous son titre, en fondu de
-  200 ms, et « Replier » referme tout. Pendant le repos de la caméra, le filet de couleur
+  au module (« Votre poids sur chaque astre »), qui remplace le titre du module. Les titres-boutons sont des
+  pictogrammes : ronds de 44 px au filet `--filet-fort`, dessin au trait de 1,4 en laiton sur une grille de 20 px
+  (`PlateIcon`), sur une rangée centrée sous le nom ; le libellé, masqué à l'œil, reste le nom accessible et paraît en
+  infobulle (`title`, le nom accessible entier). Un dessin par type de section : fiche (page cornée), course de la
+  lumière (astre et rayon), Mercure qui accélère (orbite elliptique), jour contre année (globe mi-éclairé et sa
+  rotation), saisons de la Terre et d'Uranus (globe à l'axe incliné), poids (balance), tailles (cercles emboîtés),
+  anneaux (planète annelée), âge sur Neptune (sablier), étoiles de la carte (constellation), galaxies de la carte
+  (galaxie de biais), « Replier » (chevrons qui se rejoignent, filet `--filet`, `--brume`). Ouvert : fond `--soleil`,
+  dessin `--encre`, anneau `--soleil` détaché de la plaque (un changement de fond, pas une teinte seule) ; en couleurs
+  forcées, fond `Highlight`. Chaque section s'ouvre sous la rangée, dans l'ordre des boutons, en fondu de 200 ms, et
+  « Replier », au bout de la rangée, referme tout. Pendant le repos de la caméra, le filet de couleur
   (atténué à 50 %) s'éclaire de gauche à droite ; plein, le vol vers l'escale suivante commence
   (pas sur la dernière escale). Noms d'astres de 2,25 à 3,25 rem dans la plaque compacte. Dépliée,
   la plaque reprend sa place en haut de l'escale et s'allonge vers le bas ; le bouton touché passe
@@ -89,9 +103,11 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Mars », « Astre suivant : Trou noir du Fer à cheval cosmique »). Défilement doux vers l'escale, immédiat en
   mouvement réduit. Ni précédente à la première escale (la vue d'ensemble n'en est pas une), ni suivante à la
   dernière, dont la plaque ramène déjà au départ. Dans la plaque compacte : deux flèches rondes de 44 px au filet
-  `--filet`, flèche en laiton, au bout du premier titre-bouton, seul sur sa rangée, qui leur garde la place (une seule
-  flèche aux bouts du parcours) : aucune rangée de plus, qui rognerait la bande libre de la scène jusqu'à la perdre sur
-  un téléphone court (Voie lactée en 375 × 553, note d'échelle visible). Ailleurs (plaque en paysage bas, interlude de
+  `--filet`, flèche en laiton, de part et d'autre du nom (« ‹ Soleil › »), aux bords de la plaque, centrées sur lui ;
+  le rang se centre au-dessus. Chacune garde sa colonne : au bout du parcours, une place vide, et le nom ne saute pas.
+  Le nom se centre entre elles ; trop long pour une ligne, il passe à la ligne, aligné à gauche, jamais coupé ni
+  recouvert. Lues après le nom, avant les titres-boutons. Aucune rangée de plus, qui rognerait la bande libre de la
+  scène jusqu'à la perdre sur un téléphone court (Voie lactée en 375 × 553, note d'échelle visible). Ailleurs (plaque en paysage bas, interlude de
   la ceinture, sans JavaScript) : pilules « ← Vénus », « Mars → », nom court de la barre ; quand les deux ne tiennent
   pas côte à côte, la suivante passe dessous, toujours à droite, aucun nom coupé. L'interlude les pose sous sa
   citation, sur le fond `.92` des pilules.
@@ -149,6 +165,13 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   premier cinquième du vol et se refait sur le dernier ; en plein vol et aux escales sans planète, rien ne change. Une
   carte photographique qui arrive se fond en 400 ms dans la couleur unie de l'astre, en mouvement réduit compris
   (fondu enchaîné, sans mouvement).
+- **Noms des astres (scène du Voyage), mise en page compacte** : le nom d'une planète ou du Soleil dont le disque
+  déborde de son repère (anneau de 10 px) se pose au-dessus de lui, centré, à 4 px de ce qui s'élève le plus haut à
+  l'écran (le disque, ou les anneaux de Saturne et d'Uranus selon leur inclinaison), repère effacé (`data-above`) : il
+  ne chevauche jamais le disque. Au repos sur une escale, le nom de l'astre en vue reste entier, même vu de près (il
+  suit le repos de la caméra). Jamais hors de l'écran, sous la barre ou la note d'échelle, ni sur la plaque repliée ;
+  sinon, masqué. Un astre plus petit que son repère garde la disposition ordinaire. À Tailles, les noms sont déjà
+  au-dessus des astres.
 - **Règle des distances** : sommaire vertical à échelle logarithmique, en trois segments : UA jusqu'à 50
   (les planètes), grand vide comprimé jusqu'à 1 al, puis années-lumière jusqu'à 10¹¹ al, au-delà de l'Univers
   observable (fin de l'axe à 98 %). Le multivers, à l'infini, se pose après l'axe, hors échelle (99,4 %).

@@ -45,6 +45,29 @@ describe("StopPlate", () => {
     expect(textOf(plate, ".rank sup")).toBe("th");
   });
 
+  /* Plaque compacte : un pictogramme par type de section, celui des saisons pour la Terre et Uranus. */
+  it.each([
+    ["sun", "light"],
+    ["mercury", "orbit"],
+    ["venus", "day"],
+    ["earth", "seasons"],
+    ["mars", "weight"],
+    ["jupiter", "sizes"],
+    ["saturn", "rings"],
+    ["uranus", "seasons"],
+    ["neptune", "age"],
+  ] as const)("devrait donner un pictogramme parlant au module de %s (%s), et à sa fiche", (key, icon) => {
+    const plate = renderPlate("fr", key);
+    const zones = Array.from(plate.querySelectorAll<HTMLElement>(".more-btn"), (button) => [
+      button.getAttribute("aria-controls"),
+      button.querySelector("svg[data-icon]")?.getAttribute("data-icon"),
+    ]);
+    expect(zones).toEqual([
+      [`${STOP_IDS[key]}-fiche`, "story"],
+      [`${STOP_IDS[key]}-module`, icon],
+    ]);
+  });
+
   it("devrait distinguer à l'oreille le bouton de la fiche par le nom de l'astre, en anglais", () => {
     const plate = renderPlate("en", "saturn");
     expect(within(plate).getByRole("button", { name: "Read the fact sheet, Saturn" })).toHaveAttribute(
@@ -85,21 +108,24 @@ describe("StopPlate", () => {
   });
 
   /*
-   * Sur téléphone, d'escale en escale sans ouvrir le menu : les liens sont au bout de la rangée des titres-boutons,
-   * après la fiche et le module, sans rangée de plus sous la plaque.
+   * Sur téléphone, d'escale en escale sans ouvrir le menu : dans la plaque compacte, les liens encadrent le nom, sans
+   * rangée de plus sous la plaque ; ailleurs (paysage bas, sans JavaScript), leurs pilules sont au bout de la rangée des
+   * titres-boutons. La feuille de style n'affiche que l'une des deux copies (StopSteps.test.tsx).
    */
-  it("devrait mener, au bas de la plaque de Saturne, à Jupiter et à Uranus", () => {
+  it("devrait mener, de part et d'autre du nom de Saturne, à Jupiter et à Uranus", () => {
     const plate = renderPlate("en", "saturn");
-    const steps = plate.querySelector(".plate-sections > .stop-steps");
-    expect(steps).not.toBeNull();
-    expect(steps).toBe(plate.querySelector(".plate-sections")?.lastElementChild);
-    expect(within(plate).getByRole("link", { name: "Previous stop: Jupiter" })).toHaveAttribute("href", "#jupiter");
-    expect(within(plate).getByRole("link", { name: "Next stop: Uranus" })).toHaveAttribute("href", "#uranus");
+    const title = plate.querySelector<HTMLElement>(".plate-title");
+    if (!title) throw new Error("Rangée du nom absente");
+    expect(within(title).getByRole("link", { name: "Previous stop: Jupiter" })).toHaveAttribute("href", "#jupiter");
+    expect(within(title).getByRole("link", { name: "Next stop: Uranus" })).toHaveAttribute("href", "#uranus");
+    const pills = plate.querySelector(".plate-sections > .stop-steps");
+    expect(pills).toBe(plate.querySelector(".plate-sections")?.lastElementChild);
   });
 
   it("ne devrait proposer au Soleil que l'escale suivante", () => {
-    const plate = renderPlate("fr", "sun");
-    expect(within(plate).getAllByRole("link").map((link) => link.getAttribute("aria-label"))).toEqual([
+    const title = renderPlate("fr", "sun").querySelector<HTMLElement>(".plate-title");
+    if (!title) throw new Error("Rangée du nom absente");
+    expect(within(title).getAllByRole("link").map((link) => link.getAttribute("aria-label"))).toEqual([
       "Escale suivante\u00a0: Mercure",
     ]);
   });

@@ -35,9 +35,9 @@ function Arrow({ toward }: { toward: "previous" | "next" }) {
 }
 
 /**
- * Escales voisines, au bas de la plaque compacte (téléphone, tablette en portrait) : un lien vers la précédente (la
- * flèche, puis son nom court) et un vers la suivante (son nom, puis la flèche), nommés en entier pour les lecteurs
- * d'écran. Défilement piloté (goTo : doux, immédiat en mouvement réduit), ancre native sans JavaScript. Absents aux
+ * Escales voisines, de part et d'autre du nom dans la plaque compacte (téléphone, tablette en portrait), en pilules
+ * ailleurs : un lien vers la précédente (la flèche, puis son nom court) et un vers la suivante (son nom, puis la
+ * flèche), nommés en entier pour les lecteurs d'écran ; autour du nom, la flèche seule. Défilement piloté (goTo : doux, immédiat en mouvement réduit), ancre native sans JavaScript. Absents aux
  * bouts du parcours. Sur grand écran, la règle suffit : la feuille de style les masque (« Escales voisines »).
  */
 export function StopSteps({ previous, next }: { previous: StopStep | null; next: StopStep | null }) {

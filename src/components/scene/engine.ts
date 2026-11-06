@@ -26,7 +26,7 @@ import { GALACTIC_CENTER_DISTANCE_LY, GALACTIC_DISK_RADIUS_LY, sceneFromGalactic
 import { LOCAL_GROUP, galaxyCenterKly, galaxyRadiusKly } from "@/lib/astro/localGroup";
 import { galaxyPointBudget } from "@/lib/astro/milkyWay";
 import { ROTATION } from "@/lib/astro/orientation";
-import { PLANETS, PLANET_BY_KEY, type PlanetKey } from "@/lib/astro/planets";
+import { PLANETS, PLANET_BY_KEY, SUN, type PlanetKey } from "@/lib/astro/planets";
 import { REAL_SCALE_PLANET_SHRINK, toScene, unitsPerLightYear, zoomScale } from "@/lib/astro/scale";
 import { NEARBY_STARS } from "@/lib/astro/stars";
 import { OBSERVABLE_UNIVERSE_RADIUS_GLY } from "@/lib/astro/universe";
@@ -57,6 +57,7 @@ import {
   type OrbitInput,
   type OrbitView,
 } from "@/lib/journey/orbit";
+import { BAND_MARGIN_PX } from "@/lib/journey/screen";
 import { smootherstep } from "@/lib/journey/sections";
 import { journeyStore, type JourneyState } from "@/lib/journey/store";
 import { getClock, type ClockSnapshot } from "@/lib/sim/clock";
@@ -72,6 +73,7 @@ import {
   createSun,
   fadeOrbitNear,
   fadeSky,
+  ringOuterRadii,
   scaleSun,
   setPlanetBrightness,
   texturedMoon,
@@ -119,9 +121,11 @@ import {
   anchoredBox,
   clearanceShift,
   markerLayouts,
+  placeAboveDisc,
   placeLabel,
   placeMarkedLabel,
   pointBox,
+  riseAbove,
   ringLayouts,
   type LabelBox,
   type MarkedPlacement,
@@ -131,7 +135,7 @@ import { SOLAR_HIDDEN_ZOOM, galaxyMagnification, layerWeights } from "./layers";
 import { createPlaceholderTexture, type SurfaceUniforms, type Uniform } from "./materials";
 import { DEG, TAU, clamp, easeFactor, lerp, smoothstep } from "./math";
 import { createRenderer, releaseRenderer } from "./renderer";
-import { createScreenLayout } from "./screenLayout";
+import { COMPACT_LAYOUT_QUERY, createScreenLayout } from "./screenLayout";
 import { createTextureStream } from "./textureLoader";
 import { TEXTURE_FADE_SECONDS, pickTextureTier, textureFade, textureLoadOrder, type TextureKey } from "./textureSet";
 
@@ -312,8 +316,16 @@ interface LabelSlot {
   short: boolean;
   /** Nom d'une galaxie posé à côté de son disque, repère effacé (`data-beside`). */
   beside: boolean;
+  /** Nom d'un astre posé au-dessus de son disque, repère effacé (`data-above`, mise en page compacte). */
+  above: boolean;
   /** Étiquettes à repère seulement ; `null` pour les planètes, placées par leur bouton entier (décalage fixe). */
   marker: LabelMarker | null;
+  /**
+   * Astres seulement : boîte du texte dans l'étiquette, depuis son coin haut gauche (px), et demi-largeur du repère ;
+   * `null` si l'étiquette n'a pas l'un ou l'autre (elle garde alors la disposition ordinaire).
+   */
+  text: LabelBox | null;
+  dotRadius: number;
 }
 
 /** Mémoire d'une étiquette, partie de l'état du DOM (un moteur précédent a pu y écrire). */
@@ -327,7 +339,10 @@ const labelSlot = (element: HTMLElement): LabelSlot => ({
   mirrored: element.hasAttribute("data-mirrored"),
   short: element.hasAttribute("data-short"),
   beside: element.hasAttribute("data-beside"),
+  above: element.hasAttribute("data-above"),
   marker: null,
+  text: null,
+  dotRadius: 0,
 });
 
 function setLabelShown(slot: LabelSlot, shown: boolean): void {
@@ -355,6 +370,13 @@ function setLabelBeside(slot: LabelSlot, beside: boolean): void {
   slot.element.toggleAttribute("data-beside", beside);
 }
 
+/** Nom posé au-dessus du disque de l'astre, repère effacé (`data-above`) ; la feuille de style garde sa place. */
+function setLabelAbove(slot: LabelSlot, above: boolean): void {
+  if (slot.above === above) return;
+  slot.above = above;
+  slot.element.toggleAttribute("data-above", above);
+}
+
 /**
  * Montre l'étiquette, coin haut gauche en (left, top) px, à l'opacité `alpha`. Seules les valeurs qui changent sont
  * écrites : au repos ou quand seul le temps avance, le style des étiquettes n'est plus invalidé à chaque image.
@@ -371,6 +393,19 @@ function showLabel(slot: LabelSlot, left: number, top: number, alpha: number): v
     slot.element.style.opacity = opacity;
   }
   setLabelShown(slot, true);
+}
+
+/**
+ * Texte d'une étiquette d'astre, depuis son coin haut gauche (px), et demi-largeur de son repère ; `null` s'il lui manque
+ * l'un ou l'autre. Posée au-dessus du disque (`data-above`), l'étiquette garde ses mesures : son repère, masqué, garde
+ * sa place.
+ */
+function measureBodyText(element: HTMLElement): { text: LabelBox; dotRadius: number } | null {
+  const dot = element.querySelector<HTMLElement>(":scope > i");
+  const text = element.querySelector<HTMLElement>(":scope > span");
+  if (!dot || !text) return null;
+  const { offsetLeft: left, offsetTop: top } = text;
+  return { text: [left, top, left + text.offsetWidth, top + text.offsetHeight], dotRadius: dot.offsetWidth / 2 };
 }
 
 /**
@@ -621,8 +656,10 @@ function setupScene(
   // ---------- État ----------
   const view = { width: 1, height: 1 };
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  /** Mise en page compacte (téléphone, tablette en portrait) : plaques collées en bas, noms des astres au-dessus d'eux. */
+  const compactLayout = window.matchMedia(COMPACT_LAYOUT_QUERY);
   /** Bandes libres (téléphone) et zone libre (grand écran) autour de la scène, mesurées dans la page. */
-  const screenLayout = createScreenLayout({ bar, rail, note, plates });
+  const screenLayout = createScreenLayout({ bar, rail, note, plates }, compactLayout);
   /** Bandes du cadrage posées sur leur mesure : aucune image à rendre pour elles. */
   let layoutSettled = true;
   const brass = rawColor(BRASS_HEX);
@@ -732,6 +769,9 @@ function setupScene(
   const anchor = new Vector3();
   /** Bord du disque d'une galaxie, sur l'axe horizontal de la caméra (discRadiusPx). */
   const discEdge = new Vector3();
+  /** Pôle d'une planète annelée et verticale de l'écran, en coordonnées monde (bodyRisePx). */
+  const pole = new Vector3();
+  const screenUp = new Vector3();
   const bodySlots = new Map<BodyKey, LabelSlot>([...labels].map(([key, element]) => [key, labelSlot(element)]));
   const deepSlots = new Map<DeepLabelKey | ExtragalacticLabelKey, LabelSlot>(
     [...deepLabels].map(([key, element]) => [key, labelSlot(element)]),
@@ -803,6 +843,11 @@ function setupScene(
       slot.height = slot.element.offsetHeight;
     }
     for (const slot of markedSlots) slot.marker = measureMarker(slot.element);
+    for (const slot of bodySlots.values()) {
+      const body = measureBodyText(slot.element);
+      slot.text = body?.text ?? null;
+      slot.dotRadius = body?.dotRadius ?? 0;
+    }
     // Cercles de distance : chaque disposition s'étend à la graduation posée sur le cercle.
     for (const { slot } of ringLabels) {
       const marker = slot?.marker;
@@ -1370,6 +1415,7 @@ function setupScene(
     if (!box) return false;
     occupied.push(box);
     setLabelForm(slot, false, false);
+    setLabelAbove(slot, false);
     showLabel(slot, box[0], box[1], alpha);
     return true;
   }
@@ -1400,6 +1446,7 @@ function setupScene(
     occupied.push(anchoredBox(layout.box, x, y), [x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight]);
     setLabelForm(slot, layout.mirrored, layout.short);
     setLabelBeside(slot, false);
+    setLabelAbove(slot, false);
     showLabel(slot, x - layout.dotX, y - marker.dotY, alpha);
     return true;
   }
@@ -1460,10 +1507,66 @@ function setupScene(
     if (!fitMarkedSlot(slot, at, alpha)) setLabelShown(slot, false);
   }
 
-  /** Place le bouton d'étiquette sur son ancre s'il y tient ; sinon, ou sous LABEL_MIN_ALPHA, le masque. */
-  function placeSlot(slot: LabelSlot | undefined, at: Vector3, alpha: number): void {
+  /**
+   * Hauteur à l'écran (px) de ce qui s'élève au-dessus du centre de l'astre `key`, posé en `at` (coordonnées monde) :
+   * son disque affiché (réduit en échelle réelle, et avec le système solaire de `solarScale`), ou ses anneaux s'ils
+   * montent plus haut (riseAbove). Laisse le centre projeté dans `onScreen` et `projected`.
+   */
+  function bodyRisePx(key: BodyKey, at: Vector3, solarScale: number): number {
+    if (key === "sun") return discRadiusPx(at, SUN.displayRadius * sun.mesh.scale.x * solarScale);
+    const body = bodyOf(key);
+    const radius = body.planet.displayRadius * body.group.scale.x * solarScale;
+    const rings = ringOuterRadii(key);
+    if (rings === 0) return discRadiusPx(at, radius);
+    pole.setFromMatrixColumn(body.tilt.matrixWorld, 1).normalize();
+    screenUp.setFromMatrixColumn(camera.matrixWorld, 1).normalize();
+    const ringPx = discRadiusPx(at, radius * rings);
+    return riseAbove(discRadiusPx(at, radius), ringPx, pole.dot(screenUp));
+  }
+
+  /**
+   * Pose le nom d'un astre au-dessus de son disque, qui s'élève de `rise` px au-dessus de son centre (placeAboveDisc),
+   * repère effacé ; seul le texte (`text`, mesuré dans l'étiquette) est réservé. Renvoie faux sinon, sans rien changer.
+   */
+  function fitAboveSlot(slot: LabelSlot, text: LabelBox, at: Vector3, alpha: number, rise: number): boolean {
+    project(at);
+    const size = { width: text[2] - text[0], height: text[3] - text[1] };
+    const box = placeAboveDisc({ x: onScreen.x, y: onScreen.y, depth: projected.z }, size, rise, view.width, view.height, occupied);
+    if (!box) return false;
+    occupied.push(box);
+    setLabelForm(slot, false, false);
+    setLabelAbove(slot, true);
+    showLabel(slot, box[0] - text[0], box[1] - text[1], alpha);
+    return true;
+  }
+
+  /**
+   * Étiquette de l'astre `key`, posé en `at` : en mise en page compacte (`compact`), au-dessus de son disque dès qu'il
+   * déborde du repère, comme le nom d'une galaxie à côté du sien, et masquée si elle n'y tient pas ; sinon, son bouton
+   * sur l'astre (fitSlot). Masquée sous LABEL_MIN_ALPHA.
+   */
+  function placeBodySlot(
+    slot: LabelSlot | undefined,
+    key: BodyKey,
+    at: Vector3,
+    alpha: number,
+    compact: boolean,
+    solarScale: number,
+  ): void {
     if (!slot) return;
-    if (alpha < LABEL_MIN_ALPHA || !fitSlot(slot, at, alpha)) setLabelShown(slot, false);
+    if (alpha < LABEL_MIN_ALPHA) {
+      setLabelShown(slot, false);
+      return;
+    }
+    const { text } = slot;
+    if (compact && text) {
+      const rise = bodyRisePx(key, at, solarScale);
+      if (rise > slot.dotRadius) {
+        if (!fitAboveSlot(slot, text, at, alpha, rise)) setLabelShown(slot, false);
+        return;
+      }
+    }
+    if (!fitSlot(slot, at, alpha)) setLabelShown(slot, false);
   }
 
   /** Place l'étiquette à repère sur son ancre si elle y tient ; sinon, ou sous LABEL_MIN_ALPHA, la masque. */
@@ -1512,9 +1615,10 @@ function setupScene(
     return weights.multiverse * (bubbleFits[labelledBubble] ?? 1);
   }
 
-  function updateLabels(): void {
+  function updateLabels(journey: JourneyState): void {
     // Vue rapprochée : les étiquettes s'effacent ; en échelle réelle, elles sont le seul repère.
     const alpha = realScale > 0.5 ? 1 : smoothstep(28, 95, cameraDistance);
+    const compact = compactLayout.matches;
     const solarScale = solarRoot.scale.x;
     const lightYear = cosmos.group.scale.x;
     /*
@@ -1526,17 +1630,32 @@ function setupScene(
     occupied.length = 0;
     occupied.push(...obstacleBoxes);
     points.length = 0;
+    /*
+     * Mise en page compacte : le nom d'un astre reste entre la barre (ou la note d'échelle) et la plaque repliée de
+     * l'escale, jamais dessous. Ces deux boîtes ne valent que pour les astres : le ciel profond garde ses règles.
+     */
+    const band = compact ? screenLayout.band(journey.current) : null;
+    if (band) {
+      occupied.push(
+        [0, 0, view.width, band.top * view.height - BAND_MARGIN_PX],
+        [0, band.bottom * view.height + BAND_MARGIN_PX, view.width, view.height],
+      );
+    }
     for (const key of LABEL_PRIORITY) {
+      // Mise en page compacte : l'astre au repos garde son nom, lisible au-dessus de lui, même vu de près.
+      const near = compact ? Math.max(alpha, restWeight(journey, key)) : alpha;
       if (key !== "sun") {
-        placeSlot(bodySlots.get(key), anchor.copy(bodyOf(key).position).multiplyScalar(solarScale), alpha * weights.planetLabels);
+        const at = anchor.copy(bodyOf(key).position).multiplyScalar(solarScale);
+        placeBodySlot(bodySlots.get(key), key, at, near * weights.planetLabels, compact, solarScale);
       } else if (weights.sunPoint > 0) {
         // Le Soleil devenu un point parmi les étoiles : « Soleil » prend la disposition du ciel profond (seul son
         // texte occupe la place, à droite ou à gauche du point). Son bouton entier chasserait Proxima du Centaure.
         placeMarkedSlot(sunSlot, anchor.set(0, 0, 0), alpha * sunFade);
       } else {
-        placeSlot(sunSlot, anchor.set(0, 0, 0), alpha * sunFade);
+        placeBodySlot(sunSlot, key, anchor.set(0, 0, 0), near * sunFade, compact, solarScale);
       }
     }
+    if (band) occupied.splice(obstacleBoxes.length, 2);
     /*
      * Points visibles : nul texte du ciel profond ne les recouvre, ni son halo de nuit. « Soleil », texte sans ce halo
      * qui ne masque aucun point, est placé avant eux : sur téléphone, les points qui serrent le Soleil (Lacaille 9352,
@@ -1626,7 +1745,7 @@ function setupScene(
       updateCamera(step, journey, explore, reduced);
       updateBelts();
       renderer.render(scene, camera);
-      updateLabels();
+      updateLabels(journey);
     },
     dispose() {
       if (disposed) return;

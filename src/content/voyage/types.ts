@@ -65,9 +65,9 @@ export interface VoyageContent {
   /** Boutons qui déplient les plaques sur téléphone : la fiche d'un astre, la suite de l'au-delà. */
   plate: { story: string; more: string };
   /**
-   * Escales voisines, au bas de la plaque compacte (téléphone) et de l'interlude : nom accessible du lien vers la
-   * précédente et vers la suivante, nom de l'escale déjà écrit (« Escale suivante : Mars »). Le lien n'affiche que la
-   * flèche et ce nom.
+   * Escales voisines, autour du nom dans la plaque compacte (téléphone) et au bas de l'interlude : nom accessible du
+   * lien vers la précédente et vers la suivante, nom de l'escale déjà écrit (« Escale suivante : Mars »). Le lien
+   * n'affiche que la flèche et ce nom (la flèche seule autour du nom).
    */
   steps: { previous: (name: string) => string; next: (name: string) => string };
   /** Rang d'une planète, accordé au mot « planète » de la langue : 1ʳᵉ, 1st, 1.ᵉʳ. */

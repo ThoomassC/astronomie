@@ -344,6 +344,16 @@ const MOONS: Partial<Record<PlanetKey, readonly MoonSpec[]>> = {
 /** Anneaux d'Uranus, en rayons de la planète. */
 const URANUS_RING = { inner: 1.6, outer: 2.05, opacity: 0.5 } as const;
 
+/**
+ * Rayon extérieur des anneaux dessinés d'une planète, en rayons de la planète ; 0 sans anneaux. Leur plan est
+ * l'équateur de la planète (repère `tilt`) : ils montent au-dessus d'elle selon leur inclinaison à l'écran.
+ */
+export function ringOuterRadii(key: PlanetKey): number {
+  if (key === "saturn") return SATURN_RING.outer;
+  if (key === "uranus") return URANUS_RING.outer;
+  return 0;
+}
+
 export interface MoonBody {
   mesh: Mesh<SphereGeometry, ShaderMaterial>;
   surface: SurfaceUniforms;
