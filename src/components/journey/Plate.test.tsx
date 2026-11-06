@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderToString } from "react-dom/server";
@@ -326,5 +328,41 @@ describe("Plate en anglais et en espagnol", () => {
     await user.click(screen.getByRole("button", { name: t.fold }));
     expect(fiche).toHaveAttribute("aria-expanded", "false");
     expect(fiche).toHaveFocus();
+  });
+});
+
+/*
+ * Plaque compacte, avec JavaScript (globals.css, lue telle quelle) : rang, nom encadré des escales voisines, puis la
+ * rangée des titres-boutons. L'accroche y cède sa ligne à l'astre ; elle reste entière sur grand écran et sans
+ * JavaScript, et lue une fois aux lecteurs d'écran.
+ */
+describe("feuille de style de la plaque compacte", () => {
+  const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+  const COMPACT_SCRIPTED =
+    "(max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled)";
+
+  /** Déclarations de la règle `selector` (indentation de 2), cherchée dans chaque bloc média de requête `query`. */
+  function ruleIn(query: string, selector: string): string {
+    const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const blocks = css.matchAll(new RegExp(`@media ${escaped(query)} \\{([\\s\\S]*?)\\n\\}`, "g"));
+    for (const [, block] of blocks) {
+      const rule = new RegExp(`\\n {2}${escaped(selector)} \\{([^}]*)\\}`).exec(block)?.[1];
+      if (rule !== undefined) return rule;
+    }
+    throw new Error(`Règle absente : ${selector}`);
+  }
+
+  it("devrait retirer l'accroche à l'œil, la laisser lue une fois aux lecteurs d'écran", () => {
+    const hook = ruleIn(COMPACT_SCRIPTED, ".plate .hook");
+    expect(hook).toMatch(/position: absolute;/);
+    expect(hook).toMatch(/width: 1px;/);
+    expect(hook).toMatch(/height: 1px;/);
+    expect(hook).toMatch(/clip: rect\(0 0 0 0\);/);
+    expect(hook).not.toMatch(/display: none|visibility: hidden/);
+  });
+
+  it("devrait garder l'accroche hors de la plaque compacte (grand écran, sans JavaScript)", () => {
+    expect(css).toMatch(/\n\.hook \{[^}]*font-size: 1\.375rem;/);
+    expect(css).not.toMatch(/\n\.plate \.hook \{/);
   });
 });

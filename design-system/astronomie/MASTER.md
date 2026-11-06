@@ -68,8 +68,9 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 - **Plaque** : panneau de lecture semi-opaque `--plaque` à 88 %, filet laiton 1 px, angles `--r-lg`,
   filet de la couleur de l'astre qui suit l'arrondi du haut.
   Mise en page compacte (téléphone ≤ 640 px, et tablette en portrait jusqu'à 1024 px de large) :
-  elle est collée en bas, au-dessus du dock, et centrée : rang (version courte sur téléphone), nom,
-  accroche, puis un titre-bouton par
+  elle est collée en bas, au-dessus du dock, et centrée : rang (version courte sur téléphone), nom
+  (l'accroche y cède sa ligne à l'astre : masquée à l'œil, lue une fois après le nom ; avec JavaScript seulement, elle
+  reste sur grand écran et sans JavaScript), puis un titre-bouton par
   section (`h3` > `button[aria-expanded]`, motif accordéon), « Lire la fiche » et un libellé propre
   au module (« Votre poids sur chaque astre »), qui remplace le titre du module. Les titres-boutons
   se rangent côte à côte quand ils tiennent. Chaque section s'ouvre sous son titre, en fondu de
