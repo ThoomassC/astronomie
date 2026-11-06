@@ -7,7 +7,7 @@ import { SITE_STRINGS } from "./site.strings";
 type SiteTabsProps = { locale: Locale; page: PageKey } & Omit<ComponentPropsWithoutRef<"ul">, "children">;
 
 /**
- * Les quatre pages, dans l'ordre du site et dans la langue de la page ; celle qu'on affiche porte
+ * Les cinq pages, dans l'ordre du site et dans la langue de la page ; celle qu'on affiche porte
  * `aria-current="page"`. Sans état : la barre (serveur) et le menu replié (client) la partagent.
  * Le libellé passe aussi en `data-label`, qui réserve dans la barre la largeur de son gras (onglet courant).
  */

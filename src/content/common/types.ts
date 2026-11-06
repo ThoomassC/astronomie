@@ -1,7 +1,7 @@
 import type { PageKey } from "@/i18n/routes";
 
 /**
- * Textes communs aux quatre pages, lus côté serveur seulement : métadonnées (`src/i18n/metadata.ts`) et page
+ * Textes communs aux cinq pages, lus côté serveur seulement : métadonnées (`src/i18n/metadata.ts`) et page
  * introuvable (404 globale, trilingue). Les libellés des onglets vivent ailleurs (`site.strings.ts`) : les composants
  * client les lisent aussi.
  */

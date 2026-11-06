@@ -1,8 +1,11 @@
 import type { PageKey } from "@/i18n/routes";
 import type { KeyFigureKey } from "@/lib/home/keyFigures";
 
-/** Pages vers lesquelles l'accueil ouvre une carte : toutes, sauf lui-même. */
-export type HomeCardPage = Exclude<PageKey, "home">;
+/**
+ * Pages vers lesquelles l'accueil ouvre une carte : toutes, sauf lui-même et les notes de version, que l'onglet suffit
+ * à trouver (les trois portes restent celles du site).
+ */
+export type HomeCardPage = Exclude<PageKey, "home" | "releases">;
 
 /** Texte d'une carte : titre (le nom de l'onglet, et celui du lien), présentation, ligne d'action. */
 export interface HomeCardTexts {

@@ -1,6 +1,6 @@
 # Astronomie
 
-Site pédagogique sur l'espace, en français, en anglais et en espagnol, pour un public de 12 ans et plus. Quatre onglets : l'**Accueil** montre le système solaire tel qu'il est aujourd'hui ; le **Voyage** part du Soleil et, au fil du défilement, passe chaque planète puis s'éloigne jusqu'aux étoiles voisines, à la Voie lactée, au Groupe local, à l'Univers observable et à l'hypothèse du multivers ; **Tailles** compare dix étoiles et quatre trous noirs à la même échelle ; **À propos** dit pourquoi ce site existe et d'où viennent ses chiffres.
+Site pédagogique sur l'espace, en français, en anglais et en espagnol, pour un public de 12 ans et plus. Cinq onglets : l'**Accueil** montre le système solaire tel qu'il est aujourd'hui ; le **Voyage** part du Soleil et, au fil du défilement, passe chaque planète puis s'éloigne jusqu'aux étoiles voisines, à la Voie lactée, au Groupe local, à l'Univers observable et à l'hypothèse du multivers ; **Tailles** compare dix étoiles et quatre trous noirs à la même échelle ; **À propos** dit pourquoi ce site existe et d'où viennent ses chiffres ; les **Notes de version** disent ce qui change d'une version à l'autre.
 
 ## Ce que fait le site
 
@@ -44,9 +44,15 @@ Dix-sept escales : la vue d'ensemble, le Soleil, les huit planètes, la ceinture
   la distance.
 - Une règle des tailles, logarithmique, en rayons solaires ; sur petit écran, le menu des astres de la barre la remplace.
 
+### Notes de version
+
+- Les versions du site, de la plus récente à la plus ancienne : la 1.1.0 (6 novembre 2026 : quatre trous noirs, finitions du Voyage et de l'Accueil, navigation sur téléphone), puis la 1.0.0 (3 novembre 2026, la première version publique). Pour chacune, un résumé puis des rubriques courtes ; un sommaire en tête mène à chaque version (`#v1-1-0`).
+- L'onglet porte un libellé court (« Versions », « Releases », « Versiones ») pour que cinq onglets tiennent sur une ligne ; le titre de la page est le nom complet.
+- La version la plus récente est celle de `package.json` (un test le vérifie) : une nouvelle version s'ajoute en tête de `RELEASES` (`src/content/releases/structure.ts`), avec ses textes dans les trois langues.
+
 ### Partout
 
-- **Barre commune** : la marque, les onglets au centre, les commandes de la page (escale ou étoile affichée, menu des escales, « Tourner autour »), puis la langue. À 860 px et moins, « Menu » regroupe onglets et langues. Sur l'Accueil et À propos, où le texte défile dessous, son fond est opaque.
+- **Barre commune** : la marque, les onglets au centre, les commandes de la page (escale ou étoile affichée, menu des escales, « Tourner autour »), puis la langue. À 860 px et moins, « Menu » regroupe onglets et langues. Sur l'Accueil, À propos et les Notes de version, où le texte défile dessous, son fond est opaque.
 - **Trois langues** : le menu des langues montre le drapeau et le code de la langue de la page. Le choix est gardé (cookie `lang`), et changer de langue garde l'escale ou l'étoile affichée.
 - **Pied de page commun** : la signature, les contacts de l'auteur (GitHub, LinkedIn, e-mail) et la mention de droit d'auteur.
 - Liens d'évitement, parcours complet au clavier, mouvement réduit respecté ; sans JavaScript, la page reste lisible et les onglets comme les langues restent des liens.
@@ -78,12 +84,12 @@ Puis ouvrir http://localhost:3000 : le proxy envoie vers `/fr`, `/en` ou `/es` s
 ```
 src/
   app/
-    [lang]/           layout racine (une langue par adresse) et pages : accueil, voyage/, tailles/, a-propos/
+    [lang]/           layout racine (une langue par adresse) et pages : accueil, voyage/, tailles/, a-propos/, notes-de-version/
     global-not-found.tsx  404 trilingue des adresses qu'aucune route ne sert
-    globals.css       styles globaux, partagés par les quatre pages
+    globals.css       styles globaux, partagés par les cinq pages
   proxy.ts            négociation de la langue des adresses qui n'en portent pas
   i18n/               langues, routes, négociation, métadonnées, noms des astres, unités, pluriels ; gardes des textes
-  content/            contenus serveur, un dossier par domaine (common, home, voyage, cosmic, sizes, about)
+  content/            contenus serveur, un dossier par domaine (common, home, voyage, cosmic, sizes, about, releases)
   components/
     site/             barre commune (onglets, langues, menu replié), lien d'évitement, pied de page commun
     home/             Accueil : planétaire, portes, chiffres clés, renvoi des anciens liens
@@ -91,6 +97,7 @@ src/
     scene/            scène Three.js du Voyage (astres, ciel profond, galaxies, toile cosmique, étiquettes)
     sizes/            Tailles : scène des étoiles, plaques, règle et menu des étoiles
     about/            À propos
+    releases/         Notes de version
     modules/          animations explicatives en Canvas 2D
   lib/
     astro/            éphémérides, échelles, saisons, lumière, étoiles, galaxies, Univers (testé)
@@ -109,7 +116,7 @@ design-system/        direction artistique, jetons, et précisions par page (pag
 
 ### Adresses et négociation
 
-- Chaque page existe dans les trois langues : `/{lang}`, `/{lang}/voyage`, `/{lang}/tailles`, `/{lang}/a-propos`, avec `lang` parmi `fr`, `en`, `es`. Les segments et les ancres des escales (`#saturne`) sont les mêmes dans les trois langues ; les chemins se fabriquent par `pathFor(page, locale)` (`src/i18n/routes.ts`).
+- Chaque page existe dans les trois langues : `/{lang}`, `/{lang}/voyage`, `/{lang}/tailles`, `/{lang}/a-propos`, `/{lang}/notes-de-version`, avec `lang` parmi `fr`, `en`, `es`. Les segments et les ancres des escales (`#saturne`) sont les mêmes dans les trois langues ; les chemins se fabriquent par `pathFor(page, locale)` (`src/i18n/routes.ts`).
 - Les pages sont statiques : le layout `src/app/[lang]/layout.tsx` déclare les trois langues (`generateStaticParams`) et `ensureStatic`, qui fait échouer le build si une page lit les cookies ou les en-têtes. Une langue inconnue donne la 404.
 - `src/proxy.ts` ne voit que les adresses **sans** langue (`/`, `/voyage`) : il renvoie (307) vers la même adresse préfixée de la langue préférée, le cookie `lang` s'il est valide, sinon `Accept-Language`, sinon le français. Il ne pose jamais de cookie : seul le menu des langues pose `lang`, sur action de la personne (un an, `SameSite=Lax`).
 - Les anciens liens `/#saturne` passent par le proxy puis par un script en ligne de l'accueil, qui les renvoie vers `/{lang}/voyage#saturne` avant la peinture.

@@ -85,7 +85,7 @@ function ContactLink({ href, icon, label, external }: ContactLinkProps) {
 }
 
 /**
- * Pied de page commun aux quatre pages, posé dans leur `footer` (au voyage, après les sources et le crédit des
+ * Pied de page commun aux cinq pages, posé dans leur `footer` (au voyage, après les sources et le crédit des
  * cartes) : la signature du site, les adresses publiques de l'auteur (GitHub, LinkedIn, e-mail en clair) et la
  * mention de droit d'auteur. Composant serveur, sans script. `address` : ce sont les coordonnées de l'auteur.
  */

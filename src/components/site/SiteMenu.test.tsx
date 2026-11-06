@@ -60,12 +60,12 @@ describe("SiteMenu", () => {
     expect(screen.getByText("Idioma")).toBeVisible();
   });
 
-  it("devrait déplier les quatre onglets et les trois langues", async () => {
+  it("devrait déplier les cinq onglets et les trois langues", async () => {
     const user = userEvent.setup();
     render(<SiteMenu locale="en" page="sizes" />);
     await user.click(toggle());
     expect(toggle()).toHaveAttribute("aria-expanded", "true");
-    expect(linkNames("Sections")).toEqual(["Home", "Journey", "Sizes", "About"]);
+    expect(linkNames("Sections")).toEqual(["Home", "Journey", "Sizes", "About", "Releases"]);
     expect(linkNames("Language")).toEqual(["Français", "English", "Español"]);
   });
 

@@ -25,6 +25,11 @@ export const COMMON_EN: CommonContent = {
       description:
         "Why this site exists, who it is for, where its data comes from, what its views simplify, its credits, accessibility and privacy.",
     },
+    releases: {
+      title: "Release notes",
+      description:
+        "What changes on the site, release by release: four black holes and a redesigned phone layout in 1.1.0, the first public release in 1.0.0.",
+    },
   },
   notFound: {
     title: "Page not found",

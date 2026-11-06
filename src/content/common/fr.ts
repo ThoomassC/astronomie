@@ -25,6 +25,11 @@ export const COMMON_FR: CommonContent = {
       description:
         "Pourquoi ce site, pour qui, d'où viennent ses données, ce que ses vues simplifient, ses crédits, son accessibilité et sa confidentialité.",
     },
+    releases: {
+      title: "Notes de version",
+      description:
+        "Ce qui change sur le site, version après version : quatre trous noirs et une navigation mobile repensée en 1.1.0, la première version en 1.0.0.",
+    },
   },
   notFound: {
     title: "Page introuvable",

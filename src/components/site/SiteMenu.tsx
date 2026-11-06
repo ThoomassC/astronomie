@@ -25,7 +25,7 @@ function MenuIcon({ open }: { open: boolean }) {
 }
 
 /**
- * Menu replié des fenêtres de 860 px et moins : « ≡ Menu » déplie les quatre rubriques puis les trois langues, sous
+ * Menu replié des fenêtres de 860 px et moins : « ≡ Menu » déplie les cinq rubriques puis les trois langues, sous
  * la barre, à droite. Un lien choisi referme le panneau et rend le focus au bouton (la page reste la même quand on
  * choisit la rubrique ou la langue déjà affichées). Sans JavaScript, le bouton ne déplierait rien : la feuille de
  * style le retire, et la barre montre à sa place les onglets et les langues.

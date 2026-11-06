@@ -25,6 +25,11 @@ export const COMMON_ES: CommonContent = {
       description:
         "Por qué existe este sitio, para quién es, de dónde salen sus datos, qué simplifican sus vistas, sus créditos, su accesibilidad y su privacidad.",
     },
+    releases: {
+      title: "Notas de la versión",
+      description:
+        "Lo que cambia en el sitio, versión a versión: cuatro agujeros negros y una navegación móvil nueva en la 1.1.0, y la primera versión en la 1.0.0.",
+    },
   },
   notFound: {
     title: "Página no encontrada",

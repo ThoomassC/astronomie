@@ -5,6 +5,7 @@ import { getAboutContent } from "@/content/about/content";
 import { getCommonContent } from "@/content/common/content";
 import { getCosmicContent } from "@/content/cosmic/content";
 import { getHomeContent } from "@/content/home/content";
+import { getReleasesContent } from "@/content/releases/content";
 import { getSizesContent } from "@/content/sizes/content";
 import { getVoyageContent } from "@/content/voyage/content";
 import { LOCALES, type Locale } from "./locales";
@@ -43,6 +44,7 @@ export const SERVER_CONTENTS: Readonly<Record<string, (locale: Locale) => object
   common: getCommonContent,
   cosmic: getCosmicContent,
   home: getHomeContent,
+  releases: getReleasesContent,
   sizes: getSizesContent,
   voyage: getVoyageContent,
 };
