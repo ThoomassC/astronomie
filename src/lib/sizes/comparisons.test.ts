@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { AU_KM } from "@/lib/astro/constants";
+import { COMPARED_BLACK_HOLE_BY_KEY, type BlackHoleKey } from "@/lib/astro/blackHoles";
 import { PLANET_BY_KEY } from "@/lib/astro/planets";
+import { comparedRadiusSolar } from "@/lib/sizes/objects";
 import {
   earthDiameters,
   orbitReached,
+  pickBlackHoleComparison,
   pickComparison,
   radiusAu,
   radiusKm,
@@ -126,4 +129,48 @@ describe("pickComparison", () => {
       expect(pickComparison(radiusSolar)).toEqual({ kind: "earths", count });
     },
   );
+});
+
+/*
+ * Un trou noir se compare par son ombre, ce que l'on voit de lui : son diamètre en kilomètres quand elle est plus
+ * petite que la Terre ; sinon l'orbite de la planète la plus proche du Soleil qui la contiendrait, mise à la place du
+ * Soleil ; au-delà de Neptune, combien de fois l'orbite de Neptune elle couvrirait.
+ */
+describe("pickBlackHoleComparison", () => {
+  const shadow = (key: BlackHoleKey) => comparedRadiusSolar(COMPARED_BLACK_HOLE_BY_KEY[key]);
+  /** Rayon, en R☉, d'une orbite de demi-grand axe `au`. */
+  const orbit = (au: number) => (au * AU_KM) / SOLAR_RADIUS_KM;
+  const EARTH_RADIUS_SOLAR = 6_378.137 / SOLAR_RADIUS_KM;
+  const NEPTUNE_AU = PLANET_BY_KEY.neptune.elements[0];
+
+  it.each([
+    ["cygnus-x-1", { kind: "km", diameterKm: 330 }],
+    ["sagittarius-a-star", { kind: "insideOrbit", planet: "mercury" }],
+    ["m87-star", { kind: "beyondNeptune", times: 11 }],
+    ["cosmic-horseshoe", { kind: "beyondNeptune", times: 61 }],
+  ] as const)("devrait comparer l'ombre de %s", (key, comparison) => {
+    expect(pickBlackHoleComparison(shadow(key))).toEqual(comparison);
+  });
+
+  it("devrait donner en kilomètres, à deux chiffres significatifs, le diamètre d'une ombre plus petite que la Terre", () => {
+    expect(pickBlackHoleComparison(EARTH_RADIUS_SOLAR * (1 - 1e-9))).toEqual({ kind: "km", diameterKm: 13_000 });
+  });
+
+  it("devrait passer à l'orbite de Mercure dès que l'ombre dépasse la Terre, et jusqu'à cette orbite comprise", () => {
+    expect(pickBlackHoleComparison(EARTH_RADIUS_SOLAR * (1 + 1e-9))).toEqual({ kind: "insideOrbit", planet: "mercury" });
+    expect(pickBlackHoleComparison(orbit(PLANET_BY_KEY.mercury.elements[0]))).toEqual({ kind: "insideOrbit", planet: "mercury" });
+  });
+
+  it("devrait prendre la planète suivante dès que l'ombre dépasse une orbite (Vénus, juste après Mercure)", () => {
+    expect(pickBlackHoleComparison(orbit(PLANET_BY_KEY.mercury.elements[0]) * (1 + 1e-9))).toEqual({
+      kind: "insideOrbit",
+      planet: "venus",
+    });
+  });
+
+  it("devrait compter les orbites de Neptune au-delà de la sienne, à l'unité", () => {
+    expect(pickBlackHoleComparison(orbit(NEPTUNE_AU))).toEqual({ kind: "insideOrbit", planet: "neptune" });
+    expect(pickBlackHoleComparison(orbit(NEPTUNE_AU) * (1 + 1e-9))).toEqual({ kind: "beyondNeptune", times: 1 });
+    expect(pickBlackHoleComparison(orbit(2.6 * NEPTUNE_AU))).toEqual({ kind: "beyondNeptune", times: 3 });
+  });
 });

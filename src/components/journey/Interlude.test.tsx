@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { Interlude } from "@/components/journey/Interlude";
@@ -39,4 +39,12 @@ describe("Interlude", () => {
       expect(section.querySelector("blockquote cite")?.textContent).toBe(cite);
     },
   );
+
+  it("devrait mener de la ceinture à Mars et à Jupiter, sous la citation", () => {
+    renderInterlude("fr");
+    const section = screen.getByRole("region", { name: "La ceinture d'astéroïdes" });
+    expect(section.lastElementChild).toHaveClass("stop-steps");
+    expect(within(section).getByRole("link", { name: "Escale précédente\u00a0: Mars" })).toHaveAttribute("href", "#mars");
+    expect(within(section).getByRole("link", { name: "Escale suivante\u00a0: Jupiter" })).toHaveAttribute("href", "#jupiter");
+  });
 });

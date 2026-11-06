@@ -16,8 +16,8 @@ export const HOME_ES: HomeContent = {
       },
       sizes: {
         title: "Tamaños",
-        text: "Diez estrellas a la misma escala, de la diminuta Próxima Centauri a la enorme VY Canis Majoris.",
-        action: "Comparar las estrellas",
+        text: "Diez estrellas y cuatro agujeros negros a la misma escala, del diminuto Cygnus X-1 al gigantesco agujero negro de la Herradura Cósmica.",
+        action: "Comparar tamaños",
       },
       about: {
         title: "Acerca de",

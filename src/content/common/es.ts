@@ -8,7 +8,7 @@ export const COMMON_ES: CommonContent = {
     home: {
       title: "Astronomie · El sistema solar y más allá",
       description:
-        "El sistema solar tal como está hoy y tres caminos: un viaje hasta el multiverso, el tamaño de las estrellas y cómo se hizo este sitio.",
+        "El sistema solar tal como está hoy y tres caminos: un viaje hasta el multiverso, el tamaño de estrellas y agujeros negros y cómo se hizo este sitio.",
     },
     voyage: {
       title: "Viaje del Sol al multiverso",
@@ -16,14 +16,19 @@ export const COMMON_ES: CommonContent = {
         "Un viaje en 3D al bajar por la página: el Sol y los planetas donde están hoy, las estrellas vecinas, la Vía Láctea, las galaxias y la hipótesis del multiverso.",
     },
     sizes: {
-      title: "Tamaños de las estrellas",
+      title: "Tamaños de estrellas y agujeros negros",
       description:
-        "De Próxima Centauri a VY Canis Majoris, diez estrellas una junto a otra y a la misma escala, el Sol incluido: de la enana roja a la hipergigante.",
+        "De Cygnus X-1 al agujero negro de la Herradura Cósmica, diez estrellas y cuatro agujeros negros en fila y a la misma escala, el Sol incluido.",
     },
     about: {
       title: "Acerca de este sitio",
       description:
         "Por qué existe este sitio, para quién es, de dónde salen sus datos, qué simplifican sus vistas, sus créditos, su accesibilidad y su privacidad.",
+    },
+    releases: {
+      title: "Notas de la versión",
+      description:
+        "Lo que cambia en el sitio, versión a versión: cuatro agujeros negros y una navegación móvil nueva en la 1.1.0, y la primera versión en la 1.0.0.",
     },
   },
   notFound: {

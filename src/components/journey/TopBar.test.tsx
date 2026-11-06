@@ -90,6 +90,7 @@ describe("TopBar", () => {
       screen.getByRole("link", { name: "Voyage" }),
       screen.getByRole("link", { name: "Tailles" }),
       screen.getByRole("link", { name: "À propos" }),
+      screen.getByRole("link", { name: "Versions" }),
       screen.getByRole("button", { name: "Saturne, changer d'escale" }),
       screen.getByRole("button", { name: "Tourner autour de Saturne" }),
       screen.getByRole("button", { name: "FR, langue\u00a0: français" }),

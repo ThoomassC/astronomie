@@ -18,8 +18,6 @@ export interface HomeStrings {
   here: string;
   /** Nom de la Terre dans la légende : « Terre (vous êtes ici) ». */
   earthInLegend(name: string): string;
-  /** Nom de la légende tant que les positions ne sont pas posées (rendu serveur, sans JavaScript). */
-  legend: string;
   /** Nom de la légende quand chaque planète dit sa position, lue sur un cadran (`clock`). */
   legendWithPositions: string;
   /** Position d'une planète autour du Soleil, comme l'heure d'un cadran (1 à 12) : « à 8 heures ». */
@@ -34,7 +32,6 @@ export const HOME_STRINGS: Readonly<Record<Locale, HomeStrings>> = {
     note: "Vu du dessus. Orbites rapprochées et planètes agrandies pour tenir dans le cadre.",
     here: "Vous êtes ici",
     earthInLegend: (name) => `${name} (vous êtes ici)`,
-    legend: "Les huit planètes, de la plus proche du Soleil à la plus lointaine",
     legendWithPositions:
       "Les huit planètes et leur place autour du Soleil, lue comme l'heure sur un cadran, midi en haut",
     clock: (hour) => plural("fr", hour, { one: `à ${hour} heure`, other: `à ${hour} heures` }),
@@ -46,7 +43,6 @@ export const HOME_STRINGS: Readonly<Record<Locale, HomeStrings>> = {
     note: "Seen from above. Orbits drawn closer together and planets enlarged to fit.",
     here: "You are here",
     earthInLegend: (name) => `${name} (you are here)`,
-    legend: "The eight planets, from nearest to farthest from the Sun",
     legendWithPositions:
       "The eight planets and where they sit around the Sun, read like a clock face with 12 at the top",
     clock: (hour) => `at ${hour} o'clock`,
@@ -58,7 +54,6 @@ export const HOME_STRINGS: Readonly<Record<Locale, HomeStrings>> = {
     note: "Visto desde arriba. Órbitas más juntas y planetas agrandados para que quepan.",
     here: "Estás aquí",
     earthInLegend: (name) => `${name} (estás aquí)`,
-    legend: "Los ocho planetas, del más cercano al Sol al más lejano",
     legendWithPositions:
       "Los ocho planetas y su posición alrededor del Sol, leída como la hora en un reloj, con las 12 arriba",
     clock: (hour) => plural("es", hour, { one: `a la ${hour}`, other: `a las ${hour}` }),

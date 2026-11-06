@@ -11,6 +11,7 @@ import { STOP_IDS } from "@/lib/journey/stopIds";
 import { cssVars } from "./cssVars";
 import { GoToLink } from "./GoToLink";
 import { Plate, type PlateSection } from "./Plate";
+import { JourneySteps } from "./StopSteps";
 import { stopColor } from "./stopMeta";
 
 /** Type de l'étoile en mots simples (« naine rouge ») ; le type spectral tel quel si sa classe est inconnue. */
@@ -114,12 +115,9 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
     {
       key: "fiche",
       // Le même libellé revient à chaque escale : le nom de l'escale le distingue à l'oreille.
-      label: (
-        <>
-          {content.plate.story}
-          <span className="sr">, {text.name}</span>
-        </>
-      ),
+      label: content.plate.story,
+      context: text.name,
+      icon: "story",
       content: (
         <>
           <p className="lede">{text.lede}</p>
@@ -144,6 +142,7 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
     sections.push({
       key: "etoiles",
       label: content.starTable.button,
+      icon: "stars",
       content: <StarTable table={content.starTable} locale={locale} />,
     });
   }
@@ -151,6 +150,7 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
     sections.push({
       key: "galaxies",
       label: content.galaxyTable.button,
+      icon: "galaxies",
       content: <GalaxyTable table={content.galaxyTable} locale={locale} />,
     });
   }
@@ -159,6 +159,7 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
     <section className="stop" id={id} data-stop={stop} tabIndex={-1} aria-labelledby={titleId}>
       <Plate
         id={id}
+        stop={stop}
         name={text.name}
         color={stopColor(stop)}
         header={
@@ -168,11 +169,12 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
               <i aria-hidden="true" />
               {text.rank}
             </p>
-            <h2 id={titleId}>{text.name}</h2>
-            <p className="hook">{text.hook}</p>
           </>
         }
+        titleId={titleId}
+        hook={text.hook}
         sections={sections}
+        steps={<JourneySteps stop={stop} locale={locale} />}
         footer={
           <div className="actions">
             <GoToLink className="btn ghost" href={sunHref} stop="sun">

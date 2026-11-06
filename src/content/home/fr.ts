@@ -16,8 +16,8 @@ export const HOME_FR: HomeContent = {
       },
       sizes: {
         title: "Tailles",
-        text: "Dix étoiles à la même échelle, de la minuscule Proxima du Centaure à l'immense VY Canis Majoris.",
-        action: "Comparer les étoiles",
+        text: "Dix étoiles et quatre trous noirs à la même échelle, du minuscule Cygnus X-1 au trou noir géant du Fer à cheval cosmique.",
+        action: "Comparer les tailles",
       },
       about: {
         title: "À propos",

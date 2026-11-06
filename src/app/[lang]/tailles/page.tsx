@@ -12,7 +12,8 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/tailles">)
 }
 
 /**
- * Tailles, dans la langue de l'adresse (/fr/tailles, /en/tailles, /es/tailles) : dix étoiles comparées côte à côte.
+ * Tailles, dans la langue de l'adresse (/fr/tailles, /en/tailles, /es/tailles) : dix étoiles et quatre trous noirs
+ * comparés côte à côte.
  * Les trois langues viennent du layout `[lang]` (`generateStaticParams`) ; une langue inconnue n'arrive pas jusqu'ici,
  * la garde reste par prudence (D4).
  */

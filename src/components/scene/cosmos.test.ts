@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   DISTANCE_RINGS_LY,
   GALAXY_BOUNDING_RADIUS_LY,
+  STAR_HALO,
   SUN_POINT_SIZE_PX,
   buildGalaxy,
   createCosmos,
   magnifyGalaxy,
+  starLabelOrder,
   sunPointPosition,
   weighCosmos,
   type CosmosBody,
@@ -123,6 +125,42 @@ describe("createCosmos", () => {
 
   it("ne devrait pas construire la galaxie à la création", () => {
     expect(createCosmos(STARS).galaxy).toBeNull();
+  });
+});
+
+describe("starLabelOrder", () => {
+  /** Une étoile réduite à ce que lit l'ordre des étiquettes : clé, distance, et si elle est remarquable. */
+  const star = (key: string, distanceLy: number, notable = false): NearbyStar => ({
+    key, raDeg: 0, decDeg: 0, distanceLy, spectralType: "M5V", apparentMag: 10, ...(notable ? { notable: true } : {}),
+  });
+
+  it("devrait placer les étoiles remarquables d'abord, puis les autres, chacune dans l'ordre des données", () => {
+    const stars = [star("a", 4.2, true), star("b", 5), star("c", 6, true), star("d", 7), star("e", 8.6, true)];
+    expect(starLabelOrder(stars)).toEqual(["a", "c", "e", "b", "d"]);
+  });
+
+  it("devrait garder l'ordre des données quand aucune n'est remarquable", () => {
+    expect(starLabelOrder(STARS)).toEqual(["proxima-centauri", "sirius", "altair"]);
+  });
+});
+
+describe("halo des étoiles voisines", () => {
+  it("devrait entourer le point de chaque étoile d'un halo doux, plus large que lui", () => {
+    const { defines } = createCosmos(STARS).stars.material;
+    expect(defines.STAR_HALO).toBe("");
+    expect(Number(defines.STAR_HALO_SCALE)).toBe(STAR_HALO.scale);
+    expect(Number(defines.STAR_HALO_STRENGTH)).toBe(STAR_HALO.strength);
+    expect(STAR_HALO.scale).toBeGreaterThan(1);
+    // Constantes GLSL flottantes : un entier (« 3 ») ne compilerait pas dans une expression flottante.
+    expect(defines.STAR_HALO_SCALE).toMatch(/\./);
+    expect(defines.STAR_HALO_STRENGTH).toMatch(/\./);
+  });
+
+  it("ne devrait toucher ni au point-Soleil ni à la galaxie, qui partagent le même programme", () => {
+    const cosmos = createCosmos(STARS);
+    buildGalaxy(cosmos, 100);
+    expect(cosmos.sunPoint.material.defines.STAR_HALO).toBeUndefined();
+    expect(galaxyOf(cosmos).material.defines.STAR_HALO).toBeUndefined();
   });
 });
 

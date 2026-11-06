@@ -19,7 +19,7 @@ import type { NearbyStar } from "@/lib/astro/stars";
 import { BRASS_HEX } from "./bodies";
 import { rawColor } from "./color";
 import type { LayerWeights } from "./layers";
-import { createPointCloudMaterial, type Uniform } from "./materials";
+import { createPointCloudMaterial, type PointHalo, type Uniform } from "./materials";
 import { TAU } from "./math";
 
 /**
@@ -42,6 +42,15 @@ export const ringLabelKey = (radius: DistanceRingLy): DeepLabelKey => `ring-${ra
 /** Étiquette de l'étoile de clé `key` (NearbyStar.key). */
 export const starLabelKey = (key: string): DeepLabelKey => `star:${key}`;
 
+/**
+ * Ordre de pose des étiquettes des étoiles (clés) : les remarquables d'abord, nommées avec leur distance, puis les
+ * autres, chacune dans l'ordre des données (distance croissante). Les premières gagnent la place quand elles se
+ * chevauchent : une étoile peu connue ne chasse jamais Sirius ni Procyon.
+ */
+export function starLabelOrder(stars: readonly NearbyStar[]): string[] {
+  return [...stars.filter((star) => star.notable), ...stars.filter((star) => !star.notable)].map((star) => star.key);
+}
+
 const RING_LABEL_KEYS: readonly string[] = DISTANCE_RINGS_LY.map(ringLabelKey);
 
 /** Clé d'étiquette du ciel profond lue dans le DOM (`data-deep`). */
@@ -52,6 +61,12 @@ export function isDeepLabelKey(value: string | undefined): value is DeepLabelKey
 
 /** Le Soleil vu de loin : un point de 6 px (CSS), de sa couleur. */
 export const SUN_POINT_SIZE_PX = 6;
+/**
+ * Halo des étoiles voisines : une lueur de leur couleur, 2,5 fois plus large que le cœur de leur point (starPointSize),
+ * à 0,3 de son éclat au centre et nulle au bord. Les naines rouges, de 3,5 px, ne se perdent plus dans le noir ; Sirius
+ * rayonne sur 12 px. Ni le point-Soleil ni la galaxie n'en ont.
+ */
+export const STAR_HALO: Readonly<PointHalo> = { scale: 2.5, strength: 0.3 };
 /**
  * Rayon de la sphère englobante de la galaxie, en années-lumière, autour du centre galactique : le disque (50 000 al)
  * et les bras, qui débordent de quelques écarts types, y tiennent. Posée telle quelle : rien à calculer sur 40 000 points.
@@ -84,6 +99,13 @@ export interface CosmosBody {
   galaxyGain: Uniform<number>;
 }
 
+/** Réglages d'un nuage de points : gain (galaxie), sphère englobante posée d'emblée, halo (étoiles voisines). */
+interface PointCloudOptions {
+  gain?: Uniform<number>;
+  bounds?: Sphere;
+  halo?: PointHalo;
+}
+
 /**
  * Nuage de points : positions (al), couleurs linéaires, tailles (px CSS), matériau commun aux trois nuages. Sa sphère
  * englobante est posée d'emblée (`bounds`), ou calculée tout de suite : jamais à la première image où il paraît.
@@ -93,8 +115,7 @@ function pointCloud(
   colors: Float32Array,
   sizes: Float32Array,
   pixelRatio: Uniform<number>,
-  gain?: Uniform<number>,
-  bounds?: Sphere,
+  { gain, bounds, halo }: PointCloudOptions = {},
 ): Points<BufferGeometry, ShaderMaterial> {
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new BufferAttribute(positions, 3));
@@ -102,7 +123,7 @@ function pointCloud(
   geometry.setAttribute("size", new BufferAttribute(sizes, 1));
   if (bounds) geometry.boundingSphere = bounds;
   else geometry.computeBoundingSphere();
-  const points = new Points(geometry, createPointCloudMaterial(pixelRatio, gain).material);
+  const points = new Points(geometry, createPointCloudMaterial(pixelRatio, gain, halo).material);
   // Rien n'est dessiné avant que le moteur ne pèse la couche.
   points.visible = false;
   return points;
@@ -133,7 +154,7 @@ function distanceRing(radius: number): Line<BufferGeometry, LineBasicMaterial> {
 }
 
 /**
- * Étoiles voisines (couleur de leur classe spectrale, taille tirée de leur magnitude absolue), Soleil vu de loin
+ * Étoiles voisines (couleur de leur classe spectrale, taille tirée de leur magnitude absolue, halo), Soleil vu de loin
  * et cercles de distance (5 et 10 al, dans le plan des orbites qui viennent de se réduire au Soleil). Invisible
  * tant que `weighCosmos` ne lui a pas donné de poids ; la galaxie viendra plus tard (buildGalaxy).
  */
@@ -158,7 +179,7 @@ export function createCosmos(stars: readonly NearbyStar[]): CosmosBody {
   const group = new Group();
   const cosmos: CosmosBody = {
     group,
-    stars: pointCloud(positions, colors, sizes, pixelRatio),
+    stars: pointCloud(positions, colors, sizes, pixelRatio, { halo: STAR_HALO }),
     sunPoint: pointCloud(
       new Float32Array(3),
       new Float32Array([sunColor.r, sunColor.g, sunColor.b]),
@@ -204,7 +225,10 @@ export function buildGalaxy(cosmos: CosmosBody, count: number): void {
   const cloud = milkyWayPoints(count);
   const center = sceneFromGalacticXYZ(GALACTIC_CENTER_DISTANCE_LY, 0, 0);
   const bounds = new Sphere(new Vector3(center.x, center.y, center.z), GALAXY_BOUNDING_RADIUS_LY);
-  const galaxy = pointCloud(cloud.positions, cloud.colors, cloud.sizes, cosmos.pixelRatio, cosmos.galaxyGain, bounds);
+  const galaxy = pointCloud(cloud.positions, cloud.colors, cloud.sizes, cosmos.pixelRatio, {
+    gain: cosmos.galaxyGain,
+    bounds,
+  });
   cosmos.group.add(galaxy);
   cosmos.galaxy = galaxy;
 }

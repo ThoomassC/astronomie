@@ -26,6 +26,13 @@ const textsOf = (root: ParentNode, selector: string) =>
   Array.from(root.querySelectorAll(selector), (element) => element.textContent);
 
 describe("BeyondPlate", () => {
+  it("devrait mener, de part et d'autre du nom, à Neptune et aux étoiles voisines", () => {
+    const title = renderBeyond("en").querySelector<HTMLElement>(".plate-title");
+    if (!title) throw new Error("Rangée du nom absente");
+    expect(within(title).getByRole("link", { name: "Previous stop: Neptune" })).toHaveAttribute("href", "#neptune");
+    expect(within(title).getByRole("link", { name: "Next stop: Nearby stars" })).toHaveAttribute("href", "#etoiles-voisines");
+  });
+
   it.each([
     [
       "fr",

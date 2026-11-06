@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { anchorOf } from "@/components/journey/anchors";
 import { DistanceRail, type RailStop } from "@/components/journey/DistanceRail";
+import { stubPseudoClasses } from "@/components/journey/testPseudoClasses";
 import { renderIn } from "@/components/modules/testUtils";
 import { RAIL_STOPS } from "@/lib/journey/camera";
 import { journeyStore } from "@/lib/journey/store";
@@ -204,6 +205,39 @@ describe("DistanceRail", () => {
     expect(parseFloat(leaders[7].style.height)).toBeCloseTo(3.6, 3);
   });
 
+  it("devrait, avec de vraies hauteurs, laisser 4 px d'air entre les textes nommés serrés au bas de la règle, repères en place", () => {
+    // Frontière navigateur : règle de 560 px (1 440 × 900) ; graduations de 24 px, liens nommés de 36 px, textes de 30 px.
+    vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(560);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
+      if (this.tagName === "SPAN") return 30;
+      return this.hasAttribute("data-near") ? 36 : 24;
+    });
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(private readonly callback: () => void) {}
+        observe() {
+          this.callback();
+        }
+        disconnect() {}
+      },
+    );
+    act(() => journeyStore.update("galaxy", "galaxy", 0));
+    render(<DistanceRail stops={STOPS} />);
+    const named = within(rail())
+      .getAllByRole("link")
+      .filter((link) => link.hasAttribute("data-near"));
+    expect(named.map((link) => link.getAttribute("href"))).toEqual(["#etoiles-voisines", "#voie-lactee", "#groupe-local"]);
+    // Repères à 26 px les uns des autres, poussés vers le haut depuis le bas de la règle : ils ne bougent pas.
+    expect(named.map((link) => parseFloat(link.style.top))).toEqual([456, 482, 508]);
+    const texts = named.map((link) => {
+      const center = parseFloat(link.style.top) + (parseFloat(link.style.getPropertyValue("--shift")) || 0);
+      return [center - 15, center + 15] as const;
+    });
+    expect(texts[1][0] - texts[0][1]).toBeGreaterThanOrEqual(4);
+    expect(texts[2][0] - texts[1][1]).toBeGreaterThanOrEqual(4);
+  });
+
   it("devrait faire glisser le curseur avec la caméra, au rythme de smootherstep, l'accueil étant placé comme le Soleil", () => {
     const { container } = render(<DistanceRail stops={STOPS} />);
     const cursor = () => container.querySelector<HTMLElement>(".cursor-track")?.style.transform;
@@ -221,6 +255,8 @@ describe("DistanceRail", () => {
   it("devrait masquer l'infobulle des petits écrans avec Échap, sans fermer autre chose, et la rendre au focus suivant", () => {
     stubMatchMedia(TIPS_QUERY);
     render(<DistanceRail stops={STOPS} />);
+    act(() => marker("Mars, 1,52 UA").focus());
+    stubPseudoClasses({ focusVisible: marker("Mars, 1,52 UA") });
     // fireEvent renvoie false quand l'événement a été annulé : la note d'échelle ne se ferme pas avec lui.
     expect(fireEvent.keyDown(marker("Mars, 1,52 UA"), { key: "Escape" })).toBe(false);
     expect(rail()).toHaveAttribute("data-tips", "off");
@@ -230,13 +266,40 @@ describe("DistanceRail", () => {
     expect(rail()).not.toHaveAttribute("data-tips");
   });
 
-  it("devrait masquer les infobulles sur grand écran sans retenir Échap, et les rendre quand le pointeur quitte la règle", () => {
+  it("devrait masquer sur grand écran l'infobulle d'une graduation avec Échap, et la rendre quand le pointeur quitte la règle", () => {
     stubMatchMedia(null);
     render(<DistanceRail stops={STOPS} />);
-    expect(fireEvent.keyDown(marker("Mars, 1,52 UA"), { key: "Escape" })).toBe(true);
+    // À l'accueil, Mars n'est qu'une graduation : son nom paraît en infobulle au focus, qu'Échap ferme seule.
+    act(() => marker("Mars, 1,52 UA").focus());
+    stubPseudoClasses({ focusVisible: marker("Mars, 1,52 UA") });
+    expect(fireEvent.keyDown(marker("Mars, 1,52 UA"), { key: "Escape" })).toBe(false);
     expect(rail()).toHaveAttribute("data-tips", "off");
     fireEvent.pointerLeave(rail());
     expect(rail()).not.toHaveAttribute("data-tips");
+  });
+
+  it("devrait laisser passer Échap sur un repère nommé du grand écran, sans infobulle à fermer ni couper les autres", () => {
+    stubMatchMedia(null);
+    render(<DistanceRail stops={STOPS} />);
+    act(() => marker("Mercure, 0,39 UA").focus());
+    stubPseudoClasses({ focusVisible: marker("Mercure, 0,39 UA") });
+    expect(fireEvent.keyDown(marker("Mercure, 0,39 UA"), { key: "Escape" })).toBe(true);
+    expect(rail()).not.toHaveAttribute("data-tips");
+  });
+
+  it("devrait nommer l'escale en cours et ses deux voisines, et réduire les treize autres à une graduation", () => {
+    render(<DistanceRail stops={STOPS} />);
+    const named = () =>
+      within(rail())
+        .getAllByRole("link")
+        .filter((link) => link.hasAttribute("data-near"))
+        .map((link) => link.getAttribute("href"));
+    // À l'accueil, placé comme le Soleil : le Soleil et Mercure.
+    expect(named()).toEqual(["#soleil", "#mercure"]);
+    act(() => journeyStore.update("saturn", "saturn", 0));
+    expect(named()).toEqual(["#jupiter", "#saturne", "#uranus"]);
+    act(() => journeyStore.update("universe", "multiverse", 0.8));
+    expect(named()).toEqual(["#univers-observable", "#multivers"]);
   });
 });
 
@@ -323,8 +386,33 @@ describe("la règle et la liste des escales", () => {
     return Math.min((Number(vh) / 100) * viewportHeight, Number(px));
   }
 
+  /** Déclarations du bloc grand écran de la règle dont le sélecteur est exactement `selector` (indentation de 2). */
+  function largeScreenRule(selector: string): string {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\n/g, "\\n {2}");
+    const match = new RegExp(`\\n {2}${escaped} \\{([^}]*)\\}`).exec(css);
+    expect(match, selector).not.toBeNull();
+    return match?.[1] ?? "";
+  }
+
   it("devrait remplacer la règle par la liste sur tout écran de 860 px de large ou moins, quelle qu'en soit la hauteur", () => {
     expect(swapConditions()).toContain("(max-width: 860px) and (scripting: enabled)");
+  });
+
+  /*
+   * Un lien nommé (nom et distance, ≈ 36 px) est plus haut que l'écart entre repères (26 px) : sa boîte passerait sous
+   * celle du lien suivant, peint par-dessus, et un clic sur le bas de son texte mènerait à l'escale d'après.
+   */
+  it("devrait faire répondre au clic le texte déplacé et la pastille d'un repère nommé, pas la boîte de son lien", () => {
+    expect(largeScreenRule(".rail a[data-near]")).toMatch(/pointer-events: none;/);
+    expect(largeScreenRule(".rail a[data-near] > span,\n.rail a[data-near] > i")).toMatch(/pointer-events: auto;/);
+  });
+
+  it("devrait centrer sur sa pastille la cible de 24 px d'une graduation, à l'écart de la colonne des textes", () => {
+    const rule = largeScreenRule(".rail a:not([data-near])");
+    expect(rule).toMatch(/justify-content: center;/);
+    expect(rule).toMatch(/padding: 0;/);
+    // Bord droit à 12,5 px de l'axe : 24 px centrés sur la pastille (son centre à 0,5 px de l'axe, comme la grande).
+    expect(rule).toMatch(/right: -12\.5px;/);
   });
 
   it("devrait remplacer la règle par la liste sous la hauteur où ses seize repères n'auraient plus 24 px entre eux", () => {

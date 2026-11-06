@@ -27,9 +27,12 @@ const DEFAULT_STAR_COLOR = SPECTRAL_COLORS.F;
 
 const isSpectralClass = (letter: string): letter is SpectralClass => Object.hasOwn(SPECTRAL_COLORS, letter);
 
-/** Taille du point de l'étoile la plus lumineuse et de la plus faible, en px CSS. */
-const STAR_POINT_MAX_PX = 9;
-const STAR_POINT_MIN_PX = 2;
+/**
+ * Taille du cœur du point de l'étoile la plus lumineuse et de la plus faible, en px CSS : à 2 px, les naines rouges
+ * disparaissaient dans le noir.
+ */
+const STAR_POINT_MAX_PX = 10;
+const STAR_POINT_MIN_PX = 3.5;
 
 /** Classe spectrale d'un type (« M5.5Ve » → M), lue sur sa première lettre sans tenir compte de la casse ; `null` si inconnue. */
 export function spectralClass(spectralType: string): SpectralClass | null {
@@ -58,8 +61,9 @@ export function absoluteMagnitude(apparentMag: number, distanceLy: number): numb
 }
 
 /**
- * Taille du point d'une étoile, en px CSS : clamp(9 − 0,5 × (M − 1), 2, 9). Plus l'étoile est lumineuse
- * en réalité, plus le point est gros : Sirius (M ≈ 1,4) ≈ 8,8 px, Proxima du Centaure (M ≈ 15,6) 2 px.
+ * Taille du cœur du point d'une étoile, en px CSS : clamp(10 − 0,5 × (M − 1), 3,5, 10). Plus l'étoile est lumineuse
+ * en réalité, plus le point est gros : Sirius (M ≈ 1,4) ≈ 9,8 px, l'étoile de Barnard (M ≈ 13,2) 3,9 px, Proxima du
+ * Centaure (M ≈ 15,6) 3,5 px. La scène l'entoure d'un halo de sa couleur.
  */
 export function starPointSize(absoluteMag: number): number {
   return Math.min(STAR_POINT_MAX_PX, Math.max(STAR_POINT_MIN_PX, STAR_POINT_MAX_PX - 0.5 * (absoluteMag - 1)));

@@ -1,3 +1,4 @@
+import type { BlackHoleKey } from "@/lib/astro/blackHoles";
 import type { SizeStarKey } from "@/lib/astro/starSizes";
 import type { TemperatureTint } from "@/lib/sizes/temperature";
 
@@ -13,10 +14,27 @@ export interface SizesStarText {
   caveat?: string;
 }
 
+/** Textes d'un trou noir, sur sa plaque. Chaque nombre écrit vient des données (tests de content.test.ts). */
+export interface SizesBlackHoleText {
+  /** Catégorie, en minuscules : « trou noir stellaire » ; dans le rang et dans la fiche. */
+  kind: string;
+  /** Accroche, sous le nom : ce qui frappe, visible même plaque repliée. */
+  hook: string;
+  /** Présentation, en tête de la fiche. */
+  lede: string;
+  /**
+   * Ce que la vue simplifie, ligne discrète sous la fiche : elle commence par « Rendu calculé », jamais par un mot qui
+   * donnerait l'image pour observée ; elle dit les fausses couleurs d'un anneau vu en ondes radio.
+   */
+  simplification: string;
+  /** Mise en garde sous la fiche : seulement pour les masses débattues, celles qui ont une fourchette publiée. */
+  caveat?: string;
+}
+
 /**
- * Textes de la page « Tailles » dans une langue, lus par les composants serveur seulement. Les noms des étoiles, les
- * rayons, les rangs, les distances et la phrase de comparaison, que lisent aussi les composants client, sont dans
- * `sizes.strings.ts`.
+ * Textes de la page « Tailles » dans une langue, lus par les composants serveur seulement. Les noms des astres, les
+ * tailles, les masses, les rangs, les distances et la phrase de comparaison, que lisent aussi les composants client,
+ * sont dans `sizes.strings.ts`.
  */
 export interface SizesContent {
   intro: {
@@ -27,11 +45,15 @@ export interface SizesContent {
     note: string;
     /** Ce que montre la scène 3D décorative, lu par les lecteurs d'écran. */
     sceneDescription: string;
-    /** Bouton vers la plus petite étoile. */
+    /** Bouton vers le plus petit astre. */
     start: string;
   };
   stars: Readonly<Record<SizeStarKey, SizesStarText>>;
-  /** Libellés de la fiche ; `sunDistance` est la distance du Soleil à la Terre, en minutes-lumière. */
+  blackHoles: Readonly<Record<BlackHoleKey, SizesBlackHoleText>>;
+  /**
+   * Libellés de la fiche ; `sunDistance` est la distance du Soleil à la Terre, en minutes-lumière. Trous noirs : rayon de
+   * l'ombre (la taille comparée), rayon de l'horizon, masse, et leur type (celui des étoiles dit « Star type » en anglais).
+   */
   facts: {
     radius: string;
     type: string;
@@ -39,6 +61,10 @@ export interface SizesContent {
     distance: string;
     comparison: string;
     sunDistance: string;
+    shadow: string;
+    horizon: string;
+    mass: string;
+    blackHoleType: string;
   };
   /** Couleur d'une étoile en mots, selon sa température (accordée à « étoile »). */
   tints: Readonly<Record<TemperatureTint, string>>;
@@ -46,6 +72,12 @@ export interface SizesContent {
   vsSun: { cooler: string; hotter: string; reference: string };
   /** Bouts de la réglette des températures. */
   thermo: { cooler: string; hotter: string };
-  /** Bouton de la fiche, lien vers la plus petite étoile, mention qui précède les sources de l'étoile. */
+  /** Bouton de la fiche, lien vers le plus petit astre, mention qui précède les sources de l'astre. */
   plate: { story: string; restart: string; sources: string };
+  /**
+   * Astres voisins, autour du nom dans la plaque compacte (téléphone) : nom accessible du lien vers le précédent et
+   * vers le suivant, nom entier de l'astre déjà écrit (« Astre suivant : Trou noir du Fer à cheval cosmique »). Le lien
+   * n'affiche que la flèche et le nom court (la flèche seule autour du nom).
+   */
+  steps: { previous: (name: string) => string; next: (name: string) => string };
 }

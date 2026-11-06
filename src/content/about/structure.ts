@@ -39,7 +39,13 @@ export const ABOUT_URLS = {
   simbad: "https://simbad.cds.unistra.fr/simbad/",
   /** Rayon de VY Canis Majoris par interférométrie (VLTI/AMBER), A&A 540, L12. */
   wittkowski2012: "https://arxiv.org/abs/1203.5194",
-  /** Distance du Soleil au centre galactique (8 277 pc, soit 27 000 al), A&A 657, L12. */
+  /** Masse de Cygnus X-1, 21,2 masses solaires (dynamique et parallaxe radio), Science 371, 1046. */
+  millerJones2021: "https://arxiv.org/abs/2102.09091",
+  /** Première image d'un trou noir, M87*, et sa masse (6,5 milliards de masses solaires), ApJL 875, L1. */
+  eht2019: "https://arxiv.org/abs/1906.11238",
+  /** Masse du trou noir du Fer à cheval cosmique (36 milliards de masses solaires), MNRAS 541, 2853. */
+  meloCarneiro2025: "https://arxiv.org/abs/2502.13788",
+  /** Distance du Soleil au centre galactique (8 277 pc, soit 27 000 al) et masse de Sagittarius A*, A&A 657, L12. */
   gravity2022: "https://arxiv.org/abs/2112.07478",
   /** Bras spiraux de la Voie lactée, ApJ 885, 131. */
   reid2019: "https://arxiv.org/abs/1910.03357",

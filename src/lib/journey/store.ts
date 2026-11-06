@@ -7,6 +7,11 @@ export interface StopFlight<K extends string> {
   to: K;
   t: number;
   current: K;
+  /**
+   * Escale visée par une navigation programmée (flèche, lien d'escale, focus entré dans une carte), jusqu'au repos sur
+   * elle ou à la reprise du défilement à la main : la carte fixe la montre dès le départ (lib/journey/card.ts).
+   */
+  target?: K;
 }
 
 /**
@@ -20,7 +25,17 @@ export interface StopStore<K extends string> {
   /** current = t < 0,5 ? from : to ; prévient seulement si current change. */
   update(from: K, to: K, t: number): void;
   subscribe(listener: () => void): () => void;
-  /** Retour à l'état initial au démontage de la page ; prévient si current change. */
+  /**
+   * Suit chaque nouvel état du vol, et pas seulement le changement d'escale affichée : la carte fixe du téléphone
+   * passe au squelette en vol et revient au repos sans que l'escale affichée change.
+   */
+  subscribeFlight(listener: () => void): () => void;
+  /**
+   * Retient l'escale visée par une navigation programmée (`null` : plus aucune), effacée au repos sur elle ; ignorée
+   * si le parcours y est déjà au repos. Prévient les abonnés du vol si elle change.
+   */
+  aim(key: K | null): void;
+  /** Retour à l'état initial au démontage de la page, sans escale visée ; prévient si current change. */
   reset(): void;
 }
 
@@ -30,12 +45,23 @@ type Listener = () => void;
 export function createStopStore<K extends string>(initial: K): StopStore<K> {
   let state: StopFlight<K> = { from: initial, to: initial, t: 0, current: initial };
   const listeners = new Set<Listener>();
+  const flightListeners = new Set<Listener>();
 
   const update = (from: K, to: K, t: number): void => {
     const current = t < 0.5 ? from : to;
     const changed = current !== state.current;
-    state = { from, to, t, current };
+    // Arrivée au repos sur l'escale visée : la navigation est finie.
+    const target = from === to && from === state.target ? undefined : state.target;
+    state = { from, to, t, current, target };
     if (changed) listeners.forEach((l) => l());
+    flightListeners.forEach((l) => l());
+  };
+
+  const aim = (key: K | null): void => {
+    const target = key === null || (state.from === key && state.to === key) ? undefined : key;
+    if (target === state.target) return;
+    state = { ...state, target };
+    flightListeners.forEach((l) => l());
   };
 
   return {
@@ -46,7 +72,15 @@ export function createStopStore<K extends string>(initial: K): StopStore<K> {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    reset: () => update(initial, initial, 0),
+    subscribeFlight: (listener) => {
+      flightListeners.add(listener);
+      return () => flightListeners.delete(listener);
+    },
+    aim,
+    reset: () => {
+      aim(null);
+      update(initial, initial, 0);
+    },
   };
 }
 

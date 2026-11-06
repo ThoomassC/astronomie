@@ -18,14 +18,14 @@ export const ABOUT_FR: AboutContent = {
       heading: "Pourquoi ce site",
       paragraphs: [
         "La Terre est à près de 150 millions de kilomètres du Soleil : le nombre est exact, mais impossible à se représenter. Ce site fait sentir les distances et les tailles de l'espace en les parcourant.",
-        "Le Voyage part du Soleil, passe chaque planète, puis s'éloigne vers les étoiles voisines, la Voie lactée, les autres galaxies et au-delà. Au Soleil et à chaque planète, une animation explique un phénomène : les saisons, les orbites, la vitesse de la lumière… L'onglet Tailles compare dix étoiles, de la naine rouge Proxima du Centaure à l'hypergéante VY Canis Majoris.",
+        "Le Voyage part du Soleil, passe chaque planète, puis s'éloigne vers les étoiles voisines, la Voie lactée, les autres galaxies et au-delà. Au Soleil et à chaque planète, une animation explique un phénomène : les saisons, les orbites, la vitesse de la lumière… L'onglet Tailles compare dix étoiles et quatre trous noirs, du trou noir stellaire Cygnus X-1 à celui du Fer à cheval cosmique, l'un des plus gros jamais pesés.",
       ],
     },
     {
       id: "sources",
       heading: "Sources",
       paragraphs: [
-        "Les chiffres viennent des agences spatiales et d'articles scientifiques ; voici les principales sources, en anglais. Les rayons des étoiles de l'onglet Tailles viennent de mesures publiées, étoile par étoile.",
+        "Les chiffres viennent des agences spatiales et d'articles scientifiques ; voici les principales sources, en anglais. Les rayons des étoiles de l'onglet Tailles viennent de mesures publiées, étoile par étoile ; les masses de ses trous noirs, d'orbites d'étoiles, d'images de l'Event Horizon Telescope et d'une lentille gravitationnelle.",
       ],
       links: [
         {
@@ -63,9 +63,24 @@ export const ABOUT_FR: AboutContent = {
           description: `Rayon de VY Canis Majoris, mesuré par interférométrie : ${figures.vyCanisMajoris}.`,
         },
         {
+          label: "Miller-Jones et al., 2021",
+          href: ABOUT_URLS.millerJones2021,
+          description: "Masse de Cygnus X-1, le premier objet reconnu comme un trou noir.",
+        },
+        {
+          label: "EHT Collaboration, 2019",
+          href: ABOUT_URLS.eht2019,
+          description: "Première image d'un trou noir, M87*, et sa masse.",
+        },
+        {
+          label: "Melo-Carneiro et al., 2025",
+          href: ABOUT_URLS.meloCarneiro2025,
+          description: "Masse du trou noir du Fer à cheval cosmique, l'un des plus gros jamais pesés.",
+        },
+        {
           label: "GRAVITY Collaboration, 2022",
           href: ABOUT_URLS.gravity2022,
-          description: "Distance du Soleil au centre de la Galaxie.",
+          description: "Distance du Soleil au centre de la Galaxie, et masse de Sagittarius A*, le trou noir qui s'y trouve.",
         },
         { label: "Reid et al., 2019", href: ABOUT_URLS.reid2019, description: "Forme des bras de la Voie lactée." },
         { label: "McConnachie, 2012", href: ABOUT_URLS.mcConnachie2012, description: "Galaxies du Groupe local." },

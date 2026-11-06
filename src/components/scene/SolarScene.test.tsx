@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { stopColor } from "@/components/journey/stopMeta";
@@ -77,14 +79,30 @@ describe("SolarScene, étiquettes du ciel profond", () => {
     ).toEqual([labels.here, labels.center, labels.web, labels.cmb, labels.ourUniverse, labels.otherUniverses]);
   });
 
-  it.each(LOCALES)("devrait nommer chaque étoile et donner sa distance dans la langue de la page (%s)", (locale) => {
+  it.each(LOCALES)("devrait nommer chaque étoile remarquable et donner sa distance dans la langue de la page (%s)", (locale) => {
     renderScene(locale);
     const { starNames, starDistance } = DEEP_SKY_STRINGS[locale];
-    for (const star of NEARBY_STARS) {
+    const notable = NEARBY_STARS.filter((star) => star.notable);
+    expect(notable).toHaveLength(6);
+    for (const star of notable) {
       const label = deepLabel(starLabelKey(star.key));
       expect(textOf(label)).toBe(`${starNames[star.key]}${starDistance(star.distanceLy)}`);
       // La distance seule se retire quand le nom seul tient (data-short).
       expect(label.querySelector(".dist")?.textContent).toBe(starDistance(star.distanceLy));
+      expect(label).not.toHaveClass("minor");
+    }
+  });
+
+  it.each(LOCALES)("devrait ne donner que leur nom, plus discret, aux autres étoiles (%s)", (locale) => {
+    renderScene(locale);
+    const { starNames } = DEEP_SKY_STRINGS[locale];
+    const others = NEARBY_STARS.filter((star) => !star.notable);
+    expect(others.length).toBeGreaterThan(0);
+    for (const star of others) {
+      const label = deepLabel(starLabelKey(star.key));
+      expect(textOf(label)).toBe(starNames[star.key]);
+      expect(label.querySelector(".dist")).toBeNull();
+      expect(label).toHaveClass("lbl", "deep", "minor");
     }
   });
 
@@ -133,3 +151,55 @@ describe("SolarScene, étiquettes du ciel profond", () => {
     expect(textOf(deepLabel(starLabelKey("proxima-centauri")))).toBe("Proxima Centauri · 4.2 ly");
   });
 });
+
+/*
+ * Étiquettes de la scène en mise en page compacte (globals.css, lue telle quelle) : plus petites, à la demande de
+ * l'utilisateur (0,75 rem, sous le minimum de 0,8125 rem du MASTER, exception notée), pastilles de Tailles plus fines ;
+ * au Voyage, le nom posé au-dessus du disque d'un astre (`data-above`, posé par la scène) efface son repère.
+ */
+describe("feuille de style des étiquettes de la scène", () => {
+  const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+  const COMPACT = "@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait) {";
+
+  /** Déclarations de la règle `selector` (indentation de 2) dans le bloc compact qui la contient. */
+  function compactRule(selector: string): string {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    for (let at = css.indexOf(COMPACT); at >= 0; at = css.indexOf(COMPACT, at + 1)) {
+      const block = css.slice(at, css.indexOf("\n}", at));
+      const rule = new RegExp(`\\n {2}${escaped} \\{([^}]*)\\}`).exec(block)?.[1];
+      if (rule !== undefined) return rule;
+    }
+    throw new Error(`Règle absente : ${selector}`);
+  }
+
+  it("devrait réduire le texte des étiquettes à 0,75 rem, cercles de distance compris", () => {
+    expect(compactRule(".lbl,\n  .lbl.deep.ring")).toMatch(/font-size: 0\.75rem;/);
+  });
+
+  it("devrait affiner le rembourrage des étiquettes et la pastille de Tailles", () => {
+    expect(compactRule(".lbl")).toMatch(/padding: 0\.2rem 0\.4rem 0\.2rem 0\.15rem;/);
+    const pill = compactRule(".lbl.deep > span");
+    expect(pill).toMatch(/padding: 0 0\.35rem;/);
+    expect(pill).toMatch(/line-height: 1\.3;/);
+  });
+
+  it("devrait effacer le repère d'un nom posé au-dessus de son astre, sans lui retirer sa place", () => {
+    expect(css).toMatch(/\n\.lbl\[data-above\] i \{\s*visibility: hidden;\s*\}/);
+  });
+
+  /*
+   * Au repos sur le Soleil, « Soleil » se pose sur sa couronne claire : une seule ombre floue (0 1px 6px) n'y suffit pas.
+   * Le texte, opaque, prend le halo de nuit serré des étiquettes posées à nu (ombres de 1 à 3 px, denses au ras des
+   * lettres) : sur un fond clair, ses lettres restent bordées de --nuit. Pas de pastille, et rien qui change la hauteur
+   * du bouton (25,6 px, au-dessus des 24 px demandés).
+   */
+  it("devrait border de nuit le nom posé au-dessus de son astre, sans pastille ni changement de taille", () => {
+    const rule = /\n\.lbl\[data-above\] > span \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(rule).toMatch(/opacity: 1;/);
+    for (const shadow of ["0 0 1px var(--nuit)", "0 0 2px var(--nuit)", "0 0 3px var(--nuit)"]) {
+      expect(rule).toContain(shadow);
+    }
+    expect(rule).not.toMatch(/background|border|padding|font-size|line-height/);
+  });
+});
+

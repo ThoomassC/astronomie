@@ -1,6 +1,38 @@
 import { describe, expect, it } from "vitest";
 import { STOP_ORDER } from "@/lib/journey/camera";
-import { SATURN_RING, TEXTURE_KEYS, pickTextureTier, textureLoadOrder, textureUrl } from "@/components/scene/textureSet";
+import {
+  SATURN_RING,
+  TEXTURE_FADE_SECONDS,
+  TEXTURE_KEYS,
+  pickTextureTier,
+  textureFade,
+  textureLoadOrder,
+  textureUrl,
+} from "@/components/scene/textureSet";
+
+describe("textureFade", () => {
+  it("devrait passer de la couleur unie à la carte en 400 ms", () => {
+    expect(TEXTURE_FADE_SECONDS).toBe(0.4);
+    expect(textureFade(0)).toBe(0);
+    expect(textureFade(0.4)).toBe(1);
+    expect(textureFade(3)).toBe(1);
+  });
+
+  it("devrait partir et arriver en douceur, à moitié à mi-chemin", () => {
+    expect(textureFade(0.04)).toBeLessThan(0.05);
+    expect(textureFade(0.2)).toBeCloseTo(0.5, 12);
+    expect(textureFade(0.36)).toBeGreaterThan(0.95);
+  });
+
+  it("devrait croître sans jamais revenir en arrière, image après image", () => {
+    const steps = Array.from({ length: 30 }, (_, i) => textureFade(i / 60));
+    expect(steps.slice(1).every((mix, i) => mix >= steps[i])).toBe(true);
+  });
+
+  it("devrait rester sur la couleur unie avant l'arrivée de la carte (temps négatif)", () => {
+    expect(textureFade(-0.1)).toBe(0);
+  });
+});
 
 describe("pickTextureTier", () => {
   const laptop = { coarsePointer: false, shortSide: 900, maxTextureSize: 16384, pixelHeight: 1350 };

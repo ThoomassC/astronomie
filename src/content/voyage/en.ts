@@ -45,6 +45,10 @@ export const VOYAGE_EN: VoyageContent = {
     start: "Start from the Sun",
   },
   plate: { story: "Read the fact sheet", more: "Read more" },
+  steps: {
+    previous: (name) => `Previous stop: ${name}`,
+    next: (name) => `Next stop: ${name}`,
+  },
   ordinal: (n) => ({ number: formatNumber(n, 0, "en"), suffix: ORDINAL_SUFFIXES[ORDINAL_RULES.select(n)] }),
   bodies: {
     sun: {

@@ -3,11 +3,11 @@
  * Commun au voyage et à la page Tailles ; mesuré dans la page (components/scene/screenLayout.ts).
  */
 
-/** Air entre la bande libre et ce qui la borde (bandeaux du haut, plaque), en px. */
-const BAND_MARGIN_PX = 8;
+/** Air entre la bande libre et ce qui la borde (carte fixée en haut, dock ou note d'échelle en bas), en px. */
+export const BAND_MARGIN_PX = 8;
 /**
  * Sous cette part de l'écran (texte très agrandi), pas de bande : cadrage portrait habituel.
- * Au-dessus, même un petit astre visible vaut mieux qu'un grand caché derrière la plaque.
+ * Au-dessus, même un petit astre visible vaut mieux qu'un grand caché derrière la carte.
  */
 const MIN_BAND_SHARE = 0.08;
 
@@ -24,12 +24,13 @@ export interface ScreenZone {
 }
 
 /**
- * Bande libre de la mise en page mobile, en fractions de la hauteur de la vue : du bas des bandeaux
- * fixés en haut de l'écran (`top`, en px) au haut de la plaque repliée collée en bas (hauteur et écart
- * au bas de l'écran, en px), 8 px d'air de chaque côté. `null` si elle fait moins de 8 % de la vue.
+ * Bande libre de la mise en page compacte, en fractions de la hauteur de la vue : du bas de la carte fixée en haut de
+ * l'écran, sous la barre (`top`, en px), au haut de ce qui borde le bas (`bottom`, en px : le dock du Voyage, la note
+ * d'échelle au-dessus de lui, ou le bas de l'écran à Tailles), 8 px d'air de chaque côté. `null` si elle fait moins de
+ * 8 % de la vue.
  */
-export function freeBand(viewHeight: number, top: number, plate: { height: number; bottom: number }): ScreenBand | null {
+export function freeBand(viewHeight: number, top: number, bottom: number): ScreenBand | null {
   const upper = top + BAND_MARGIN_PX;
-  const lower = viewHeight - plate.bottom - plate.height - BAND_MARGIN_PX;
+  const lower = bottom - BAND_MARGIN_PX;
   return lower - upper >= MIN_BAND_SHARE * viewHeight ? { top: upper / viewHeight, bottom: lower / viewHeight } : null;
 }

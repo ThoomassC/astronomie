@@ -4,16 +4,22 @@
  * Le Soleil est à l'origine : la direction de la lumière se déduit de la position du fragment.
  */
 
-const OUTPUT = /* glsl */ `
+export const OUTPUT = /* glsl */ `
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 `;
+
+/**
+ * Éclat affiché d'une planète non visitée (uBrightness, de 0 à 1), appliqué après le tone mapping et la conversion
+ * sRGB : 0,35 donne 35 % de la valeur affichée. Partagé par sa surface, ses lunes, son atmosphère et ses anneaux.
+ */
+const BRIGHTNESS = /* glsl */ `gl_FragColor.rgb *= uBrightness;`;
 
 /** Lumière du Soleil reçue par les astres (blanc chaud), sans atténuation avec la distance. */
 const SUNLIGHT = /* glsl */ `const vec3 SUNLIGHT = vec3(1.0, 0.97, 0.92) * 1.35;`;
 
 /** Bruit de valeur 3D (moyenne 0,5) : marbrure, détail fin, taches, jets de la couronne. */
-const NOISE_GLSL = /* glsl */ `
+export const NOISE_GLSL = /* glsl */ `
 float hs(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float vn(vec3 x) {
   vec3 i = floor(x), f = fract(x);
@@ -66,6 +72,7 @@ void main() {
 export const SURFACE_FRAGMENT = /* glsl */ `
 uniform sampler2D uMap;
 uniform float uMapMix;
+uniform float uBrightness;
 uniform vec3 uBaseColor;
 uniform vec3 uHazeColor;
 uniform float uMinnaert;
@@ -163,6 +170,7 @@ void main() {
   color += albedo * vec3(0.026, 0.03, 0.04);
   gl_FragColor = vec4(color, 1.0);
   ${OUTPUT}
+  ${BRIGHTNESS}
 }
 `;
 
@@ -189,6 +197,7 @@ uniform float uThickness;
 uniform vec3 uDayColor;
 uniform vec3 uTwilightColor;
 uniform float uStrength;
+uniform float uBrightness;
 varying vec3 vWorldPos;
 void main() {
   vec3 D = normalize(vWorldPos - cameraPosition);
@@ -216,6 +225,7 @@ void main() {
   float forward = pow(max(dot(D, normalize(-uPlanetCenter)), 0.0), 6.0);
   gl_FragColor = vec4(tint * glow * lit * uStrength * (1.0 + 4.0 * forward), 1.0);
   ${OUTPUT}
+  ${BRIGHTNESS}
 }
 `;
 
@@ -242,6 +252,7 @@ uniform vec3 uPlanetCenter;
 uniform vec3 uPlanetPole;
 uniform float uPlanetRadius;
 uniform float uPolarRatio;
+uniform float uBrightness;
 varying vec3 vWorldPos;
 varying float vRadius;
 ${SUNLIGHT}
@@ -272,6 +283,7 @@ void main() {
   float shadow = along > 0.0 ? smoothstep(0.985, 1.015, closest) : 1.0;
   gl_FragColor = vec4(ring.rgb * (SUNLIGHT * lit * shadow + 0.01), coverage);
   ${OUTPUT}
+  ${BRIGHTNESS}
 }
 `;
 
@@ -431,7 +443,10 @@ void main() {
  * - Supergranulation (une cellule pour 6,5 granules) : modulation lente et réseau, dont les facules brillent vers
  *   le bord ; marbrure à grande échelle, visible de loin.
  * - Taches (STARSPOTS, placées par placeStarspots) : ombre, pénombre filamenteuse, plage de facules autour.
- * - Assombrissement centre-bord d'Eddington-Barbier : T⁴(μ) ∝ 1 − k + kμ (k = uLimbDarkening).
+ * - Assombrissement centre-bord d'Eddington-Barbier : T⁴(μ) ∝ 1 − k + kμ (k = uLimbDarkening) ; en plus, loi linéaire
+ *   en intensité I(μ)/I(1) = 1 − u(1 − μ) (u = uLimbIntensity, 0 par défaut), la même sur les trois canaux : le bord
+ *   des étoiles chaudes, dont la loi en température rougit à peine, s'assombrit sans virer au gris.
+ * - Alpha : uOpacity (1 par défaut), qui n'agit que si le matériau est transparent.
  * Le temps (uTime, en secondes affichées) fait tourner la surface (uSpinRate, rad/s, rotation rigide à la vitesse
  * de l'équateur) et bouillonner la convection, sur une période de BOIL_PERIOD secondes. Variante STAR_LITE
  * (écrans tactiles) : cellules figées, cherchées parmi 8 voisines au lieu de 27, ni détail fin ni réseau.
@@ -445,6 +460,8 @@ uniform vec3 uWien;
 uniform float uGranulation;
 uniform float uContrast;
 uniform float uLimbDarkening;
+uniform float uLimbIntensity;
+uniform float uOpacity;
 uniform float uActivity;
 uniform float uSpinRate;
 #if STARSPOTS > 0
@@ -579,7 +596,8 @@ void main() {
   t = mix(t, PENUMBRA_T + 0.2 * (filament - 0.5), penumbra);
   t = mix(t, UMBRA_T + 0.03 * (filament - 0.5), umbra);
   t *= pow(1.0 - uLimbDarkening + uLimbDarkening * mu, 0.25);
-  gl_FragColor = vec4(vExposure * uColor * exp(-uWien * (1.0 / t - 1.0)), 1.0);
+  vec3 light = vExposure * uColor * exp(-uWien * (1.0 / t - 1.0)) * (1.0 - uLimbIntensity * (1.0 - mu));
+  gl_FragColor = vec4(light, uOpacity);
   ${OUTPUT}
 }
 `;
@@ -719,7 +737,8 @@ void main() {
 
 /**
  * Taille fixe à l'écran (px CSS × rapport de pixels, sans perspective) ; la couleur (attribut `color`,
- * linéaire, éclat compris) est déclarée par Three quand `vertexColors` est actif.
+ * linéaire, éclat compris) est déclarée par Three quand `vertexColors` est actif. STAR_HALO (étoiles voisines) : le
+ * point dessiné englobe le halo, STAR_HALO_SCALE fois plus large que le cœur de `size` px.
  */
 export const POINT_CLOUD_VERTEX = /* glsl */ `
 attribute float size;
@@ -727,7 +746,11 @@ uniform float uPixelRatio;
 varying vec3 vColor;
 void main() {
   vColor = color;
+#ifdef STAR_HALO
+  gl_PointSize = size * uPixelRatio * STAR_HALO_SCALE;
+#else
   gl_PointSize = size * uPixelRatio;
+#endif
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
@@ -737,6 +760,8 @@ void main() {
  * sans tone mapping : les points se cumulent comme la lumière des étoiles ; uOpacity porte le fondu de la couche.
  * uGain multiplie la valeur affichée, après l'encodage sRGB, c'est-à-dire ce que le mélange additif cumule :
  * la galaxie l'abaisse quand elle rapetisse à l'écran, pour que ses points serrés ne partent pas au blanc.
+ * STAR_HALO : le même cœur, au centre d'un point plus large, et une lueur de sa couleur qui décroît jusqu'au bord
+ * ((1 − d)², STAR_HALO_STRENGTH au centre).
  */
 export const POINT_CLOUD_FRAGMENT = /* glsl */ `
 uniform float uOpacity;
@@ -745,7 +770,13 @@ varying vec3 vColor;
 void main() {
   float d = length(gl_PointCoord * 2.0 - 1.0);
   if (d > 1.0) discard;
+#ifdef STAR_HALO
+  float core = 1.0 - smoothstep(0.45, 1.0, d * STAR_HALO_SCALE);
+  float glow = STAR_HALO_STRENGTH * (1.0 - d) * (1.0 - d);
+  float falloff = core + glow;
+#else
   float falloff = 1.0 - smoothstep(0.45, 1.0, d);
+#endif
   gl_FragColor = vec4(vColor * falloff * uOpacity, 1.0);
   #include <colorspace_fragment>
   gl_FragColor.rgb *= uGain;

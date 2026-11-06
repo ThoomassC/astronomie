@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type TransitionEvent,
+} from "react";
 import { cssVars } from "@/components/journey/cssVars";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { INTL_LOCALE } from "@/i18n/locales";
@@ -11,6 +19,7 @@ import { pad2 } from "@/lib/format";
 import {
   clockHour,
   EARTH_HALO_RADIUS,
+  glideLongitude,
   ORRERY_HALF_SIZE,
   ORRERY_ORBIT_UNITS,
   ORRERY_PLANET_RADIUS,
@@ -18,13 +27,24 @@ import {
   orreryOrbit,
   orreryPlanets,
   SATURN_RING,
-  type OrreryPlanet,
 } from "@/lib/home/orrery";
 import { placeOrreryLabels, type LabelSize, type PlacedLabel } from "@/lib/home/orreryLabels";
+import { useReducedMotion } from "@/lib/sim/reducedMotion";
 import { HOME_STRINGS } from "./home.strings";
 import styles from "./Orrery.module.css";
 
 const DATE_FORMAT: Intl.DateTimeFormatOptions = { day: "numeric", month: "long", year: "numeric" };
+/** La date de génération s'écrit en temps universel : le serveur et le navigateur l'écrivent à l'identique. */
+const GENERATED_DATE_FORMAT: Intl.DateTimeFormatOptions = { ...DATE_FORMAT, timeZone: "UTC" };
+
+/** En deçà de cet écart (°) entre la génération et le chargement, rien ne glisse : les étiquettes viennent d'emblée. */
+const GLIDE_MIN_DEG = 0.5;
+
+/**
+ * Durée du glissement (ms), passée au CSS (`--glide`) : c'est aussi la minuterie de secours qui le termine quand la
+ * transition n'a pas lieu, donc pas de `transitionend`.
+ */
+const GLIDE_MS = 1200;
 
 const subscribeNever = () => () => {};
 /** Instant du chargement de la page (origine des temps du navigateur) : stable, sans lire l'heure courante. */
@@ -43,6 +63,11 @@ const ORBITS = PLANETS.map((planet) => ({
 function localDay(ms: number): string {
   const date = new Date(ms);
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+/** Jour de la génération, en temps universel, pour `<time dateTime>`. */
+function utcDay(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
 }
 
 /**
@@ -83,23 +108,60 @@ function PlanetShape({ planetKey, radius, ring, halo }: PlanetShapeProps) {
   );
 }
 
-/** Une planète posée sur le dessin, qui apparaît en fondu, de l'orbite intérieure vers l'extérieure (`--i`). */
-function PlanetMark({ planet, index }: { planet: OrreryPlanet; index: number }) {
-  const x = (planet.x * ORRERY_ORBIT_UNITS).toFixed(3);
-  const y = (-planet.y * ORRERY_ORBIT_UNITS).toFixed(3);
+interface PlanetMarkProps {
+  planetKey: PlanetKey;
+  /** Rayon dessiné de l'orbite, dans ]0, 1]. */
+  orbit: number;
+  /** Longitude de la planète (°), écrite à partir de celle de la génération quand elle glisse (`glideLongitude`). */
+  longitudeDeg: number;
+}
+
+/**
+ * Une planète posée sur son orbite : tournée de sa longitude autour du Soleil (l'origine du dessin), puis redressée
+ * pour que l'anneau de Saturne garde son inclinaison. Quand la longitude change, la transition de `transform`
+ * interpole chaque rotation : la planète glisse le long de son orbite, sans couper par la corde.
+ */
+function PlanetMark({ planetKey, orbit, longitudeDeg }: PlanetMarkProps) {
+  // y vers le bas à l'écran : la longitude, comptée dans le sens direct, tourne dans le sens inverse des aiguilles.
+  const turn = (-longitudeDeg).toFixed(3);
+  const straighten = longitudeDeg.toFixed(3);
+  const radius = (orbit * ORRERY_ORBIT_UNITS).toFixed(3);
   return (
     <g
       className={styles.planet}
-      transform={`translate(${x} ${y})`}
-      style={cssVars({ "--i": String(index) })}
-      data-planet={planet.key}
+      style={{ transform: `rotate(${turn}deg) translate(${radius}px) rotate(${straighten}deg)` }}
+      data-planet={planetKey}
     >
       <PlanetShape
-        planetKey={planet.key}
-        radius={ORRERY_PLANET_RADIUS[planet.key]}
+        planetKey={planetKey}
+        radius={ORRERY_PLANET_RADIUS[planetKey]}
         ring={SATURN_RING}
         halo={EARTH_HALO_RADIUS}
       />
+    </g>
+  );
+}
+
+/**
+ * Filets de laiton des étiquettes reportées hors du groupe intérieur, du bord de l'astre au bord de son étiquette. La
+ * pose les donne en px du dessin mesuré (`size`) : ils passent ici en unités du viewBox, centré sur le Soleil.
+ */
+function Leaders({ labels, size }: { labels: readonly PlacedLabel[]; size: number }) {
+  const toUnits = (px: number) => ((px / size) * 2 - 1) * ORRERY_HALF_SIZE;
+  return (
+    <g className={styles.leaders}>
+      {labels.map(({ key, leader }) =>
+        leader ? (
+          <line
+            key={key}
+            x1={toUnits(leader.x1).toFixed(3)}
+            y1={toUnits(leader.y1).toFixed(3)}
+            x2={toUnits(leader.x2).toFixed(3)}
+            y2={toUnits(leader.y2).toFixed(3)}
+            data-leader={key}
+          />
+        ) : null,
+      )}
     </g>
   );
 }
@@ -113,38 +175,75 @@ function LegendMark({ planetKey }: { planetKey: PlanetKey }) {
   );
 }
 
+interface OrreryProps {
+  /**
+   * Heure de génération de la page (ms), celle du build (`pageGenerationTime`) : ses positions dessinent les planètes
+   * dès le HTML, et la ligne datée le dit, jusqu'à ce que le script les fasse glisser vers celles du chargement.
+   */
+  generatedAt: number;
+}
+
 /**
  * Mini-planétaire de l'accueil : les huit planètes autour du Soleil, vues du dessus, dans leur vraie direction du jour,
- * sur des orbites compressées comme celles de la scène. Le serveur dessine les orbites, le Soleil, la légende et une
- * date « – » ; les planètes se posent à l'hydratation, à l'heure du chargement (comme `HeroStamp`), dans une boîte de
- * taille fixe : rien ne bouge autour. Les étiquettes du dessin (HTML, cachées aux lecteurs d'écran) se posent une fois
- * mesurées, sans se chevaucher ; la légende nomme toujours les huit planètes et dit aux lecteurs d'écran où est
- * chacune, comme l'heure d'un cadran. Aucune planète ne se reconnaît à sa seule couleur : nom, ordre des orbites,
- * anneau de Saturne.
+ * sur des orbites compressées comme celles de la scène, dans une boîte de taille fixe : rien ne bouge autour.
+ *
+ * Le serveur dessine tout, aux positions du jour de la génération (`generatedAt`), daté de ce jour : la page n'est
+ * jamais vide, même sans JavaScript ou avant l'hydratation, qui reprend ce rendu à l'identique. Juste après, les
+ * planètes glissent le long de leurs orbites jusqu'à leurs positions du chargement (comme `HeroStamp`), en 1,2 s ; le
+ * glissement s'achève avec la transition d'une planète (`transitionend`), ou au bout de 1,2 s si elle n'a pas lieu, et
+ * alors seulement les étiquettes et leurs filets se montrent. En mouvement réduit, rien ne glisse, tout se pose
+ * d'emblée. Monté dans le navigateur (navigation interne), le planétaire part des positions du chargement, sans glisser.
+ *
+ * Les étiquettes du dessin (HTML, cachées aux lecteurs d'écran) se posent une fois mesurées, sans se chevaucher : hors
+ * du groupe intérieur, où Mercure, Vénus et la Terre se serrent, celles qu'il faut reporter au bout d'un filet de
+ * laiton. La légende nomme les planètes tant que les étiquettes ne le font pas (avant le script, sans lui, s'il échoue,
+ * pendant le glissement, ou s'il en manque une) ; ensuite elle s'efface sans quitter sa place, et dit encore aux
+ * lecteurs d'écran où est chaque planète, comme l'heure d'un cadran. Aucune planète ne se reconnaît à sa seule
+ * couleur : nom, ordre des orbites, anneau de Saturne.
  */
-export function Orrery() {
+export function Orrery({ generatedAt }: OrreryProps) {
   const locale = useLocale();
   const t = HOME_STRINGS[locale];
   const titleId = useId();
   const dateId = useId();
   const glowId = useId();
   const loadedAt = useSyncExternalStore<number | null>(subscribeNever, readLoadTime, readServerLoadTime);
-  const planets = useMemo(() => (loadedAt === null ? null : orreryPlanets(julianDate(loadedAt))), [loadedAt]);
+  // Rendu serveur et hydratation : `loadedAt` est nul, on montre la génération. Seul un planétaire hydraté depuis ce
+  // HTML glisse ensuite ; monté dans le navigateur, il part des positions du chargement.
+  const [fromServer] = useState(() => loadedAt === null);
+  const shownAt = loadedAt ?? generatedAt;
+  const planets = useMemo(() => orreryPlanets(julianDate(shownAt)), [shownAt]);
+  const start = useMemo(() => (fromServer ? orreryPlanets(julianDate(generatedAt)) : null), [fromServer, generatedAt]);
+  const forward = shownAt >= generatedAt;
+  const longitudes = planets.map(({ longitudeDeg }, index) =>
+    start ? glideLongitude(start[index].longitudeDeg, longitudeDeg, forward) : longitudeDeg,
+  );
+  // En mouvement réduit, la règle globale coupe la transition : les planètes sautent, rien n'est à attendre.
+  const reducedMotion = useReducedMotion();
+  const glides =
+    start !== null &&
+    !reducedMotion &&
+    longitudes.some((longitude, index) => Math.abs(longitude - start[index].longitudeDeg) > GLIDE_MIN_DEG);
+  const [glideOver, setGlideOver] = useState(false);
+  const gliding = loadedAt !== null && glides && !glideOver;
   const date = useMemo(
-    () => (loadedAt === null ? null : new Intl.DateTimeFormat(INTL_LOCALE[locale], DATE_FORMAT).format(loadedAt)),
-    [loadedAt, locale],
+    () =>
+      new Intl.DateTimeFormat(INTL_LOCALE[locale], loadedAt === null ? GENERATED_DATE_FORMAT : DATE_FORMAT).format(
+        shownAt,
+      ),
+    [loadedAt, shownAt, locale],
   );
 
   const boxRef = useRef<HTMLDivElement>(null);
   const labelRefs = useRef(new Map<PlanetKey, HTMLSpanElement>());
   const [layout, setLayout] = useState<{ size: number; labels: readonly PlacedLabel[] } | null>(null);
 
-  // Étiquettes du dessin : mesurées dans le DOM et posées sans chevauchement, puis reposées quand la boîte change de
-  // taille, que la police arrive ou que la langue change les textes. Synchronisation avec la mise en page : jamais
-  // pendant le rendu, toujours à l'image suivante.
+  // Étiquettes du dessin, aux positions du chargement : mesurées dans le DOM et posées sans chevauchement, puis
+  // reposées quand la boîte change de taille, que la police arrive ou que la langue change les textes.
+  // Synchronisation avec la mise en page : jamais pendant le rendu, toujours à l'image suivante.
   useEffect(() => {
     const box = boxRef.current;
-    if (!planets || !box) return;
+    if (loadedAt === null || !box) return;
     let frame = 0;
     let alive = true;
     const place = () => {
@@ -171,15 +270,35 @@ export function Orrery() {
       cancelAnimationFrame(frame);
       observer?.disconnect();
     };
-  }, [planets, locale]);
+  }, [loadedAt, planets, locale]);
+
+  // Minuterie de secours du glissement : sans transition (page masquée pendant le glissement, mouvement réduit demandé
+  // en route), `transitionend` ne vient jamais. Synchronisation avec une horloge, nettoyée au démontage.
+  useEffect(() => {
+    if (!gliding) return;
+    const timer = window.setTimeout(() => setGlideOver(true), GLIDE_MS);
+    return () => window.clearTimeout(timer);
+  }, [gliding]);
+
+  // Le glissement s'achève avec la transition de la première planète : toutes ont la même durée.
+  const endGlide = (event: TransitionEvent<HTMLDivElement>) => {
+    if (event.target instanceof Element && event.target.hasAttribute("data-planet")) setGlideOver(true);
+  };
 
   const placed = new Map(layout?.labels.map((label) => [label.key, label]));
-  const hours = planets ? new Map(planets.map((planet) => [planet.key, clockHour(planet.longitudeDeg)])) : null;
+  const hours = new Map(planets.map((planet) => [planet.key, clockHour(planet.longitudeDeg)]));
+  // Les huit étiquettes montrées sur le dessin : la légende, qui les répéterait, peut s'effacer. Pas avant (rendu
+  // serveur, script lent ou en échec, glissement), ni si l'une n'a pas trouvé de place (texte très agrandi).
+  const labelled = layout !== null && !gliding && layout.labels.length === planets.length;
 
   return (
-    <div className={styles.orrery}>
+    <div
+      className={styles.orrery}
+      style={cssVars({ "--glide": `${GLIDE_MS}ms` })}
+      data-labelled={labelled ? "" : undefined}
+    >
       <figure className={styles.figure}>
-        <div className={styles.box} ref={boxRef}>
+        <div className={styles.box} ref={boxRef} data-glide={gliding ? "" : undefined} onTransitionEnd={endGlide}>
           <svg className={styles.drawing} viewBox={VIEW_BOX} role="img" aria-labelledby={`${titleId} ${dateId}`}>
             <title id={titleId}>{t.orreryTitle}</title>
             <defs>
@@ -195,9 +314,13 @@ export function Orrery() {
             </g>
             <circle r={ORRERY_SUN.glow} fill={`url(#${glowId})`} />
             <circle r={ORRERY_SUN.radius} fill={SUN.color} />
-            {planets?.map((planet, index) => <PlanetMark key={planet.key} planet={planet} index={index} />)}
+            {/* Étiquettes et filets sont posés aux positions d'arrivée : ils attendent la fin du glissement. */}
+            {layout && !gliding ? <Leaders labels={layout.labels} size={layout.size} /> : null}
+            {planets.map(({ key, orbit }, index) => (
+              <PlanetMark key={key} planetKey={key} orbit={orbit} longitudeDeg={longitudes[index]} />
+            ))}
           </svg>
-          {planets ? (
+          {loadedAt !== null ? (
             <div className={styles.labels} aria-hidden="true">
               {planets.map(({ key }) => {
                 const label = layout ? placed.get(key) : undefined;
@@ -217,7 +340,7 @@ export function Orrery() {
                         ? { left: `${(label.left / layout.size) * 100}%`, top: `${(label.top / layout.size) * 100}%` }
                         : undefined
                     }
-                    data-placed={label ? "" : undefined}
+                    data-placed={label && !gliding ? "" : undefined}
                   >
                     {key === "earth" ? t.here : bodyName(key, locale)}
                   </span>
@@ -231,16 +354,16 @@ export function Orrery() {
             <i aria-hidden="true" />
             <span>{t.datedLead}</span>{" "}
             <span className={styles.reserve} data-reserve={t.dateReserve}>
-              {loadedAt !== null && date ? <time dateTime={localDay(loadedAt)}>{date}</time> : <span>–</span>}
+              <time dateTime={loadedAt === null ? utcDay(generatedAt) : localDay(loadedAt)}>{date}</time>
             </span>
           </p>
           <p className={styles.note}>{t.note}</p>
         </figcaption>
       </figure>
-      <ul className={styles.legend} aria-label={hours ? t.legendWithPositions : t.legend}>
+      <ul className={styles.legend} aria-label={t.legendWithPositions}>
         {PLANETS.map(({ key }) => {
           const name = bodyName(key, locale);
-          const hour = hours?.get(key);
+          const hour = hours.get(key);
           return (
             <li key={key}>
               <LegendMark planetKey={key} />

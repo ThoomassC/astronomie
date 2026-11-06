@@ -69,6 +69,11 @@ export interface SurfaceUniforms {
   uPlanetCenter: Uniform<Vector3>;
   uPlanetPole: Uniform<Vector3>;
   uPlanetRadius: Uniform<number>;
+  /**
+   * Éclat affiché, de 0 à 1, appliqué après le tone mapping : une planète non visitée s'efface au repos sur une autre.
+   * Partagé avec ses lunes, son atmosphère et ses anneaux.
+   */
+  uBrightness: Uniform<number>;
 }
 
 export interface SurfaceOptions {
@@ -82,9 +87,11 @@ export interface SurfaceOptions {
   ringShadow: boolean;
 }
 
+/** Surface d'une planète ou d'une lune ; `brightness` : éclat partagé avec sa planète (pleine lumière sinon). */
 export function createSurfaceMaterial(
   options: SurfaceOptions,
   placeholder: Texture,
+  brightness: Uniform<number> = { value: 1 },
 ): { material: ShaderMaterial; uniforms: SurfaceUniforms } {
   const uniforms: SurfaceUniforms = {
     uMap: { value: placeholder },
@@ -105,6 +112,7 @@ export function createSurfaceMaterial(
     uPlanetCenter: { value: new Vector3() },
     uPlanetPole: { value: new Vector3(0, 1, 0) },
     uPlanetRadius: { value: 1 },
+    uBrightness: brightness,
   };
   const defines: Record<string, string> = {};
   if (options.lighting === "airless") defines.LIGHTING_AIRLESS = "";
@@ -128,6 +136,8 @@ export interface AtmosphereUniforms {
   uDayColor: Uniform<Color>;
   uTwilightColor: Uniform<Color>;
   uStrength: Uniform<number>;
+  /** Éclat affiché, partagé avec la surface de la planète. */
+  uBrightness: Uniform<number>;
 }
 
 export interface AtmosphereOptions {
@@ -137,7 +147,11 @@ export interface AtmosphereOptions {
   strength: number;
 }
 
-export function createAtmosphereMaterial(options: AtmosphereOptions): {
+/** Halo d'atmosphère ; `brightness` : éclat partagé avec la surface de sa planète (pleine lumière sinon). */
+export function createAtmosphereMaterial(
+  options: AtmosphereOptions,
+  brightness: Uniform<number> = { value: 1 },
+): {
   material: ShaderMaterial;
   uniforms: AtmosphereUniforms;
 } {
@@ -148,6 +162,7 @@ export function createAtmosphereMaterial(options: AtmosphereOptions): {
     uDayColor: { value: options.day },
     uTwilightColor: { value: options.twilight },
     uStrength: { value: options.strength },
+    uBrightness: brightness,
   };
   const material = new ShaderMaterial({
     uniforms: { ...uniforms },
@@ -164,7 +179,7 @@ export function createAtmosphereMaterial(options: AtmosphereOptions): {
   return { material, uniforms };
 }
 
-/** Anneaux de Saturne : la texture, son mélange et le repère de la planète viennent de la surface. */
+/** Anneaux de Saturne : la texture, son mélange, le repère et l'éclat de la planète viennent de la surface. */
 export function createRingMaterial(surface: SurfaceUniforms, localRadius: number, polarRatio: number): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
@@ -174,6 +189,7 @@ export function createRingMaterial(surface: SurfaceUniforms, localRadius: number
       uPlanetCenter: surface.uPlanetCenter,
       uPlanetPole: surface.uPlanetPole,
       uPlanetRadius: surface.uPlanetRadius,
+      uBrightness: surface.uBrightness,
       uLocalRadius: { value: localRadius },
       uPolarRatio: { value: polarRatio },
     },
@@ -278,21 +294,36 @@ export interface PointCloudUniforms {
   uGain: Uniform<number>;
 }
 
+/** Halo autour du cœur d'un point : diamètre du point dessiné, en tailles du cœur, et éclat de la lueur à son bord. */
+export interface PointHalo {
+  scale: number;
+  strength: number;
+}
+
+/** Constante GLSL flottante (« 2.5 », « 3.0 ») : un entier ne se mêle pas aux flottants. */
+const glslFloat = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value));
+
 /**
  * Nuage de points ronds à bord doux, de taille fixe à l'écran (étoiles voisines, Soleil vu de loin, galaxie).
  * Attributs de la géométrie : position, color (linéaire, éclat compris), size (px CSS). Additif, sans écriture
- * de profondeur ni tone mapping. Les trois nuages partagent ce programme GPU, compilé avec la scène.
+ * de profondeur ni tone mapping. Les nuages partagent ce programme GPU, compilé avec la scène ; avec `halo` (étoiles
+ * voisines), une variante dessine autour du cœur une lueur de la même couleur (STAR_HALO).
  */
 export function createPointCloudMaterial(
   pixelRatio: Uniform<number>,
   gain: Uniform<number> = { value: 1 },
+  halo?: PointHalo,
 ): {
   material: ShaderMaterial;
   uniforms: PointCloudUniforms;
 } {
   const uniforms: PointCloudUniforms = { uOpacity: { value: 1 }, uPixelRatio: pixelRatio, uGain: gain };
+  const defines: Record<string, string> = halo
+    ? { STAR_HALO: "", STAR_HALO_SCALE: glslFloat(halo.scale), STAR_HALO_STRENGTH: glslFloat(halo.strength) }
+    : {};
   const material = new ShaderMaterial({
     uniforms: { ...uniforms },
+    defines,
     vertexShader: POINT_CLOUD_VERTEX,
     fragmentShader: POINT_CLOUD_FRAGMENT,
     vertexColors: true,

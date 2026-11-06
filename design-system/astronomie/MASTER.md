@@ -9,8 +9,8 @@
 
 Un planétaire (l'instrument mécanique en laiton qui montre le mouvement des planètes),
 rendu vivant : ciel de nuit, réglets gradués, une couleur propre à chaque astre.
-Site pédagogique grand public (12 ans et plus), en français, en anglais et en espagnol. Quatre pages : Accueil,
-Voyage, Tailles, À propos (précisions par page dans `pages/`).
+Site pédagogique grand public (12 ans et plus), en français, en anglais et en espagnol. Cinq pages : Accueil,
+Voyage, Tailles, À propos, Notes de version (précisions par page dans `pages/`).
 
 - Un seul monde visuel, sombre, assumé (pas de thème clair) : `color-scheme: dark`.
 - L'élément fort : la scène 3D aux positions réelles et le voyage au défilement.
@@ -45,6 +45,14 @@ O `#9BB0FF`, B `#AABFFF`, A `#CAD7FF`, F `#F8F7FF`, G `#FFF4EA`, K `#FFD2A1`, M 
   public scolaire). Chiffres en `tabular-nums` dès qu'ils changent en direct.
 - Pas de capitales espacées pour les étiquettes, pas de police mono décorative.
 - Échelle : 0.8125 / 0.9375 / 1.0625 (texte) / 1.375 / 2 / 3.5–7 rem (noms d'astres).
+- **Exception** (demande explicite de l'utilisateur, 6/11/2026) : en mise en page compacte seulement (téléphone,
+  tablette en portrait), les étiquettes de la scène, au Voyage et à Tailles (astres, ciel profond, cercles de distance),
+  passent à 0,75 rem, sous le minimum de 0,8125 rem, avec un rembourrage plus fin (0,2 rem) et des pastilles plus
+  basses (interligne 1,3, 0,35 rem de côté). Ivoire ou brume sur la nuit, détachées par leur ombre ou leur pastille :
+  contraste bien au-dessus de 4,5:1. Le grand écran garde 0,8125 rem.
+- **Exception** (demande de l'utilisateur, 6/11/2026, ADR 0007) : sur la carte fixe du téléphone, le nom de l'astre
+  passe à 1,5–1,75 rem (1,25–1,5 rem sous 360 px), sous l'échelle des noms d'astres : la carte repliée ne garde que
+  le visuel principal et laisse la scène à l'astre.
 - Espaces du français, sur tout texte affiché (canevas compris) : espace fine insécable (U+202F) entre les milliers
   et avant « ; ! ? », espace insécable (U+00A0) avant « : » et dans les guillemets « », jamais d'espace ordinaire à
   ces places (règle du README, gardée par un test). Anglais et espagnol : rien avant la ponctuation.
@@ -67,22 +75,78 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 
 - **Plaque** : panneau de lecture semi-opaque `--plaque` à 88 %, filet laiton 1 px, angles `--r-lg`,
   filet de la couleur de l'astre qui suit l'arrondi du haut.
-  Mise en page compacte (téléphone ≤ 640 px, et tablette en portrait jusqu'à 1024 px de large) :
-  elle est collée en bas, au-dessus du dock, et centrée : rang (version courte sur téléphone), nom,
-  accroche, puis un titre-bouton par
-  section (`h3` > `button[aria-expanded]`, motif accordéon), « Lire la fiche » et un libellé propre
-  au module (« Votre poids sur chaque astre »), qui remplace le titre du module. Les titres-boutons
-  se rangent côte à côte quand ils tiennent. Chaque section s'ouvre sous son titre, en fondu de
-  200 ms, et « Replier » referme tout. Pendant le repos de la caméra, le filet de couleur
+  Mise en page compacte (téléphone ≤ 640 px, et tablette en portrait jusqu'à 1024 px de large), avec JavaScript et
+  plus de 30 rem de haut : **carte fixe** (ADR 0007, demande du 6/11/2026). Une seule plaque se voit, celle de
+  l'escale courante, fixée en haut de l'écran sous la barre (`data-current`, posé depuis le parcours ; les autres,
+  découpées à rien, masquées à l'œil seulement, restent lues et focalisables : le focus qui y entre rend leur escale
+  courante d'un saut). Active une fois le client prêt (`html[data-fixed-card]`) : avant, la plaque compacte reste
+  collée en bas. La carte reste sous la barre, toujours affichée. Ni à l'accueil du Voyage, ni à
+  l'introduction de Tailles, ni à la ceinture d'astéroïdes. Les escales gardent leur hauteur : le défilement mène
+  toujours la caméra, rien ne monte plus du bas de l'écran.
+  Fond opaque `--plaque` (carte et squelette) : les étiquettes de la scène ne transparaissent pas.
+  **Repliée** (environ 80 px rembourrage compris, 0,5 rem) : le rang (0,8125 rem, interligne 1,3, version courte sur
+  téléphone, centré), puis « ‹ Nom › ». Le nom, en Bodoni de 1,5 à 1,75 rem (1,25 à 1,5 rem sous 360 px), sur deux
+  lignes au plus, jamais coupé d'un trait d'union, est le bouton qui déplie la carte (motif accordéon :
+  `h2 > button[aria-expanded][aria-controls]`), suivi d'un chevron en laiton de 0,5 em qui ne quitte pas le dernier
+  mot et se retourne carte dépliée ; cible de 44 px de haut au moins. L'accroche y cède sa ligne à l'astre : masquée à
+  l'œil, lue une fois juste après le nom (elle reste sur grand écran et sans JavaScript). L'avertissement d'hypothèse
+  du multivers reste, au-dessus du rang. Ni rangée de pictogrammes, ni pied.
+  **Dépliée** : la rangée des titres-boutons paraît sous le nom, la première section ouverte. Un titre-bouton par
+  section (`h3` > `button[aria-expanded]`, motif accordéon), « Lire la fiche » et un libellé propre au module (« Votre
+  poids sur chaque astre »), qui remplace le titre du module. Les titres-boutons sont des
+  pictogrammes : ronds de 44 px au filet `--filet-fort`, dessin au trait de 1,4 en laiton sur une grille de 20 px
+  (`PlateIcon`), sur une rangée centrée sous le nom ; le libellé, masqué à l'œil, reste le nom accessible et paraît en
+  infobulle (`title`, le nom accessible entier). Un dessin par type de section : fiche (page cornée), course de la
+  lumière (astre et rayon), Mercure qui accélère (orbite elliptique), jour contre année (globe mi-éclairé et sa
+  rotation), saisons de la Terre et d'Uranus (globe à l'axe incliné), poids (balance), tailles (cercles emboîtés),
+  anneaux (planète annelée), âge sur Neptune (sablier), étoiles de la carte (constellation), galaxies de la carte
+  (galaxie de biais), « Replier » (chevrons qui se rejoignent, filet `--filet`, `--brume`). Ouvert : fond `--soleil`,
+  dessin `--encre`, anneau `--soleil` détaché de la plaque (un changement de fond, pas une teinte seule) ; en couleurs
+  forcées, fond `Highlight`. Une seule section s'ouvre à la fois, comme des onglets (ouvrir l'une referme l'autre) :
+  elle passe sous la rangée, en fondu de 200 ms, et « Replier », sous elle, referme tout ; le DOM garde chaque zone
+  après son bouton. Le contour de focus d'un bouton ouvert se pose à 5 px, détaché de son anneau (`CanvasText` en
+  couleurs forcées). Le contenu défile dans la carte (`overflow: auto`, `overscroll-behavior: contain`), jusqu'à
+  0,5 rem au-dessus du dock (à Tailles, du bas de l'écran) ; la page ne bouge pas. « Replier » ou un second toucher sur
+  le nom replient tout, le focus revient au nom ; quand l'escale courante change, la nouvelle carte arrive repliée, et
+  la carte se replie aussi quand le focus la quitte pour un autre élément. Note d'échelle visible : la carte dépliée
+  s'arrête 0,5 rem au-dessus d'elle. Texte à 200 % : toute la carte dépliée défile, la zone ouverte gardant au moins
+  min(7 rem, 30 vh). Le focus s'arrête sous la carte repliée (`scroll-padding-top` lit sa hauteur, `--card-h`).
+  **Squelette du passage** : entre deux escales, la carte cède la place à un squelette de la taille de la carte
+  repliée (une barre pour le rang, une pour le nom, deux cercles éteints de 32 px pour les flèches, ivoire à 10 % sur
+  le fond et le filet de la plaque), traversé trois fois d'un balayage lumineux discret en 1,6 s, puis immobile
+  (immobile d'emblée en mouvement réduit) ;
+  décoratif (`aria-hidden`, rien d'annoncé). La carte quittée reste jusqu'à 4 % du vol, celle d'arrivée paraît dès
+  96 % : un frôlement du bout du repos ne fait pas clignoter le squelette. Un saut (flèche, lien d'escale) montre la
+  carte visée dès le départ, sans squelette. En couleurs forcées, ses formes passent en
+  filets `GrayText`.
+  Pendant le repos de la caméra, le filet de couleur
   (atténué à 50 %) s'éclaire de gauche à droite ; plein, le vol vers l'escale suivante commence
-  (pas sur la dernière escale). Noms d'astres de 2,25 à 3,25 rem dans la plaque compacte. Dépliée,
-  la plaque reprend sa place en haut de l'escale et s'allonge vers le bas ; le bouton touché passe
-  sous la barre sans quitter la plage de repos de la caméra, et aucun repli ne déplace la caméra.
-  La scène cadre l'astre dans la bande libre entre la barre (ou la note d'échelle) et la plaque
-  repliée, au plus 90 % de sa hauteur et 80 % de la largeur, anneaux compris ; la vue d'ensemble
-  de l'au-delà y est centrée. Écran court (≤ 700 px de haut) : plaque plus serrée. Sur grand écran
-  ou sans JavaScript, tout est visible et les boutons sont masqués ; sur grand écran, l'astre est
-  centré dans la zone libre entre la plaque et la règle, et recule s'il n'y tient pas.
+  (pas sur la dernière escale).
+  La scène cadre l'astre dans la bande libre entre le bas de la carte repliée (lue à sa place de repos)
+  et le haut du dock, de la note d'échelle ou du bas de l'écran, au plus 90 % de sa hauteur et 80 %
+  de la largeur, anneaux compris ; la vue d'ensemble de l'au-delà y est centrée. La carte dépliée recouvre la scène
+  sans la recadrer. Aucune étiquette ne se pose sous la carte ni sous le squelette. Sur écran bas (30 rem et moins)
+  et dans les navigateurs sans la requête `scripting`, la plaque compacte suit la page (ou reste collée en bas),
+  rangée des titres-boutons sous le nom, et dépliée elle reprend sa place dans l'escale ; noms d'astres de 2,25 à
+  3,25 rem, de 1,75 à 2,5 rem (9 vw) sous 360 px. Sur grand écran
+  ou sans JavaScript, tout est visible, le nom est un simple titre et les boutons sont masqués ; sur grand écran,
+  l'astre est centré dans la zone libre entre la plaque et la règle, et recule s'il n'y tient pas.
+  **Escales voisines** (là où la règle cède la place au menu des escales : téléphone en portrait et en paysage,
+  860 px et moins ; sans JavaScript, en mise en page compacte ; sur grand écran, la règle suffit) : un lien vers
+  l'escale précédente, un vers la suivante, dont le nom accessible dit le sens et le nom entier (« Escale suivante :
+  Mars », « Astre suivant : Trou noir du Fer à cheval cosmique »). Défilement doux vers l'escale, immédiat en
+  mouvement réduit. Ni précédente à la première escale (la vue d'ensemble n'en est pas une), ni suivante à la
+  dernière, dont la plaque ramène déjà au départ. Dans la plaque compacte : deux flèches rondes de 44 px au filet
+  `--filet` (sur la carte fixe, cible de 44 px pour un cercle visible de 32 px, seul filet, qui déborde sur le
+  rembourrage et sur l'écart de 6 px qui la sépare du nom, sans chevaucher sa cible), flèche
+  en laiton, de part et d'autre du nom (« ‹ Soleil › »), aux bords de la plaque, centrées sur lui ;
+  le rang se centre au-dessus. Chacune garde sa colonne : au bout du parcours, une place vide, et le nom ne saute pas.
+  Le nom se centre entre elles ; trop long pour une ligne, il passe à la ligne, aligné à gauche, jamais coupé ni
+  recouvert. Lues après le nom, avant les titres-boutons. Aucune rangée de plus, qui grandirait la carte et rognerait
+  la bande libre de la scène. Ailleurs (plaque en paysage bas, interlude de
+  la ceinture, sans JavaScript) : pilules « ← Vénus », « Mars → », nom court de la barre ; quand les deux ne tiennent
+  pas côte à côte, la suivante passe dessous, toujours à droite, aucun nom coupé. L'interlude les pose sous sa
+  citation, sur le fond `.92` des pilules.
 - **Accueil** : sur téléphone, le bouton « Partir du Soleil » est visible sans défiler, au-dessus du
   dock ; la date de départ passe sous les boutons.
 - **Fiche** : grille 2 colonnes `dt` / `dd`, une ligne « ce jour » recalculée avec la date simulée.
@@ -100,10 +164,14 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   repliée : encadré de 1 px en pointillés de la couleur de l'escale, `--r-sm`, 0,875 rem ivoire, interligne 1,45.
   Pointillés comme le repère des autres univers dans la scène, dont l'étiquette dit aussi « hypothèse ». La ligne de
   ce que la vue simplifie commence par « Rendu artistique » : jamais de mot qui donnerait l'image pour observée.
-- **Étiquettes du ciel profond** : repère creux posé exactement sur l'astre (couleur de l'étoile), texte (nom et
-  distance) sur une pilule `--plaque-a` filetée `--filet` : lisible sur les points les plus clairs de la galaxie
-  (sur du blanc pur, ivoire 11,8:1, laiton 6,2:1). Placées après les astres, sans que leurs textes se
-  chevauchent ni recouvrent le point d'une étoile (point ± demi-taille + 2 px), jamais hors de l'écran (texte à
+- **Étiquettes du ciel profond** : repère creux posé exactement sur l'astre (couleur de l'étoile), texte à nu, sans
+  pastille qui cacherait les astres, détaché du ciel par un halo `--nuit` serré autour des lettres (ombres empilées
+  de 1 à 14 px) : lisible jusque sur les points les plus clairs de la galaxie, où chaque lettre garde la nuit pour
+  fond (ivoire 15,6:1, brume 7,3:1, laiton 8,2:1). Aux étoiles voisines, six étoiles remarquables (Proxima et Alpha du
+  Centaure, Barnard, Sirius, Procyon, Altaïr) ont leur nom en ivoire et leur distance en `--brume`, posées les
+  premières ; les autres, nom seul en `--brume`, repère atténué. Placées après les astres, 2 px d'air au moins entre
+  deux textes, sans recouvrir le point d'une étoile (point ± demi-taille + 2 px), halo compris (6 px autour du texte,
+  sauf du côté de son repère), jamais hors de l'écran (texte à
   4 px des bords au moins, astre dans la vue) : texte à droite du repère, sinon à gauche, sinon le nom seul (la
   distance reste dans la plaque), sinon rien. Non interactives (la plaque donne la liste). Dès que le Soleil
   n'est plus qu'un point, « Soleil » se pose de même : seul son texte occupe la place, à droite ou à gauche du
@@ -111,12 +179,14 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   nommés (Alpha du Centaure, collée à Proxima, cède). À la Voie lactée, « Vous êtes ici » se lit au-dessus
   d'un anneau `--soleil` de 14 px autour du point-Soleil, et remplace « Soleil » (l'une s'efface avant que l'autre
   n'apparaisse) ; « Centre de la Galaxie » se lit sous son repère : à la même hauteur à l'écran, les deux textes
-  ne se rencontrent jamais. Cercles de distance 5 et 10 al en laiton, étiquette 0,75 rem, posée au premier point
+  ne se rencontrent jamais. Cercles de distance 5 et 10 al en laiton, étiquette 0,8125 rem, posée au premier point
   libre du cercle (côté opposé au Soleil d'abord, puis les côtés), sur une graduation de laiton de 2 × 9 px :
-  jamais l'anneau d'une étoile. Au-delà de la Voie lactée, mêmes pilules : les galaxies du Groupe local par leur
+  jamais l'anneau d'une étoile. Libre veut dire à 8 px au moins de toute autre étiquette, graduation comprise : « 5 al »
+  ne se lit jamais collé à « Soleil » ; sinon, plus loin sur le cercle. Au-delà de la Voie lactée, mêmes textes à halo : les galaxies du Groupe local par leur
   nom, puis « Toile cosmique », « Fond diffus cosmologique » et « Notre univers observable » ; les autres univers ont
   un repère en pointillés et un nom en italique qui dit l'hypothèse (« D'autres univers ? (hypothèse) »).
-- **Ciel profond (scène)** : étoiles voisines aux couleurs de leur classe ; Voie lactée en points additifs, bras
+- **Ciel profond (scène)** : étoiles voisines aux couleurs de leur classe, cœur de 3,5 à 10 px selon leur magnitude
+  absolue, entouré d'un halo de sa couleur 2,5 fois plus large ; Voie lactée en points additifs, bras
   bleus (étoiles jeunes), régions HII rouge rosé le long des bras majeurs, bulbe et barre jaune orangé, disque
   chaud et faible. L'éclat se règle à l'écran et s'atténue quand la galaxie rapetisse : jamais de blanc saturé.
   Cadrage des escales lointaines : comme les astres, elles remplissent la bande libre en mise en page compacte
@@ -126,32 +196,60 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   disque dès qu'il dépasse le repère (repère effacé, `data-beside`), puis la toile cosmique, le
   fond diffus et les bulles du multivers, stylisés, cadrés comme une sphère ; une coquille qui déborderait sur la
   plaque ou la règle s'efface sur les 24 px qui l'en séparent.
+- **Astre visité (scène)** : au repos sur une planète, son orbite s'estompe autour d'elle (effacée jusqu'à 2,5 rayons
+  affichés, entière dès 6) et les autres planètes tombent à 35 % de leur éclat affiché ; le repos se défait sur le
+  premier cinquième du vol et se refait sur le dernier ; en plein vol et aux escales sans planète, rien ne change. Une
+  carte photographique qui arrive se fond en 400 ms dans la couleur unie de l'astre, en mouvement réduit compris
+  (fondu enchaîné, sans mouvement).
+- **Noms des astres (scène du Voyage), mise en page compacte** : le nom d'une planète ou du Soleil dont le disque
+  déborde de son repère (anneau de 10 px) se pose au-dessus de lui, centré, à 4 px de ce qui s'élève le plus haut à
+  l'écran (le disque, ou les anneaux de Saturne et d'Uranus selon leur inclinaison), repère effacé (`data-above`) : il
+  ne chevauche jamais le disque. Souvent sur un fond clair (couronne du Soleil), son texte est opaque et bordé du halo
+  de nuit serré des étiquettes à nu (ombres `--nuit` de 1, 2, 3, 6 et 10 px), sans pastille. Au repos sur une escale, le nom de l'astre en vue reste entier, même vu de près (il
+  suit le repos de la caméra). Jamais hors de l'écran, sous la barre, la carte fixe ou la note d'échelle,
+  bouton entier compris (anneau masqué, rembourrage) ; quand il n'y tient pas (téléphone court, astre cadré sur toute
+  la bande libre), il reprend la disposition ordinaire, et sinon il est masqué. Un astre plus petit que son repère
+  garde la disposition ordinaire. À Tailles, les noms sont déjà
+  au-dessus des astres.
 - **Règle des distances** : sommaire vertical à échelle logarithmique, en trois segments : UA jusqu'à 50
   (les planètes), grand vide comprimé jusqu'à 1 al, puis années-lumière jusqu'à 10¹¹ al, au-delà de l'Univers
   observable (fin de l'axe à 98 %). Le multivers, à l'infini, se pose après l'axe, hors échelle (99,4 %).
   Entre le système solaire et les étoiles, l'axe s'interrompt de 87 à 88,5 % : signe « ≈ » en laiton,
   0,875 rem, centré sur l'axe. Graduations d'UA, puis une par puissance de dix d'années-lumière (majeures : 1 al,
   1 million et 1 milliard d'al). Sous les repères lointains : « dès 4,2 al », « centre à 27 000 al », « Andromède à
-  2,5 millions d'al », « rayon de 46 milliards d'al », « hypothèse ». Seize repères, 24 px au moins entre leurs
-  centres (WCAG 2.5.8). Curseur suivant la caméra.
-  Infobulles au survol (appareils qui survolent) et au focus clavier ; au doigt, le nom de l'escale
-  en cours reste affiché. Là où elle n'a plus que des pastilles (860 px et moins), en mise en page compacte et sur
-  écran bas (546 px de haut et moins : téléphone en paysage, zoom à 400 %), elle laisse sa place au menu
+  2,5 millions d'al », « rayon de 46 milliards d'al », « hypothèse » (distances en 0,8125 rem). Seize repères, cibles
+  de 24 px, 24 px au moins entre leurs centres (WCAG 2.5.8). Curseur suivant la caméra.
+  Sur grand écran, seuls l'escale en cours et ses deux voisines (`data-near`) montrent nom et distance, à la ligne
+  plutôt que tronqués (9 rem au plus) ; un texte qui toucherait celui d'à côté s'en écarte, sa pastille restant sur
+  l'axe. Les autres repères se réduisent à une graduation : pastille de 7 px de leur couleur, texte masqué à l'œil mais
+  lu, qui paraît en infobulle au survol (appareils qui survolent) et au focus clavier ; Échap la ferme seule, où que
+  soit le focus. Cible d'un repère nommé : son texte (4 px d'air avec ses voisins) et sa pastille ; d'une graduation,
+  24 × 24 px centrés sur sa pastille.
+  Apparitions en fondu bref ; en couleurs forcées, axe, graduations, curseur et pastilles en couleurs du système. La
+  règle des tailles suit le même modèle. Là où elle n'a plus que des pastilles (860 px et moins), en mise en page
+  compacte et sur écran bas (546 px de haut et moins : téléphone en paysage, zoom à 400 %), elle laisse sa place au menu
   **Escales** : le nom de l'escale en cours (« Escales » à l'accueil), dans la barre, ouvre la liste des escales
-  (pastille creuse, pleine pour l'escale en cours, nom, distance, lignes de 44 px). Sur écran bas, la barre suit la
-  page et la liste s'ouvre en haut de page. Sans JavaScript, la règle reste.
+  (pastille creuse, pleine pour l'escale en cours, nom, distance, lignes de 44 px). Sur écran bas, la liste s'ouvre
+  sous la barre, restée fixe, et défile en elle-même jusqu'au bas de la vue. Sans JavaScript, la règle reste.
 - **Note d'échelle** : encart `--r-md` bordé `--soleil`, visible avec les distances réelles ; au-dessus
-  du dock ; en mise en page compacte, en haut sous la barre et dans la colonne de lecture, pour ne
-  couvrir ni la plaque ni la règle. Sur téléphone, elle tient sur deux lignes, l'essentiel en tête :
+  du dock ; en mise en page compacte, dans la colonne de lecture, au-dessus du dock à 0,5 rem quand la carte fixe
+  tient le haut de l'écran (en haut sous la barre ailleurs), pour ne couvrir ni la plaque ni la règle. Sur téléphone, elle tient sur deux lignes, l'essentiel en tête :
   un chevron (ou un toucher sur le texte) l'affiche en entier, une croix la masque. Échap la masque (après avoir fermé une infobulle de la règle ou
   le menu des escales, s'il y en a).
 - **Machine à remonter le temps** : dock bas en capsule, vitesse 1 jour à 1 an par seconde, retour à
-  aujourd'hui. La vitesse active est une bulle ivoire qui glisse d'un choix à l'autre : le bord avant
-  part le premier, l'arrière suit, léger rebond à l'arrivée ; instantanée en mouvement réduit. Une copie
+  aujourd'hui. Sur grand écran, un fondu fixe de 140 px, de transparent à `--nuit`, passe sous lui au bas de l'écran,
+  et un autre sous la barre haute, de `--nuit` à transparent sur la barre et 40 px (au-dessus du contenu, sous la
+  règle, sans intercepter un clic) : une plaque qui glisse dessous s'efface au lieu d'être tranchée ou de croiser la
+  marque, et le focus s'arrête avant eux (marges de défilement de 128 et 152 px) ; absents en mise en page compacte,
+  sur écran bas et sans JavaScript, effacés pendant l'exploration. La vitesse
+  active est une bulle ivoire qui glisse d'un choix à l'autre : le bord avant part le premier, l'arrière suit, léger
+  rebond à l'arrivée ; instantanée en mouvement réduit. Une copie
   sombre des libellés, découpée à la forme de la bulle, inverse le texte exactement là où elle passe
   (jamais de texte sombre sur fond sombre). Le dock ne passe jamais à la ligne au-dessus de 360 px :
   complet au-delà de 900 px, boutons de droite réduits à leur icône jusqu'à 761 px, compact en dessous
-  (un seul bouton de vitesse, date courte). Aux escales lointaines (des étoiles voisines au multivers), où tout
+  (un seul bouton de vitesse, date courte). Au doigt (`pointer: coarse`), chaque commande offre une cible de 44 px
+  (40 à 42 px à la souris) ; à 384 px et moins, les écarts se resserrent d'autant, et le dock tient encore sur une
+  ligne à 360 px. Aux escales lointaines (des étoiles voisines au multivers), où tout
   est déjà à l'échelle, la bascule « Distances réelles » est indisponible : atténuée (opacité 0,45, sans survol),
   toujours focalisable, `aria-disabled` avec sa raison en description (« Ici, les distances sont déjà
   réelles. ») ; un clic ne change rien et le choix revient au retour dans le système solaire. La note
@@ -161,8 +259,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Pilule de 44 px filetée `--filet-fort`, comme le menu des escales : pictogramme d'orbite en laiton, puis le
   libellé ; à 640 px et moins, le pictogramme seul, 44 × 44 (le libellé, masqué à l'œil, reste le début du nom
   accessible : « Tourner autour de Saturne »). Il suit l'escale affichée ; à la ceinture d'astéroïdes, il garde
-  sa place sans se montrer. Écran bas (téléphone en paysage, zoom à 400 %) : fixé en haut à droite, la barre lui
-  réserve 52 px. Absent sans JavaScript et sans scène 3D.
+  sa place sans se montrer. Écran bas (téléphone en paysage, zoom à 400 %) : dans la barre, fixe là aussi, il glisse
+  avec elle. Absent sans JavaScript et sans scène 3D.
 - **Exploration** : la page (barre, règle, plaques, pied de page, note d'échelle) s'efface en 0,6 s et devient
   inerte pendant que la caméra glisse vers la vue d'exploration ; tout est instantané en mouvement réduit. La page
   ne défile plus ; la scène et le dock restent. En haut, une barre en capsule, comme le dock : pastille et nom de
@@ -189,13 +287,29 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   langue, menu replié), dans cet ordre de tabulation. Plus de 860 px, une grille `1fr auto 1fr` centre les onglets
   dans la barre ; une colonne latérale ne descend jamais sous la largeur de son contenu, si bien que les onglets se
   décalent vers la marque plutôt que de chevaucher les commandes, et retrouvent le centre dès que la place revient
-  (au Voyage, à 1 329 px au pire, à l'escale la plus longue en espagnol). Seuil vérifié au pire cas (espagnol,
-  Voyage) : 800 px de contenu pour 829 disponibles à 861 px en paysage ; en portrait, où le menu des escales remplace
-  l'escale, 860 px qui ne tiennent qu'à 892 px : la grille y attend 900 px, la ligne d'origine sert avant. Hauteur
-  inchangée, une seule ligne ; à 860 px et moins, les onglets passent dans « Menu ». Fond : au Voyage et à Tailles,
-  un voile léger (`--voile` vers transparent, plus dense à 640 px et moins), pour que la scène 3D se devine dessous ;
-  à l'Accueil et à À propos, où le texte défile sous la barre, `--nuit` plein jusqu'au bas des commandes puis un
-  fondu sur la marge basse (0,9 rem) : rien ne se lit derrière la marque ni les onglets.
+  (au Voyage, à 1 427 px au pire, à l'escale la plus longue en espagnol). **Cinq onglets** (depuis la 1.1.0) : celui
+  des Notes de version prend un libellé court (« Versions », « Releases », « Versiones », 98 px au plus, estimés sur
+  les 311 px mesurés des quatre onglets espagnols), le nom complet restant le titre de la page ; les onglets passent
+  à 409 px en espagnol. Pages sans commandes (Accueil, À propos, Notes de version) : 568 px pour 829 disponibles, la
+  grille sert dès 861 px. Pages à commandes, au pire (espagnol, Voyage) : 898 px en paysage de 861 à 1 100 px (la
+  grille attend 59,125 rem, 946 px), 958 px en portrait, où le menu des escales remplace l'escale (63 rem,
+  1 008 px), 1 075 px au-delà de 1 100 px (70 rem, 1 120 px), soit 16 px de marge sur l'estimation ; avant chaque
+  seuil, la ligne d'origine sert : les onglets suivent la marque et l'escale (ou le menu des escales) rétrécit en
+  « … » (environ 80 px à 861 px). Hauteur inchangée, une seule ligne de 861 à 1 440 px dans les trois langues ; à
+  860 px et moins, les onglets passent dans « Menu ». Fond : au Voyage et à Tailles,
+  sur grand écran, un voile léger (`--voile` vers transparent), pour que la scène 3D se devine dessous (les fondus
+  effacent les plaques avant elle) ; à l'Accueil, à À propos et aux Notes de version, où le texte défile sous la barre, et au Voyage et à
+  Tailles là où la barre est fixe sans fondus (mise en page compacte, écran bas : les plaques y passent dessous sans fondu), `--nuit`
+  plein jusqu'au bas des commandes puis un fondu sur la marge basse (0,9 rem ; 0,6 sur téléphone court, 0,5 sur écran
+  bas) : rien ne se lit derrière la marque ni les commandes. En couleurs forcées, la barre fixe prend le fond du
+  système.
+  **Barre fixe** (Voyage et Tailles, là où ni règle ni fondus ne la bordent : mise en page compacte et écran bas, en
+  portrait comme en paysage, `data-pinned`) : elle reste en haut de l'écran en descendant comme en remontant (demande
+  de l'utilisateur, 06/11/2026 ; elle glissait hors de l'écran en descendant). La carte fixe et son squelette restent
+  sous elle. La scène la lit à sa place (aucune étiquette ne se pose dessous) et le focus s'arrête toujours sous elle
+  (marges de défilement). Sur écran bas (30 rem et moins), elle reste fixe,
+  resserrée à 3,75 rem (0,5 rem autour des commandes de 44 px) ; sans JavaScript, elle y suit la page, comme celle de
+  l'Accueil et d'À propos.
 - **Choix de la langue** : le bouton de la barre montre le drapeau de la langue de la page, puis son code (« FR ») et
   le chevron ; chaque ligne de la liste (et du menu replié), le drapeau puis le nom de la langue dans sa langue ; les
   pilules sans JavaScript, le drapeau puis le code. Drapeaux en SVG (pas d'emoji : Windows ne les dessine pas),

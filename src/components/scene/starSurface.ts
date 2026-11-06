@@ -45,6 +45,11 @@ export interface StarSurfaceOptions {
   granulationContrast?: number;
   /** Assombrissement centre-bord k, loi T⁴(μ) ∝ 1 − k + kμ (atmosphère grise d'Eddington : 0,6). */
   limbDarkening: number;
+  /**
+   * Assombrissement centre-bord en intensité, loi linéaire I(μ)/I(1) = 1 − u(1 − μ), sur les trois canaux à la fois
+   * (le bord s'assombrit sans virer au gris) : celui des étoiles chaudes dans le visible. 0 par défaut : rien ne change.
+   */
+  limbIntensity?: number;
   /** Groupes de taches au plus, deux taches chacun ; 0 : aucune tache. */
   spotGroups?: number;
   /** Activité de départ, de 0 à 1 (facules du réseau) ; `uActivity` se règle ensuite en place. */
@@ -66,6 +71,10 @@ export interface StarSurfaceUniforms {
   uGranulation: Uniform<number>;
   uContrast: Uniform<number>;
   uLimbDarkening: Uniform<number>;
+  /** Coefficient u de `limbIntensity`. */
+  uLimbIntensity: Uniform<number>;
+  /** Alpha de la surface, 1 par défaut ; n'agit que si le matériau est `transparent` (Tailles : effacement près de la règle). */
+  uOpacity: Uniform<number>;
   /** Activité, de 0 à 1 : éclat des facules du réseau. */
   uActivity: Uniform<number>;
   /** Vitesse de rotation affichée à l'équateur, en rad/s. */
@@ -93,6 +102,9 @@ export function createStarSurfaceMaterial(options: StarSurfaceOptions): {
     uGranulation: { value: options.granulation },
     uContrast: { value: options.granulationContrast ?? 0.11 },
     uLimbDarkening: { value: options.limbDarkening },
+    uLimbIntensity: { value: options.limbIntensity ?? 0 },
+    // Le matériau reste opaque : l'appelant qui veut effacer l'étoile le rend transparent (Tailles).
+    uOpacity: { value: 1 },
     uActivity: { value: options.activity ?? 0 },
     uSpinRate: { value: options.spin ?? 0 },
     uSpotA: { value: new Float32Array(spots * 4) },

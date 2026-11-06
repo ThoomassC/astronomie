@@ -52,6 +52,18 @@ describe("pageMetadata", () => {
     });
   });
 
+  it("devrait donner aux Notes de version, en espagnol, le même chemin dans les trois langues", () => {
+    expect(pageMetadata("releases", "es").alternates).toEqual({
+      canonical: "/es/notes-de-version",
+      languages: {
+        fr: "/fr/notes-de-version",
+        en: "/en/notes-de-version",
+        es: "/es/notes-de-version",
+        "x-default": "/notes-de-version",
+      },
+    });
+  });
+
   it("devrait annoncer à Open Graph la langue de la page, et les deux autres comme variantes", () => {
     expect(pageMetadata("voyage", "en").openGraph).toMatchObject({
       locale: "en_GB",

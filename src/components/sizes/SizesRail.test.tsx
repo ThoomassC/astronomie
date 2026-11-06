@@ -36,15 +36,22 @@ const renderIn = (locale: "fr" | "en" | "es") =>
   );
 
 describe("SizesRail", () => {
-  it("devrait nommer la règle et lister les dix étoiles, de la plus petite à la plus grande, avec leur ancre (es)", () => {
+  it("devrait nommer la règle et lister les quatorze astres, du plus petit au plus grand, avec leur ancre (es)", () => {
     renderIn("es");
-    const rail = screen.getByRole("navigation", { name: "Escala de tamaños, de la estrella más pequeña a la más grande" });
+    const rail = screen.getByRole("navigation", { name: "Escala de tamaños, del astro más pequeño al más grande" });
     expect(rail).toHaveAttribute("id", "rail");
     const links = within(rail).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "#proxima-du-centaure", "#soleil", "#sirius-a", "#pollux", "#arcturus", "#aldebaran", "#rigel", "#antares-a",
-      "#betelgeuse", "#vy-canis-majoris",
+      "#cygnus-x-1", "#proxima-du-centaure", "#soleil", "#sirius-a", "#pollux", "#arcturus", "#aldebaran",
+      "#sagittarius-a-etoile", "#rigel", "#antares-a", "#betelgeuse", "#vy-canis-majoris", "#m87-etoile",
+      "#fer-a-cheval-cosmique",
     ]);
+  });
+
+  it("devrait nommer chaque trou noir par son ombre, en kilomètres sous 0,01 R☉ (fr : « Cygnus X-1, 163 km »)", () => {
+    renderIn("fr");
+    expect(screen.getByRole("link", { name: "Cygnus X-1, 163 km" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Trou noir du Fer à cheval cosmique, 400\u202f000 R☉" })).toBeInTheDocument();
   });
 
   it("devrait nommer chaque repère par l'étoile et son rayon, dans la langue (es : « Sirio A, 1,711 R☉ »)", () => {
@@ -67,9 +74,9 @@ describe("SizesRail", () => {
     expect(screen.getByText("× 10 per mark")).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("devrait graduer la règle à chaque puissance de dix, de 0,1 à 1 000 R☉", () => {
+  it("devrait graduer la règle à chaque puissance de dix, de 10⁻⁴ à 10⁶ R☉", () => {
     const { container } = renderIn("fr");
-    expect(container.querySelectorAll(".tick")).toHaveLength(5);
+    expect(container.querySelectorAll(".tick")).toHaveLength(11);
     expect(container.querySelectorAll(".tick.maj")).toHaveLength(1);
   });
 });

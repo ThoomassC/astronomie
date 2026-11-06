@@ -47,9 +47,9 @@ describe("StarPlate de Bételgeuse, en anglais", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Betelgeuse" })).toBeInTheDocument();
   });
 
-  it("devrait dire son rang parmi les dix et sa catégorie au-dessus du nom (« 9th of 10 · red supergiant »)", () => {
+  it("devrait dire son rang parmi les quatorze astres et sa catégorie au-dessus du nom (« 11th of 14 · red supergiant »)", () => {
     renderBetelgeuse();
-    expect(paragraph("9th of 10 · red supergiant")).toBeInTheDocument();
+    expect(paragraph("11th of 14 · red supergiant")).toBeInTheDocument();
   });
 
   it.each([
@@ -91,7 +91,23 @@ describe("StarPlate de Bételgeuse, en anglais", () => {
 
   it("ne devrait proposer aucun lien de retour quand la page n'en donne pas", () => {
     renderBetelgeuse();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Back to the smallest" })).not.toBeInTheDocument();
+  });
+
+  /*
+   * Sur téléphone, d'astre en astre sans ouvrir le menu : les liens encadrent le nom dans la plaque compacte ; leurs
+   * pilules (paysage bas, sans JavaScript) sont au bout de la rangée des titres-boutons.
+   */
+  it("devrait mener à Antares A et à VY Canis Majoris, de part et d'autre du nom", () => {
+    const { container } = renderBetelgeuse();
+    const title = container.querySelector<HTMLElement>(".plate-title");
+    if (!title) throw new Error("Rangée du nom absente");
+    expect(within(title).getByRole("link", { name: "Previous object: Antares A" })).toHaveAttribute("href", "#antares-a");
+    expect(within(title).getByRole("link", { name: "Next object: VY Canis Majoris" })).toHaveAttribute(
+      "href",
+      "#vy-canis-majoris",
+    );
+    expect(container.querySelector(".plate-sections")?.lastElementChild).toHaveClass("stop-steps");
   });
 });
 
@@ -109,9 +125,9 @@ describe("StarPlate de Bételgeuse, en espagnol", () => {
     expect(fact(label)).toHaveTextContent(value);
   });
 
-  it("devrait écrire le rang à l'espagnole (« 9.ª de 10 · supergigante roja »)", () => {
+  it("devrait écrire le rang à l'espagnole, au féminin (« 11.ª de 14 · supergigante roja »)", () => {
     render(<StarPlate star={star("betelgeuse")} locale="es" />);
-    expect(paragraph("9.ª de 10 · supergigante roja")).toBeInTheDocument();
+    expect(paragraph("11.ª de 14 · supergigante roja")).toBeInTheDocument();
   });
 
   it("devrait nommer Sirius A de son nom espagnol officiel, Sirio A", () => {
@@ -123,12 +139,12 @@ describe("StarPlate de Bételgeuse, en espagnol", () => {
 describe("StarPlate du Soleil, en français", () => {
   const renderSun = () => render(<StarPlate star={star("sun")} locale="fr" />);
 
-  it("devrait poser la section à l'ancre #soleil, avec la clé d'escale « sun », au 2ᵉ rang", () => {
+  it("devrait poser la section à l'ancre #soleil, avec la clé d'escale « sun », au 3ᵉ rang", () => {
     renderSun();
     const section = screen.getByRole("region", { name: "Soleil" });
     expect(section).toHaveAttribute("id", "soleil");
     expect(section).toHaveAttribute("data-stop", "sun");
-    expect(paragraph("2e sur 10 · naine jaune")).toBeInTheDocument();
+    expect(paragraph("3e sur 14 · naine jaune")).toBeInTheDocument();
   });
 
   it.each([
@@ -168,8 +184,8 @@ describe("StarPlate, arrondis et lien de retour", () => {
     expect(fact("Distance de la Terre")).toHaveTextContent("4,2 années-lumière");
   });
 
-  it("devrait proposer de revenir à la plus petite étoile quand la page le demande", () => {
-    render(<StarPlate star={star("vy-canis-majoris")} locale="fr" restartTo="proxima-centauri" />);
-    expect(screen.getByRole("link", { name: "Revenir à la plus petite étoile" })).toHaveAttribute("href", "#proxima-du-centaure");
+  it("devrait proposer de revenir au plus petit astre quand la page le demande", () => {
+    render(<StarPlate star={star("vy-canis-majoris")} locale="fr" restartTo="cygnus-x-1" />);
+    expect(screen.getByRole("link", { name: "Revenir au plus petit" })).toHaveAttribute("href", "#cygnus-x-1");
   });
 });

@@ -22,6 +22,7 @@ describe("SiteHeader", () => {
       ["Journey", "/en/voyage"],
       ["Sizes", "/en/tailles"],
       ["About", "/en/a-propos"],
+      ["Releases", "/en/notes-de-version"],
     ]);
   });
 
@@ -32,6 +33,7 @@ describe("SiteHeader", () => {
       ["Voyage", "/fr/voyage"],
       ["Tailles", "/fr/tailles"],
       ["À propos", "/fr/a-propos"],
+      ["Versions", "/fr/notes-de-version"],
     ]);
   });
 
@@ -42,7 +44,16 @@ describe("SiteHeader", () => {
       ["Viaje", "/es/voyage"],
       ["Tamaños", "/es/tailles"],
       ["Acerca de", "/es/a-propos"],
+      ["Versiones", "/es/notes-de-version"],
     ]);
+  });
+
+  /*
+   * Cinq onglets doivent tenir sur une ligne de 861 à 1 440 px dans les trois langues (SiteHeader.module.css) : les
+   * Notes de version y prennent un libellé court, le nom complet restant le titre de la page.
+   */
+  it.each(Object.entries(SITE_STRINGS))("devrait garder l'onglet des notes de version court en %s", (_locale, strings) => {
+    expect(strings.tabs.releases.length).toBeLessThanOrEqual(9);
   });
 
   it("devrait marquer l'onglet de la page affichée comme page courante", () => {
@@ -51,7 +62,7 @@ describe("SiteHeader", () => {
     expect(within(nav).getByRole("link", { name: "Tamaños" })).toHaveAttribute("aria-current", "page");
   });
 
-  it.each(["Inicio", "Viaje", "Acerca de"])("ne devrait pas marquer l'onglet « %s » d'une autre page", (name) => {
+  it.each(["Inicio", "Viaje", "Acerca de", "Versiones"])("ne devrait pas marquer l'onglet « %s » d'une autre page", (name) => {
     render(<SiteHeader locale="es" page="sizes" />);
     const nav = screen.getByRole("navigation", { name: "Secciones" });
     expect(within(nav).getByRole("link", { name })).not.toHaveAttribute("aria-current");
@@ -96,6 +107,30 @@ describe("SiteHeader", () => {
   });
 
   /*
+   * Au Voyage et à Tailles, la scène occupe l'écran et la page est longue : la barre reste fixe en haut de l'écran
+   * (`data-pinned`), toujours à portée. À l'Accueil, à À propos et aux Notes de version, elle suit la page.
+   */
+  it.each(["voyage", "sizes"] as const)("devrait rester fixe sur la page « %s », commandes comprises", (page) => {
+    render(
+      <SiteHeader locale="fr" page={page}>
+        <button type="button">Tourner autour</button>
+      </SiteHeader>,
+    );
+    const banner = screen.getByRole("banner");
+    expect(banner).toHaveAttribute("data-pinned");
+    expect(banner).toHaveClass("bar");
+    expect(banner).toHaveAttribute("data-page", page);
+    expect(banner).toHaveAttribute("data-controls");
+    expect(banner).toHaveAttribute("data-hide-on-explore");
+    expect(within(banner).getByRole("button", { name: "Tourner autour" })).toBeInTheDocument();
+  });
+
+  it.each(["home", "about", "releases"] as const)("ne devrait pas être fixée sur la page « %s »", (page) => {
+    render(<SiteHeader locale="fr" page={page} />);
+    expect(screen.getByRole("banner")).not.toHaveAttribute("data-pinned");
+  });
+
+  /*
    * La mise en page centre les onglets (grille de trois colonnes) : l'ordre du DOM, qui est l'ordre de tabulation, ne
    * doit pas en dépendre. Marque, onglets, commandes de la page, langue, puis menu replié.
    */
@@ -110,6 +145,7 @@ describe("SiteHeader", () => {
       banner.getByRole("link", { name: SITE_STRINGS.fr.brandHome }),
       banner.getByRole("link", { name: "Accueil" }),
       banner.getByRole("link", { name: "À propos" }),
+      banner.getByRole("link", { name: "Versions" }),
       banner.getByRole("button", { name: "Tourner autour" }),
       banner.getByRole("button", { name: `FR, ${SITE_STRINGS.fr.currentLanguage}` }),
       banner.getByRole("button", { name: SITE_STRINGS.fr.menu }),

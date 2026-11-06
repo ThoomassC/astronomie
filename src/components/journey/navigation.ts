@@ -122,20 +122,79 @@ function settleOn(key: string, correctionsLeft: number): void {
   cancelSettle = stop;
 }
 
+/** Parcours de la page affichée, qui retient l'escale visée (StopStore.aim) ; posé par son suivi du défilement. */
+let aimTrack: ((key: string | null) => void) | null = null;
+
+/**
+ * Le parcours de la page reçoit l'escale visée par chaque navigation programmée (`null` quand on reprend la main).
+ * Renvoie la fonction qui le retire.
+ */
+export function trackAims(aim: (key: string | null) => void): () => void {
+  aimTrack = aim;
+  return () => {
+    if (aimTrack === aim) aimTrack = null;
+  };
+}
+
+/** Touches qui ne font pas défiler la page : la visée leur survit (Tab mène à la carte visée pendant le vol). */
+const NON_SCROLLING_KEYS = new Set(["Tab", "Shift", "Control", "Alt", "Meta"]);
+
+/** Geste par lequel la personne reprend la main pendant une navigation programmée. */
+function takesOver(event: Event): boolean {
+  return !(event instanceof KeyboardEvent && NON_SCROLLING_KEYS.has(event.key));
+}
+
+let releaseAim: (() => void) | null = null;
+
+/**
+ * Vise l'escale : la carte fixe la montre dès le départ. La visée tombe au repos sur elle (le parcours l'efface) ou au
+ * premier geste qui reprend la main.
+ */
+function aimAt(key: string): void {
+  releaseAim?.();
+  aimTrack?.(key);
+  function onGesture(event: Event): void {
+    if (!takesOver(event)) return;
+    release();
+    aimTrack?.(null);
+  }
+  function release(): void {
+    for (const type of USER_SCROLL_EVENTS) window.removeEventListener(type, onGesture);
+    releaseAim = null;
+  }
+  for (const type of USER_SCROLL_EVENTS) window.addEventListener(type, onGesture, { passive: true });
+  releaseAim = release;
+}
+
 /**
  * Défile jusqu'à l'escale, en douceur sauf si les animations sont réduites, puis y place
  * le focus comme le ferait une ancre, sur la section de la page affichée (une page quittée,
- * masquée, peut porter la même clé). Renvoie `false` tant que les sections ne sont pas
- * mesurées : l'ancre native prend alors le relais.
+ * masquée, peut porter la même clé). L'escale est visée : sa carte se voit dès le départ.
+ * Renvoie `false` tant que les sections ne sont pas mesurées : l'ancre native prend alors le relais.
  */
 export function goTo(key: string): boolean {
   const target = targetOf(key);
   if (target === null) return false;
   const smooth = !prefersReducedMotion();
+  aimAt(key);
   window.scrollTo({ top: target, behavior: smooth ? "smooth" : "auto" });
   shownElements(`[data-stop="${key}"]`)[0]?.focus({ preventScroll: true });
   if (smooth) settleOn(key, MAX_CORRECTIONS);
   else cancelSettle?.();
+  return true;
+}
+
+/**
+ * Saute sans animation au repos sur l'escale, sans toucher au focus : le focus est entré dans sa carte, encore
+ * masquée (Tab, lecteur d'écran), qui doit se voir tout de suite. Coupe une navigation en cours. Renvoie `false` sans
+ * plages mesurées.
+ */
+export function jumpTo(key: string): boolean {
+  const target = targetOf(key);
+  if (target === null) return false;
+  cancelSettle?.();
+  aimAt(key);
+  scrollInstantly(target);
   return true;
 }
 
@@ -147,6 +206,8 @@ export function goTo(key: string): boolean {
  */
 export function holdAt(key: string): void {
   cancelSettle?.();
+  releaseAim?.();
+  aimTrack?.(null);
   const y = window.scrollY;
   const range = ranges.find((r) => r.key === key);
   if (!range) {

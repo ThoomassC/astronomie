@@ -6,6 +6,7 @@ import { cssVars } from "./cssVars";
 import { GoToLink } from "./GoToLink";
 import { Plate } from "./Plate";
 import { ScaleToggle } from "./ScaleToggle";
+import { JourneySteps } from "./StopSteps";
 
 /** L'échelle couvre 24 heures-lumière. */
 const SCALE_HOURS = 24;
@@ -32,22 +33,22 @@ export function BeyondPlate({ locale, sunHref }: { locale: Locale; sunHref: `#${
     <section className="stop" id={STOP_IDS.beyond} data-stop="beyond" tabIndex={-1} aria-labelledby={TITLE_ID}>
       <Plate
         id={STOP_IDS.beyond}
+        stop="beyond"
         name={beyond.name}
         color="var(--laiton)"
         header={
-          <>
-            <p className="rank">
-              <i aria-hidden="true" />
-              {beyond.rank}
-            </p>
-            <h2 id={TITLE_ID}>{beyond.name}</h2>
-            <p className="hook">{beyond.hook}</p>
-          </>
+          <p className="rank">
+            <i aria-hidden="true" />
+            {beyond.rank}
+          </p>
         }
+        titleId={TITLE_ID}
+        hook={beyond.hook}
         sections={[
           {
             key: "suite",
             label: plate.more,
+            icon: "story",
             content: (
               <>
                 <p className="lede">{beyond.lede}</p>
@@ -80,6 +81,7 @@ export function BeyondPlate({ locale, sunHref }: { locale: Locale; sunHref: `#${
             ),
           },
         ]}
+        steps={<JourneySteps stop="beyond" locale={locale} />}
         footer={
           <div className="actions">
             <ScaleToggle className="btn" />

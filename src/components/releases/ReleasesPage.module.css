@@ -1,0 +1,273 @@
+/* Notes de version : une page de lecture, comme À propos, entre les marges de la barre. Le titre, l'accroche et le
+   sommaire des versions, puis chaque version sous un filet de laiton. Sur grand écran (64 rem et plus), deux colonnes
+   par version : à gauche son numéro en grand Bodoni, sa date et l'étiquette de la plus récente, collés sous la barre
+   pendant la lecture ; à droite son résumé et ses rubriques, sur une colonne de lecture de 35 rem. Plus étroit, une
+   colonne : le numéro et la date ouvrent la version, sans rien coller. Aucun effet : la typographie, l'espace et les
+   filets font le rythme. */
+
+/* Gouttière de la barre, celle d'À propos : le début suit le logo, réduit à son pictogramme centré dans 44 px. */
+.page,
+.footer {
+  --start: var(--gl);
+}
+
+@media (min-width: 861px) and (max-width: 1100px), (max-width: 359px), (max-width: 860px) and (scripting: none) {
+  .page,
+  .footer {
+    --start: calc(var(--gl) + 8px);
+  }
+}
+
+/* Le `main` global est celui du voyage (clics vers la scène, place de la règle) : ici, ni scène ni règle. En haut, la
+   place de la barre fixe (4,75 rem) plus 2 rem ; en bas, 4 rem avant le pied de page. */
+.page {
+  pointer-events: auto;
+  padding-block: calc(env(safe-area-inset-top, 0px) + 6.75rem) 4rem;
+  padding-inline: var(--start) var(--gr);
+}
+
+/* Écran bas : la barre suit la page (règle globale), plus de place à lui réserver. */
+@media (max-height: 30rem) {
+  .page {
+    padding-top: 1.5rem;
+  }
+}
+
+/* ---------- Titre, accroche, sommaire ---------- */
+
+.head h1 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: clamp(2.25rem, 1.5rem + 3.2vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  font-optical-sizing: auto;
+  text-wrap: balance;
+}
+
+.intro {
+  max-width: 40rem;
+  margin: 0.75rem 0 0;
+  color: var(--ivoire);
+  font-family: var(--f-display-italic);
+  font-style: italic;
+  font-size: clamp(1.1875rem, 1.0625rem + 0.5vw, 1.375rem);
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+/* Sommaire : un titre de groupe, puis une version par ligne ou côte à côte selon la place, le lien puis la date. */
+.toc {
+  margin-top: 2rem;
+}
+
+.tocTitle {
+  margin: 0;
+  color: var(--brume);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.tocList {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 2.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tocList li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.75rem;
+}
+
+/* Liens de texte du site : ivoire soulignés de laiton, cible de 44 px de haut ; au survol, soulignement ivoire. */
+.tocList a {
+  display: inline-block;
+  min-height: 2.75rem;
+  padding-block: 0.5rem;
+  color: var(--ivoire);
+  font-weight: 600;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--laiton);
+  text-underline-offset: 0.2em;
+}
+
+.tocList a:hover {
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--ivoire);
+}
+
+.tocList time {
+  color: var(--brume);
+  font-size: 0.9375rem;
+}
+
+/* ---------- Versions ---------- */
+
+/* Chaque version s'ouvre sur un filet, 3 rem sous ce qui la précède ; son ancre se pose 1 rem sous la marge de
+   défilement globale (5 rem, la barre) : le filet reste visible sous la barre. */
+.release {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--filet);
+  scroll-margin-top: 1rem;
+}
+
+/* En-tête d'une version, sur téléphone : le numéro sur sa ligne, puis la date et l'étiquette côte à côte. */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.5rem;
+}
+
+.version {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 400;
+}
+
+.versionLabel {
+  display: block;
+  color: var(--brume);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* Le numéro : le moment éditorial de la version, en Bodoni d'affichage (échelle des noms d'astres, 2,5 à 3,5 rem). */
+.versionNumber {
+  display: block;
+  color: var(--ivoire);
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: clamp(2.5rem, 2rem + 2.5vw, 3.5rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-optical-sizing: auto;
+  font-variant-numeric: lining-nums;
+}
+
+.date {
+  margin: 0;
+  color: var(--brume);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* Étiquette de la dernière version : texte laiton (8:1 sur la nuit) dans une pilule filetée, sans capitales espacées. */
+.latest {
+  margin: 0;
+  padding: 0.125rem 0.625rem;
+  border: 1px solid var(--filet-fort);
+  border-radius: var(--r-pill);
+  color: var(--laiton);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* Résumé et rubriques : colonne de lecture de 35 rem au plus, environ 67 caractères à 1,0625 rem. */
+.body {
+  max-width: 35rem;
+}
+
+.summary {
+  margin: 1.5rem 0 0;
+  color: var(--ivoire);
+  font-family: var(--f-display-italic);
+  font-style: italic;
+  font-size: clamp(1.1875rem, 1.0625rem + 0.5vw, 1.375rem);
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.group {
+  margin-top: 2rem;
+}
+
+.group h3 {
+  margin: 0 0 0.75rem;
+  font-family: var(--f-display);
+  font-weight: 450;
+  font-size: 1.375rem;
+  line-height: 1.2;
+  font-optical-sizing: auto;
+}
+
+/* Liste à puces de laiton : le texte des paragraphes d'À propos, 0,5 rem entre deux changements. */
+.items {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.items li {
+  margin: 0 0 0.5rem;
+  padding-left: 0.25rem;
+  color: #d9d3c4;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+.items li:last-child {
+  margin-bottom: 0;
+}
+
+.items li::marker {
+  color: var(--laiton);
+}
+
+/* ---------- Pied de page ---------- */
+
+/* Le `footer` global est celui du voyage (place de la règle et du dock) : ici, les marges de la page. */
+.footer {
+  padding: 0 var(--gr) calc(3rem + env(safe-area-inset-bottom, 0px)) var(--start);
+}
+
+/* ---------- Grand écran : l'en-tête de chaque version à gauche, sa lecture à droite ---------- */
+
+/*
+ * Deux colonnes par version, alignées sur la gouttière : l'en-tête (11 à 18 rem), puis la colonne de lecture (35 rem
+ * au plus). Les deux partent du filet à la même hauteur ; l'en-tête s'empile (numéro, date, étiquette).
+ */
+@media (min-width: 64rem) {
+  .release {
+    display: grid;
+    grid-template-columns: minmax(11rem, 18rem) minmax(0, 35rem);
+    column-gap: clamp(3rem, 5vw, 5rem);
+    align-items: start;
+  }
+
+  .meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .version {
+    flex-basis: auto;
+  }
+
+  .summary {
+    margin-top: 0;
+  }
+}
+
+/*
+ * L'en-tête reste collé sous la barre fixe (4,75 rem, plus 1,5 rem) pendant qu'on lit sa version, et la quitte avec
+ * elle. Pas sur écran bas : la barre y suit la page, et l'en-tête cacherait le peu de hauteur qui reste.
+ */
+@media (min-width: 64rem) and (min-height: 30.0625rem) {
+  .meta {
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 6.25rem);
+  }
+}

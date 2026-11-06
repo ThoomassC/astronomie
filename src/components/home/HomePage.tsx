@@ -4,6 +4,7 @@ import { ContactFooter } from "@/components/site/ContactFooter";
 import { getHomeContent } from "@/content/home/content";
 import type { Locale } from "@/i18n/locales";
 import { pathFor } from "@/i18n/routes";
+import { pageGenerationTime } from "./generation";
 import { HomeCards } from "./HomeCards";
 import { ArrowIcon } from "./icons";
 import { KeyFigures } from "./KeyFigures";
@@ -12,9 +13,10 @@ import styles from "./HomePage.module.css";
 
 /**
  * Corps de l'accueil, rendu par le serveur dans la langue de la page : le titre, la promesse et le seul bouton plein
- * (vers le voyage), puis le planétaire du jour (seule feuille client), les trois cartes et les chiffres clés ; en pied
- * de page, la signature et les contacts de l'auteur. Pas de scène 3D : la page s'affiche tout de suite. La route pose
- * avant lui le script des anciens liens, le lien d'évitement et la barre.
+ * (vers le voyage), puis le planétaire du jour (seule feuille client, dessiné dès le HTML aux positions de la
+ * génération), les trois cartes et les chiffres clés ; en pied de page, la signature et les contacts de l'auteur. Pas
+ * de scène 3D : la page s'affiche tout de suite. La route pose avant lui le script des anciens liens, le lien
+ * d'évitement et la barre.
  */
 export function HomePage({ locale }: { locale: Locale }) {
   const { intro, cards, figures } = getHomeContent(locale);
@@ -30,7 +32,7 @@ export function HomePage({ locale }: { locale: Locale }) {
               <ArrowIcon className={styles.arrow} />
             </Link>
           </div>
-          <Orrery />
+          <Orrery generatedAt={pageGenerationTime()} />
         </div>
         <HomeCards locale={locale} content={cards} />
         <KeyFigures locale={locale} content={figures} />

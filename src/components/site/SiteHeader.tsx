@@ -28,24 +28,24 @@ interface SiteHeaderProps {
   children?: ReactNode;
 }
 
+/** Pages à scène, longues, où la barre reste fixe en haut de l'écran (`data-pinned`), toujours à portée. */
+const PINNED_PAGES: ReadonlySet<PageKey> = new Set(["voyage", "sizes"]);
+
 /**
- * Barre haute commune aux quatre pages, rendue par chaque page : l'onglet courant est connu sans `usePathname`, et
+ * Barre haute commune aux cinq pages, rendue par chaque page : l'onglet courant est connu sans `usePathname`, et
  * chaque page y glisse ses commandes. Dans l'ordre du DOM, qui est l'ordre de tabulation : marque (retour à
  * l'accueil), onglets (plus de 860 px), puis un bloc à droite : commandes de la page, langue (plus de 860 px), menu
  * replié (860 px et moins). Ces trois parties sont les trois colonnes de la grille qui centre les onglets dans la
  * barre (SiteHeader.module.css). `data-page` et `data-controls` (commandes présentes) règlent la mise en page ; la
- * barre s'efface pendant l'exploration du voyage (`data-hide-on-explore`).
+ * barre s'efface pendant l'exploration du voyage (`data-hide-on-explore`). Au Voyage et à Tailles, elle reste fixe en
+ * haut de l'écran (`data-pinned`), en descendant comme en remontant. Rendue entièrement par le serveur.
  */
 export function SiteHeader({ locale, page, children }: SiteHeaderProps) {
   const t = SITE_STRINGS[locale];
   const hasControls = children !== undefined && children !== null && children !== false;
-  return (
-    <header
-      className={`bar ${styles.header}`}
-      data-hide-on-explore
-      data-page={page}
-      data-controls={hasControls ? "" : undefined}
-    >
+  const className = `bar ${styles.header}`;
+  const content = (
+    <>
       {/* Le nom passe par aria-label : la mise en page masque le texte visible sur les écrans étroits. */}
       <Link className="brand" href={pathFor("home", locale)} aria-label={t.brandHome}>
         <BrandMark />
@@ -59,6 +59,17 @@ export function SiteHeader({ locale, page, children }: SiteHeaderProps) {
         <LanguageMenu locale={locale} page={page} />
         <SiteMenu locale={locale} page={page} />
       </div>
+    </>
+  );
+  return (
+    <header
+      className={className}
+      data-hide-on-explore
+      data-pinned={PINNED_PAGES.has(page) ? "" : undefined}
+      data-page={page}
+      data-controls={hasControls ? "" : undefined}
+    >
+      {content}
     </header>
   );
 }

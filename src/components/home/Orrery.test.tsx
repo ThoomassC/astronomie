@@ -1,27 +1,40 @@
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HOME_STRINGS } from "@/components/home/home.strings";
 import { Orrery } from "@/components/home/Orrery";
+import { stubMatchMedia } from "@/components/modules/testUtils";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import type { Locale } from "@/i18n/locales";
+import { julianDate } from "@/lib/astro/ephemeris";
+import type { PlanetKey } from "@/lib/astro/planets";
+import { glideLongitude, orreryPlanets } from "@/lib/home/orrery";
 
-/** Chargement de la page le 29 octobre 2026 à midi UTC : le même jour dans tous les fuseaux d'Europe et d'Amérique. */
+/**
+ * Fuseau le plus en avance, UTC+14 : les tests y tournent, pour qu'une date écrite dans le mauvais fuseau se voie. La
+ * génération (23 h 30 UTC le 1er octobre) y tombe déjà le 2 ; le chargement (midi UTC le 29), le 30 à 2 h.
+ */
+const FAR_TIME_ZONE = "Pacific/Kiritimati";
+
+/** Chargement de la page le 29 octobre 2026 à midi UTC : le 30 octobre, à 2 h, pour le visiteur de Kiritimati. */
 const LOAD_TIME = Date.UTC(2026, 9, 29, 12);
 
-function inLocale(locale: Locale) {
+/** Génération de la page quatre semaines plus tôt, le 1er octobre 2026 à 23 h 30 UTC : datée du 1er en temps universel. */
+const GENERATED_AT = Date.UTC(2026, 9, 1, 23, 30);
+
+function inLocale(locale: Locale, generatedAt = GENERATED_AT) {
   return (
     <LocaleProvider locale={locale}>
-      <Orrery />
+      <Orrery generatedAt={generatedAt} />
     </LocaleProvider>
   );
 }
 
 /** Rendu serveur posé dans un conteneur du document, comme le reçoit le navigateur. */
-function serverRendered(locale: Locale): HTMLDivElement {
+function serverRendered(locale: Locale, generatedAt = GENERATED_AT): HTMLDivElement {
   const container = document.createElement("div");
-  container.innerHTML = renderToString(inLocale(locale));
+  container.innerHTML = renderToString(inLocale(locale, generatedAt));
   document.body.append(container);
   return container;
 }
@@ -32,8 +45,31 @@ function legendEntries(container: HTMLElement): string[] {
   return legend ? within(legend).getAllByRole("listitem").map((item) => item.textContent ?? "") : [];
 }
 
+/** Rotation autour du Soleil (°) d'une planète dessinée : la première de son `transform`, l'opposé de sa longitude. */
+function rotationOf(container: ParentNode, key: PlanetKey): number {
+  const style = container.querySelector(`[data-planet="${key}"]`)?.getAttribute("style") ?? "";
+  const match = /rotate\((-?[\d.]+)deg\)/.exec(style);
+  if (!match) throw new Error(`Aucune rotation pour ${key} : « ${style} »`);
+  return Number(match[1]);
+}
+
+/** Groupe dessiné d'une planète, celui qui glisse. */
+function planetOf(container: ParentNode, key: PlanetKey): Element {
+  const planet = container.querySelector(`[data-planet="${key}"]`);
+  if (!planet) throw new Error(`Planète absente : ${key}`);
+  return planet;
+}
+
+/** Longitudes (°) des huit planètes à un instant. */
+function longitudesAt(ms: number): Map<PlanetKey, number> {
+  return new Map(orreryPlanets(julianDate(ms)).map((planet) => [planet.key, planet.longitudeDeg]));
+}
+
 beforeEach(() => {
+  // Node relit TZ à chaque affectation : Date et Intl passent à ce fuseau, jusqu'à la restauration.
+  vi.stubEnv("TZ", FAR_TIME_ZONE);
   vi.spyOn(performance, "timeOrigin", "get").mockReturnValue(LOAD_TIME);
+  stubMatchMedia({ reduced: false });
 });
 
 afterEach(() => {
@@ -41,28 +77,48 @@ afterEach(() => {
   document.body.replaceChildren();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("Orrery, rendu serveur", () => {
-  it("devrait dessiner les huit orbites et le Soleil, sans aucune planète, et dater d'un tiret", () => {
+  it("devrait dessiner les huit planètes dès le serveur, aux positions du jour de la génération, daté de ce jour", () => {
     const container = serverRendered("fr");
     expect(container.querySelectorAll("[data-orbit]")).toHaveLength(8);
-    expect(container.querySelectorAll("[data-planet]")).toHaveLength(0);
-    expect(container.querySelector("[data-date]")?.textContent).toBe("Positions réelles du –");
+    expect(container.querySelectorAll("[data-planet]")).toHaveLength(8);
+    longitudesAt(GENERATED_AT).forEach((longitude, key) => {
+      expect(rotationOf(container, key)).toBeCloseTo(-longitude, 2);
+    });
+    // Repère indépendant : le 1er octobre, le Soleil est vu vers 188° de longitude, la Terre est donc vers 8°.
+    expect(rotationOf(container, "earth")).toBeCloseTo(-8.4, 0);
+    // En temps universel, quel que soit le fuseau : à Kiritimati, il est déjà le 2 octobre.
+    expect(container.querySelector("[data-date]")?.textContent).toBe("Positions réelles du 1 octobre 2026");
+    expect(container.querySelector("time")).toHaveAttribute("dateTime", "2026-10-01");
   });
 
-  it("devrait déjà nommer les huit planètes dans la légende, la Terre comme « vous êtes ici »", () => {
+  it("devrait déjà dire où est chaque planète le jour de la génération, comme l'heure d'un cadran", () => {
     const container = serverRendered("fr");
     expect(legendEntries(container)).toEqual([
-      "Mercure",
-      "Vénus",
-      "Terre (vous êtes ici)",
-      "Mars",
-      "Jupiter",
-      "Saturne",
-      "Uranus",
-      "Neptune",
+      "Mercure, à 6 heures",
+      "Vénus, à 3 heures",
+      "Terre (vous êtes ici), à 3 heures",
+      "Mars, à 12 heures",
+      "Jupiter, à 11 heures",
+      "Saturne, à 3 heures",
+      "Uranus, à 1 heure",
+      "Neptune, à 3 heures",
     ]);
+    expect(container.querySelector("ul")).toHaveAttribute("aria-label", HOME_STRINGS.fr.legendWithPositions);
+  });
+
+  it("ne devrait poser aucune étiquette avant le script : elles se mesurent dans la page", () => {
+    const container = serverRendered("fr");
+    expect(container.querySelectorAll("[data-placed], [data-leader]")).toHaveLength(0);
+    expect(container.textContent).not.toContain("Vous êtes ici");
+  });
+
+  it("devrait laisser la légende nommer les planètes avant le script, ou sans lui, ou s'il échoue", () => {
+    const container = serverRendered("fr");
+    expect(container.firstElementChild).not.toHaveAttribute("data-labelled");
   });
 
   it("devrait réserver la place de la date la plus longue de la langue, pour que la ligne ne bouge pas", () => {
@@ -72,29 +128,128 @@ describe("Orrery, rendu serveur", () => {
 });
 
 describe("Orrery, à l'hydratation", () => {
-  it("devrait reprendre le rendu serveur sans écart, puis poser les huit planètes", async () => {
+  /** Hydrate le rendu serveur et rend le conteneur, une fois les planètes menées au chargement. */
+  async function hydrated(generatedAt = GENERATED_AT) {
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     const recoverable: unknown[] = [];
-    const container = serverRendered("fr");
+    const container = serverRendered("fr", generatedAt);
     const root = await act(async () =>
-      hydrateRoot(container, inLocale("fr"), { onRecoverableError: (error) => recoverable.push(error) }),
+      hydrateRoot(container, inLocale("fr", generatedAt), { onRecoverableError: (error) => recoverable.push(error) }),
     );
+    return { container, root, errors, recoverable };
+  }
+
+  it("devrait reprendre le rendu serveur sans écart", async () => {
+    const { root, errors, recoverable } = await hydrated();
     expect(recoverable).toEqual([]);
     expect(errors).not.toHaveBeenCalled();
-    expect(container.querySelectorAll("[data-planet]")).toHaveLength(8);
+    act(() => root.unmount());
+  });
+
+  it("devrait faire glisser chaque planète de la génération au chargement, en avant sur son orbite", async () => {
+    const { container, root } = await hydrated();
+    const from = longitudesAt(GENERATED_AT);
+    longitudesAt(LOAD_TIME).forEach((longitude, key) => {
+      const start = from.get(key) ?? 0;
+      expect(rotationOf(container, key)).toBeCloseTo(-glideLongitude(start, longitude, true), 2);
+      // Quatre semaines : Mercure fait un tiers de tour, toutes avancent, aucune ne fait un tour complet.
+      expect(-rotationOf(container, key) - start).toBeGreaterThan(0);
+      expect(-rotationOf(container, key) - start).toBeLessThan(360);
+    });
+    expect(container.querySelector("[data-glide]")).not.toBeNull();
+    // Le chargement, lui, se date dans le fuseau du visiteur : le 30 à Kiritimati.
+    expect(container.querySelector("[data-date]")?.textContent).toBe("Positions réelles du 30 octobre 2026");
+    expect(container.querySelector("time")).toHaveAttribute("dateTime", "2026-10-30");
+    act(() => root.unmount());
+  });
+
+  it("ne devrait rien faire glisser quand la page est chargée à l'heure de sa génération", async () => {
+    const { container, root } = await hydrated(LOAD_TIME);
+    expect(container.querySelector("[data-glide]")).toBeNull();
+    act(() => root.unmount());
+  });
+
+  it("devrait finir le glissement quand une planète finit sa transition : plus rien ne l'attend ensuite", async () => {
+    const { container, root } = await hydrated();
+    expect(container.querySelector("[data-glide]")).not.toBeNull();
+    act(() => {
+      fireEvent.transitionEnd(planetOf(container, "earth"));
+    });
+    expect(container.querySelector("[data-glide]")).toBeNull();
+    act(() => root.unmount());
+  });
+
+  it("devrait finir le glissement au bout de 1,2 s, même sans fin de transition (transition qui n'a pas lieu)", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const { container, root } = await hydrated();
+      act(() => {
+        vi.advanceTimersByTime(1199);
+      });
+      expect(container.querySelector("[data-glide]")).not.toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(container.querySelector("[data-glide]")).toBeNull();
+      act(() => root.unmount());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("ne devrait montrer les étiquettes et leurs filets qu'à la fin du glissement, posés à l'arrivée", async () => {
+    measureLabels();
+    const { container, root } = await hydrated();
+    // Mesurées et placées pendant le glissement, mais pas encore montrées.
+    await waitFor(() => expect(screen.getByText("Vous êtes ici").getAttribute("style") ?? "").toContain("left"));
+    expect(container.querySelectorAll("[data-placed], [data-leader]")).toHaveLength(0);
+    act(() => {
+      fireEvent.transitionEnd(planetOf(container, "earth"));
+    });
+    expect(container.querySelectorAll("[data-placed]")).toHaveLength(8);
+    expect(container.querySelector("[data-leader]")).not.toBeNull();
+    act(() => root.unmount());
+  });
+
+  it("devrait garder la légende pendant le glissement, puis l'effacer quand les étiquettes paraissent", async () => {
+    measureLabels();
+    const { container, root } = await hydrated();
+    await waitFor(() => expect(screen.getByText("Vous êtes ici").getAttribute("style") ?? "").toContain("left"));
+    expect(container.firstElementChild).not.toHaveAttribute("data-labelled");
+    act(() => {
+      fireEvent.transitionEnd(planetOf(container, "earth"));
+    });
+    expect(container.firstElementChild).toHaveAttribute("data-labelled");
+    act(() => root.unmount());
+  });
+
+  it("ne devrait rien faire glisser en mouvement réduit : les étiquettes se posent d'emblée", async () => {
+    stubMatchMedia({ reduced: true });
+    measureLabels();
+    const { container, root } = await hydrated();
+    expect(container.querySelector("[data-glide]")).toBeNull();
+    await waitFor(() => expect(container.querySelectorAll("[data-placed]")).toHaveLength(8));
     act(() => root.unmount());
   });
 });
 
 describe("Orrery, après le montage", () => {
-  it("devrait dater la ligne et nommer le dessin dans la langue de la page (en)", () => {
+  it("devrait dater la ligne du jour local du chargement et nommer le dessin dans la langue de la page (en)", () => {
     render(inLocale("en"));
     expect(document.querySelectorAll("[data-planet]")).toHaveLength(8);
-    expect(document.querySelector("[data-date]")?.textContent).toBe("Real positions on 29 October 2026");
+    expect(document.querySelector("[data-date]")?.textContent).toBe("Real positions on 30 October 2026");
     expect(screen.getByRole("img")).toHaveAccessibleName(
-      "The eight planets around the Sun, seen from above Real positions on 29 October 2026",
+      "The eight planets around the Sun, seen from above Real positions on 30 October 2026",
     );
-    expect(screen.getByText("29 October 2026").closest("time")).toHaveAttribute("dateTime", "2026-10-29");
+    expect(screen.getByText("30 October 2026").closest("time")).toHaveAttribute("dateTime", "2026-10-30");
+  });
+
+  it("devrait partir des positions du chargement, sans glisser, quand il se monte dans le navigateur", () => {
+    const { container } = render(inLocale("fr"));
+    longitudesAt(LOAD_TIME).forEach((longitude, key) => {
+      expect(rotationOf(container, key)).toBeCloseTo(-longitude, 2);
+    });
+    expect(container.querySelector("[data-glide]")).toBeNull();
   });
 
   it("devrait dire où est chaque planète autour du Soleil, comme l'heure d'un cadran (es)", () => {
@@ -121,21 +276,53 @@ describe("Orrery, après le montage", () => {
   });
 
   it("devrait poser les étiquettes du dessin une fois mesurées, cachées aux lecteurs d'écran", async () => {
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        constructor(private readonly callback: () => void) {}
-        observe() {
-          this.callback();
-        }
-        disconnect() {}
-      },
-    );
-    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(544);
-    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(60);
-    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(16);
+    measureLabels();
     render(inLocale("fr"));
     await waitFor(() => expect(screen.getByText("Vous êtes ici")).toHaveAttribute("data-placed"));
     expect(screen.getByText("Vous êtes ici").closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
   });
+
+  it("devrait nommer chaque planète, et relier par un filet de laiton celles du groupe intérieur", async () => {
+    measureLabels();
+    render(inLocale("fr"));
+    await waitFor(() => expect(document.querySelectorAll("[data-placed]")).toHaveLength(8));
+    // Mercure et Vénus, serrées contre le Soleil, ont toujours leur étiquette reportée au-delà de l'orbite de Mars.
+    expect(document.querySelector('[data-leader="mercury"]')).not.toBeNull();
+    expect(document.querySelector('[data-leader="venus"]')).not.toBeNull();
+    expect(document.querySelector("svg [data-leader]")?.closest("svg")).toBe(screen.getByRole("img"));
+  });
+
+  it("devrait effacer la légende une fois les huit étiquettes posées : elle les répéterait", async () => {
+    measureLabels();
+    const { container } = render(inLocale("fr"));
+    expect(container.firstElementChild).not.toHaveAttribute("data-labelled");
+    await waitFor(() => expect(document.querySelectorAll("[data-placed]")).toHaveLength(8));
+    expect(container.firstElementChild).toHaveAttribute("data-labelled");
+  });
+
+  it("devrait garder la légende quand une étiquette ne trouve pas de place (texte très agrandi)", async () => {
+    measureLabels(300);
+    const { container } = render(inLocale("fr"));
+    // « Vous êtes ici » se pose la première ; d'autres, larges de 300 px, n'ont plus de place sur 544.
+    await waitFor(() => expect(screen.getByText("Vous êtes ici")).toHaveAttribute("data-placed"));
+    expect(document.querySelectorAll("[data-placed]").length).toBeLessThan(8);
+    expect(container.firstElementChild).not.toHaveAttribute("data-labelled");
+  });
 });
+
+/** Boîte du dessin de 544 px et étiquettes de `width` × 16 px, observées dès le montage. */
+function measureLabels(width = 60) {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(private readonly callback: () => void) {}
+      observe() {
+        this.callback();
+      }
+      disconnect() {}
+    },
+  );
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(544);
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(width);
+  vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(16);
+}

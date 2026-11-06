@@ -176,6 +176,30 @@ main > section:focus {
   flex-direction: row-reverse;
 }
 
+/*
+ * Nom posé au-dessus du disque de l'astre (`data-above`, posé par la scène en mise en page compacte) : le disque tient
+ * lieu de repère. L'anneau garde sa place, l'étiquette ses mesures.
+ */
+.lbl[data-above] i {
+  visibility: hidden;
+}
+
+/*
+ * Ce nom tombe souvent sur un fond clair (couronne du Soleil, limbe éclairé) : texte opaque, bordé du halo de nuit
+ * serré des étiquettes posées à nu (ombres de 1 à 3 px, denses au ras des lettres, puis un voile plus large). Les
+ * lettres gardent un contour --nuit, au-dessus de 4,5:1 quel que soit le fond, sans pastille ; les ombres ne changent
+ * pas la hauteur du bouton.
+ */
+.lbl[data-above] > span {
+  opacity: 1;
+  text-shadow:
+    0 0 1px var(--nuit),
+    0 0 2px var(--nuit),
+    0 0 3px var(--nuit),
+    0 0 6px var(--nuit),
+    0 1px 10px var(--nuit);
+}
+
 .real .lbl:not(.deep) i {
   transform: scale(1.6);
   border-width: 1.5px;
@@ -183,10 +207,9 @@ main > section:focus {
 
 /*
  * Ciel profond (étoiles voisines, « Vous êtes ici », centre galactique, cercles) : repères à lire, pas à toucher.
- * Le texte est posé sur une pastille de plaque presque opaque : lisible sur les points les plus clairs de la
- * galaxie (sur du blanc pur, ivoire 11,8:1 et laiton 6,2:1). Le moteur mesure le repère et le pose exactement
- * sur l'astre ; seul le texte occupe la place face aux autres étiquettes, jamais hors de l'écran ni sur le point
- * d'une étoile : à droite du repère, sinon à gauche, sinon le nom seul (la distance est dans la plaque).
+ * Le moteur mesure le repère et le pose exactement sur l'astre ; seul le texte occupe la place face aux autres
+ * étiquettes, jamais hors de l'écran ni sur le point d'une étoile : à droite du repère, sinon à gauche, sinon le nom
+ * seul (la distance est dans la plaque). À Tailles, le texte reste sur une pastille de plaque presque opaque.
  */
 .lbl.deep {
   gap: 0.3rem;
@@ -206,6 +229,43 @@ main > section:focus {
   line-height: 1.4;
   opacity: 1;
   text-shadow: none;
+}
+
+/*
+ * Voyage (`data-deep`) : texte à nu, sans pastille qui cacherait les astres. Un halo de nuit serré autour des lettres
+ * (ombres empilées de 1 à 14 px) le détache du ciel jusque sur les points les plus clairs de la galaxie : chaque lettre
+ * y garde la nuit pour fond (ivoire 15,6:1, brume 7,3:1, laiton 8,2:1). Couleurs forcées : les ombres tombent, le
+ * navigateur pose un fond sous le texte.
+ */
+.lbl.deep[data-deep] {
+  gap: 0.4rem;
+}
+
+.lbl.deep[data-deep] > span {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-shadow:
+    0 0 1px var(--nuit),
+    0 0 2px var(--nuit),
+    0 0 3px var(--nuit),
+    0 0 6px var(--nuit),
+    0 1px 10px var(--nuit),
+    0 0 14px rgba(6, 11, 24, 0.8);
+}
+
+/*
+ * Étoiles voisines (étiquettes du voyage, `data-deep`) : les remarquables en ivoire, leur distance en brume ; les autres
+ * (`minor`), leur nom seul en brume, repère atténué : la carte ne se lit plus comme un nuage d'étiquettes.
+ */
+.lbl.deep[data-deep] .dist,
+.lbl.deep.minor > span {
+  color: var(--brume);
+}
+
+.lbl.deep.minor i {
+  opacity: 0.7;
 }
 
 /*
@@ -232,7 +292,7 @@ main > section:focus {
 
 .lbl.deep.ring {
   color: var(--laiton);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 /* Sur le cercle, une graduation de laiton et non un anneau : on n'y croit pas voir une étoile de plus. */
@@ -269,6 +329,29 @@ main > section:focus {
   font-style: italic;
 }
 
+/*
+ * Mise en page compacte (téléphone, tablette en portrait ; même requête dans screenLayout.ts) : étiquettes plus petites,
+ * à la demande de l'utilisateur, au Voyage et à Tailles : 0,75 rem, sous le minimum de 0,8125 rem du MASTER (exception
+ * notée), rembourrage et pastilles plus fins. Ivoire sur la nuit, détaché du ciel par son ombre ou sa pastille : le
+ * contraste reste bien au-dessus de 4,5:1.
+ */
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait) {
+  .lbl,
+  .lbl.deep.ring {
+    font-size: 0.75rem;
+  }
+
+  .lbl {
+    gap: 0.35rem;
+    padding: 0.2rem 0.4rem 0.2rem 0.15rem;
+  }
+
+  .lbl.deep > span {
+    padding: 0 0.35rem;
+    line-height: 1.3;
+  }
+}
+
 /* Repli sans scène 3D : le canvas (qui garderait sa dernière image) disparaît, un Soleil CSS le remplace. */
 .sky-fallback {
   display: none;
@@ -296,12 +379,13 @@ main > section:focus {
 
 /* ---------- Barre haute ---------- */
 /*
- * Barre commune aux quatre pages (SiteHeader, rendue par chaque page) : marque, onglets, commandes de la page (voyage :
+ * Barre commune aux cinq pages (SiteHeader, rendue par chaque page) : marque, onglets, commandes de la page (voyage :
  * escale en cours, menu des escales, « Tourner autour »), langue ; à 860 px et moins, « Menu » remplace onglets et
  * langue. Ici la ligne, la marque et l'escale en cours ; onglets, langue et menu dans SiteHeader.module.css. Une seule
  * ligne de 320 à 1 440 px, dans les trois langues : rien n'y passe à la ligne, et l'escale en cours (ou le menu des
  * escales) cède la place en finissant en « … ». Hauteur : 0,9 rem + 46 px (capsule des onglets) + 0,9 rem au-dessus de
- * 860 px, commandes de 44 px au-dessous ; la scène mesure son bas.
+ * 860 px, commandes de 44 px au-dessous ; la scène mesure son bas, à sa place de repos. Au Voyage et à Tailles, en mise
+ * en page compacte et sur écran bas, elle reste fixe en haut de l'écran (fin de « Petits écrans »).
  */
 body::before {
   content: "";
@@ -452,17 +536,25 @@ body::before {
   pointer-events: none;
 }
 
+/*
+ * Repère d'une escale : un lien, cible de 24 px au moins, pastille sur l'axe. L'escale en cours et ses deux voisines
+ * (`data-near`, posé par la règle) montrent leur nom et leur distance ; sur grand écran, les autres se réduisent à une
+ * graduation (plus bas).
+ */
 .rail a {
   position: absolute;
   right: -6px;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
+  min-width: 24px;
+  min-height: 24px;
   padding: 0.2rem 0 0.2rem 0.4rem;
   color: var(--brume);
   font-size: 0.8125rem;
-  line-height: 1.1;
+  line-height: 1.15;
   text-decoration: none;
   white-space: nowrap;
   text-shadow:
@@ -473,6 +565,7 @@ body::before {
 
 .rail a i {
   order: 2;
+  flex: none;
   width: 11px;
   height: 11px;
   border-radius: 50%;
@@ -482,8 +575,8 @@ body::before {
 
 .rail a small {
   display: block;
-  font-size: 0.6875rem;
-  opacity: 0.8;
+  font-size: 0.8125rem;
+  opacity: 0.85;
   font-variant-numeric: tabular-nums;
 }
 
@@ -496,9 +589,153 @@ body::before {
   color: var(--ivoire);
 }
 
+/* Le repère survolé ou au focus passe devant ses voisins : son infobulle ne se glisse pas dessous. */
+.rail a:hover,
+.rail a:focus-visible {
+  z-index: 1;
+}
+
 .rail a[aria-current="step"] i {
   background: var(--pc);
   box-shadow: 0 0 0 4px rgba(236, 229, 211, 0.08);
+}
+
+/*
+ * Grand écran : l'escale en cours et ses deux voisines gardent nom et distance, à la ligne plutôt que tronqués ; un
+ * texte qui toucherait celui d'à côté s'en écarte (`--shift`, mesuré par la règle), sa pastille restant sur l'axe. Les
+ * autres repères se réduisent à une graduation, petite pastille de leur couleur : leur texte, masqué à l'œil mais lu
+ * (jamais `display: none`), paraît en infobulle au survol et au focus clavier ; Échap la masque jusqu'au prochain survol
+ * ou focus (`data-tips`). Apparitions brèves, en fondu ; en mouvement réduit, ni fondu ni glissement (règle globale).
+ */
+@media (min-width: 861px) {
+  .rail a[data-near] > span {
+    max-width: calc(var(--rail-w) - 0.5rem);
+    white-space: normal;
+    text-wrap: balance;
+    transform: translateY(var(--shift, 0px));
+    transition: transform 0.15s ease-out;
+    animation: rail-label-in 0.2s ease-out;
+  }
+
+  /*
+   * Un lien nommé (≈ 36 px) est plus haut que l'écart entre repères (26 px) : sa boîte passerait sous celle du lien
+   * suivant, peint par-dessus, et un clic sur le bas de son texte mènerait à l'escale d'après. La cible est donc son
+   * texte, déplacé avec lui et écarté de 4 px de ses voisins, et sa pastille ; la boîte du lien laisse passer.
+   */
+  .rail a[data-near] {
+    pointer-events: none;
+  }
+
+  .rail a[data-near] > span,
+  .rail a[data-near] > i {
+    pointer-events: auto;
+  }
+
+  /*
+   * Graduation : cible de 24 × 24 px centrée sur sa pastille (centre à 0,5 px de l'axe, comme la grande), à l'écart de
+   * la colonne des textes nommés, qui s'arrête 13 px avant l'axe.
+   */
+  .rail a:not([data-near]) {
+    right: -12.5px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .rail a:not([data-near]) i {
+    width: 7px;
+    height: 7px;
+  }
+
+  .rail a:not([data-near]) > span {
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  /* Collée à la cible : le pointeur passe de la pastille à l'infobulle sans la perdre. */
+  .rail:not([data-tips="off"]) a:not([data-near]):is(:hover, :focus-visible) > span {
+    width: max-content;
+    max-width: 12rem;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--filet-fort);
+    border-radius: var(--r-md);
+    background: rgba(8, 14, 32, 0.94);
+    color: var(--ivoire);
+    white-space: normal;
+    text-shadow: none;
+    transform: translateY(-50%);
+    animation: rail-tip-in 0.15s ease-out;
+  }
+
+  .rail:not([data-tips="off"]) a:not([data-near]):is(:hover, :focus-visible) i {
+    width: 11px;
+    height: 11px;
+  }
+
+  /* Au doigt, sans survol : l'infobulle d'une graduation touchée ne reste pas posée pendant le saut vers l'escale. */
+  @media (hover: none) {
+    .rail a:not([data-near]):hover:not(:focus-visible) > span {
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      padding: 0;
+      border: 0;
+    }
+  }
+}
+
+@keyframes rail-label-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rail-tip-in {
+  from {
+    opacity: 0;
+    transform: translate(0.25rem, -50%);
+  }
+}
+
+/*
+ * Couleurs forcées : les fonds disparaissent. Axe, graduations, curseur et pastilles sont redessinés en couleurs du
+ * système ; l'escale en cours garde une pastille pleine (Highlight).
+ */
+@media (forced-colors: active) {
+  .rail .axis,
+  .rail .tick {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .rail .cursor {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+
+  .rail .cursor::after {
+    forced-color-adjust: none;
+    border-right-color: Highlight;
+  }
+
+  .rail a i {
+    forced-color-adjust: none;
+    background: Canvas;
+    border-color: CanvasText;
+  }
+
+  .rail a[aria-current="step"] i {
+    background: Highlight;
+    border-color: Highlight;
+  }
 }
 
 /* Repère écarté de sa vraie position : équerre fine depuis la graduation jusqu'à la pastille. */
@@ -715,6 +952,11 @@ main > section > * {
   border-radius: inherit;
   opacity: 0.9;
   pointer-events: none;
+}
+
+/* Squelette de la carte fixe (CardTrack) : seulement en carte fixe, pendant un passage (« Carte fixe », plus bas). */
+.plate-skeleton {
+  display: none;
 }
 
 /*
@@ -982,11 +1224,14 @@ main > section > * {
 
 .more-btn svg {
   flex: none;
+}
+
+.more-btn .more-chevron {
   transition: transform 0.25s;
 }
 
-.more-btn[aria-expanded="true"] svg,
-.more-fold svg {
+.more-btn[aria-expanded="true"] .more-chevron,
+.more-fold .more-chevron {
   transform: rotate(180deg);
 }
 
@@ -1160,6 +1405,186 @@ main > section > * {
   color: var(--brume);
 }
 
+/* ---------- Escales voisines ---------- */
+/*
+ * D'escale en escale (StopSteps), partout où la règle cède la place au menu des escales (téléphone en portrait et en
+ * paysage, fenêtres de 860 px et moins ; même requête que la liste des escales, plus bas) et, sans JavaScript, en mise
+ * en page compacte : un lien vers l'escale précédente (flèche, nom court) à gauche, un vers la suivante (nom court,
+ * flèche) à droite. Pilules de 44 px, en retrait des titres-boutons de la plaque (filet --filet, comme « Replier »),
+ * flèche en laiton. Un nom n'est jamais coupé : quand les deux ne tiennent pas côte à côte, la suivante passe dessous,
+ * toujours à droite ; un nom trop long pour la ligne passe lui-même à la ligne. Sur grand écran, la règle suffit.
+ */
+.stop-steps {
+  display: none;
+}
+
+/* Copie posée autour du nom (Plate) : seulement dans la plaque compacte, avec JavaScript (plus bas). */
+.plate-title > .stop-steps {
+  display: none;
+}
+
+@media (max-width: 640px),
+  (max-width: 1100px) and (orientation: portrait),
+  (max-width: 860px) and (scripting: enabled),
+  (max-height: 34.125rem) and (scripting: enabled) {
+  .stop-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .stop-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--filet);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--ivoire);
+    font-size: 0.9375rem;
+    line-height: 1.3;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    transition:
+      border-color 0.2s,
+      background-color 0.2s;
+  }
+
+  .stop-step svg {
+    flex: none;
+    color: var(--laiton);
+  }
+
+  .stop-step[data-step="next"] {
+    margin-left: auto;
+    text-align: right;
+  }
+
+  @media (hover: hover) {
+    .stop-step:hover {
+      border-color: var(--ivoire);
+    }
+  }
+
+  /* Le voile se pose sur le fond, qui reste dessous (celui de l'interlude compris). */
+  .stop-step:active {
+    background-image: linear-gradient(rgba(236, 229, 211, 0.1), rgba(236, 229, 211, 0.1));
+  }
+
+  /* Interlude : la citation, puis ses escales voisines dessous, sur le fond .92 des pilules (la scène passe dessous). */
+  .interlude {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .interlude .stop-steps {
+    max-width: 34rem;
+    margin: 1.5rem 0 0 clamp(0rem, 4vw, 4rem);
+  }
+
+  .interlude .stop-step {
+    background-color: rgba(8, 14, 32, 0.92);
+  }
+}
+
+@media (max-width: 640px) {
+  .interlude .stop-steps {
+    margin-left: 0;
+  }
+}
+
+/*
+ * Plaque compacte, avec JavaScript (titres-boutons affichés) : la plaque collée en bas borde la bande libre de la scène,
+ * et une rangée de plus la rognerait, jusqu'à la perdre sur un téléphone court (screen.test.ts). Les liens se réduisent
+ * à leur flèche, ronds de 44 px, le nom restant dans le nom accessible, et se posent de part et d'autre du nom
+ * (« ‹ Soleil › »), aux bords de la plaque, centrés sur lui. Chacun garde sa colonne : un bout de parcours laisse une
+ * place vide et le nom ne saute pas d'une escale à l'autre. Le nom se centre entre eux ; trop long pour une ligne, il
+ * passe à la ligne, aligné à gauche, jamais coupé ni recouvert. Lus après le nom, ils précèdent les titres-boutons dans
+ * l'ordre de tabulation. Leurs pilules, au bout de la rangée des titres-boutons, restent masquées.
+ */
+@media (max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled) {
+  .plate-sections > .stop-steps {
+    display: none;
+  }
+
+  .plate-title > .stop-steps {
+    display: contents;
+  }
+
+  /* Le rang se centre au-dessus du nom, entre les flèches. */
+  .plate .rank {
+    text-align: center;
+  }
+
+  .plate-title {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    column-gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .plate-title > h2 {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    margin: 0;
+    text-align: left;
+    overflow-wrap: break-word;
+    hyphens: manual;
+  }
+
+  .plate-title .stop-step {
+    justify-content: center;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    grid-row: 1;
+  }
+
+  .plate-title .stop-step[data-step="previous"] {
+    grid-column: 1;
+  }
+
+  .plate-title .stop-step[data-step="next"] {
+    grid-column: 3;
+    margin-left: 0;
+  }
+
+  .plate-title .stop-step > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+/*
+ * Plaque compacte sous 360 px : entre les deux flèches, le nom n'a plus que 150 à 190 px. Il passe à la ligne entre
+ * ses mots, jamais au milieu d'un nom propre (« L'Univers observable », « Trou noir du Fer à cheval cosmique », « El
+ * Universo observable ») : il se réduit avec l'écran pour que son mot le plus long tienne sur une ligne. Plus précis que
+ * la taille des petits écrans (`.plate h2`, plus bas).
+ */
+@media (max-width: 360px) and (scripting: enabled) {
+  .plate .plate-title > h2 {
+    font-size: clamp(1.75rem, 9vw, 2.5rem);
+  }
+}
+
+/* Couleurs forcées : le filet, presque transparent, prend la couleur du texte. */
+@media (forced-colors: active) {
+  .stop-step {
+    border-color: CanvasText;
+  }
+}
+
 /* ---------- Au-delà : échelle en heures-lumière ---------- */
 .lightscale-title {
   font-size: 1rem;
@@ -1233,6 +1658,56 @@ footer a {
 }
 
 /* ---------- Machine à remonter le temps ---------- */
+/*
+ * Fondus fixes du voyage (ScreenFades) : sous la barre haute, de la nuit vers le transparent, et sous le dock, du
+ * transparent vers la nuit. Le texte d'une plaque qui passe dessous s'efface au lieu de croiser la marque ou d'être
+ * tranché par le dock. Au-dessus du contenu et du pied de page (2), sous la règle (4), la barre et le dock (6), deux
+ * bandes et rien entre elles, sans intercepter un clic ; effacés avec la page pendant l'exploration
+ * (data-hide-on-explore). Cachés par défaut : ils ne paraissent que sur grand écran, quand la page les déclare (plus
+ * bas). En mise en page compacte, la plaque se pose au-dessus du dock ; sur écran bas, le dock suit la page. Là où ils
+ * manquent, la barre reste fixe et voilée (fin de « Petits écrans ») : rien n'y passe dessous.
+ */
+.bar-fade,
+.dock-fade {
+  display: none;
+  position: fixed;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+/* La barre (4,75 rem, encoche comprise) et 40 px de plus. */
+.bar-fade {
+  top: 0;
+  height: calc(env(safe-area-inset-top, 0px) + 4.75rem + 40px);
+  background: linear-gradient(var(--nuit), rgba(6, 11, 24, 0.72) 45%, rgba(6, 11, 24, 0));
+}
+
+.dock-fade {
+  bottom: 0;
+  height: calc(140px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(rgba(6, 11, 24, 0), rgba(6, 11, 24, 0.72) 55%, var(--nuit));
+}
+
+/*
+ * Grand écran (ni mise en page compacte ni écran bas), page qui déclare ses fondus (`data-fades` sur <html>) : ils
+ * paraissent, et ce qui reçoit le focus s'arrête avant eux, contour compris (0,75 rem d'air).
+ */
+@media (min-width: 1101px) and (min-height: 30.0625rem),
+  (min-width: 641px) and (orientation: landscape) and (min-height: 30.0625rem) {
+  html[data-fades] .bar-fade,
+  html[data-fades] .dock-fade {
+    display: block;
+  }
+
+  html[data-fades] {
+    scroll-padding-block:
+      calc(env(safe-area-inset-top, 0px) + 4.75rem + 40px + 0.75rem)
+      calc(140px + 0.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .dock {
   position: fixed;
   z-index: 6;
@@ -1921,23 +2396,10 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 }
 
 /*
- * Écran bas (téléphone en paysage, zoom à 400 %) : la barre suit la page et le bouton sortirait de l'écran ; il se
- * fixe en haut à droite, la barre lui réserve sa place. Pendant le mode, le dock, qui a rejoint la page, redevient
- * fixe pour rester utilisable.
+ * Écran bas (téléphone en paysage, zoom à 400 %) : le bouton reste dans la barre, fixe là aussi (« Petits écrans »,
+ * plus bas). Pendant le mode, le dock, qui a rejoint la page, redevient fixe pour rester utilisable.
  */
 @media (max-height: 30rem) {
-  /* Réserve du bouton fixé, qui n'existe que sur la barre du voyage. */
-  .bar[data-page="voyage"] {
-    padding-right: calc(var(--gr) + 52px);
-  }
-
-  .explore-toggle {
-    position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
-    right: var(--gr);
-    z-index: 6;
-  }
-
   html[data-explore] .dock {
     position: fixed;
     left: 0;
@@ -2103,10 +2565,53 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 }
 
 /*
- * Mise en page compacte, téléphone et tablette en portrait (même requête dans engine.ts) : la plaque
- * reste compacte (nom, accroche, boutons) et collée au bas de l'écran, au-dessus du dock ; la scène
- * cadre l'astre dans la bande libre au-dessus d'elle. L'escale reste haute pour que la caméra s'y
- * pose le temps de lire. L'espace sous la plaque vaut le dégagement du dock : elle reste collée
+ * Écran tactile : chaque commande du dock offre une cible de 44 px (pause, vitesses ou bouton qui les fait défiler,
+ * retour à aujourd'hui, distances réelles), la copie sombre des libellés à la hauteur de la piste. Le dock garde sa
+ * hauteur réservée (82 px : 70 px pris en mise en page compacte, 79 px avec la piste des vitesses).
+ */
+@media (pointer: coarse) {
+  .dock .ibtn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .dock .today,
+  .dock .seg button,
+  .dock .seg-ink > span {
+    min-height: 44px;
+  }
+
+  .dock .today:not(.cycle) {
+    min-width: 44px;
+  }
+}
+
+/*
+ * Téléphones étroits, au doigt : les 10 px gagnés par les cibles sont repris sur les écarts, la marge de la date et
+ * celle des deux boutons de droite. À 360 px, le dock tient encore sur une ligne, bascule enfoncée et date la plus
+ * longue (« 30 sept. 2026 ») comprises ; sous 360 px, il passe déjà sur deux lignes (116 px pris des 132 réservés).
+ */
+@media (max-width: 24rem) and (pointer: coarse) {
+  .dock {
+    gap: 0.1rem;
+  }
+
+  .date {
+    padding: 0 0.2rem;
+  }
+
+  .dock .today:not(.cycle) {
+    padding-inline: 0.3rem;
+  }
+}
+
+/*
+ * Mise en page compacte, téléphone et tablette en portrait (même requête dans screenLayout.ts) : la
+ * plaque reste compacte (nom, accroche, boutons). Avec JavaScript, celle de l'escale courante se fixe
+ * en haut de l'écran, sous la barre (« Carte fixe », plus bas) ; ici, la forme de repli des
+ * navigateurs sans la requête `scripting` : collée au bas de l'écran, au-dessus du dock. L'escale
+ * reste haute pour que la caméra s'y pose le temps de lire ; sa hauteur règle le rythme du voyage,
+ * carte fixe comprise. L'espace sous la plaque vaut le dégagement du dock : elle reste collée
  * jusqu'au départ de la caméra, pas avant. Entre deux escales, hors de leur plage de repos, un
  * espace couvre le reste de l'avance de l'arrivée (12 % de l'écran) : à l'arrivée sur l'escale
  * suivante, la plaque précédente est déjà sortie de l'écran, même sur une grande tablette.
@@ -2266,11 +2771,104 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   }
 }
 
+/*
+ * Plaque compacte, avec JavaScript (titres-boutons affichés) : rang, nom encadré des escales voisines (« Escales
+ * voisines »), puis la rangée des titres-boutons. L'accroche cède sa ligne à l'astre, qui gagne autant de bande libre ;
+ * masquée à l'œil seulement, posée dans la rangée du nom sans y prendre de cellule, elle reste lue, une fois, juste
+ * après le nom. Sur grand écran et sans JavaScript, elle reste.
+ *
+ * Titres-boutons : ronds de 44 px, pictogramme seul au trait de laiton (PlateIcon), sur une rangée centrée sous le nom.
+ * Le libellé, masqué à l'œil, reste le nom accessible et paraît en infobulle au survol. Une seule section s'ouvre à la
+ * fois (Plate) : elle passe sous la rangée, « Replier » sous elle. Bouton ouvert : fond `--soleil`, pictogramme sombre
+ * et anneau `--soleil` détaché de la plaque, un changement de fond et pas une teinte seule ; son contour de focus se
+ * détache à son tour de l'anneau.
+ */
+@media (max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled) {
+  .plate .hook {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .plate-sections {
+    justify-content: center;
+  }
+
+  .more-heading {
+    flex: none;
+  }
+
+  .more-zone {
+    order: 1;
+  }
+
+  .more-btn {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    color: var(--laiton);
+  }
+
+  .more-btn .more-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .more-btn .more-chevron {
+    display: none;
+  }
+
+  .more-btn[aria-expanded="true"] {
+    border-color: var(--soleil);
+    background: var(--soleil);
+    color: var(--encre);
+    box-shadow: 0 0 0 2px var(--plaque), 0 0 0 3px var(--soleil);
+  }
+
+  /* L'anneau s'étend à 3 px du bouton : le contour de focus (2 px), posé à 5 px, laisse entre eux le fond de la plaque. */
+  .more-btn[aria-expanded="true"]:focus-visible {
+    outline-offset: 5px;
+  }
+
+  /* « Replier » : sous la section ouverte, en retrait (filet --filet, pictogramme --brume). */
+  .more-fold {
+    flex-basis: auto;
+    order: 2;
+    color: var(--brume);
+  }
+}
+
+/* Couleurs forcées : le filet des titres-boutons prend la couleur du texte ; le bouton ouvert, le fond de sélection. */
+@media (forced-colors: active) {
+  .more-btn {
+    border-color: ButtonText;
+  }
+
+  .more-btn[aria-expanded="true"] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+    box-shadow: none;
+    outline-color: CanvasText;
+  }
+}
+
 @media (max-width: 640px) {
-  /* Les plaques défilent sous la barre : un voile plus dense garde la marque lisible. */
+  /* Le voile de la barre, sous laquelle passent les plaques : en fin de feuille (« Voile de la barre fixe »). */
   .bar {
     gap: 0.6rem;
-    background: linear-gradient(rgba(6, 11, 24, 0.94) 55%, rgba(6, 11, 24, 0));
   }
 
   .brand {
@@ -2394,9 +2992,9 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
  * sans nom au doigt (860 px et moins), en mise en page compacte, et partout où elle est trop basse
  * pour ses seize repères : il leur faut 15 × 24 px = 360 px pour garder 24 px entre leurs centres
  * (WCAG 2.5.8), soit 66vh ≥ 360 px, une vue d'au moins 546 px de haut (34,125 rem). Sur un écran
- * bas (téléphone en paysage, zoom à 400 %), la barre suit la page : la liste s'ouvre en haut de
- * page, quand la règle n'y aurait que des repères qui se chevauchent. Pas sans JavaScript : la
- * liste ne s'ouvrirait pas.
+ * bas (téléphone en paysage, zoom à 400 %), la liste s'ouvre sous la barre, restée fixe, et défile
+ * en elle-même, quand la règle n'y aurait que des repères qui se chevauchent. Pas sans JavaScript :
+ * la liste ne s'ouvrirait pas.
  */
 @media (max-width: 860px) and (scripting: enabled),
   (max-width: 1100px) and (orientation: portrait) and (scripting: enabled),
@@ -2476,7 +3074,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     list-style: none;
     /*
      * Elle défile entre la barre fixe et la réserve du dock (hors mise en page compacte, rien à dégager) ; sur écran
-     * bas, où la barre et le dock suivent la page, elle s'ouvre en entier (plus bas, « Écran bas ou zoom à 400 % »).
+     * bas, où le dock suit la page, jusqu'au bas de la vue (plus bas, « Écran bas ou zoom à 400 % »).
      */
     max-height: calc(100vh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
     max-height: calc(100svh - 6rem - var(--dock-clear, 0px) - env(safe-area-inset-top, 0px));
@@ -2636,14 +3234,349 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   }
 }
 
-/* Écran bas ou zoom à 400 % : la barre et le dock reprennent leur place dans la page. */
+/*
+ * Carte fixe (ADR 0007) : mise en page compacte assez haute (plus de 30 rem ; en paysage bas, la plaque suit la page),
+ * avec JavaScript (FIXED_CARD_QUERY, lib/journey/card.ts). La plaque de l'escale courante (`data-current`, posé depuis
+ * le parcours : CardTrack) se fixe en haut de l'écran, sous la barre, toujours affichée ; les autres, fixées au même
+ * endroit et mesurables, sont découpées à rien (masquées à l'œil seulement) : lues dans l'ordre du document, leur nom
+ * dans la liste des titres, et focalisables (le focus qui y entre rend leur escale courante d'un saut : Plate). Aucune
+ * ne prend de place dans son escale, qui garde sa hauteur : le défilement mène toujours la caméra, et la plaque des escales suivantes ne monte plus de l'écran. Dépliée, la carte s'allonge
+ * jusqu'à son plancher (la réserve du dock, ou le bas de l'écran à Tailles) et son contenu défile en elle-même ; la
+ * scène ne recadre rien (screenLayout lit la carte repliée, à sa place de repos, et son plancher par sa hauteur
+ * maximale). Une seule source pour le DOM : les identifiants restent uniques et, sans JavaScript, la plaque reste
+ * entière dans la page. Chaque règle attend le client prêt (`html[data-fixed-card]`, posé par CardTrack, retiré à son
+ * démontage ou quand la requête ne correspond plus) : avant l'hydratation, réseau lent ou script en échec, la plaque
+ * garde la forme compacte collée en bas de l'écran, visible et lue. Les variables (`--card-top`, `--card-name-size`)
+ * n'attendent pas : seules ces règles les lisent.
+ */
+@media (max-width: 640px) and (min-height: 30.0625rem) and (scripting: enabled),
+  (max-width: 1100px) and (orientation: portrait) and (min-height: 30.0625rem) and (scripting: enabled) {
+  /* Bas de la barre au repos : commandes de 44 px, 0,9 rem au-dessus et au-dessous (0,6 rem sur téléphone court). */
+  :root {
+    --card-top: calc(env(safe-area-inset-top, 0px) + 44px + 1.8rem);
+    /* Nom de l'astre sur la carte : Bodoni de 1,5 à 1,75 rem (1,25 à 1,5 rem sous 360 px, plus bas). */
+    --card-name-size: clamp(1.5rem, 5vw, 1.75rem);
+  }
+
+  html[data-fixed-card] .plate,
+  html[data-fixed-card] .plate[data-expanded] {
+    position: fixed;
+    z-index: 1;
+    top: var(--card-top);
+    bottom: auto;
+    left: var(--gl);
+    right: var(--gr);
+    display: flex;
+    flex-direction: column;
+    width: auto;
+    max-width: 31rem;
+    /* Plancher : 0,5 rem au-dessus de la réserve du dock (à Tailles, du bas de l'écran). */
+    max-height: calc(100vh - var(--card-top) - var(--dock-clear) - 0.5rem);
+    max-height: calc(100dvh - var(--card-top) - var(--dock-clear) - 0.5rem);
+    margin: 0 auto;
+    padding: 0.5rem;
+    /*
+     * Fond opaque : la carte dépliée couvre la scène sans la recadrer, les étiquettes des astres ne transparaissent pas
+     * sous son texte.
+     */
+    background: var(--plaque);
+  }
+
+  /*
+   * Carte dépliée : si son haut (rang, nom, rangée des pictogrammes) remplit presque le plafond (texte à 200 %), toute
+   * la carte défile, la zone de la section ouverte gardant sa hauteur minimale (règle suivante) : rien n'est perdu.
+   */
+  html[data-fixed-card] .plate[data-unfolded] {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /*
+   * Note d'échelle visible, posée au-dessus du dock : la carte dépliée s'arrête 0,5 rem au-dessus d'elle, pour que la
+   * fin du contenu et « Replier » restent atteignables. La carte repliée garde son plancher (mesuré par la scène).
+   */
+  html[data-fixed-card][data-scale-note] .plate[data-unfolded] {
+    max-height: calc(100vh - var(--card-top) - var(--dock-clear) - 0.5rem - var(--note-h, 11rem) - 0.5rem);
+    max-height: calc(100dvh - var(--card-top) - var(--dock-clear) - 0.5rem - var(--note-h, 11rem) - 0.5rem);
+  }
+
+  /*
+   * Masquée à l'œil seulement (motif « visually hidden » par découpe) : sa taille et sa place restent, pour la mesure de
+   * la scène ; la découpe retire aussi les touchers.
+   */
+  html[data-fixed-card] .plate:not([data-current]) {
+    clip-path: inset(50%);
+  }
+
+  /*
+   * Carte repliée, environ 80 px rembourrage compris : le rang (0,8125 rem, interligne 1,3), puis « ‹ Nom › » sur une
+   * rangée de 44 px (deux lignes au plus pour les noms longs). Ni rangée de pictogrammes, ni pied : le nom est le
+   * bouton qui les déplie (Plate, motif accordéon). L'avertissement d'hypothèse du multivers reste, au-dessus du rang.
+   */
+  html[data-fixed-card] .plate:not([data-unfolded]) > .plate-sections,
+  html[data-fixed-card] .plate:not([data-unfolded]) > .plate-sections ~ * {
+    display: none;
+  }
+
+  html[data-fixed-card] .plate .rank {
+    margin: 0 0 2px;
+    font-size: 0.8125rem;
+    line-height: 1.3;
+  }
+
+  html[data-fixed-card] .plate .hypothesis {
+    margin-bottom: 0.4rem;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+
+  /*
+   * Flèches des escales voisines : cible de 44 px, cercle visible de 32 px de côté, centré dans la cible quelle que
+   * soit la hauteur de la rangée du nom (un nom sur deux lignes l'étirait en ovale), filet --filet, ivoire au survol ; qui
+   * débordent de 6 px sur le rembourrage de la carte et sur l'écart du nom (6 px : les cibles ne chevauchent pas celle
+   * du nom). Le nom gagne la place entre elles. Le cercle est le seul filet : sans bordure propre, la flèche n'a pas
+   * deux anneaux en couleurs forcées.
+   */
+  html[data-fixed-card] .plate-title {
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+    column-gap: 0.375rem;
+    margin-bottom: 0;
+  }
+
+  html[data-fixed-card] .plate-title .stop-step {
+    position: relative;
+    width: 44px;
+    margin-inline: -6px;
+    border-style: none;
+  }
+
+  html[data-fixed-card] .plate-title .stop-step::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 32px;
+    height: 32px;
+    margin: auto;
+    border: 1px solid var(--filet);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  @media (hover: hover) {
+    html[data-fixed-card] .plate-title .stop-step:hover::before {
+      border-color: var(--ivoire);
+    }
+  }
+
+  html[data-fixed-card] .plate .plate-title > h2 {
+    font-size: var(--card-name-size);
+    line-height: 1.05;
+  }
+
+  /*
+   * Le nom, bouton qui déplie la carte (`h2 > button[aria-expanded]`) : le texte du titre, sans fond ni filet, suivi d'un
+   * petit chevron en laiton, retourné carte dépliée, qui ne quitte jamais le dernier mot. Une cible de 44 px de haut au
+   * moins ; passé à la ligne entre ses mots, jamais coupé.
+   */
+  html[data-fixed-card] .plate-name {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.125rem 0.25rem;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: none;
+    line-height: inherit;
+    letter-spacing: inherit;
+    text-align: left;
+  }
+
+  html[data-fixed-card] .plate-name-end {
+    white-space: nowrap;
+  }
+
+  html[data-fixed-card] .plate-name-chevron {
+    width: 0.5em;
+    height: 0.5em;
+    margin-left: 0.25em;
+    vertical-align: 0.1em;
+    color: var(--laiton);
+    transition: transform 0.25s;
+  }
+
+  html[data-fixed-card] .plate-name[aria-expanded="true"] .plate-name-chevron {
+    transform: rotate(180deg);
+  }
+
+  /*
+   * Carte dépliée : la rangée des pictogrammes sous le nom, la section ouverte dessous, puis « Replier ». Le contenu
+   * défile dans la carte, sans entraîner la page. Son rembourrage laisse entier le contour de focus des titres-boutons
+   * (et l'anneau du bouton ouvert) au bord de la zone qui défile ; sa marge négative le rend à la carte.
+   */
+  html[data-fixed-card] .plate-sections {
+    /* Elle rétrécit pour la carte, jamais en dessous de la rangée des pictogrammes et d'une ou deux lignes. */
+    min-height: min(7rem, 30vh);
+    margin-inline: -0.5rem;
+    padding: 0.5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  html[data-fixed-card] .plate-footer {
+    flex: none;
+    margin-top: 0.5rem;
+  }
+
+  /*
+   * Squelette du passage d'une escale à l'autre (`data-shown`), à la place de la carte et de la taille de la carte
+   * repliée : rembourrage, rang (0,8125 rem, interligne 1,3), rangée du nom de 44 px. Une barre pour le rang, une pour
+   * le nom, deux cercles éteints de 32 px pour les flèches, le tout en ivoire à 10 %, sur le fond (opaque) et le filet
+   * de la carte. Un balayage lumineux discret le traverse trois fois en 1,6 s ; en mouvement réduit, il ne part pas
+   * (règle globale) et le squelette reste immobile. Décoratif (aria-hidden), il ne reçoit aucun toucher. Rendu après
+   * `main`, il passe devant les étiquettes de la scène comme lui (z-index 2).
+   */
+  html[data-fixed-card] .plate-skeleton[data-shown] {
+    position: fixed;
+    z-index: 2;
+    top: var(--card-top);
+    left: var(--gl);
+    right: var(--gr);
+    display: block;
+    max-width: 31rem;
+    margin: 0 auto;
+    padding: 0.5rem;
+    overflow: hidden;
+    border: 1px solid var(--filet);
+    border-radius: var(--r-lg);
+    background: var(--plaque);
+    pointer-events: none;
+    /* Le fondu de l'exploration (`data-hide-on-explore`), qu'il garde. */
+    transition:
+      opacity 0.6s,
+      visibility 0s;
+  }
+
+  html[data-fixed-card] .skeleton-rank,
+  html[data-fixed-card] .skeleton-name,
+  html[data-fixed-card] .skeleton-step {
+    display: block;
+    border-radius: var(--r-pill);
+  }
+
+  html[data-fixed-card] .skeleton-rank,
+  html[data-fixed-card] .skeleton-name {
+    background: rgba(236, 229, 211, 0.1);
+  }
+
+  html[data-fixed-card] .skeleton-rank {
+    width: min(9rem, 45%);
+    height: 0.5rem;
+    margin: calc((0.8125rem * 1.3 - 0.5rem) / 2) auto calc((0.8125rem * 1.3 - 0.5rem) / 2 + 2px);
+  }
+
+  html[data-fixed-card] .skeleton-title {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    column-gap: 0.375rem;
+    align-items: center;
+    justify-items: center;
+    height: 44px;
+  }
+
+  html[data-fixed-card] .skeleton-step {
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(236, 229, 211, 0.1);
+  }
+
+  html[data-fixed-card] .skeleton-name {
+    width: min(11rem, 75%);
+    height: 1.25rem;
+  }
+
+  html[data-fixed-card] .plate-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 35%, rgba(236, 229, 211, 0.07) 50%, transparent 65%);
+    transform: translateX(-100%);
+    /* Trois passages, puis immobile : un arrêt entre deux escales ne laisse rien bouger sans fin (2.2.2). */
+    animation: skeleton-sweep 1.6s ease-in-out 3;
+  }
+
+  /* Le haut de l'écran est à la carte : la note d'échelle passe au-dessus du dock, et le focus s'arrête avant elle. */
+  html[data-fixed-card] .scale-note {
+    top: auto;
+    bottom: calc(var(--dock-clear) + 0.5rem);
+  }
+
+  /*
+   * Ce qui reçoit le focus s'arrête sous la carte repliée, à sa place de repos (`--card-h` : sa hauteur, mesurée par
+   * Plate ; 5 rem avant la mesure), et au-dessus de la note d'échelle visible.
+   */
+  html[data-fixed-card] {
+    scroll-padding-top: calc(var(--card-top) + var(--card-h, 5rem) + 0.75rem);
+  }
+
+  html[data-fixed-card][data-scale-note] {
+    scroll-padding-bottom: calc(var(--dock-clear) + 0.5rem + var(--note-h, 11rem) + 0.75rem);
+  }
+}
+
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Couleurs forcées : les fonds disparaissent ; le squelette garde ses formes en filets du système, sans balayage. */
+@media (forced-colors: active) {
+  .plate-skeleton {
+    border-color: CanvasText;
+  }
+
+  .skeleton-rank,
+  .skeleton-name,
+  .skeleton-step {
+    border: 1px solid GrayText;
+  }
+
+  .plate-skeleton::after {
+    display: none;
+  }
+}
+
+/* Téléphone court : la barre, resserrée à 0,6 rem autour de ses commandes, rapproche la carte du haut de l'écran. */
+@media (max-width: 640px) and (max-height: 700px) and (min-height: 30.0625rem) and (scripting: enabled) {
+  :root {
+    --card-top: calc(env(safe-area-inset-top, 0px) + 44px + 1.2rem);
+  }
+}
+
+/*
+ * Carte fixe sous 360 px (zoom à 400 %) : entre les flèches, le nom n'a plus que 160 à 200 px. Il passe à 1,25 rem
+ * (6,5 vw) pour que les noms longs tiennent sur deux lignes, sans césure ni coupure (« Agujero negro de la Herradura
+ * Cósmica », « Trou noir du Fer à cheval cosmique »).
+ */
+@media (max-width: 360px) and (min-height: 30.0625rem) and (scripting: enabled) {
+  :root {
+    --card-name-size: clamp(1.25rem, 6.5vw, 1.5rem);
+  }
+}
+
+/*
+ * Écran bas ou zoom à 400 % : le dock reprend sa place dans la page, la barre de l'Accueil et d'À propos aussi. Celle du
+ * Voyage et de Tailles reste fixe, resserrée, et glisse hors de l'écran quand on descend (plus bas) : sans elle, une
+ * page de 20 000 px n'offrait plus ni onglets, ni escales, ni langue en cours de lecture.
+ */
 @media (max-height: 30rem) {
   /*
-   * Seul le bouton « Tourner autour » du voyage reste fixé en haut (44 px, à 0,5 rem du bord) : ce qui reçoit le focus
-   * s'arrête 0,5 rem sous lui. En bas, rien de fixe, hors de la note d'échelle (plus bas).
+   * En haut, la barre fixe du Voyage et de Tailles (3,75 rem) : ce qui reçoit le focus s'arrête 0,5 rem sous elle,
+   * qu'elle soit là ou glissée hors de l'écran (elle peut revenir). En bas, rien de fixe, hors de la note d'échelle.
    */
   html {
-    scroll-padding-block: calc(env(safe-area-inset-top, 0px) + 3.75rem) 1rem;
+    scroll-padding-block: calc(env(safe-area-inset-top, 0px) + 4.25rem) 1rem;
   }
 
   /* Le dock rejoint la page : la plaque n'a plus à rester collée au-dessus de lui, ni à montrer le repos. */
@@ -2660,18 +3593,20 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     display: none;
   }
 
+  /* Accueil et À propos, et toute barre sans JavaScript (rien n'y glisserait) : la barre suit la page. */
   .bar {
     position: relative;
     top: auto;
   }
 
   /*
-   * La barre suit la page : la liste des escales (voyage) ou des étoiles (Tailles) s'ouvre en entier sous elle, et la
-   * page défile pour la parcourir. Mesurée sur la vue, sa hauteur tomberait à 0 à 400 % (175 px de haut, moins la
-   * barre et une réserve du dock qui n'a plus lieu d'être). Même règle pour « Menu » (SiteHeader.module.css).
+   * La liste des escales (voyage) ou des astres (Tailles) défile sous la barre fixe, jusqu'à 0,5 rem du bas de la vue,
+   * sans réserve pour le dock, qui a rejoint la page : à 400 % (175 px de haut), deux lignes et demie de 44 px. Même
+   * règle pour « Menu » (SiteHeader.module.css).
    */
   .stops-list {
-    max-height: none;
+    max-height: calc(100vh - 4.25rem - env(safe-area-inset-top, 0px));
+    max-height: calc(100svh - 4.25rem - env(safe-area-inset-top, 0px));
   }
 
   .dock {
@@ -2688,14 +3623,78 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* La barre suit la page : en haut, seulement le bouton fixé ; en bas, la note visible (hauteur mesurée). */
+  /* En haut, la barre fixe ; en bas, la note visible (hauteur mesurée). */
   html[data-scale-note] {
-    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 3.75rem);
+    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
     scroll-padding-bottom: calc(14px + var(--note-h, 11rem) + 0.75rem + env(safe-area-inset-bottom, 0px));
   }
 
   footer {
     padding-bottom: 2rem;
+  }
+}
+
+/*
+ * Écran bas, Voyage et Tailles (`data-pinned`), avec JavaScript : la barre reste fixe, resserrée à 0,5 rem autour de
+ * ses commandes de 44 px (3,75 rem), et « Tourner autour » y garde sa place. Sans JavaScript, elle suit la page, comme
+ * celle de l'Accueil.
+ */
+@media (max-height: 30rem) and (scripting: enabled) {
+  .bar[data-pinned] {
+    position: fixed;
+    top: env(safe-area-inset-top, 0px);
+    padding-block: 0.5rem;
+  }
+}
+
+/*
+ * Voyage et Tailles, là où ni la règle ni les fondus ne bordent la page (mise en page compacte, écran bas) : la barre
+ * reste fixe en haut de l'écran, toujours à portée, en descendant comme en remontant (demande de l'utilisateur). Seul
+ * son effacement pendant l'exploration s'anime (opacité), sans animation en mouvement réduit (règle globale, plus bas).
+ */
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
+  .bar[data-pinned] {
+    transition:
+      opacity 0.6s,
+      visibility 0s;
+  }
+
+  html[data-explore] .bar[data-pinned] {
+    transition:
+      opacity 0.6s,
+      visibility 0.6s;
+  }
+}
+
+/*
+ * Voile de la barre fixe : les plaques passent sous elle, sans fondu pour les effacer (en 844 × 390, « 6e planète
+ * en partant du Soleil » se lisait sous la marque). Comme à l'Accueil, nuit pleine jusqu'au bas des commandes, puis un
+ * fondu sur sa marge basse, qui change avec la mise en page : 0,9 rem, 0,6 rem sur téléphone court, 0,5 rem sur écran
+ * bas. La scène n'y perd rien : elle ne cadre ni n'étiquette rien sous la barre. En couleurs forcées, le fond du système.
+ */
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
+  .bar[data-pinned] {
+    background: linear-gradient(var(--nuit) calc(100% - 0.9rem), rgba(6, 11, 24, 0));
+  }
+}
+
+@media (max-width: 640px) and (max-height: 700px) {
+  .bar[data-pinned] {
+    background: linear-gradient(var(--nuit) calc(100% - 0.6rem), rgba(6, 11, 24, 0));
+  }
+}
+
+@media (max-height: 30rem) and (scripting: enabled) {
+  .bar[data-pinned] {
+    background: linear-gradient(var(--nuit) calc(100% - 0.5rem), rgba(6, 11, 24, 0));
+  }
+}
+
+@media (forced-colors: active) {
+  @media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
+    .bar[data-pinned] {
+      background: Canvas;
+    }
   }
 }
 

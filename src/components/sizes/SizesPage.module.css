@@ -1,9 +1,9 @@
 /*
- * Page « Tailles » : la mise en page du Voyage (plaques à gauche, règle à droite, plaque compacte collée en bas sur
- * téléphone), sans dock. Seuls les écarts propres à Tailles vivent ici ; le reste est dans globals.css.
+ * Page « Tailles » : la mise en page du Voyage (plaques à gauche, règle à droite, carte fixée en haut sur téléphone),
+ * sans dock. Seuls les écarts propres à Tailles vivent ici ; le reste est dans globals.css.
  */
 
-/* Pas de dock : la plaque compacte se colle à 16 px du bas de l'écran (zone sûre comprise). */
+/* Pas de dock : la carte fixe dépliée descend à 16 px (et 0,5 rem) du bas de l'écran, zone sûre comprise. */
 .page {
   --dock-clear: calc(16px + env(safe-area-inset-bottom, 0px));
 }
@@ -14,6 +14,12 @@
 }
 
 /* ---------- Introduction ---------- */
+
+/* Le texte de l'introduction, en un bloc : la colonne de `.hero`, ses écarts inchangés (pas de marges fusionnées). */
+.introText {
+  display: flex;
+  flex-direction: column;
+}
 
 /* Ligne discrète sous la promesse : ce qui est à l'échelle, et ce qui ne l'est pas. */
 :global(.hero) p.introNote {
@@ -101,12 +107,14 @@
 /*
  * Au rang des étiquettes de la scène (#labels, 1), après elles dans le DOM, donc au-dessus ; sous le contenu (main,
  * 2) : en mise en page compacte, où elle se pose sous la barre, une fiche dépliée qui passe dessous reste lisible.
+ * Grand écran : le moteur la pose sous les astres, centrée sur la zone libre (transform en ligne, depuis le coin haut
+ * gauche de la vue).
  */
 .scaleBar {
   position: fixed;
   z-index: 1;
-  right: calc(var(--gr) + var(--rail-w) + 1.5rem);
-  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  top: 0;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--filet);
   border-radius: var(--r-pill);
@@ -114,6 +122,7 @@
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
+  will-change: transform;
   transition:
     opacity 0.2s,
     visibility 0s 0.2s;
@@ -132,10 +141,14 @@
   min-height: 24px;
 }
 
-/* Soleil à l'échelle : disque de 4 à 24 px ; sinon un point de 1 px dans un anneau de 10 px. */
+/* Soleil à l'échelle : disque de 4 à 24 px ; sinon un point de 1 px dans un anneau de 10 px. En kilomètres, aucun. */
 .scaleSun {
   flex: none;
   border-radius: 50%;
+}
+
+.scaleBar[data-unit="km"] .scaleSun {
+  display: none;
 }
 
 .scaleSun[data-mode="disc"] {
@@ -162,7 +175,7 @@
 
 .scaleText {
   margin: 0.25rem 0 0;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--brume);
   white-space: nowrap;
 }
@@ -172,6 +185,11 @@
 /* Au-dessus du limbe d'une grande étoile : la pilule seule, sans repère, centrée par le moteur. */
 :global(#labels) .limbLabel {
   padding: 0;
+}
+
+/* Forme courte (`data-short`) : le nom court d'un astre au nom long, sans ce qui l'encadre (« Trou noir du »). */
+:global(.lbl[data-short]) .longName {
+  display: none;
 }
 
 /* ---------- Légende de la règle ---------- */
@@ -185,6 +203,21 @@
   font-size: 0.75rem;
   color: var(--brume);
   text-align: right;
+}
+
+/*
+ * Grand écran : quatorze repères sur dix décades, dont onze en quatre décades. La règle des tailles est plus longue que
+ * celle des distances (70 % de la hauteur, 640 px au plus) : ses repères s'écartent moins de leur position vraie.
+ * Centrée comme elle, elle reste sous la barre haute jusqu'aux écrans bas, où le menu la remplace.
+ */
+@media (min-width: 861px) {
+  .page :global(.rail) {
+    height: min(70vh, 640px);
+  }
+
+  .railLegend {
+    top: calc(50% + min(35vh, 320px) + 0.75rem);
+  }
 }
 
 /* ---------- Mise en page compacte (téléphone, tablette en portrait) ---------- */
@@ -202,7 +235,42 @@
   .scaleBar {
     top: calc(env(safe-area-inset-top, 0px) + 4.75rem + 0.5rem);
     right: var(--gr);
-    bottom: auto;
+    left: auto;
+  }
+
+  .scaleText {
+    font-size: 0.75rem;
+  }
+
+  /*
+   * La scène montre déjà le plus petit astre au milieu de l'écran, derrière le texte (en 375 × 812, le disque lumineux
+   * de Cygnus X-1 sous le paragraphe) : le texte se pose sur un panneau de plaque, qui lui garde son contraste sur
+   * toute sa hauteur, quoi que la scène montre dessous (--brume 5,5:1 sur un point blanc), au repos comme en vol.
+   */
+  .introText {
+    padding: 1rem;
+    border: 1px solid var(--filet);
+    border-radius: var(--r-lg);
+    background: var(--plaque-a);
+  }
+}
+
+/*
+ * Carte fixe (globals.css, ADR 0007) : le haut de l'écran, sous la barre, est à la carte de l'astre ; l'échelle
+ * graphique passe en bas à droite, au-dessus de la zone sûre. Les étiquettes l'évitent toujours (boîte mesurée).
+ * Placé après les règles de la mise en page compacte, qu'il précise ; comme elle, attend le client prêt
+ * (`html[data-fixed-card]`).
+ */
+@media (max-width: 640px) and (min-height: 30.0625rem) and (scripting: enabled),
+  (max-width: 1100px) and (orientation: portrait) and (min-height: 30.0625rem) and (scripting: enabled) {
+  :global(html[data-fixed-card]) .scaleBar {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  /* Le nom de la carte suit celui du Voyage, pas la grande taille des plaques de Tailles (plus haut). */
+  :global(html[data-fixed-card]) .page :global(.plate .plate-title > h2) {
+    font-size: var(--card-name-size);
   }
 }
 

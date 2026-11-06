@@ -88,3 +88,15 @@ export function clockHour(longitudeDeg: number): number {
   const hour = ((Math.round(3 - longitudeDeg / 30) % 12) + 12) % 12;
   return hour === 0 ? 12 : hour;
 }
+
+/**
+ * Longitude d'arrivée d'une planète qui glisse sur son orbite de `fromDeg` à `toDeg`, écrite à partir de celle du
+ * départ : une transition CSS de `rotate()` passe alors par l'orbite dans le sens du temps, vers l'avant (sens direct,
+ * longitude croissante) quand il avance, vers l'arrière quand il recule. Moins d'un tour : les tours entiers ne se
+ * voient pas, l'écart est pris modulo 360°.
+ */
+export function glideLongitude(fromDeg: number, toDeg: number, forward: boolean): number {
+  const ahead = (((toDeg - fromDeg) % 360) + 360) % 360;
+  if (forward || ahead === 0) return fromDeg + ahead;
+  return fromDeg + ahead - 360;
+}

@@ -78,6 +78,15 @@ describe("CosmicStops", () => {
     }
   });
 
+  it("devrait donner un pictogramme à chaque section : fiche, étoiles de la carte, galaxies de la carte", () => {
+    renderStops("fr");
+    const icons = (key: (typeof COSMIC_STOPS)[number]) =>
+      Array.from(section(STOP_IDS[key]).querySelectorAll(".more-btn svg[data-icon]"), (svg) => svg.getAttribute("data-icon"));
+    expect(icons("stars")).toEqual(["story", "stars"]);
+    expect(icons("localGroup")).toEqual(["story", "galaxies"]);
+    expect(icons("multiverse")).toEqual(["story"]);
+  });
+
   it.each(LOCALES)("devrait proposer de revenir au Soleil depuis chaque escale (%s)", (locale) => {
     renderStops(locale);
     const { plate } = getCosmicContent(locale);
@@ -94,6 +103,20 @@ describe("l'escale du multivers", () => {
     const warning = region.querySelector(".hypothesis");
     expect(warning?.textContent).toBe(getCosmicContent(locale).stops.multiverse.hypothesis);
     expect(region.querySelector("p, h2")).toBe(warning);
+  });
+
+  it("devrait ne mener qu'à l'Univers observable, avant « Revenir au Soleil » : c'est la dernière escale", () => {
+    renderStops("fr");
+    const region = section(STOP_IDS.multiverse);
+    // Autour du nom (plaque compacte), la précédente seule ; ses pilules (ailleurs) au bout de la rangée des sections.
+    const title = region.querySelector<HTMLElement>(".plate-title");
+    if (!title) throw new Error("Rangée du nom absente");
+    expect(within(title).getAllByRole("link").map((link) => link.getAttribute("aria-label"))).toEqual([
+      "Escale précédente\u00a0: Univers observable",
+    ]);
+    expect(region.querySelector(".plate-sections > .stop-steps")).not.toBeNull();
+    expect(within(region).getAllByRole("link", { name: getCosmicContent("fr").plate.back })).toHaveLength(1);
+    expect(within(region).queryByRole("link", { name: /^Escale suivante/ })).toBeNull();
   });
 
   it.each(LOCALES)("ne devrait afficher d'avertissement d'hypothèse qu'au multivers (%s)", (locale) => {

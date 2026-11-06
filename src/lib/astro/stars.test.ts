@@ -20,9 +20,20 @@ describe("NEARBY_STARS", () => {
     expect(Math.abs(first.distanceLy - 4.2465)).toBeLessThanOrEqual(0.01);
   });
 
-  it("devrait être triée par distance croissante (c'est aussi la priorité des étiquettes)", () => {
+  it("devrait être triée par distance croissante (c'est aussi la priorité des étiquettes, remarquables d'abord)", () => {
     const distances = NEARBY_STARS.map((star) => star.distanceLy);
     expect(distances).toEqual([...distances].sort((a, b) => a - b));
+  });
+
+  it("devrait signaler six étoiles remarquables, nommées avec leur distance sur la carte", () => {
+    expect(NEARBY_STARS.filter((star) => star.notable).map((star) => star.key)).toEqual([
+      "proxima-centauri",
+      "alpha-centauri",
+      "barnard",
+      "sirius",
+      "procyon",
+      "altair",
+    ]);
   });
 
   it("devrait donner à chaque étoile une clé unique", () => {

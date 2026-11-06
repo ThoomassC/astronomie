@@ -1,7 +1,11 @@
+import { Mesh, type Object3D, type ShaderMaterial } from "three";
 import type * as Three from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BLACK_HOLE_RENDER_ORDER } from "@/components/scene/blackHole";
+import { STARFIELD_RENDER_ORDER } from "@/components/scene/starfield";
 import { FakeRenderer } from "@/components/scene/testRenderer";
 import { SHARP_AFTER_STILL_FRAMES, createSizesScene, type SizesSceneOptions } from "@/components/sizes/sizesEngine";
+import { COMPARED_BLACK_HOLE_BY_KEY, type BlackHoleKey } from "@/lib/astro/blackHoles";
 import { sizesStore } from "@/lib/sizes/store";
 
 /*
@@ -36,7 +40,7 @@ function options(canvas: HTMLCanvasElement = document.createElement("canvas")): 
     limbLabels: new Map(),
     sunMarker: null,
     scaleBar: null,
-    scaleText: (suns) => `${suns}`,
+    scaleText: (bar) => `${bar.count} ${bar.unit}`,
     layout: { bar: null, rail: null, plates: new Map() },
   };
 }
@@ -181,6 +185,148 @@ describe("rapport de pixels pendant les vols", () => {
     sizesStore.update("intro", "proxima-centauri", 0.3);
     scene.frame(1 / 60);
     expect(renderer().calls).toEqual(["render"]);
+    scene.dispose();
+  });
+});
+
+describe("échelle graphique", () => {
+  /** Échelle graphique dans le DOM, comme SizesScene la rend. */
+  function scaleBarElements() {
+    const root = document.createElement("div");
+    const sun = document.createElement("span");
+    const line = document.createElement("span");
+    const text = document.createElement("p");
+    root.append(sun, line, text);
+    return { root, sun, line, text };
+  }
+
+  it("devrait paraître dès la première image et compter en kilomètres quand le Soleil se voit assez lui-même", async () => {
+    const scaleBar = scaleBarElements();
+    const scene = createSizesScene({ ...options(), scaleBar });
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    scene.frame(1 / 60);
+    expect(scaleBar.root).toHaveAttribute("data-visible");
+    expect(scaleBar.root.dataset.unit).toBe("km");
+    expect(scaleBar.text.textContent).toMatch(/^\d+ km$/);
+    scene.dispose();
+    expect(scaleBar.root).not.toHaveAttribute("data-visible");
+  });
+});
+
+describe("astres de la scène", () => {
+  /** Maillages de la scène que le moteur a rendue en dernier (le moteur factice reçoit la scène à chaque rendu). */
+  async function renderedMeshes(): Promise<{ meshes: Mesh[]; dispose(): void }> {
+    const render = vi.spyOn(FakeRenderer.prototype, "render");
+    const scene = createSizesScene(options());
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    scene.frame(1 / 60);
+    const drawn = render.mock.calls.at(-1)?.[0] as Object3D | undefined;
+    const meshes: Mesh[] = [];
+    drawn?.traverse((object) => {
+      if (object instanceof Mesh) meshes.push(object);
+    });
+    return { meshes, dispose: () => scene.dispose() };
+  }
+
+  /** Rectangle du trou noir `key`, reconnu à son rayon d'horizon. */
+  const blackHole = (meshes: readonly Mesh[], key: BlackHoleKey) =>
+    meshes.find(
+      (mesh) =>
+        mesh.renderOrder === BLACK_HOLE_RENDER_ORDER &&
+        (mesh.material as ShaderMaterial).uniforms.uRadius.value === COMPARED_BLACK_HOLE_BY_KEY[key].radiusSolar,
+    );
+
+  it("devrait poser dans la scène le fond étoilé, quatre trous noirs et dix étoiles avec leur halo", async () => {
+    const { meshes, dispose } = await renderedMeshes();
+    expect(meshes.filter((mesh) => mesh.renderOrder === STARFIELD_RENDER_ORDER)).toHaveLength(1);
+    expect(meshes.filter((mesh) => mesh.renderOrder === BLACK_HOLE_RENDER_ORDER)).toHaveLength(4);
+    expect(meshes).toHaveLength(1 + 4 + 2 * 10);
+    dispose();
+  });
+
+  it("devrait dessiner Cygnus X-1 dès l'introduction, et Sagittarius A* au repos sur son escale", async () => {
+    const atIntro = await renderedMeshes();
+    expect(blackHole(atIntro.meshes, "cygnus-x-1")?.visible).toBe(true);
+    expect(blackHole(atIntro.meshes, "sagittarius-a-star")?.visible).toBe(false);
+    atIntro.dispose();
+    sizesStore.update("sagittarius-a-star", "sagittarius-a-star", 0);
+    const atRest = await renderedMeshes();
+    expect(blackHole(atRest.meshes, "sagittarius-a-star")?.visible).toBe(true);
+    expect(blackHole(atRest.meshes, "m87-star")?.visible).toBe(false);
+    atRest.dispose();
+  });
+});
+
+/*
+ * Le texte de l'introduction passe devant la scène, qui montre déjà Cygnus X-1 : son étiquette ne s'affiche pas
+ * dessous (« Cygnus X-1 · 163 km » sur le titre, en 375 × 812). Au repos sur l'introduction, rien ne se rend, mais le
+ * texte défile encore : l'étiquette se masque et revient avec lui, sans nouvelle image.
+ */
+describe("étiquettes sous le texte de l'introduction", () => {
+  let scrollY = 0;
+
+  beforeEach(() => {
+    scrollY = 0;
+    vi.spyOn(window, "scrollY", "get").mockImplementation(() => scrollY);
+  });
+
+  /** Les deux étiquettes de Cygnus X-1, comme SizesScene les rend : sur son anneau, et au-dessus de son limbe. */
+  function cygnusLabels() {
+    const ring = document.createElement("span");
+    ring.append(document.createElement("i"), document.createElement("span"));
+    const limb = document.createElement("span");
+    limb.append(document.createElement("span"));
+    return { ring, limb };
+  }
+
+  /** Introduction dont le texte occupe, dans le document, toute la largeur de la vue de 200 à 500 px. */
+  function introduction(): HTMLElement {
+    const section = document.createElement("section");
+    const title = document.createElement("h1");
+    // Frontière navigateur : jsdom ne calcule aucune boîte ; celle-ci suit le défilement, comme dans la page.
+    vi.spyOn(title, "getBoundingClientRect").mockImplementation(() => new DOMRect(0, 200 - scrollY, window.innerWidth, 300));
+    section.append(title);
+    return section;
+  }
+
+  it("devrait masquer l'étiquette sous le texte, et la rendre quand il a défilé, au repos sur l'introduction", async () => {
+    const { ring, limb } = cygnusLabels();
+    const render = vi.spyOn(FakeRenderer.prototype, "render");
+    const scene = createSizesScene({
+      ...options(),
+      ringLabels: new Map([["cygnus-x-1", ring]]),
+      limbLabels: new Map([["cygnus-x-1", limb]]),
+      layout: { bar: null, rail: null, plates: new Map(), intro: introduction() },
+    });
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    const labelShown = () => [ring, limb].some((label) => label.style.visibility === "visible");
+    scene.frame(1 / 60);
+    expect(labelShown()).toBe(false);
+    const images = render.mock.calls.length;
+    scrollY = 520;
+    scene.frame(1 / 60);
+    expect(labelShown()).toBe(true);
+    scrollY = 100;
+    scene.frame(1 / 60);
+    expect(labelShown()).toBe(false);
+    expect(render.mock.calls.length).toBe(images);
+    scene.dispose();
+  });
+
+  it("devrait laisser l'étiquette à sa place sans introduction", async () => {
+    const { ring, limb } = cygnusLabels();
+    const scene = createSizesScene({
+      ...options(),
+      ringLabels: new Map([["cygnus-x-1", ring]]),
+      limbLabels: new Map([["cygnus-x-1", limb]]),
+    });
+    if (!scene) throw new Error("Scène absente");
+    await Promise.resolve();
+    scene.frame(1 / 60);
+    expect([ring, limb].some((label) => label.style.visibility === "visible")).toBe(true);
     scene.dispose();
   });
 });

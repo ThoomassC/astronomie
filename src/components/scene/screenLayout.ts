@@ -1,7 +1,11 @@
 import { freeBand, type ScreenBand, type ScreenZone } from "@/lib/journey/screen";
+import { restingRect } from "@/lib/site/barSlide";
 import { easeFactor } from "./math";
 
-/** Mise en page compacte (globals.css) : plaques repliées collées au bas de l'écran (téléphone, tablette en portrait). */
+/**
+ * Mise en page compacte (globals.css) : téléphone, tablette en portrait. Avec JavaScript et assez de hauteur, la carte
+ * de l'escale courante s'y fixe en haut de l'écran, sous la barre (FIXED_CARD_QUERY).
+ */
 export const COMPACT_LAYOUT_QUERY = "(max-width: 640px), (max-width: 1100px) and (orientation: portrait)";
 /** Grand écran : air entre la zone libre et ce qui la borde (plaque, règle), en px. */
 const ZONE_MARGIN_PX = 24;
@@ -24,12 +28,37 @@ export interface ScreenLayoutElements<K extends string> {
   /** Règle : sur grand écran, la zone libre s'arrête avant elle. */
   rail: Element | null;
   /**
-   * Note d'échelle : visible sur téléphone, elle borde aussi la bande libre par le haut. Suspendue aux escales
-   * cosmiques (`data-suspended`), elle y garde sa place.
+   * Note d'échelle : visible sur téléphone, posée au-dessus du dock, elle borde aussi la bande libre par le bas.
+   * Suspendue aux escales cosmiques (`data-suspended`), elle y garde sa place.
    */
   note: HTMLElement | null;
-  /** Plaque de chaque escale : sur téléphone, l'astre est cadré dans la bande libre au-dessus de la sienne. */
+  /** Plaque de chaque escale : sur téléphone, l'astre est cadré dans la bande libre sous sa carte fixée en haut. */
   plates: ReadonlyMap<K, HTMLElement>;
+}
+
+/**
+ * Plaque repliée d'une escale, en px. Carte fixe : fixée en haut, son bas à sa place de repos, et le plancher que lui
+ * fixe la feuille de style (haut de sa place de repos plus sa hauteur maximale : la réserve du dock, ou le bas de
+ * l'écran). Repli : collée en bas de l'écran, le haut de sa place collée.
+ */
+type CompactCard = { kind: "fixed"; bottom: number; floor: number } | { kind: "sticky"; top: number };
+
+/** Plaque repliée fixée en haut ou collée en bas ; null si elle suit la page. */
+function measureCard(plate: HTMLElement, viewHeight: number): CompactCard | null {
+  const style = getComputedStyle(plate);
+  if (style.position === "fixed") {
+    const top = restingRect(plate).top;
+    const maxHeight = parseFloat(style.maxHeight);
+    return {
+      kind: "fixed",
+      bottom: top + plate.offsetHeight,
+      floor: Number.isFinite(maxHeight) ? top + maxHeight : viewHeight,
+    };
+  }
+  if (style.position === "sticky") {
+    return { kind: "sticky", top: viewHeight - (parseFloat(style.bottom) || 0) - plate.offsetHeight };
+  }
+  return null;
 }
 
 /** Ce que la page laisse libre autour de la scène, mesuré dans le DOM et lissé pour le cadrage. */
@@ -44,7 +73,7 @@ export interface ScreenLayout<K extends string> {
    * apparaît. Vrai quand tout est posé.
    */
   settle(dt: number, reduced: boolean): boolean;
-  /** Bande affichée au-dessus de la plaque de l'escale, en fractions de la hauteur ; null sans bande. */
+  /** Bande affichée sous la carte de l'escale, en fractions de la hauteur ; null sans bande. */
   band(key: K): ScreenBand | null;
   /** Zone libre du grand écran, en fractions de la largeur ; null sans zone. */
   zone(): ScreenZone | null;
@@ -60,57 +89,66 @@ export function createScreenLayout<K extends string>(
 ): ScreenLayout<K> {
   /** Grand écran : zone libre entre la colonne des plaques et la règle, en fractions de la largeur. */
   let zone: ScreenZone | null = null;
-  /** Plaque repliée de chaque escale, collée en bas : hauteur et écart au bas de l'écran, en px. */
-  const compactPlates = new Map<K, { height: number; bottom: number }>();
-  /** Largeur de vue des mesures repliées : une plaque change de hauteur avec elle. */
+  /** Bornes de la bande libre de chaque escale tirées de sa plaque repliée, en px (la note les resserre). */
+  const compactCards = new Map<K, CompactCard>();
+  /** Largeur de vue des mesures repliées : une carte change de hauteur avec elle. */
   let compactWidth = 0;
-  /** Bas de la note d'échelle repliée : la déplier ne déplace pas la caméra. */
+  /** Haut et bas de la note d'échelle repliée : la déplier ne déplace pas la caméra. */
+  let noteTop = Infinity;
   let noteBottom = 0;
-  /** Bande libre mesurée au-dessus de chaque plaque, en fractions de la hauteur de la vue (téléphone seulement). */
+  /** Bande libre mesurée sous chaque carte, en fractions de la hauteur de la vue (téléphone seulement). */
   const bands = new Map<K, ScreenBand>();
   /** Bandes du cadrage : elles rejoignent en douceur les bandes mesurées. */
   const shownBands = new Map<K, ScreenBand>();
   let bandsSettled = true;
 
   /**
-   * Mise en page compacte : bande libre entre la barre du haut (ou la note d'échelle visible) et la
-   * plaque repliée de chaque escale. Une plaque ou une note dépliée garde la mesure de sa forme
-   * repliée, pour que la caméra ne bouge pas ; la mesure des plaques se perd si la largeur change.
-   * La note suspendue aux escales cosmiques (distances réelles toujours actives) garde sa place :
-   * le cadrage ne saute ni quand elle se tait, ni quand elle revient.
-   * Sans barre fixe ni plaque collée en bas (écran bas), pas de bande.
+   * Mise en page compacte : bande libre entre la carte repliée de chaque escale, fixée en haut sous la barre, et ce
+   * qui borde le bas (la note d'échelle visible, sinon le plancher de la carte : réserve du dock, bas de l'écran). Une
+   * carte ou une note dépliée garde la mesure de sa forme repliée, pour que la caméra ne bouge pas ; la mesure des
+   * cartes se perd si la largeur change. La note suspendue aux escales cosmiques (distances réelles toujours actives)
+   * garde sa place : le cadrage ne saute ni quand elle se tait, ni quand elle revient. La carte est lue à sa place
+   * de repos, sans sa translation passagère : l'astre ne bouge pas avec elle.
+   * Repli de la carte fixe (avant l'hydratation, navigateurs sans la requête `scripting`) : plaque collée en bas, bande
+   * entre la barre (ou la note d'échelle, alors en haut) et le haut de la plaque. Sans barre fixe ni plaque fixe ou
+   * collée (écran bas, sans JavaScript), pas de bande.
    */
   function measureBands(view: { width: number; height: number }): void {
     bands.clear();
     bandsSettled = false;
     if (view.width !== compactWidth) {
-      compactPlates.clear();
+      compactCards.clear();
       compactWidth = view.width;
     }
     if (!compact.matches || !bar || getComputedStyle(bar).position !== "fixed") {
-      compactPlates.clear();
+      compactCards.clear();
       return;
     }
-    let top = bar.getBoundingClientRect().bottom;
     if (note?.dataset.visible === "true") {
-      if (!note.hasAttribute("data-open")) noteBottom = note.getBoundingClientRect().bottom;
-      top = Math.max(top, noteBottom);
-    } else if (note?.hasAttribute("data-suspended")) {
-      top = Math.max(top, noteBottom);
-    } else {
+      if (!note.hasAttribute("data-open")) {
+        const rect = note.getBoundingClientRect();
+        noteTop = rect.top;
+        noteBottom = rect.bottom;
+      }
+    } else if (!note?.hasAttribute("data-suspended")) {
+      noteTop = Infinity;
       noteBottom = 0;
     }
+    const barBottom = restingRect(bar).bottom;
     for (const [key, plate] of plates) {
-      if (!plate.hasAttribute("data-expanded")) {
-        const style = getComputedStyle(plate);
-        if (style.position === "sticky") {
-          compactPlates.set(key, { height: plate.offsetHeight, bottom: parseFloat(style.bottom) || 0 });
-        } else {
-          compactPlates.delete(key);
-        }
+      // Dépliée par son nom (`data-unfolded`), même sans section ouverte, ou par un titre-bouton (`data-expanded`).
+      if (!plate.hasAttribute("data-expanded") && !plate.hasAttribute("data-unfolded")) {
+        const card = measureCard(plate, view.height);
+        if (card) compactCards.set(key, card);
+        else compactCards.delete(key);
       }
-      const compactPlate = compactPlates.get(key);
-      const band = compactPlate ? freeBand(view.height, top, compactPlate) : null;
+      const card = compactCards.get(key);
+      if (!card) continue;
+      // Carte fixe : de son bas à la note (au-dessus du dock) ; repli : de la barre ou de la note (en haut) à la plaque.
+      const band =
+        card.kind === "fixed"
+          ? freeBand(view.height, card.bottom, Math.min(card.floor, noteTop))
+          : freeBand(view.height, Math.max(barBottom, noteBottom), card.top);
       if (band) bands.set(key, band);
     }
   }

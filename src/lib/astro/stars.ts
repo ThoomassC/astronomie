@@ -20,29 +20,34 @@ export interface NearbyStar {
   spectralType: string;
   /** Magnitude apparente visuelle V (Sirius : −1,46). */
   apparentMag: number;
+  /**
+   * Étoile remarquable (Proxima et Alpha du Centaure, Barnard, Sirius, Procyon, Altaïr) : sur la carte, son étiquette
+   * donne aussi la distance et passe avant celles des autres, qui n'ont que leur nom.
+   */
+  notable?: true;
 }
 
 /**
  * Une sélection des systèmes stellaires les plus connus à moins de 12 années-lumière (il en manque, comme
  * EZ Aquarii, DX Cancri ou GJ 1061), plus Altaïr, repère brillant du ciel d'été, triés par distance
- * croissante (c'est aussi la priorité des étiquettes).
+ * croissante (c'est aussi la priorité des étiquettes, les remarquables d'abord).
  * Une entrée par point affiché : un couple serré n'en fait qu'une, avec le type de la composante
  * la plus brillante, et la magnitude combinée quand elle est publiée (Alpha du Centaure).
  * Les naines brunes (Luhman 16 à 6,5 al, WISE 0855−0714 à 7,4 al) ne sont pas des étoiles : absentes.
  */
 export const NEARBY_STARS: readonly NearbyStar[] = [
   // Gaia DR3, ϖ = 768,0665 mas.
-  { key: "proxima-centauri", raDeg: 217.4289, decDeg: -62.6795, distanceLy: 4.2465, spectralType: "M5.5Ve", apparentMag: 11.13 },
+  { key: "proxima-centauri", raDeg: 217.4289, decDeg: -62.6795, distanceLy: 4.2465, spectralType: "M5.5Ve", apparentMag: 11.13, notable: true },
   // Akeson et al. 2021 (orbite ALMA), ϖ = 750,81 mas ; V combinée de A (0,01) et B (1,33).
-  { key: "alpha-centauri", raDeg: 219.9021, decDeg: -60.834, distanceLy: 4.3441, spectralType: "G2V", apparentMag: -0.27 },
+  { key: "alpha-centauri", raDeg: 219.9021, decDeg: -60.834, distanceLy: 4.3441, spectralType: "G2V", apparentMag: -0.27, notable: true },
   // Gaia DR3, ϖ = 546,9759 mas.
-  { key: "barnard", raDeg: 269.4521, decDeg: 4.6934, distanceLy: 5.9629, spectralType: "M4V", apparentMag: 9.51 },
+  { key: "barnard", raDeg: 269.4521, decDeg: 4.6934, distanceLy: 5.9629, spectralType: "M4V", apparentMag: 9.51, notable: true },
   // Gaia DR3, ϖ = 415,1794 mas.
   { key: "wolf-359", raDeg: 164.1205, decDeg: 7.0147, distanceLy: 7.8558, spectralType: "M6V", apparentMag: 13.51 },
   // Gaia DR3, ϖ = 392,7529 mas.
   { key: "lalande-21185", raDeg: 165.8341, decDeg: 35.9699, distanceLy: 8.3044, spectralType: "M2V", apparentMag: 7.52 },
   // Bond et al. 2017 (HST), ϖ = 378,9 mas.
-  { key: "sirius", raDeg: 101.2872, decDeg: -16.7161, distanceLy: 8.608, spectralType: "A1V", apparentMag: -1.46 },
+  { key: "sirius", raDeg: 101.2872, decDeg: -16.7161, distanceLy: 8.608, spectralType: "A1V", apparentMag: -1.46, notable: true },
   // Kervella et al. 2022, ϖ = 371,92 mas (moyenne des deux composantes).
   { key: "luyten-726-8", raDeg: 24.7557, decDeg: -17.9507, distanceLy: 8.7695, spectralType: "M5.5V", apparentMag: 12.61 },
   // Gaia DR3, ϖ = 336,0266 mas.
@@ -58,7 +63,7 @@ export const NEARBY_STARS: readonly NearbyStar[] = [
   // Gaia DR3 (A), ϖ = 285,9949 mas.
   { key: "61-cygni", raDeg: 316.7247, decDeg: 38.7494, distanceLy: 11.4043, spectralType: "K5V", apparentMag: 5.21 },
   // Hipparcos (van Leeuwen 2007), ϖ = 284,56 mas.
-  { key: "procyon", raDeg: 114.8255, decDeg: 5.225, distanceLy: 11.4618, spectralType: "F5IV-V", apparentMag: 0.37 },
+  { key: "procyon", raDeg: 114.8255, decDeg: 5.225, distanceLy: 11.4618, spectralType: "F5IV-V", apparentMag: 0.37, notable: true },
   // Gaia DR3 (A), ϖ = 283,8401 mas.
   { key: "struve-2398", raDeg: 280.6946, decDeg: 59.6304, distanceLy: 11.4908, spectralType: "M3V", apparentMag: 8.93 },
   // Gaia DR3 (A), ϖ = 280,7068 mas.
@@ -68,7 +73,7 @@ export const NEARBY_STARS: readonly NearbyStar[] = [
   // Gaia DR3, ϖ = 273,8097 mas (Hipparcos donne la même distance).
   { key: "tau-ceti", raDeg: 26.017, decDeg: -15.9375, distanceLy: 11.9118, spectralType: "G8V", apparentMag: 3.5 },
   // Hipparcos (van Leeuwen 2007), ϖ = 194,95 mas.
-  { key: "altair", raDeg: 297.6958, decDeg: 8.8683, distanceLy: 16.7303, spectralType: "A7V", apparentMag: 0.76 },
+  { key: "altair", raDeg: 297.6958, decDeg: 8.8683, distanceLy: 16.7303, spectralType: "A7V", apparentMag: 0.76, notable: true },
 ];
 
 /** Sources des valeurs, citées dans le pied de page, écrites à la française : espace fine insécable avant « ; ». */
