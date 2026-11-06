@@ -57,12 +57,13 @@ export default async function VoyagePage({ params }: PageProps<"/[lang]/voyage">
       </SceneErrorBoundary>
       <TopBar locale={lang} stops={railStops} />
       <DistanceRail stops={railStops} />
-      <main id={MAIN_ID} tabIndex={-1} data-hide-on-explore>
-        <JourneyCards cards={CARD_STOPS}>
+      {/* Sur téléphone, la plaque de l'escale courante se fixe en haut ; son squelette suit `main`. */}
+      <JourneyCards cards={CARD_STOPS}>
+        <main id={MAIN_ID} tabIndex={-1} data-hide-on-explore>
           <SolarStops locale={lang} sunHref={sunHref} />
           <CosmicStops locale={lang} sunHref={sunHref} />
-        </JourneyCards>
-      </main>
+        </main>
+      </JourneyCards>
       <SiteFooter locale={lang} />
       <ScaleNote />
       {/* Avant le dock, sous lui à l'écran (z-index) : au clavier, la barre et le pavé d'exploration, puis le dock. */}

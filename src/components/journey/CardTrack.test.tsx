@@ -53,6 +53,32 @@ describe("CardTrack", () => {
     expect(plateOf("Sirius A")).toHaveAttribute("data-current");
   });
 
+  /*
+   * Squelette du passage : de la taille de la carte repliée, à sa place, décoratif (ni lu ni annoncé). Il ne paraît
+   * qu'en plein vol, la carte d'arrivée revient dès le repos.
+   */
+  it("devrait montrer le squelette décoratif en plein vol seulement", () => {
+    const { store, ui } = renderTrack();
+    const { container } = render(ui);
+    const skeleton = container.querySelector(".plate-skeleton");
+    expect(skeleton).toHaveAttribute("aria-hidden", "true");
+    expect(skeleton).not.toHaveAttribute("data-shown");
+    act(() => store.update("sun", "sirius-a", 0.3));
+    expect(skeleton).toHaveAttribute("data-shown");
+    // Aucun texte : rien à lire, rien à annoncer.
+    expect(skeleton?.textContent).toBe("");
+    act(() => store.update("sirius-a", "sirius-a", 0));
+    expect(skeleton).not.toHaveAttribute("data-shown");
+    expect(plateOf("Sirius A")).toHaveAttribute("data-current");
+  });
+
+  it("ne devrait pas montrer le squelette au rendu serveur", () => {
+    const { ui } = renderTrack();
+    const html = renderToString(ui);
+    expect(html).toContain("plate-skeleton");
+    expect(html).not.toContain("data-shown");
+  });
+
   it("hors de tout suivi, ne devrait marquer aucune plaque", () => {
     render(<Plate id="soleil" stop="sun" name="Soleil" color="#ffb547" title={<h2>Soleil</h2>} sections={SECTIONS} />);
     expect(plateOf("Soleil")).not.toHaveAttribute("data-current");

@@ -44,9 +44,10 @@ export function SizesPage({ locale }: { locale: Locale }) {
         <SizesSceneMount />
       </SceneErrorBoundary>
       <SizesRail />
-      <main id={MAIN_ID} tabIndex={-1}>
-        <SizesIntro locale={locale} />
-        <SizesCards cards={CARD_STOPS}>
+      {/* Sur téléphone, la plaque de l'astre courant se fixe en haut ; son squelette suit `main`. */}
+      <SizesCards cards={CARD_STOPS}>
+        <main id={MAIN_ID} tabIndex={-1}>
+          <SizesIntro locale={locale} />
           {COMPARED_OBJECTS.map((object, i) => {
             const restartTo = i === LARGEST ? SMALLEST : undefined;
             return object.kind === "star" ? (
@@ -55,8 +56,8 @@ export function SizesPage({ locale }: { locale: Locale }) {
               <BlackHolePlate key={object.key} hole={object} locale={locale} restartTo={restartTo} />
             );
           })}
-        </SizesCards>
-      </main>
+        </main>
+      </SizesCards>
       <footer>
         <div className={styles.contact}>
           <ContactFooter locale={locale} />

@@ -954,6 +954,11 @@ main > section > * {
   pointer-events: none;
 }
 
+/* Squelette de la carte fixe (CardTrack) : seulement en carte fixe, pendant un passage (« Carte fixe », plus bas). */
+.plate-skeleton {
+  display: none;
+}
+
 /*
  * Avancement du repos de la caméra, de 0 à 1, écrit sur la plaque de l'escale à chaque image (suivi du défilement) et
  * lu par son seul filet (::after, mise en page compacte). Non héritée : sinon chaque écriture invaliderait le style de
@@ -2919,8 +2924,86 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   }
 
   /* La barre glisse hors de l'écran (AutoHideBar) : la carte monte au bord haut, zone sûre comprise. */
-  .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) ~ main .plate {
+  .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) ~ main .plate,
+  .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) ~ .plate-skeleton {
     transform: translateY(calc(env(safe-area-inset-top, 0px) - var(--card-top)));
+  }
+
+  /*
+   * Squelette du passage d'une escale à l'autre (`data-shown`), à la place de la carte et de la taille de la carte
+   * repliée : rembourrage, rang (0,8125 rem, interligne 1,3), rangée du nom de 44 px. Une barre pour le rang, une pour
+   * le nom, deux cercles éteints de 32 px pour les flèches, le tout en ivoire à 10 %, sur le fond et le filet de la
+   * plaque. Un balayage lumineux discret le traverse en 1,6 s ; en mouvement réduit, il ne part pas (règle globale) et
+   * le squelette reste immobile. Décoratif (aria-hidden), il ne reçoit aucun toucher. Rendu après `main`, il passe
+   * devant les étiquettes de la scène comme lui (z-index 2).
+   */
+  .plate-skeleton[data-shown] {
+    position: fixed;
+    z-index: 2;
+    top: var(--card-top);
+    left: var(--gl);
+    right: var(--gr);
+    display: block;
+    max-width: 31rem;
+    margin: 0 auto;
+    padding: 0.5rem;
+    overflow: hidden;
+    border: 1px solid var(--filet);
+    border-radius: var(--r-lg);
+    background: var(--plaque-a);
+    pointer-events: none;
+    /* Le glissement de la barre, et le fondu de l'exploration (`data-hide-on-explore`), qu'il garde. */
+    transition:
+      transform 0.25s ease-out,
+      opacity 0.6s,
+      visibility 0s;
+  }
+
+  .skeleton-rank,
+  .skeleton-name,
+  .skeleton-step {
+    display: block;
+    border-radius: var(--r-pill);
+  }
+
+  .skeleton-rank,
+  .skeleton-name {
+    background: rgba(236, 229, 211, 0.1);
+  }
+
+  .skeleton-rank {
+    width: min(9rem, 45%);
+    height: 0.5rem;
+    margin: calc((0.8125rem * 1.3 - 0.5rem) / 2) auto calc((0.8125rem * 1.3 - 0.5rem) / 2 + 2px);
+  }
+
+  .skeleton-title {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    column-gap: 0.25rem;
+    align-items: center;
+    justify-items: center;
+    height: 44px;
+  }
+
+  .skeleton-step {
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(236, 229, 211, 0.1);
+  }
+
+  .skeleton-name {
+    width: min(11rem, 75%);
+    height: 1.25rem;
+  }
+
+  .plate-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 35%, rgba(236, 229, 211, 0.07) 50%, transparent 65%);
+    transform: translateX(-100%);
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
   }
 
   /* Le haut de l'écran est à la carte : la note d'échelle passe au-dessus du dock, et le focus s'arrête avant elle. */
@@ -2932,6 +3015,29 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
   html[data-scale-note] {
     scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 5rem);
     scroll-padding-bottom: calc(var(--dock-clear) + 0.5rem + var(--note-h, 11rem) + 0.75rem);
+  }
+}
+
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Couleurs forcées : les fonds disparaissent ; le squelette garde ses formes en filets du système, sans balayage. */
+@media (forced-colors: active) {
+  .plate-skeleton {
+    border-color: CanvasText;
+  }
+
+  .skeleton-rank,
+  .skeleton-name,
+  .skeleton-step {
+    border: 1px solid GrayText;
+  }
+
+  .plate-skeleton::after {
+    display: none;
   }
 }
 
