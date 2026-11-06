@@ -97,8 +97,8 @@ describe("createScreenLayout en mise en page compacte", () => {
   });
 
   /*
-   * La barre glisse hors de l'écran quand on descend (AutoHideBar), la carte remonte avec elle ; elles reviennent
-   * quand on remonte. Le cadrage lit la carte à sa place de repos, sans quoi l'astre bougerait à chaque glissement.
+   * Une carte translatée (avec la barre) est lue à sa place de repos : l'astre ne bouge pas avec une translation
+   * passagère.
    */
   it("devrait garder la bande sous la carte à sa place de repos quand elle remonte avec la barre", () => {
     const bar = document.createElement("header");

@@ -385,7 +385,7 @@ main > section:focus {
  * ligne de 320 à 1 440 px, dans les trois langues : rien n'y passe à la ligne, et l'escale en cours (ou le menu des
  * escales) cède la place en finissant en « … ». Hauteur : 0,9 rem + 46 px (capsule des onglets) + 0,9 rem au-dessus de
  * 860 px, commandes de 44 px au-dessous ; la scène mesure son bas, à sa place de repos. Au Voyage et à Tailles, en mise
- * en page compacte et sur écran bas, elle glisse hors de l'écran quand on descend (fin de « Petits écrans »).
+ * en page compacte et sur écran bas, elle reste fixe en haut de l'écran (fin de « Petits écrans »).
  */
 body::before {
   content: "";
@@ -1665,7 +1665,7 @@ footer a {
  * bandes et rien entre elles, sans intercepter un clic ; effacés avec la page pendant l'exploration
  * (data-hide-on-explore). Cachés par défaut : ils ne paraissent que sur grand écran, quand la page les déclare (plus
  * bas). En mise en page compacte, la plaque se pose au-dessus du dock ; sur écran bas, le dock suit la page. Là où ils
- * manquent, la barre glisse hors de l'écran quand on descend (fin de « Petits écrans ») : rien n'y passe dessous.
+ * manquent, la barre reste fixe et voilée (fin de « Petits écrans ») : rien n'y passe dessous.
  */
 .bar-fade,
 .dock-fade {
@@ -2866,7 +2866,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 }
 
 @media (max-width: 640px) {
-  /* Le voile de la barre, sous laquelle passent les plaques : en fin de feuille (« Voile de la barre qui glisse »). */
+  /* Le voile de la barre, sous laquelle passent les plaques : en fin de feuille (« Voile de la barre fixe »). */
   .bar {
     gap: 0.6rem;
   }
@@ -3237,12 +3237,10 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 /*
  * Carte fixe (ADR 0007) : mise en page compacte assez haute (plus de 30 rem ; en paysage bas, la plaque suit la page),
  * avec JavaScript (FIXED_CARD_QUERY, lib/journey/card.ts). La plaque de l'escale courante (`data-current`, posé depuis
- * le parcours : CardTrack) se fixe en haut de l'écran, sous la barre, et remonte avec elle quand elle glisse hors de
- * l'écran (même course, même durée ; rien en mouvement réduit) ; les autres, fixées au même endroit et mesurables,
- * sont découpées à rien (masquées à l'œil seulement) : lues dans l'ordre du document, leur nom dans la liste des
- * titres, et focalisables (le focus qui y entre rend leur escale courante d'un saut : Plate). Aucune ne prend de place
- * dans son escale, qui garde sa hauteur : le défilement
- * mène toujours la caméra, et la plaque des escales suivantes ne monte plus de l'écran. Dépliée, la carte s'allonge
+ * le parcours : CardTrack) se fixe en haut de l'écran, sous la barre, toujours affichée ; les autres, fixées au même
+ * endroit et mesurables, sont découpées à rien (masquées à l'œil seulement) : lues dans l'ordre du document, leur nom
+ * dans la liste des titres, et focalisables (le focus qui y entre rend leur escale courante d'un saut : Plate). Aucune
+ * ne prend de place dans son escale, qui garde sa hauteur : le défilement mène toujours la caméra, et la plaque des escales suivantes ne monte plus de l'écran. Dépliée, la carte s'allonge
  * jusqu'à son plancher (la réserve du dock, ou le bas de l'écran à Tailles) et son contenu défile en elle-même ; la
  * scène ne recadre rien (screenLayout lit la carte repliée, à sa place de repos, et son plancher par sa hauteur
  * maximale). Une seule source pour le DOM : les identifiants restent uniques et, sans JavaScript, la plaque reste
@@ -3282,7 +3280,6 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
      * sous son texte.
      */
     background: var(--plaque);
-    transition: transform 0.25s ease-out;
   }
 
   /*
@@ -3431,12 +3428,6 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     margin-top: 0.5rem;
   }
 
-  /* La barre glisse hors de l'écran (AutoHideBar) : la carte monte au bord haut, zone sûre comprise. */
-  html[data-fixed-card] .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) ~ main .plate,
-  html[data-fixed-card] .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) ~ .plate-skeleton {
-    transform: translateY(calc(env(safe-area-inset-top, 0px) - var(--card-top)));
-  }
-
   /*
    * Squelette du passage d'une escale à l'autre (`data-shown`), à la place de la carte et de la taille de la carte
    * repliée : rembourrage, rang (0,8125 rem, interligne 1,3), rangée du nom de 44 px. Une barre pour le rang, une pour
@@ -3460,9 +3451,8 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     border-radius: var(--r-lg);
     background: var(--plaque);
     pointer-events: none;
-    /* Le glissement de la barre, et le fondu de l'exploration (`data-hide-on-explore`), qu'il garde. */
+    /* Le fondu de l'exploration (`data-hide-on-explore`), qu'il garde. */
     transition:
-      transform 0.25s ease-out,
       opacity 0.6s,
       visibility 0s;
   }
@@ -3645,12 +3635,12 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 }
 
 /*
- * Écran bas, Voyage et Tailles (`data-autohide`), avec JavaScript : la barre reste fixe, resserrée à 0,5 rem autour de
- * ses commandes de 44 px (3,75 rem), et « Tourner autour » y garde sa place. Sans JavaScript, elle ne glisserait pas :
- * elle suit la page, comme celle de l'Accueil.
+ * Écran bas, Voyage et Tailles (`data-pinned`), avec JavaScript : la barre reste fixe, resserrée à 0,5 rem autour de
+ * ses commandes de 44 px (3,75 rem), et « Tourner autour » y garde sa place. Sans JavaScript, elle suit la page, comme
+ * celle de l'Accueil.
  */
 @media (max-height: 30rem) and (scripting: enabled) {
-  .bar[data-autohide] {
+  .bar[data-pinned] {
     position: fixed;
     top: env(safe-area-inset-top, 0px);
     padding-block: 0.5rem;
@@ -3658,61 +3648,51 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 }
 
 /*
- * Voyage et Tailles, là où ni la règle ni les fondus ne bordent la page (mise en page compacte, écran bas : le
- * complément exact de la requête des fondus) : la barre glisse hors de l'écran quand on descend (`data-concealed`,
- * AutoHideBar) et revient dès qu'on remonte, en 0,25 s, sans animation en mouvement réduit (règle globale, plus bas).
- * Elle reste tant qu'elle a le focus clavier ou un menu ouvert (escales, langue, menu replié). Sa place reste
- * réservée : les scènes la lisent au repos (barSlide.ts), sans recadrer l'astre quand elle part ni poser d'étiquette
- * dessous (Voyage et Tailles) ; les marges de défilement la dégagent toujours ; la note d'échelle et l'échelle
- * graphique ne bougent pas. Après la section « Exploration », dont elle reprend les fondus.
+ * Voyage et Tailles, là où ni la règle ni les fondus ne bordent la page (mise en page compacte, écran bas) : la barre
+ * reste fixe en haut de l'écran, toujours à portée, en descendant comme en remontant (demande de l'utilisateur). Seul
+ * son effacement pendant l'exploration s'anime (opacité), sans animation en mouvement réduit (règle globale, plus bas).
  */
 @media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
-  .bar[data-autohide] {
+  .bar[data-pinned] {
     transition:
-      transform 0.25s ease-out,
       opacity 0.6s,
       visibility 0s;
   }
 
-  html[data-explore] .bar[data-autohide] {
+  html[data-explore] .bar[data-pinned] {
     transition:
-      transform 0.25s ease-out,
       opacity 0.6s,
       visibility 0.6s;
-  }
-
-  .bar[data-concealed]:not(:has(:focus-visible, [aria-expanded="true"])) {
-    transform: translateY(-100%);
   }
 }
 
 /*
- * Voile de la barre qui glisse : les plaques passent sous elle, sans fondu pour les effacer (en 844 × 390, « 6e planète
+ * Voile de la barre fixe : les plaques passent sous elle, sans fondu pour les effacer (en 844 × 390, « 6e planète
  * en partant du Soleil » se lisait sous la marque). Comme à l'Accueil, nuit pleine jusqu'au bas des commandes, puis un
  * fondu sur sa marge basse, qui change avec la mise en page : 0,9 rem, 0,6 rem sur téléphone court, 0,5 rem sur écran
  * bas. La scène n'y perd rien : elle ne cadre ni n'étiquette rien sous la barre. En couleurs forcées, le fond du système.
  */
 @media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
-  .bar[data-autohide] {
+  .bar[data-pinned] {
     background: linear-gradient(var(--nuit) calc(100% - 0.9rem), rgba(6, 11, 24, 0));
   }
 }
 
 @media (max-width: 640px) and (max-height: 700px) {
-  .bar[data-autohide] {
+  .bar[data-pinned] {
     background: linear-gradient(var(--nuit) calc(100% - 0.6rem), rgba(6, 11, 24, 0));
   }
 }
 
 @media (max-height: 30rem) and (scripting: enabled) {
-  .bar[data-autohide] {
+  .bar[data-pinned] {
     background: linear-gradient(var(--nuit) calc(100% - 0.5rem), rgba(6, 11, 24, 0));
   }
 }
 
 @media (forced-colors: active) {
   @media (max-width: 640px), (max-width: 1100px) and (orientation: portrait), (max-height: 30rem) {
-    .bar[data-autohide] {
+    .bar[data-pinned] {
       background: Canvas;
     }
   }

@@ -107,8 +107,8 @@ export function createScreenLayout<K extends string>(
    * qui borde le bas (la note d'échelle visible, sinon le plancher de la carte : réserve du dock, bas de l'écran). Une
    * carte ou une note dépliée garde la mesure de sa forme repliée, pour que la caméra ne bouge pas ; la mesure des
    * cartes se perd si la largeur change. La note suspendue aux escales cosmiques (distances réelles toujours actives)
-   * garde sa place : le cadrage ne saute ni quand elle se tait, ni quand elle revient. La carte, qui remonte avec la
-   * barre quand celle-ci glisse hors de l'écran, est lue à sa place de repos : l'astre ne bouge pas quand elles partent.
+   * garde sa place : le cadrage ne saute ni quand elle se tait, ni quand elle revient. La carte est lue à sa place
+   * de repos, sans sa translation passagère : l'astre ne bouge pas avec elle.
    * Repli de la carte fixe (avant l'hydratation, navigateurs sans la requête `scripting`) : plaque collée en bas, bande
    * entre la barre (ou la note d'échelle, alors en haut) et le haut de la plaque. Sans barre fixe ni plaque fixe ou
    * collée (écran bas, sans JavaScript), pas de bande.

@@ -96,17 +96,17 @@ describe("SiteHeader", () => {
   });
 
   /*
-   * Au Voyage et à Tailles, la scène occupe l'écran et la page est longue : la barre glisse hors de l'écran quand on
-   * descend et revient quand on remonte (AutoHideBar). À l'Accueil et à À propos, elle reste telle quelle.
+   * Au Voyage et à Tailles, la scène occupe l'écran et la page est longue : la barre reste fixe en haut de l'écran
+   * (`data-pinned`), toujours à portée. À l'Accueil et à À propos, elle suit la page.
    */
-  it.each(["voyage", "sizes"] as const)("devrait suivre le défilement sur la page « %s », commandes comprises", (page) => {
+  it.each(["voyage", "sizes"] as const)("devrait rester fixe sur la page « %s », commandes comprises", (page) => {
     render(
       <SiteHeader locale="fr" page={page}>
         <button type="button">Tourner autour</button>
       </SiteHeader>,
     );
     const banner = screen.getByRole("banner");
-    expect(banner).toHaveAttribute("data-autohide");
+    expect(banner).toHaveAttribute("data-pinned");
     expect(banner).toHaveClass("bar");
     expect(banner).toHaveAttribute("data-page", page);
     expect(banner).toHaveAttribute("data-controls");
@@ -114,9 +114,9 @@ describe("SiteHeader", () => {
     expect(within(banner).getByRole("button", { name: "Tourner autour" })).toBeInTheDocument();
   });
 
-  it.each(["home", "about"] as const)("ne devrait pas suivre le défilement sur la page « %s »", (page) => {
+  it.each(["home", "about"] as const)("ne devrait pas être fixée sur la page « %s »", (page) => {
     render(<SiteHeader locale="fr" page={page} />);
-    expect(screen.getByRole("banner")).not.toHaveAttribute("data-autohide");
+    expect(screen.getByRole("banner")).not.toHaveAttribute("data-pinned");
   });
 
   /*

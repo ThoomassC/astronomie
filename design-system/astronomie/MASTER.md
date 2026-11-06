@@ -80,8 +80,7 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   l'escale courante, fixée en haut de l'écran sous la barre (`data-current`, posé depuis le parcours ; les autres,
   découpées à rien, masquées à l'œil seulement, restent lues et focalisables : le focus qui y entre rend leur escale
   courante d'un saut). Active une fois le client prêt (`html[data-fixed-card]`) : avant, la plaque compacte reste
-  collée en bas ; quand la barre glisse hors de l'écran, la carte monte au bord haut,
-  zone sûre comprise, et redescend avec elle (0,25 s, rien en mouvement réduit). Ni à l'accueil du Voyage, ni à
+  collée en bas. La carte reste sous la barre, toujours affichée. Ni à l'accueil du Voyage, ni à
   l'introduction de Tailles, ni à la ceinture d'astéroïdes. Les escales gardent leur hauteur : le défilement mène
   toujours la caméra, rien ne monte plus du bas de l'écran.
   Fond opaque `--plaque` (carte et squelette) : les étiquettes de la scène ne transparaissent pas.
@@ -123,8 +122,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   Pendant le repos de la caméra, le filet de couleur
   (atténué à 50 %) s'éclaire de gauche à droite ; plein, le vol vers l'escale suivante commence
   (pas sur la dernière escale).
-  La scène cadre l'astre dans la bande libre entre le bas de la carte repliée (lue à sa place de repos, sans la
-  barre qui glisse) et le haut du dock, de la note d'échelle ou du bas de l'écran, au plus 90 % de sa hauteur et 80 %
+  La scène cadre l'astre dans la bande libre entre le bas de la carte repliée (lue à sa place de repos)
+  et le haut du dock, de la note d'échelle ou du bas de l'écran, au plus 90 % de sa hauteur et 80 %
   de la largeur, anneaux compris ; la vue d'ensemble de l'au-delà y est centrée. La carte dépliée recouvre la scène
   sans la recadrer. Aucune étiquette ne se pose sous la carte ni sous le squelette. Sur écran bas (30 rem et moins)
   et dans les navigateurs sans la requête `scripting`, la plaque compacte suit la page (ou reste collée en bas),
@@ -294,19 +293,15 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   inchangée, une seule ligne ; à 860 px et moins, les onglets passent dans « Menu ». Fond : au Voyage et à Tailles,
   sur grand écran, un voile léger (`--voile` vers transparent), pour que la scène 3D se devine dessous (les fondus
   effacent les plaques avant elle) ; à l'Accueil et à À propos, où le texte défile sous la barre, et au Voyage et à
-  Tailles là où la barre glisse (mise en page compacte, écran bas : les plaques y passent dessous sans fondu), `--nuit`
+  Tailles là où la barre est fixe sans fondus (mise en page compacte, écran bas : les plaques y passent dessous sans fondu), `--nuit`
   plein jusqu'au bas des commandes puis un fondu sur la marge basse (0,9 rem ; 0,6 sur téléphone court, 0,5 sur écran
-  bas) : rien ne se lit derrière la marque ni les commandes. En couleurs forcées, la barre qui glisse prend le fond du
+  bas) : rien ne se lit derrière la marque ni les commandes. En couleurs forcées, la barre fixe prend le fond du
   système.
-  **Barre qui glisse** (Voyage et Tailles, là où ni règle ni fondus ne la bordent : mise en page compacte et écran
-  bas, en portrait comme en paysage) : elle glisse hors de l'écran (0,25 s, rien en mouvement réduit) après 16 px de
-  descente, revient dès 8 px de remontée, et reste affichée en haut de page, quand le focus y entre (clavier, retour
-  de l'exploration), quand la fenêtre change de largeur (rotation ; pas quand la barre d'adresse du navigateur se
-  replie) et tant qu'un de ses menus est ouvert. Un saut que fait la page d'elle-même (repli d'une plaque, caméra
-  posée avant l'exploration) ne la fait ni partir ni revenir : seul compte le geste. La carte fixe et son squelette
-  glissent avec elle. Sa place reste
-  réservée : la scène la lit au repos (l'astre ne bouge pas quand elle part, aucune étiquette ne se pose dessous) et
-  le focus s'arrête toujours sous elle (marges de défilement). Sur écran bas (30 rem et moins), elle reste fixe,
+  **Barre fixe** (Voyage et Tailles, là où ni règle ni fondus ne la bordent : mise en page compacte et écran bas, en
+  portrait comme en paysage, `data-pinned`) : elle reste en haut de l'écran en descendant comme en remontant (demande
+  de l'utilisateur, 06/11/2026 ; elle glissait hors de l'écran en descendant). La carte fixe et son squelette restent
+  sous elle. La scène la lit à sa place (aucune étiquette ne se pose dessous) et le focus s'arrête toujours sous elle
+  (marges de défilement). Sur écran bas (30 rem et moins), elle reste fixe,
   resserrée à 3,75 rem (0,5 rem autour des commandes de 44 px) ; sans JavaScript, elle y suit la page, comme celle de
   l'Accueil et d'À propos.
 - **Choix de la langue** : le bouton de la barre montre le drapeau de la langue de la page, puis son code (« FR ») et

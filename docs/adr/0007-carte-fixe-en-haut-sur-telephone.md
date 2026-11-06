@@ -15,7 +15,7 @@ principal.
 
 Contraintes : identifiants uniques (ancres, `aria-controls`, `aria-labelledby`), repli sans JavaScript, défilement qui
 mène la caméra (plages de repos et de vol de chaque escale, ADR 0001), scène cadrée dans une bande libre mesurée,
-barre qui glisse hors de l'écran, trois langues, aucune dépendance nouvelle.
+barre haute fixe, trois langues, aucune dépendance nouvelle.
 
 ## Décision
 
@@ -65,6 +65,10 @@ barre qui glisse hors de l'écran, trois langues, aucune dépendance nouvelle.
   étiquette ne se pose sous la carte, ciel profond compris.
 
 ## Conséquences
+
+- Révision du 06/11/2026 : la barre haute ne glisse plus hors de l'écran en descendant (demande de l'utilisateur :
+  « laisse-le fixe tout le temps »). Elle reste toujours affichée, et la carte reste sous elle ; `AutoHideBar` et la
+  logique de glissement sont retirés.
 
 - La scène gagne la hauteur de l'ancienne plaque : sur un téléphone court avec la note d'échelle, la bande passe
   d'environ 17 % à plus de 40 % de l'écran.
