@@ -9,8 +9,8 @@
 
 Un planétaire (l'instrument mécanique en laiton qui montre le mouvement des planètes),
 rendu vivant : ciel de nuit, réglets gradués, une couleur propre à chaque astre.
-Site pédagogique grand public (12 ans et plus), en français, en anglais et en espagnol. Quatre pages : Accueil,
-Voyage, Tailles, À propos (précisions par page dans `pages/`).
+Site pédagogique grand public (12 ans et plus), en français, en anglais et en espagnol. Cinq pages : Accueil,
+Voyage, Tailles, À propos, Notes de version (précisions par page dans `pages/`).
 
 - Un seul monde visuel, sombre, assumé (pas de thème clair) : `color-scheme: dark`.
 - L'élément fort : la scène 3D aux positions réelles et le voyage au défilement.
@@ -287,12 +287,18 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   langue, menu replié), dans cet ordre de tabulation. Plus de 860 px, une grille `1fr auto 1fr` centre les onglets
   dans la barre ; une colonne latérale ne descend jamais sous la largeur de son contenu, si bien que les onglets se
   décalent vers la marque plutôt que de chevaucher les commandes, et retrouvent le centre dès que la place revient
-  (au Voyage, à 1 329 px au pire, à l'escale la plus longue en espagnol). Seuil vérifié au pire cas (espagnol,
-  Voyage) : 800 px de contenu pour 829 disponibles à 861 px en paysage ; en portrait, où le menu des escales remplace
-  l'escale, 860 px qui ne tiennent qu'à 892 px : la grille y attend 900 px, la ligne d'origine sert avant. Hauteur
-  inchangée, une seule ligne ; à 860 px et moins, les onglets passent dans « Menu ». Fond : au Voyage et à Tailles,
+  (au Voyage, à 1 427 px au pire, à l'escale la plus longue en espagnol). **Cinq onglets** (depuis la 1.1.0) : celui
+  des Notes de version prend un libellé court (« Versions », « Releases », « Versiones », 98 px au plus, estimés sur
+  les 311 px mesurés des quatre onglets espagnols), le nom complet restant le titre de la page ; les onglets passent
+  à 409 px en espagnol. Pages sans commandes (Accueil, À propos, Notes de version) : 568 px pour 829 disponibles, la
+  grille sert dès 861 px. Pages à commandes, au pire (espagnol, Voyage) : 898 px en paysage de 861 à 1 100 px (la
+  grille attend 59,125 rem, 946 px), 958 px en portrait, où le menu des escales remplace l'escale (63 rem,
+  1 008 px), 1 075 px au-delà de 1 100 px (70 rem, 1 120 px), soit 16 px de marge sur l'estimation ; avant chaque
+  seuil, la ligne d'origine sert : les onglets suivent la marque et l'escale (ou le menu des escales) rétrécit en
+  « … » (environ 80 px à 861 px). Hauteur inchangée, une seule ligne de 861 à 1 440 px dans les trois langues ; à
+  860 px et moins, les onglets passent dans « Menu ». Fond : au Voyage et à Tailles,
   sur grand écran, un voile léger (`--voile` vers transparent), pour que la scène 3D se devine dessous (les fondus
-  effacent les plaques avant elle) ; à l'Accueil et à À propos, où le texte défile sous la barre, et au Voyage et à
+  effacent les plaques avant elle) ; à l'Accueil, à À propos et aux Notes de version, où le texte défile sous la barre, et au Voyage et à
   Tailles là où la barre est fixe sans fondus (mise en page compacte, écran bas : les plaques y passent dessous sans fondu), `--nuit`
   plein jusqu'au bas des commandes puis un fondu sur la marge basse (0,9 rem ; 0,6 sur téléphone court, 0,5 sur écran
   bas) : rien ne se lit derrière la marque ni les commandes. En couleurs forcées, la barre fixe prend le fond du
