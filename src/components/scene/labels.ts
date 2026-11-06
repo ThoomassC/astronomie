@@ -245,6 +245,50 @@ function isFree(left: number, top: number, right: number, bottom: number, occupi
   return true;
 }
 
+/*
+ * Mise en page compacte (téléphone, tablette en portrait) : le nom d'une planète ou du Soleil dont le disque déborde du
+ * repère se pose au-dessus de lui, au lieu de s'effacer au milieu du disque. Comme le nom d'une galaxie à côté du sien
+ * (clearanceShift), il s'écarte de ce qui s'élève le plus haut à l'écran, disque ou anneaux.
+ */
+
+/** Air entre le haut d'un astre (disque ou anneaux) et le texte de l'étiquette posée au-dessus de lui, en px. */
+export const ABOVE_DISC_GAP_PX = 4;
+
+/**
+ * Hauteur à l'écran (px) de ce qui s'élève au-dessus du centre d'un astre : son disque, de `discPx` de rayon, ou ses
+ * anneaux, de `ringPx` de rayon extérieur (0 sans anneaux), s'ils montent plus haut. Un cercle de normale n s'étend, le
+ * long d'une direction u, sur r·√(1 − (n·u)²) : `poleDotUp` est n·u, le produit du pôle de l'astre (normale des
+ * anneaux) par la verticale de l'écran. Vus par la tranche, pôle à la verticale, les anneaux ne montent pas ; pôle à
+ * l'horizontale, ils montent de tout leur rayon.
+ */
+export function riseAbove(discPx: number, ringPx: number, poleDotUp: number): number {
+  if (ringPx <= 0) return discPx;
+  return Math.max(discPx, ringPx * Math.sqrt(Math.max(0, 1 - poleDotUp * poleDotUp)));
+}
+
+/**
+ * Boîte du texte (`text`, en px) centré au-dessus de l'astre en (x, y), son bas à ABOVE_DISC_GAP_PX px au-dessus de
+ * `rise` (riseAbove) : il ne recouvre jamais le disque. `null` si l'astre est derrière la caméra, si le texte sortirait
+ * de l'écran (EDGE_MARGIN), passerait sous la barre haute ou sur le dock, ou recouvrirait une boîte occupée (barre,
+ * note d'échelle, plaque, étiquette plus prioritaire) : l'étiquette est alors masquée.
+ */
+export function placeAboveDisc(
+  anchor: MarkerAnchor,
+  text: { width: number; height: number },
+  rise: number,
+  viewWidth: number,
+  viewHeight: number,
+  occupied: readonly LabelBox[],
+): LabelBox | null {
+  const { x, y, depth } = anchor;
+  if (depth > 1) return null;
+  const bottom = y - rise - ABOVE_DISC_GAP_PX;
+  const box: LabelBox = [x - text.width / 2, bottom - text.height, x + text.width / 2, bottom];
+  if (box[0] < EDGE_MARGIN || box[2] > viewWidth - EDGE_MARGIN) return null;
+  if (box[1] < Math.max(EDGE_MARGIN, TOP_MARGIN) || box[3] > viewHeight - Math.max(EDGE_MARGIN, BOTTOM_MARGIN)) return null;
+  return isFree(box[0], box[1], box[2], box[3], occupied) ? box : null;
+}
+
 /** Boîte relative à un repère, posée sur le repère en (x, y). */
 export function anchoredBox(box: LabelBox, x: number, y: number): LabelBox {
   return [x + box[0], y + box[1], x + box[2], y + box[3]];

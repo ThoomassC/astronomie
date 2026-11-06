@@ -4,7 +4,7 @@
  */
 
 /** Air entre la bande libre et ce qui la borde (bandeaux du haut, plaque), en px. */
-const BAND_MARGIN_PX = 8;
+export const BAND_MARGIN_PX = 8;
 /**
  * Sous cette part de l'écran (texte très agrandi), pas de bande : cadrage portrait habituel.
  * Au-dessus, même un petit astre visible vaut mieux qu'un grand caché derrière la plaque.

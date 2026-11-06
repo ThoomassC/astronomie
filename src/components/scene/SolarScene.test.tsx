@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { stopColor } from "@/components/journey/stopMeta";
@@ -149,3 +151,40 @@ describe("SolarScene, étiquettes du ciel profond", () => {
     expect(textOf(deepLabel(starLabelKey("proxima-centauri")))).toBe("Proxima Centauri · 4.2 ly");
   });
 });
+
+/*
+ * Étiquettes de la scène en mise en page compacte (globals.css, lue telle quelle) : plus petites, à la demande de
+ * l'utilisateur (0,75 rem, sous le minimum de 0,8125 rem du MASTER, exception notée), pastilles de Tailles plus fines ;
+ * au Voyage, le nom posé au-dessus du disque d'un astre (`data-above`, posé par la scène) efface son repère.
+ */
+describe("feuille de style des étiquettes de la scène", () => {
+  const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+  const COMPACT = "@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait) {";
+
+  /** Déclarations de la règle `selector` (indentation de 2) dans le bloc compact qui la contient. */
+  function compactRule(selector: string): string {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    for (let at = css.indexOf(COMPACT); at >= 0; at = css.indexOf(COMPACT, at + 1)) {
+      const block = css.slice(at, css.indexOf("\n}", at));
+      const rule = new RegExp(`\\n {2}${escaped} \\{([^}]*)\\}`).exec(block)?.[1];
+      if (rule !== undefined) return rule;
+    }
+    throw new Error(`Règle absente : ${selector}`);
+  }
+
+  it("devrait réduire le texte des étiquettes à 0,75 rem, cercles de distance compris", () => {
+    expect(compactRule(".lbl,\n  .lbl.deep.ring")).toMatch(/font-size: 0\.75rem;/);
+  });
+
+  it("devrait affiner le rembourrage des étiquettes et la pastille de Tailles", () => {
+    expect(compactRule(".lbl")).toMatch(/padding: 0\.2rem 0\.4rem 0\.2rem 0\.15rem;/);
+    const pill = compactRule(".lbl.deep > span");
+    expect(pill).toMatch(/padding: 0 0\.35rem;/);
+    expect(pill).toMatch(/line-height: 1\.3;/);
+  });
+
+  it("devrait effacer le repère d'un nom posé au-dessus de son astre, sans lui retirer sa place", () => {
+    expect(css).toMatch(/\n\.lbl\[data-above\] i \{\s*visibility: hidden;\s*\}/);
+  });
+});
+

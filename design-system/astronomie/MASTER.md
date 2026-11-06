@@ -45,6 +45,11 @@ O `#9BB0FF`, B `#AABFFF`, A `#CAD7FF`, F `#F8F7FF`, G `#FFF4EA`, K `#FFD2A1`, M 
   public scolaire). Chiffres en `tabular-nums` dès qu'ils changent en direct.
 - Pas de capitales espacées pour les étiquettes, pas de police mono décorative.
 - Échelle : 0.8125 / 0.9375 / 1.0625 (texte) / 1.375 / 2 / 3.5–7 rem (noms d'astres).
+- **Exception** (demande explicite de l'utilisateur, 6/11/2026) : en mise en page compacte seulement (téléphone,
+  tablette en portrait), les étiquettes de la scène, au Voyage et à Tailles (astres, ciel profond, cercles de distance),
+  passent à 0,75 rem, sous le minimum de 0,8125 rem, avec un rembourrage plus fin (0,2 rem) et des pastilles plus
+  basses (interligne 1,3, 0,35 rem de côté). Ivoire ou brume sur la nuit, détachées par leur ombre ou leur pastille :
+  contraste bien au-dessus de 4,5:1. Le grand écran garde 0,8125 rem.
 - Espaces du français, sur tout texte affiché (canevas compris) : espace fine insécable (U+202F) entre les milliers
   et avant « ; ! ? », espace insécable (U+00A0) avant « : » et dans les guillemets « », jamais d'espace ordinaire à
   ces places (règle du README, gardée par un test). Anglais et espagnol : rien avant la ponctuation.
@@ -160,6 +165,13 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   premier cinquième du vol et se refait sur le dernier ; en plein vol et aux escales sans planète, rien ne change. Une
   carte photographique qui arrive se fond en 400 ms dans la couleur unie de l'astre, en mouvement réduit compris
   (fondu enchaîné, sans mouvement).
+- **Noms des astres (scène du Voyage), mise en page compacte** : le nom d'une planète ou du Soleil dont le disque
+  déborde de son repère (anneau de 10 px) se pose au-dessus de lui, centré, à 4 px de ce qui s'élève le plus haut à
+  l'écran (le disque, ou les anneaux de Saturne et d'Uranus selon leur inclinaison), repère effacé (`data-above`) : il
+  ne chevauche jamais le disque. Au repos sur une escale, le nom de l'astre en vue reste entier, même vu de près (il
+  suit le repos de la caméra). Jamais hors de l'écran, sous la barre ou la note d'échelle, ni sur la plaque repliée ;
+  sinon, masqué. Un astre plus petit que son repère garde la disposition ordinaire. À Tailles, les noms sont déjà
+  au-dessus des astres.
 - **Règle des distances** : sommaire vertical à échelle logarithmique, en trois segments : UA jusqu'à 50
   (les planètes), grand vide comprimé jusqu'à 1 al, puis années-lumière jusqu'à 10¹¹ al, au-delà de l'Univers
   observable (fin de l'axe à 98 %). Le multivers, à l'infini, se pose après l'axe, hors échelle (99,4 %).

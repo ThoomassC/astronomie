@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ABOVE_DISC_GAP_PX,
   EDGE_MARGIN,
   LABEL_GAP_PX,
   LABEL_HALO_PX,
@@ -9,9 +10,11 @@ import {
   anchoredBox,
   clearanceShift,
   markerLayouts,
+  placeAboveDisc,
   placeLabel,
   placeMarkedLabel,
   pointBox,
+  riseAbove,
   ringLayouts,
   type LabelAnchor,
   type LabelBox,
@@ -525,5 +528,77 @@ describe("étoiles voisines en 375 × 812, étiquettes à nu : halo réservé et
       const soleil = occupied[0];
       expect(ring[0] - soleil[2]).toBeGreaterThanOrEqual(RING_LABEL_GAP_PX);
     });
+  });
+});
+
+/*
+ * Mise en page compacte (téléphone) : l'étiquette d'une planète ou du Soleil dont le disque déborde du repère se pose
+ * au-dessus de lui, texte centré, 4 px d'air au-dessus de ce qui s'élève le plus haut (disque ou anneaux) : jamais sur
+ * le disque, jamais hors de l'écran, sous la barre ou sur la plaque ; sinon, masquée.
+ */
+describe("riseAbove", () => {
+  it("devrait prendre le rayon du disque pour un astre sans anneaux", () => {
+    expect(riseAbove(60, 0, 0)).toBe(60);
+  });
+
+  it("devrait prendre l'anneau entier quand son plan contient la verticale de l'écran (pôle à l'horizontale)", () => {
+    expect(riseAbove(40, 94, 0)).toBeCloseTo(94, 6);
+  });
+
+  it("devrait réduire l'anneau vu par la tranche, pôle à la verticale, au disque seul", () => {
+    expect(riseAbove(40, 94, 1)).toBe(40);
+    expect(riseAbove(40, 94, -1)).toBe(40);
+  });
+
+  it("devrait suivre l'inclinaison de l'anneau entre les deux", () => {
+    // Pôle à 60° de la verticale de l'écran : l'anneau s'élève de 94 × sin 60°.
+    expect(riseAbove(40, 94, Math.cos(Math.PI / 3))).toBeCloseTo(94 * Math.sin(Math.PI / 3), 6);
+  });
+});
+
+describe("placeAboveDisc", () => {
+  const PHONE_W = 375;
+  const PHONE_H = 812;
+  const TEXT = { width: 44, height: 16 };
+  /** Soleil au repos, au milieu de la bande libre : centre à 320 px du haut, disque de 150 px de rayon. */
+  const SUN = { x: 187.5, y: 320, depth: 0.5 };
+
+  it("devrait centrer le texte au-dessus du disque, à 4 px d'air de son bord", () => {
+    const box = placeAboveDisc(SUN, TEXT, 150, PHONE_W, PHONE_H, []);
+    expect(box).toEqual([187.5 - 22, 320 - 150 - ABOVE_DISC_GAP_PX - 16, 187.5 + 22, 320 - 150 - ABOVE_DISC_GAP_PX]);
+    expect(ABOVE_DISC_GAP_PX).toBeGreaterThanOrEqual(2);
+  });
+
+  it("ne devrait jamais recouvrir le disque", () => {
+    for (const rise of [6, 40, 150, 230]) {
+      const box = placeAboveDisc(SUN, TEXT, rise, PHONE_W, PHONE_H, []);
+      if (box) expect(box[3]).toBeLessThanOrEqual(SUN.y - rise);
+    }
+  });
+
+  it("devrait la masquer quand elle passerait sous la barre haute", () => {
+    expect(placeAboveDisc(SUN, TEXT, 236, PHONE_W, PHONE_H, [])).toBeNull();
+  });
+
+  it("devrait la masquer sur une boîte occupée : barre, note d'échelle, plaque, étiquette plus prioritaire", () => {
+    const note: LabelBox = [0, 0, PHONE_W, 160];
+    expect(placeAboveDisc(SUN, TEXT, 150, PHONE_W, PHONE_H, [note])).toBeNull();
+    expect(placeAboveDisc(SUN, TEXT, 150, PHONE_W, PHONE_H, [[0, 0, PHONE_W, 140]])).not.toBeNull();
+  });
+
+  it("devrait la masquer quand le texte sortirait de l'écran par un côté", () => {
+    expect(placeAboveDisc({ ...SUN, x: 20 }, TEXT, 30, PHONE_W, PHONE_H, [])).toBeNull();
+    expect(placeAboveDisc({ ...SUN, x: PHONE_W - 20 }, TEXT, 30, PHONE_W, PHONE_H, [])).toBeNull();
+    expect(placeAboveDisc({ ...SUN, x: EDGE_MARGIN + 22 }, TEXT, 30, PHONE_W, PHONE_H, [])).not.toBeNull();
+  });
+
+  it("devrait la masquer pour un astre derrière la caméra", () => {
+    expect(placeAboveDisc({ ...SUN, depth: 1.2 }, TEXT, 150, PHONE_W, PHONE_H, [])).toBeNull();
+  });
+
+  it("devrait la poser au-dessus d'un astre au bas de l'écran tant que son texte reste au-dessus du dock", () => {
+    const low = { x: 187.5, y: PHONE_H - 60, depth: 0.5 };
+    expect(placeAboveDisc(low, TEXT, 10, PHONE_W, PHONE_H, [])).toBeNull();
+    expect(placeAboveDisc(low, TEXT, 30, PHONE_W, PHONE_H, [])).not.toBeNull();
   });
 });

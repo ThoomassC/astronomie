@@ -176,6 +176,14 @@ main > section:focus {
   flex-direction: row-reverse;
 }
 
+/*
+ * Nom posé au-dessus du disque de l'astre (`data-above`, posé par la scène en mise en page compacte) : le disque tient
+ * lieu de repère. L'anneau garde sa place, l'étiquette ses mesures.
+ */
+.lbl[data-above] i {
+  visibility: hidden;
+}
+
 .real .lbl:not(.deep) i {
   transform: scale(1.6);
   border-width: 1.5px;
@@ -303,6 +311,29 @@ main > section:focus {
 
 .lbl.deep.hypothesis > span {
   font-style: italic;
+}
+
+/*
+ * Mise en page compacte (téléphone, tablette en portrait ; même requête dans screenLayout.ts) : étiquettes plus petites,
+ * à la demande de l'utilisateur, au Voyage et à Tailles : 0,75 rem, sous le minimum de 0,8125 rem du MASTER (exception
+ * notée), rembourrage et pastilles plus fins. Ivoire sur la nuit, détaché du ciel par son ombre ou sa pastille : le
+ * contraste reste bien au-dessus de 4,5:1.
+ */
+@media (max-width: 640px), (max-width: 1100px) and (orientation: portrait) {
+  .lbl,
+  .lbl.deep.ring {
+    font-size: 0.75rem;
+  }
+
+  .lbl {
+    gap: 0.35rem;
+    padding: 0.2rem 0.4rem 0.2rem 0.15rem;
+  }
+
+  .lbl.deep > span {
+    padding: 0 0.35rem;
+    line-height: 1.3;
+  }
 }
 
 /* Repli sans scène 3D : le canvas (qui garderait sa dernière image) disparaît, un Soleil CSS le remplace. */
