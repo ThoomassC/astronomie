@@ -1,15 +1,39 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CardTrack } from "@/components/journey/CardTrack";
 import { Plate, type PlateSection } from "@/components/journey/Plate";
+import { FIXED_CARD_QUERY } from "@/lib/journey/card";
 import { createStopStore } from "@/lib/journey/store";
 
 type Key = "intro" | "sun" | "sirius-a";
 
 const SECTIONS: readonly PlateSection[] = [{ key: "fiche", label: "Lire la fiche", icon: "story", content: <p>Fiche</p> }];
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+/** Frontière navigateur : requête de la carte fixe, qui bascule (rotation) ; `turn` prévient les abonnés. */
+function stubFixedCard(initial: boolean) {
+  let fixed = initial;
+  const listeners = new Set<() => void>();
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    get matches() {
+      return fixed && query === FIXED_CARD_QUERY;
+    },
+    media: query,
+    addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+    removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
+  }));
+  return (next: boolean) => {
+    fixed = next;
+    act(() => listeners.forEach((listener) => listener()));
+  };
+}
+
+const fixedCardOn = () => document.documentElement.hasAttribute("data-fixed-card");
 
 /** Deux plaques d'un parcours qui part de l'introduction (sans carte), dans leur suivi. */
 function renderTrack() {
@@ -77,6 +101,31 @@ describe("CardTrack", () => {
     const html = renderToString(ui);
     expect(html).toContain("plate-skeleton");
     expect(html).not.toContain("data-shown");
+  });
+
+  /*
+   * La feuille de style n'active la carte fixe qu'une fois le client prêt : avant l'hydratation, ou si le script échoue,
+   * la plaque reste entière, visible et lue (aucune n'a encore `data-current`).
+   */
+  it("devrait activer la carte fixe dans la feuille de style seulement côté client, tant que la requête correspond", () => {
+    const turn = stubFixedCard(true);
+    const { ui } = renderTrack();
+    expect(renderToString(ui)).not.toContain("data-fixed-card");
+    expect(fixedCardOn()).toBe(false);
+    const { unmount } = render(ui);
+    expect(fixedCardOn()).toBe(true);
+    turn(false);
+    expect(fixedCardOn()).toBe(false);
+    turn(true);
+    expect(fixedCardOn()).toBe(true);
+    unmount();
+    expect(fixedCardOn()).toBe(false);
+  });
+
+  it("ne devrait pas activer la carte fixe hors de sa requête (grand écran, paysage bas)", () => {
+    stubFixedCard(false);
+    render(renderTrack().ui);
+    expect(fixedCardOn()).toBe(false);
   });
 
   it("hors de tout suivi, ne devrait marquer aucune plaque", () => {

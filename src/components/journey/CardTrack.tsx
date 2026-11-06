@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { FIXED_CARD_QUERY, showsCard, showsSkeleton } from "@/lib/journey/card";
 import type { StopStore } from "@/lib/journey/store";
 
@@ -17,7 +17,9 @@ const serverSnapshot = () => false;
 
 /**
  * Carte fixe du téléphone (lib/journey/card.ts) : les plaques du parcours `store` (Voyage, Tailles), dont `cards` dit
- * les escales qui en ont une, savent laquelle est courante ; le squelette du passage suit leurs plaques.
+ * les escales qui en ont une, savent laquelle est courante ; le squelette du passage suit leurs plaques. Tant que la
+ * requête de la carte fixe correspond, le suivi l'active dans la feuille de style (`html[data-fixed-card]`) : rien ne
+ * change avant l'hydratation, ni si le script échoue.
  */
 export function CardTrack<K extends string>({
   store,
@@ -32,6 +34,9 @@ export function CardTrack<K extends string>({
     const keys: ReadonlySet<string> = new Set(cards);
     return { store, hasCard: (key) => keys.has(key) };
   }, [store, cards]);
+  const fixed = useFixedCard();
+  // La feuille de style n'active la carte fixe qu'une fois le client prêt : avant, la plaque reste entière et lue.
+  useLayoutEffect(() => (fixed ? holdFixedCard() : undefined), [fixed]);
   return (
     <CardTrackContext value={value}>
       {children}
@@ -90,6 +95,22 @@ function subscribeFixedCard(listener: () => void): () => void {
 }
 
 const fixedCardSnapshot = () => typeof matchMedia === "function" && matchMedia(FIXED_CARD_QUERY).matches;
+
+/** Suivis qui tiennent la carte fixe active : une page qui part et celle qui arrive peuvent se croiser. */
+let fixedCardHolders = 0;
+
+/**
+ * Active la carte fixe dans la feuille de style (`html[data-fixed-card]`) jusqu'à l'appel du retour, qui la rend au
+ * dernier suivi qui la lâche.
+ */
+function holdFixedCard(): () => void {
+  fixedCardHolders += 1;
+  document.documentElement.setAttribute("data-fixed-card", "");
+  return () => {
+    fixedCardHolders -= 1;
+    if (fixedCardHolders === 0) document.documentElement.removeAttribute("data-fixed-card");
+  };
+}
 
 /**
  * La mise en page est celle de la carte fixe (FIXED_CARD_QUERY : téléphone ou tablette en portrait, assez haut, avec

@@ -533,6 +533,59 @@ describe("carte fixe : le nom déplie la carte", () => {
     expect(screen.getByRole("button", { name: "Mars" })).toHaveAttribute("aria-expanded", "false");
   });
 
+  /** Frontière navigateur : carte fixe qui bascule (rotation, fenêtre redimensionnée) ; `turn` prévient les abonnés. */
+  function stubTurningCard(initial: boolean) {
+    let fixed = initial;
+    const listeners = new Set<() => void>();
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      get matches() {
+        return fixed && (query === FIXED_CARD_QUERY || query === COMPACT_SCRIPTED);
+      },
+      media: query,
+      addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
+    }));
+    return (next: boolean) => {
+      fixed = next;
+      act(() => listeners.forEach((listener) => listener()));
+    };
+  }
+
+  it("devrait garder « Replier » efficace quand la carte dépliée passe en paysage", async () => {
+    const turn = stubTurningCard(true);
+    const user = userEvent.setup();
+    const { article } = renderCard();
+    await user.click(nameButton());
+    turn(false);
+    expect(article).not.toHaveAttribute("data-unfolded");
+    expect(article).toHaveAttribute("data-expanded");
+    await user.click(screen.getByRole("button", { name: "Replier, Mars" }));
+    expect(article).not.toHaveAttribute("data-expanded");
+    expect(screen.queryByRole("button", { name: "Replier, Mars" })).not.toBeInTheDocument();
+  });
+
+  it("devrait déplier la carte courante qui arrive en portrait avec une section ouverte", async () => {
+    const turn = stubTurningCard(false);
+    const user = userEvent.setup();
+    const { article } = renderCard();
+    await user.click(screen.getByRole("button", { name: "Lire la fiche" }));
+    turn(true);
+    expect(article).toHaveAttribute("data-unfolded");
+    expect(nameButton()).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Lire la fiche" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("devrait replier la plaque non courante qui arrive en portrait avec une section ouverte", async () => {
+    const turn = stubTurningCard(false);
+    const user = userEvent.setup();
+    const { store, article } = renderCard();
+    await user.click(screen.getByRole("button", { name: "Lire la fiche" }));
+    act(() => store.update("earth", "earth", 0));
+    turn(true);
+    expect(article).not.toHaveAttribute("data-unfolded");
+    expect(article).not.toHaveAttribute("data-expanded");
+  });
+
   it("hors de la carte fixe (grand écran, paysage bas, sans JavaScript), devrait garder le nom en simple titre", () => {
     stubFixedCard(false);
     renderCard();
@@ -650,23 +703,47 @@ describe("feuille de style de la plaque compacte", () => {
    * 44 px.
    */
   it("devrait masquer sans les retirer de la mise en page les plaques qui ne sont pas courantes", () => {
-    const hidden = ruleIn(FIXED_CARD_QUERY, ".plate:not([data-current])");
+    const hidden = ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate:not([data-current])");
     expect(hidden).toMatch(/visibility: hidden;/);
     expect(hidden).not.toMatch(/display: none/);
   });
 
   it("devrait réduire la carte repliée au rang et au nom, le nom en cible de 44 px", () => {
-    expect(ruleIn(FIXED_CARD_QUERY, ".plate:not([data-unfolded]) > .plate-sections ~ *")).toMatch(/display: none;/);
-    expect(ruleIn(FIXED_CARD_QUERY, ".plate-name")).toMatch(/min-height: 44px;/);
-    expect(ruleIn(FIXED_CARD_QUERY, ".plate-title .stop-step")).toMatch(/width: 44px;/);
-    const sections = ruleIn(FIXED_CARD_QUERY, ".plate-sections");
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate:not([data-unfolded]) > .plate-sections ~ *")).toMatch(/display: none;/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-name")).toMatch(/min-height: 44px;/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-title .stop-step")).toMatch(/width: 44px;/);
+    const sections = ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-sections");
     expect(sections).toMatch(/overflow-y: auto;/);
     expect(sections).toMatch(/overscroll-behavior: contain;/);
   });
 
   it("devrait faire balayer le squelette, et l'arrêter en mouvement réduit (règle globale)", () => {
-    expect(ruleIn(FIXED_CARD_QUERY, ".plate-skeleton::after")).toMatch(/animation: skeleton-sweep/);
+    expect(ruleIn(FIXED_CARD_QUERY, "html[data-fixed-card] .plate-skeleton::after")).toMatch(/animation: skeleton-sweep/);
     expect(ruleIn("(prefers-reduced-motion: reduce)", "*::after")).toMatch(/animation: none !important;/);
+  });
+
+  /*
+   * Avant l'hydratation (réseau lent, script en échec), la plaque reste entière et lue : chaque règle de la carte fixe
+   * attend le client prêt (`html[data-fixed-card]`, posé par CardTrack). Seules les variables n'attendent pas.
+   */
+  it("devrait n'activer la carte fixe qu'une fois le client prêt", () => {
+    const media = FIXED_CARD_QUERY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/, /g, ",\\s+");
+    const blocks = [...css.matchAll(new RegExp(`@media ${media} \\{([\\s\\S]*?)\\n\\}`, "g"))];
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const [, block] of blocks) {
+      // Une règle par sélecteur de liste, un par ligne ; commentaires ôtés.
+      const rules = block.replace(/\/\*[\s\S]*?\*\//g, "");
+      const selectors = [...rules.matchAll(/\n {2,4}([^\s@}][^;{}]*?)\s*\{/g)].flatMap(([, list]) =>
+        list.split(/,\s*\n\s*/),
+      );
+      expect(selectors.length).toBeGreaterThan(0);
+      for (const selector of selectors) {
+        if (selector === ":root") continue;
+        expect(selector).toMatch(/^html\[data-fixed-card\]/);
+      }
+    }
+    const sizes = readFileSync(resolve(process.cwd(), "src/components/sizes/SizesPage.module.css"), "utf8");
+    expect(sizes).toMatch(/:global\(html\[data-fixed-card\]\) \.scaleBar \{/);
   });
 
   it("devrait garder l'accroche hors de la plaque compacte (grand écran, sans JavaScript)", () => {

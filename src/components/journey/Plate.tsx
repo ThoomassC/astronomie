@@ -174,6 +174,7 @@ export function Plate({ id, stop, name, titleId, color, header, hook, sections, 
   /** Carte fixe dépliée : rangée des pictogrammes et pied affichés. */
   const [unfolded, setUnfolded] = useState(false);
   const [wasCurrent, setWasCurrent] = useState(current);
+  const [wasFixed, setWasFixed] = useState(fixed);
   const articleRef = useRef<HTMLElement>(null);
   const nameRef = useRef<HTMLButtonElement>(null);
   const pending = useRef<ScrollRequest | null>(null);
@@ -188,6 +189,17 @@ export function Plate({ id, stop, name, titleId, color, header, hook, sections, 
       setUnfolded(false);
       setOpen(NO_SECTION);
     }
+  }
+  /*
+   * La mise en page bascule (rotation, fenêtre redimensionnée) : `unfolded` ne vaut qu'en carte fixe. En y entrant, la
+   * carte courante qui a une section ouverte arrive dépliée (sinon « Replier » serait sans effet et la scène la perdrait
+   * de vue), les autres se replient ; en la quittant, seule compte la section ouverte.
+   */
+  if (fixed !== wasFixed) {
+    setWasFixed(fixed);
+    if (!fixed) setUnfolded(false);
+    else if (open.size > 0 && current) setUnfolded(true);
+    else if (open.size > 0) setOpen(NO_SECTION);
   }
 
   useLayoutEffect(() => {
@@ -262,6 +274,7 @@ export function Plate({ id, stop, name, titleId, color, header, hook, sections, 
     }
     const before = beforeFold(articleRef.current);
     pending.current = before ? { before, focusFirst: true } : null;
+    setUnfolded(false);
     setOpen(NO_SECTION);
   };
 

@@ -36,6 +36,31 @@ export interface ScreenLayoutElements<K extends string> {
   plates: ReadonlyMap<K, HTMLElement>;
 }
 
+/**
+ * Plaque repliée d'une escale, en px. Carte fixe : fixée en haut, son bas à sa place de repos, et le plancher que lui
+ * fixe la feuille de style (haut de sa place de repos plus sa hauteur maximale : la réserve du dock, ou le bas de
+ * l'écran). Repli : collée en bas de l'écran, le haut de sa place collée.
+ */
+type CompactCard = { kind: "fixed"; bottom: number; floor: number } | { kind: "sticky"; top: number };
+
+/** Plaque repliée fixée en haut ou collée en bas ; null si elle suit la page. */
+function measureCard(plate: HTMLElement, viewHeight: number): CompactCard | null {
+  const style = getComputedStyle(plate);
+  if (style.position === "fixed") {
+    const top = restingRect(plate).top;
+    const maxHeight = parseFloat(style.maxHeight);
+    return {
+      kind: "fixed",
+      bottom: top + plate.offsetHeight,
+      floor: Number.isFinite(maxHeight) ? top + maxHeight : viewHeight,
+    };
+  }
+  if (style.position === "sticky") {
+    return { kind: "sticky", top: viewHeight - (parseFloat(style.bottom) || 0) - plate.offsetHeight };
+  }
+  return null;
+}
+
 /** Ce que la page laisse libre autour de la scène, mesuré dans le DOM et lissé pour le cadrage. */
 export interface ScreenLayout<K extends string> {
   /**
@@ -64,15 +89,13 @@ export function createScreenLayout<K extends string>(
 ): ScreenLayout<K> {
   /** Grand écran : zone libre entre la colonne des plaques et la règle, en fractions de la largeur. */
   let zone: ScreenZone | null = null;
-  /**
-   * Carte repliée de chaque escale, fixée en haut : son bas à sa place de repos, et le plancher que lui fixe la feuille
-   * de style (haut de sa place de repos plus sa hauteur maximale : la réserve du dock, ou le bas de l'écran), en px.
-   */
-  const compactCards = new Map<K, { bottom: number; floor: number }>();
+  /** Bornes de la bande libre de chaque escale tirées de sa plaque repliée, en px (la note les resserre). */
+  const compactCards = new Map<K, CompactCard>();
   /** Largeur de vue des mesures repliées : une carte change de hauteur avec elle. */
   let compactWidth = 0;
-  /** Haut de la note d'échelle repliée : la déplier ne déplace pas la caméra. */
+  /** Haut et bas de la note d'échelle repliée : la déplier ne déplace pas la caméra. */
   let noteTop = Infinity;
+  let noteBottom = 0;
   /** Bande libre mesurée sous chaque carte, en fractions de la hauteur de la vue (téléphone seulement). */
   const bands = new Map<K, ScreenBand>();
   /** Bandes du cadrage : elles rejoignent en douceur les bandes mesurées. */
@@ -86,7 +109,9 @@ export function createScreenLayout<K extends string>(
    * cartes se perd si la largeur change. La note suspendue aux escales cosmiques (distances réelles toujours actives)
    * garde sa place : le cadrage ne saute ni quand elle se tait, ni quand elle revient. La carte, qui remonte avec la
    * barre quand celle-ci glisse hors de l'écran, est lue à sa place de repos : l'astre ne bouge pas quand elles partent.
-   * Sans barre fixe ni carte fixe (écran bas, sans JavaScript), pas de bande.
+   * Repli de la carte fixe (avant l'hydratation, navigateurs sans la requête `scripting`) : plaque collée en bas, bande
+   * entre la barre (ou la note d'échelle, alors en haut) et le haut de la plaque. Sans barre fixe ni plaque fixe ou
+   * collée (écran bas, sans JavaScript), pas de bande.
    */
   function measureBands(view: { width: number; height: number }): void {
     bands.clear();
@@ -100,27 +125,30 @@ export function createScreenLayout<K extends string>(
       return;
     }
     if (note?.dataset.visible === "true") {
-      if (!note.hasAttribute("data-open")) noteTop = note.getBoundingClientRect().top;
+      if (!note.hasAttribute("data-open")) {
+        const rect = note.getBoundingClientRect();
+        noteTop = rect.top;
+        noteBottom = rect.bottom;
+      }
     } else if (!note?.hasAttribute("data-suspended")) {
       noteTop = Infinity;
+      noteBottom = 0;
     }
+    const barBottom = restingRect(bar).bottom;
     for (const [key, plate] of plates) {
       // Dépliée par son nom (`data-unfolded`), même sans section ouverte, ou par un titre-bouton (`data-expanded`).
       if (!plate.hasAttribute("data-expanded") && !plate.hasAttribute("data-unfolded")) {
-        const style = getComputedStyle(plate);
-        if (style.position === "fixed") {
-          const top = restingRect(plate).top;
-          const maxHeight = parseFloat(style.maxHeight);
-          compactCards.set(key, {
-            bottom: top + plate.offsetHeight,
-            floor: Number.isFinite(maxHeight) ? top + maxHeight : view.height,
-          });
-        } else {
-          compactCards.delete(key);
-        }
+        const card = measureCard(plate, view.height);
+        if (card) compactCards.set(key, card);
+        else compactCards.delete(key);
       }
       const card = compactCards.get(key);
-      const band = card ? freeBand(view.height, card.bottom, Math.min(card.floor, noteTop)) : null;
+      if (!card) continue;
+      // Carte fixe : de son bas à la note (au-dessus du dock) ; repli : de la barre ou de la note (en haut) à la plaque.
+      const band =
+        card.kind === "fixed"
+          ? freeBand(view.height, card.bottom, Math.min(card.floor, noteTop))
+          : freeBand(view.height, Math.max(barBottom, noteBottom), card.top);
       if (band) bands.set(key, band);
     }
   }
