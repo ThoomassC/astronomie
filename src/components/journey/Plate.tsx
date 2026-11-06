@@ -34,7 +34,7 @@ interface PlateProps {
   header?: ReactNode;
   /** Nom de l'astre, titre de l'escale (`h2`) : toujours visible. */
   title: ReactNode;
-  /** Accroche, sous le nom. */
+  /** Accroche, sous le nom ; masquée à l'œil dans la plaque compacte, où elle reste lue juste après lui. */
   hook?: string;
   sections: readonly PlateSection[];
   /**
@@ -47,8 +47,23 @@ interface PlateProps {
   footer?: ReactNode;
 }
 
-/** Air laissé entre le haut dégagé de l'écran et le bouton touché, en px. */
+/** Air laissé entre le haut dégagé de l'écran et le bouton touché (ou la zone ouverte), en px. */
 const BUTTON_GAP_PX = 12;
+
+/**
+ * Plaque compacte, avec JavaScript : la requête des blocs de globals.css qui réduisent les titres-boutons à leurs
+ * pictogrammes et posent la zone ouverte sous leur rangée.
+ */
+const COMPACT_PLATE_QUERY =
+  "(max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled)";
+
+/**
+ * Plaque compacte : ses sections s'excluent, comme des onglets. Lue au moment d'ouvrir, jamais au rendu ; faux sans
+ * `matchMedia` (rendu serveur), où chaque section reste indépendante.
+ */
+function exclusiveSections(): boolean {
+  return typeof matchMedia === "function" && matchMedia(COMPACT_PLATE_QUERY).matches;
+}
 
 /** Juste avant un repli : défilement, plage de repos et hauteur de l'escale encore dépliée. */
 interface BeforeFold {
@@ -111,8 +126,10 @@ function Chevron() {
 /**
  * Plaque de lecture d'une escale. Sur téléphone, elle reste compacte et collée en bas de l'écran
  * pour laisser voir l'astre : chaque titre-bouton déplie sa section juste en dessous de lui (motif
- * accordéon), « Replier » referme tout. Un dépliage amène le bouton touché sous la barre sans quitter
- * la plage de repos de l'escale ; un repli ne déplace jamais la caméra. Les boutons sont rendus dès
+ * accordéon), « Replier » referme tout. Dans la plaque compacte, où la zone ouverte passe sous la
+ * rangée des pictogrammes, une seule section s'ouvre à la fois (comme des onglets) : le DOM ne change
+ * pas, chaque zone suit son bouton. Un dépliage amène le bouton touché (plaque compacte : sa zone)
+ * sous la barre sans quitter la plage de repos de l'escale ; un repli ne déplace jamais la caméra. Les boutons sont rendus dès
  * le serveur, pour que la page ne change pas de hauteur à l'hydratation. Sur grand écran, ou sans
  * JavaScript, tout est visible et les boutons sont masqués (globals.css). « Replier » est dans la
  * langue de la page ; les libellés des sections viennent de qui rend la plaque.
@@ -123,7 +140,7 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
   const articleRef = useRef<HTMLElement>(null);
   const pending = useRef<ScrollRequest | null>(null);
   const expanded = open.size > 0;
-
+  const zoneIdOf = (key: string) => `${id}-${key}`;
 
   useLayoutEffect(() => {
     const request = pending.current;
@@ -160,13 +177,18 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
   }, [open]);
 
   const toggle = (button: HTMLElement, key: string) => {
+    const exclusive = exclusiveSections();
     const before = open.has(key) ? beforeFold(articleRef.current) : null;
-    pending.current = before ? { before, focusFirst: false } : { reveal: button };
+    // Plaque compacte : la zone s'ouvre sous la rangée des boutons, c'est elle qu'on amène à l'écran.
+    const zone = exclusive ? document.getElementById(zoneIdOf(key)) : null;
+    pending.current = before ? { before, focusFirst: false } : { reveal: zone ?? button };
     setOpen((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
+      if (current.has(key)) {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      }
+      return exclusive ? new Set([key]) : new Set(current).add(key);
     });
   };
 
@@ -176,9 +198,11 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
     setOpen(new Set());
   };
 
-  // Le focus arrive dans une zone fermée (passage du grand écran au téléphone) : elle s'ouvre.
+  // Le focus arrive dans une zone fermée (passage du grand écran au téléphone) : elle s'ouvre, seule en plaque compacte.
   const openOnFocus = (key: string) => {
-    if (!open.has(key)) setOpen((current) => new Set(current).add(key));
+    if (open.has(key)) return;
+    const exclusive = exclusiveSections();
+    setOpen((current) => (exclusive ? new Set([key]) : new Set(current).add(key)));
   };
 
   return (
@@ -189,15 +213,19 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
       data-expanded={expanded || undefined}
     >
       {header}
+      {/*
+       * L'accroche suit le nom : masquée à l'œil dans la plaque compacte (posée hors de la grille du nom), elle y est lue
+       * juste après lui, avant les escales voisines.
+       */}
       <div className="plate-title">
         {title}
+        {hook ? <p className="hook">{hook}</p> : null}
         {steps}
       </div>
-      {hook ? <p className="hook">{hook}</p> : null}
       {/* Sur téléphone, les titres-boutons se rangent sur une ligne quand ils y tiennent (globals.css). */}
       <div className="plate-sections">
         {sections.map((section) => {
-          const zoneId = `${id}-${section.key}`;
+          const zoneId = zoneIdOf(section.key);
           const isOpen = open.has(section.key);
           return (
             <Fragment key={section.key}>

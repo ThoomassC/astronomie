@@ -12,6 +12,10 @@ const SECTIONS: readonly PlateSection[] = [
   { key: "module", label: "Votre poids sur chaque astre", icon: "weight", content: <button type="button">Peser</button> },
 ];
 
+/** Mise en page compacte avec JavaScript : la requête des blocs de globals.css où la plaque se réduit à ses pictogrammes. */
+const COMPACT_SCRIPTED =
+  "(max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled)";
+
 /** Hauteur de la vue. L'escale commence à 2000 px dans le document. */
 const VH = 800;
 const SECTION_TOP = 2000;
@@ -178,6 +182,76 @@ describe("Plate", () => {
     });
   });
 
+  /*
+   * Plaque compacte : la zone ouverte passe sous la rangée des pictogrammes (globals.css). Deux zones ouvertes
+   * s'empileraient dans l'ordre des boutons, loin de celui qu'on vient de toucher, et la tabulation traverserait toute
+   * la première avant le bouton voisin : les sections s'y excluent, comme des onglets, et le défilement vise la zone
+   * ouverte. Ailleurs (paysage bas), chaque zone suit son bouton : elles restent indépendantes.
+   */
+  describe("plaque compacte : une section à la fois", () => {
+    /** Frontière navigateur : la mise en page compacte, lue par la même requête que la feuille de style. */
+    function stubCompact(compact: boolean) {
+      vi.stubGlobal("matchMedia", (query: string) => ({ matches: compact && query === COMPACT_SCRIPTED, media: query }));
+    }
+
+    it("devrait refermer la section ouverte quand une autre s'ouvre", async () => {
+      stubCompact(true);
+      const user = userEvent.setup();
+      renderPlate();
+      const fiche = screen.getByRole("button", { name: "Lire la fiche" });
+      const scales = screen.getByRole("button", { name: "Votre poids sur chaque astre" });
+
+      await user.click(fiche);
+      await user.click(scales);
+
+      expect(fiche).toHaveAttribute("aria-expanded", "false");
+      expect(zoneOf(fiche)).not.toHaveAttribute("data-open");
+      expect(scales).toHaveAttribute("aria-expanded", "true");
+      expect(zoneOf(scales)).toHaveAttribute("data-open");
+      expect(document.querySelectorAll(".more-zone[data-open]")).toHaveLength(1);
+      // Le DOM ne change pas : chaque zone suit son bouton, qui la pilote.
+      expect(scales.parentElement?.nextElementSibling).toBe(zoneOf(scales));
+    });
+
+    it("devrait amener sous le haut de l'écran la zone ouverte, pas la rangée des boutons", () => {
+      stubCompact(true);
+      renderPlate();
+      const fiche = screen.getByRole("button", { name: "Lire la fiche" });
+      layout({ scrollY: 1906, sectionHeight: 1400, button: fiche, buttonTop: 400 });
+      vi.spyOn(zoneOf(fiche), "getBoundingClientRect").mockReturnValue({ top: 460 } as DOMRect);
+      fireEvent.click(fiche);
+      // Zone à 2366 px dans le document, 12 px d'air au-dessus.
+      expect(scrollTo).toHaveBeenCalledWith({ top: 2354, behavior: "smooth" });
+    });
+
+    it("devrait n'ouvrir que la zone qui reçoit le focus", async () => {
+      stubCompact(true);
+      const user = userEvent.setup();
+      renderPlate();
+      const fiche = screen.getByRole("button", { name: "Lire la fiche" });
+      await user.click(fiche);
+      act(() => screen.getByRole("button", { name: "Peser" }).focus());
+      expect(fiche).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByRole("button", { name: "Votre poids sur chaque astre" })).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("hors de la plaque compacte, devrait laisser les sections ouvertes ensemble", async () => {
+      stubCompact(false);
+      const user = userEvent.setup();
+      renderPlate();
+      const fiche = screen.getByRole("button", { name: "Lire la fiche" });
+      const scales = screen.getByRole("button", { name: "Votre poids sur chaque astre" });
+      layout({ scrollY: 1906, sectionHeight: 1400, button: fiche, buttonTop: 400 });
+      fireEvent.click(fiche);
+      expect(scrollTo).toHaveBeenCalledWith({ top: 2294, behavior: "smooth" });
+      vi.restoreAllMocks();
+
+      await user.click(scales);
+      expect(fiche).toHaveAttribute("aria-expanded", "true");
+      expect(scales).toHaveAttribute("aria-expanded", "true");
+    });
+  });
+
   describe("repli", () => {
     it("au repos, devrait rester dans la plage de repos quand l'escale a raccourci", () => {
       renderPlate();
@@ -275,10 +349,14 @@ describe("Plate", () => {
     );
     const title = document.querySelector<HTMLElement>(".plate-title");
     if (!title) throw new Error("Rangée du nom absente");
-    // Rang, puis la rangée du nom, puis l'accroche.
+    // Rang, puis la rangée du nom : le nom, l'accroche lue juste après lui (masquée à l'œil en plaque compacte), puis
+    // les escales voisines.
     expect(title.previousElementSibling).toHaveTextContent("4e planète");
-    expect(title.nextElementSibling).toHaveTextContent("La planète rouge.");
+    expect(title.nextElementSibling).toBe(document.querySelector(".plate-sections"));
     expect(title.firstElementChild).toBe(screen.getByRole("heading", { level: 2, name: "Mars" }));
+    expect(title.children[1]).toHaveClass("hook");
+    expect(title.children[1]).toHaveTextContent("La planète rouge.");
+    expect(title.lastElementChild).toHaveClass("stop-steps");
     expect(within(title).getAllByRole("link").map((link) => link.textContent)).toEqual(["Terre", "Jupiter"]);
     const row = document.querySelector(".plate-sections");
     expect(row?.lastElementChild).toHaveClass("stop-steps");
@@ -369,8 +447,6 @@ describe("Plate en anglais et en espagnol", () => {
  */
 describe("feuille de style de la plaque compacte", () => {
   const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
-  const COMPACT_SCRIPTED =
-    "(max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled)";
 
   /** Déclarations de la règle `selector` (indentation de 2), cherchée dans chaque bloc média de requête `query`. */
   function ruleIn(query: string, selector: string): string {
@@ -389,6 +465,7 @@ describe("feuille de style de la plaque compacte", () => {
     expect(hook).toMatch(/width: 1px;/);
     expect(hook).toMatch(/height: 1px;/);
     expect(hook).toMatch(/clip: rect\(0 0 0 0\);/);
+    expect(hook).toMatch(/clip-path: inset\(50%\);/);
     expect(hook).not.toMatch(/display: none|visibility: hidden/);
   });
 
@@ -402,11 +479,13 @@ describe("feuille de style de la plaque compacte", () => {
     expect(ruleIn(COMPACT_SCRIPTED, ".more-btn .more-chevron")).toMatch(/display: none;/);
   });
 
-  it("devrait ranger les boutons sur une rangée centrée sous le nom, les sections ouvertes dessous", () => {
+  it("devrait ranger les boutons sur une rangée centrée sous le nom, la section ouverte dessous, « Replier » sous elle", () => {
     expect(ruleIn(COMPACT_SCRIPTED, ".plate-sections")).toMatch(/justify-content: center;/);
     expect(ruleIn(COMPACT_SCRIPTED, ".more-heading")).toMatch(/flex: none;/);
-    expect(ruleIn(COMPACT_SCRIPTED, ".more-fold")).toMatch(/flex-basis: auto;/);
     expect(ruleIn(COMPACT_SCRIPTED, ".more-zone")).toMatch(/order: 1;/);
+    const fold = ruleIn(COMPACT_SCRIPTED, ".more-fold");
+    expect(fold).toMatch(/flex-basis: auto;/);
+    expect(fold).toMatch(/order: 2;/);
   });
 
   it("devrait marquer le bouton ouvert d'un fond et d'un anneau --soleil, pas d'une teinte seule", () => {
@@ -416,11 +495,18 @@ describe("feuille de style de la plaque compacte", () => {
     expect(open).toMatch(/box-shadow: 0 0 0 2px var\(--plaque\), 0 0 0 3px var\(--soleil\);/);
   });
 
+  it("devrait détacher le contour de focus d'un bouton ouvert de son anneau --soleil", () => {
+    // L'anneau s'étend à 3 px du bouton ; le contour, posé à 5 px, ne le touche pas.
+    expect(ruleIn(COMPACT_SCRIPTED, '.more-btn[aria-expanded="true"]:focus-visible')).toMatch(/outline-offset: 5px;/);
+  });
+
   it("devrait garder l'état ouvert visible en couleurs forcées", () => {
     const open = ruleIn("(forced-colors: active)", '.more-btn[aria-expanded="true"]');
     expect(open).toMatch(/background: Highlight;/);
     expect(open).toMatch(/color: HighlightText;/);
     expect(open).toMatch(/forced-color-adjust: none;/);
+    // Le contour de focus ne prend pas la couleur du fond de sélection qu'il entoure.
+    expect(open).toMatch(/outline-color: CanvasText;/);
   });
 
   it("devrait ne retourner que le chevron des grands boutons, jamais le pictogramme", () => {

@@ -186,5 +186,20 @@ describe("feuille de style des étiquettes de la scène", () => {
   it("devrait effacer le repère d'un nom posé au-dessus de son astre, sans lui retirer sa place", () => {
     expect(css).toMatch(/\n\.lbl\[data-above\] i \{\s*visibility: hidden;\s*\}/);
   });
+
+  /*
+   * Au repos sur le Soleil, « Soleil » se pose sur sa couronne claire : une seule ombre floue (0 1px 6px) n'y suffit pas.
+   * Le texte, opaque, prend le halo de nuit serré des étiquettes posées à nu (ombres de 1 à 3 px, denses au ras des
+   * lettres) : sur un fond clair, ses lettres restent bordées de --nuit. Pas de pastille, et rien qui change la hauteur
+   * du bouton (25,6 px, au-dessus des 24 px demandés).
+   */
+  it("devrait border de nuit le nom posé au-dessus de son astre, sans pastille ni changement de taille", () => {
+    const rule = /\n\.lbl\[data-above\] > span \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(rule).toMatch(/opacity: 1;/);
+    for (const shadow of ["0 0 1px var(--nuit)", "0 0 2px var(--nuit)", "0 0 3px var(--nuit)"]) {
+      expect(rule).toContain(shadow);
+    }
+    expect(rule).not.toMatch(/background|border|padding|font-size|line-height/);
+  });
 });
 

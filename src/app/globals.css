@@ -184,6 +184,22 @@ main > section:focus {
   visibility: hidden;
 }
 
+/*
+ * Ce nom tombe souvent sur un fond clair (couronne du Soleil, limbe éclairé) : texte opaque, bordé du halo de nuit
+ * serré des étiquettes posées à nu (ombres de 1 à 3 px, denses au ras des lettres, puis un voile plus large). Les
+ * lettres gardent un contour --nuit, au-dessus de 4,5:1 quel que soit le fond, sans pastille ; les ombres ne changent
+ * pas la hauteur du bouton.
+ */
+.lbl[data-above] > span {
+  opacity: 1;
+  text-shadow:
+    0 0 1px var(--nuit),
+    0 0 2px var(--nuit),
+    0 0 3px var(--nuit),
+    0 0 6px var(--nuit),
+    0 1px 10px var(--nuit);
+}
+
 .real .lbl:not(.deep) i {
   transform: scale(1.6);
   border-width: 1.5px;
@@ -1515,7 +1531,7 @@ main > section > * {
     margin: 0;
     text-align: left;
     overflow-wrap: break-word;
-    hyphens: auto;
+    hyphens: manual;
   }
 
   .plate-title .stop-step {
@@ -1542,6 +1558,18 @@ main > section > * {
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+  }
+}
+
+/*
+ * Plaque compacte sous 360 px : entre les deux flèches, le nom n'a plus que 150 à 190 px. Il passe à la ligne entre
+ * ses mots, jamais au milieu d'un nom propre (« L'Univers observable », « Trou noir du Fer à cheval cosmique », « El
+ * Universo observable ») : il se réduit avec l'écran pour que son mot le plus long tienne sur une ligne. Plus précis que
+ * la taille des petits écrans (`.plate h2`, plus bas).
+ */
+@media (max-width: 360px) and (scripting: enabled) {
+  .plate .plate-title > h2 {
+    font-size: clamp(1.75rem, 9vw, 2.5rem);
   }
 }
 
@@ -2739,13 +2767,14 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
 /*
  * Plaque compacte, avec JavaScript (titres-boutons affichés) : rang, nom encadré des escales voisines (« Escales
  * voisines »), puis la rangée des titres-boutons. L'accroche cède sa ligne à l'astre, qui gagne autant de bande libre ;
- * masquée à l'œil seulement, elle reste lue, une fois, après le nom. Sur grand écran et sans JavaScript, elle reste.
+ * masquée à l'œil seulement, posée dans la rangée du nom sans y prendre de cellule, elle reste lue, une fois, juste
+ * après le nom. Sur grand écran et sans JavaScript, elle reste.
  *
- * Titres-boutons : ronds de 44 px, pictogramme seul au trait de laiton (PlateIcon), sur une rangée centrée sous le nom,
- * « Replier » au bout quand une section est ouverte. Le libellé, masqué à l'œil, reste le nom accessible et paraît en
- * infobulle au survol. Une section ouverte passe sous la rangée, dans l'ordre des boutons. Bouton ouvert : fond
- * `--soleil`, pictogramme sombre et anneau `--soleil` détaché de la plaque, un changement de fond et pas une teinte
- * seule.
+ * Titres-boutons : ronds de 44 px, pictogramme seul au trait de laiton (PlateIcon), sur une rangée centrée sous le nom.
+ * Le libellé, masqué à l'œil, reste le nom accessible et paraît en infobulle au survol. Une seule section s'ouvre à la
+ * fois (Plate) : elle passe sous la rangée, « Replier » sous elle. Bouton ouvert : fond `--soleil`, pictogramme sombre
+ * et anneau `--soleil` détaché de la plaque, un changement de fond et pas une teinte seule ; son contour de focus se
+ * détache à son tour de l'anneau.
  */
 @media (max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled) {
   .plate .hook {
@@ -2755,6 +2784,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     margin: 0;
     overflow: hidden;
     clip: rect(0 0 0 0);
+    clip-path: inset(50%);
     white-space: nowrap;
   }
 
@@ -2799,9 +2829,15 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     box-shadow: 0 0 0 2px var(--plaque), 0 0 0 3px var(--soleil);
   }
 
-  /* « Replier » : au bout de la rangée, en retrait (filet --filet, pictogramme --brume). */
+  /* L'anneau s'étend à 3 px du bouton : le contour de focus (2 px), posé à 5 px, laisse entre eux le fond de la plaque. */
+  .more-btn[aria-expanded="true"]:focus-visible {
+    outline-offset: 5px;
+  }
+
+  /* « Replier » : sous la section ouverte, en retrait (filet --filet, pictogramme --brume). */
   .more-fold {
     flex-basis: auto;
+    order: 2;
     color: var(--brume);
   }
 }
@@ -2818,6 +2854,7 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     background: Highlight;
     color: HighlightText;
     box-shadow: none;
+    outline-color: CanvasText;
   }
 }
 

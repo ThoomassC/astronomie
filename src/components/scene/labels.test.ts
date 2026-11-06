@@ -534,7 +534,8 @@ describe("étoiles voisines en 375 × 812, étiquettes à nu : halo réservé et
 /*
  * Mise en page compacte (téléphone) : l'étiquette d'une planète ou du Soleil dont le disque déborde du repère se pose
  * au-dessus de lui, texte centré, 4 px d'air au-dessus de ce qui s'élève le plus haut (disque ou anneaux) : jamais sur
- * le disque, jamais hors de l'écran, sous la barre ou sur la plaque ; sinon, masquée.
+ * le disque, jamais hors de l'écran, sous la barre ou sur la plaque ; sinon, le moteur lui rend sa disposition
+ * ordinaire (engine.test.ts).
  */
 describe("riseAbove", () => {
   it("devrait prendre le rayon du disque pour un astre sans anneaux", () => {
@@ -559,46 +560,61 @@ describe("riseAbove", () => {
 describe("placeAboveDisc", () => {
   const PHONE_W = 375;
   const PHONE_H = 812;
-  const TEXT = { width: 44, height: 16 };
+  /** Bouton d'étiquette de 68 × 28 px : anneau masqué à gauche, puis le texte, 44 × 16 px, posé en (20, 6). */
+  const LABEL = { text: [20, 6, 64, 22] as LabelBox, width: 68, height: 28 };
   /** Soleil au repos, au milieu de la bande libre : centre à 320 px du haut, disque de 150 px de rayon. */
   const SUN = { x: 187.5, y: 320, depth: 0.5 };
+  /** Boîte du texte dans le bouton posé en `box`. */
+  const textIn = (box: LabelBox): LabelBox => [box[0] + 20, box[1] + 6, box[0] + 64, box[1] + 22];
 
-  it("devrait centrer le texte au-dessus du disque, à 4 px d'air de son bord", () => {
-    const box = placeAboveDisc(SUN, TEXT, 150, PHONE_W, PHONE_H, []);
-    expect(box).toEqual([187.5 - 22, 320 - 150 - ABOVE_DISC_GAP_PX - 16, 187.5 + 22, 320 - 150 - ABOVE_DISC_GAP_PX]);
+  it("devrait centrer le texte au-dessus du disque, à 4 px d'air de son bord, et rendre la boîte du bouton entier", () => {
+    const box = placeAboveDisc(SUN, LABEL, 150, PHONE_W, PHONE_H, []);
+    if (!box) throw new Error("Étiquette non posée");
+    expect(textIn(box)).toEqual([187.5 - 22, 320 - 150 - ABOVE_DISC_GAP_PX - 16, 187.5 + 22, 320 - 150 - ABOVE_DISC_GAP_PX]);
+    expect([box[2] - box[0], box[3] - box[1]]).toEqual([68, 28]);
     expect(ABOVE_DISC_GAP_PX).toBeGreaterThanOrEqual(2);
   });
 
-  it("ne devrait jamais recouvrir le disque", () => {
+  it("ne devrait jamais recouvrir le disque de son texte", () => {
     for (const rise of [6, 40, 150, 230]) {
-      const box = placeAboveDisc(SUN, TEXT, rise, PHONE_W, PHONE_H, []);
-      if (box) expect(box[3]).toBeLessThanOrEqual(SUN.y - rise);
+      const box = placeAboveDisc(SUN, LABEL, rise, PHONE_W, PHONE_H, []);
+      if (box) expect(textIn(box)[3]).toBeLessThanOrEqual(SUN.y - rise);
     }
   });
 
-  it("devrait la masquer quand elle passerait sous la barre haute", () => {
-    expect(placeAboveDisc(SUN, TEXT, 236, PHONE_W, PHONE_H, [])).toBeNull();
+  it("devrait la refuser quand elle passerait sous la barre haute", () => {
+    expect(placeAboveDisc(SUN, LABEL, 236, PHONE_W, PHONE_H, [])).toBeNull();
   });
 
-  it("devrait la masquer sur une boîte occupée : barre, note d'échelle, plaque, étiquette plus prioritaire", () => {
+  it("devrait la refuser sur une boîte occupée : barre, note d'échelle, plaque, étiquette plus prioritaire", () => {
     const note: LabelBox = [0, 0, PHONE_W, 160];
-    expect(placeAboveDisc(SUN, TEXT, 150, PHONE_W, PHONE_H, [note])).toBeNull();
-    expect(placeAboveDisc(SUN, TEXT, 150, PHONE_W, PHONE_H, [[0, 0, PHONE_W, 140]])).not.toBeNull();
+    expect(placeAboveDisc(SUN, LABEL, 150, PHONE_W, PHONE_H, [note])).toBeNull();
+    expect(placeAboveDisc(SUN, LABEL, 150, PHONE_W, PHONE_H, [[0, 0, PHONE_W, 140]])).not.toBeNull();
   });
 
-  it("devrait la masquer quand le texte sortirait de l'écran par un côté", () => {
-    expect(placeAboveDisc({ ...SUN, x: 20 }, TEXT, 30, PHONE_W, PHONE_H, [])).toBeNull();
-    expect(placeAboveDisc({ ...SUN, x: PHONE_W - 20 }, TEXT, 30, PHONE_W, PHONE_H, [])).toBeNull();
-    expect(placeAboveDisc({ ...SUN, x: EDGE_MARGIN + 22 }, TEXT, 30, PHONE_W, PHONE_H, [])).not.toBeNull();
+  /*
+   * Le bouton entier reçoit les touchers (anneau masqué, rembourrage) : c'est lui qui ne recouvre rien, et lui que le
+   * moteur réserve. Une boîte qui ne touche que son anneau, à gauche du texte, l'écarte aussi.
+   */
+  it("devrait refuser une place où seul l'anneau masqué, hors du texte, recouvrirait une boîte occupée", () => {
+    const left = 187.5 - 22;
+    const besideText: LabelBox = [left - 15, 150, left - 5, 166];
+    expect(placeAboveDisc(SUN, LABEL, 150, PHONE_W, PHONE_H, [besideText])).toBeNull();
   });
 
-  it("devrait la masquer pour un astre derrière la caméra", () => {
-    expect(placeAboveDisc({ ...SUN, depth: 1.2 }, TEXT, 150, PHONE_W, PHONE_H, [])).toBeNull();
+  it("devrait la refuser quand le texte sortirait de l'écran par un côté", () => {
+    expect(placeAboveDisc({ ...SUN, x: 20 }, LABEL, 30, PHONE_W, PHONE_H, [])).toBeNull();
+    expect(placeAboveDisc({ ...SUN, x: PHONE_W - 20 }, LABEL, 30, PHONE_W, PHONE_H, [])).toBeNull();
+    expect(placeAboveDisc({ ...SUN, x: EDGE_MARGIN + 22 }, LABEL, 30, PHONE_W, PHONE_H, [])).not.toBeNull();
+  });
+
+  it("devrait la refuser pour un astre derrière la caméra", () => {
+    expect(placeAboveDisc({ ...SUN, depth: 1.2 }, LABEL, 150, PHONE_W, PHONE_H, [])).toBeNull();
   });
 
   it("devrait la poser au-dessus d'un astre au bas de l'écran tant que son texte reste au-dessus du dock", () => {
     const low = { x: 187.5, y: PHONE_H - 60, depth: 0.5 };
-    expect(placeAboveDisc(low, TEXT, 10, PHONE_W, PHONE_H, [])).toBeNull();
-    expect(placeAboveDisc(low, TEXT, 30, PHONE_W, PHONE_H, [])).not.toBeNull();
+    expect(placeAboveDisc(low, LABEL, 10, PHONE_W, PHONE_H, [])).toBeNull();
+    expect(placeAboveDisc(low, LABEL, 30, PHONE_W, PHONE_H, [])).not.toBeNull();
   });
 });

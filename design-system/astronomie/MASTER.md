@@ -74,7 +74,7 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   filet de la couleur de l'astre qui suit l'arrondi du haut.
   Mise en page compacte (téléphone ≤ 640 px, et tablette en portrait jusqu'à 1024 px de large) :
   elle est collée en bas, au-dessus du dock, et centrée : rang (version courte sur téléphone), nom
-  (l'accroche y cède sa ligne à l'astre : masquée à l'œil, lue une fois après le nom ; avec JavaScript seulement, elle
+  (l'accroche y cède sa ligne à l'astre : masquée à l'œil, lue une fois juste après le nom ; avec JavaScript seulement, elle
   reste sur grand écran et sans JavaScript), puis un titre-bouton par
   section (`h3` > `button[aria-expanded]`, motif accordéon), « Lire la fiche » et un libellé propre
   au module (« Votre poids sur chaque astre »), qui remplace le titre du module. Les titres-boutons sont des
@@ -86,11 +86,14 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   anneaux (planète annelée), âge sur Neptune (sablier), étoiles de la carte (constellation), galaxies de la carte
   (galaxie de biais), « Replier » (chevrons qui se rejoignent, filet `--filet`, `--brume`). Ouvert : fond `--soleil`,
   dessin `--encre`, anneau `--soleil` détaché de la plaque (un changement de fond, pas une teinte seule) ; en couleurs
-  forcées, fond `Highlight`. Chaque section s'ouvre sous la rangée, dans l'ordre des boutons, en fondu de 200 ms, et
-  « Replier », au bout de la rangée, referme tout. Pendant le repos de la caméra, le filet de couleur
+  forcées, fond `Highlight`. Une seule section s'ouvre à la fois, comme des onglets (ouvrir l'une referme l'autre) :
+  elle passe sous la rangée, en fondu de 200 ms, et « Replier », sous elle, referme tout ; le DOM garde chaque zone
+  après son bouton. Le contour de focus d'un bouton ouvert se pose à 5 px, détaché de son anneau (`CanvasText` en
+  couleurs forcées). Pendant le repos de la caméra, le filet de couleur
   (atténué à 50 %) s'éclaire de gauche à droite ; plein, le vol vers l'escale suivante commence
-  (pas sur la dernière escale). Noms d'astres de 2,25 à 3,25 rem dans la plaque compacte. Dépliée,
-  la plaque reprend sa place en haut de l'escale et s'allonge vers le bas ; le bouton touché passe
+  (pas sur la dernière escale). Noms d'astres de 2,25 à 3,25 rem dans la plaque compacte, de 1,75 à 2,5 rem
+  (9 vw) sous 360 px, jamais coupés d'un trait d'union. Dépliée,
+  la plaque reprend sa place en haut de l'escale et s'allonge vers le bas ; la section ouverte passe
   sous la barre sans quitter la plage de repos de la caméra, et aucun repli ne déplace la caméra.
   La scène cadre l'astre dans la bande libre entre la barre (ou la note d'échelle) et la plaque
   repliée, au plus 90 % de sa hauteur et 80 % de la largeur, anneaux compris ; la vue d'ensemble
@@ -168,9 +171,12 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 - **Noms des astres (scène du Voyage), mise en page compacte** : le nom d'une planète ou du Soleil dont le disque
   déborde de son repère (anneau de 10 px) se pose au-dessus de lui, centré, à 4 px de ce qui s'élève le plus haut à
   l'écran (le disque, ou les anneaux de Saturne et d'Uranus selon leur inclinaison), repère effacé (`data-above`) : il
-  ne chevauche jamais le disque. Au repos sur une escale, le nom de l'astre en vue reste entier, même vu de près (il
-  suit le repos de la caméra). Jamais hors de l'écran, sous la barre ou la note d'échelle, ni sur la plaque repliée ;
-  sinon, masqué. Un astre plus petit que son repère garde la disposition ordinaire. À Tailles, les noms sont déjà
+  ne chevauche jamais le disque. Souvent sur un fond clair (couronne du Soleil), son texte est opaque et bordé du halo
+  de nuit serré des étiquettes à nu (ombres `--nuit` de 1, 2, 3, 6 et 10 px), sans pastille. Au repos sur une escale, le nom de l'astre en vue reste entier, même vu de près (il
+  suit le repos de la caméra). Jamais hors de l'écran, sous la barre ou la note d'échelle, ni sur la plaque repliée,
+  bouton entier compris (anneau masqué, rembourrage) ; quand il n'y tient pas (téléphone court, astre cadré sur toute
+  la bande libre), il reprend la disposition ordinaire, et sinon il est masqué. Un astre plus petit que son repère
+  garde la disposition ordinaire. À Tailles, les noms sont déjà
   au-dessus des astres.
 - **Règle des distances** : sommaire vertical à échelle logarithmique, en trois segments : UA jusqu'à 50
   (les planètes), grand vide comprimé jusqu'à 1 al, puis années-lumière jusqu'à 10¹¹ al, au-delà de l'Univers
