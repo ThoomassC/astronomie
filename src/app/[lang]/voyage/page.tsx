@@ -5,6 +5,7 @@ import { ClockDriver } from "@/components/journey/ClockDriver";
 import { CosmicStops } from "@/components/journey/CosmicStops";
 import { DistanceRail, type RailStop } from "@/components/journey/DistanceRail";
 import { ExploreMode } from "@/components/journey/ExploreMode";
+import { JourneyCards } from "@/components/journey/JourneyCards";
 import { MAIN_ID } from "@/components/journey/ids";
 import { JourneyTracker } from "@/components/journey/JourneyTracker";
 import { ScaleNote } from "@/components/journey/ScaleNote";
@@ -16,9 +17,17 @@ import { TimeDock } from "@/components/journey/TimeDock";
 import { TopBar } from "@/components/journey/TopBar";
 import { SceneErrorBoundary } from "@/components/scene/SceneErrorBoundary";
 import { SceneMount } from "@/components/scene/SceneMount";
+import { SOLAR_STOP_STRUCTURE } from "@/content/voyage/structure";
 import { isLocale } from "@/i18n/locales";
 import { pageMetadata } from "@/i18n/metadata";
-import { RAIL_STOPS } from "@/lib/journey/camera";
+import { COSMIC_STOPS, RAIL_STOPS, type StopKey } from "@/lib/journey/camera";
+
+/** Escales qui ont une plaque, donc une carte sur téléphone : les astres, l'au-delà, les escales lointaines. */
+const CARD_STOPS: readonly StopKey[] = [
+  ...SOLAR_STOP_STRUCTURE.flatMap((stop) => (stop.kind === "body" ? [stop.key] : [])),
+  "beyond",
+  ...COSMIC_STOPS,
+];
 
 /** Titre, description, adresse canonique et hreflang de la page Voyage, dans la langue de l'adresse. */
 export async function generateMetadata({ params }: PageProps<"/[lang]/voyage">): Promise<Metadata> {
@@ -48,10 +57,13 @@ export default async function VoyagePage({ params }: PageProps<"/[lang]/voyage">
       </SceneErrorBoundary>
       <TopBar locale={lang} stops={railStops} />
       <DistanceRail stops={railStops} />
-      <main id={MAIN_ID} tabIndex={-1} data-hide-on-explore>
-        <SolarStops locale={lang} sunHref={sunHref} />
-        <CosmicStops locale={lang} sunHref={sunHref} />
-      </main>
+      {/* Sur téléphone, la plaque de l'escale courante se fixe en haut ; son squelette suit `main`. */}
+      <JourneyCards cards={CARD_STOPS}>
+        <main id={MAIN_ID} tabIndex={-1} data-hide-on-explore>
+          <SolarStops locale={lang} sunHref={sunHref} />
+          <CosmicStops locale={lang} sunHref={sunHref} />
+        </main>
+      </JourneyCards>
       <SiteFooter locale={lang} />
       <ScaleNote />
       {/* Avant le dock, sous lui à l'écran (z-index) : au clavier, la barre et le pavé d'exploration, puis le dock. */}

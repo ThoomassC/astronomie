@@ -30,17 +30,29 @@ function fixedBar(bottom = 64): HTMLElement {
   return bar;
 }
 
-/** Plaque repliée collée en bas de l'écran (82 px au-dessus du bas), de 200 px, large de `right` px sur grand écran. */
-function stickyPlate(height = 200, right = 560): HTMLElement {
+/**
+ * Carte fixée en haut de l'écran, sous la barre (64 px) : repliée, haute de `height` px, large de `right` px sur grand
+ * écran. Sa hauteur maximale (dépliée) la mène jusqu'à la réserve du dock, à 82 px du bas d'un écran de 812 px.
+ */
+function fixedCard(height = 80, right = 560): HTMLElement {
   const plate = document.createElement("article");
   plate.className = "plate";
-  plate.style.position = "sticky";
-  plate.style.bottom = "82px";
+  plate.style.position = "fixed";
+  plate.style.maxHeight = `${812 - 82 - 64}px`;
   stubOffsetHeight(plate, height);
-  stubBox(plate, { left: 48, width: right - 48, height });
+  stubBox(plate, { left: 48, top: 64, width: right - 48, height });
   document.body.append(plate);
   return plate;
 }
+
+/** Carte descendue à `top` px (barre plus haute) : sa hauteur maximale raccourcit d'autant, son plancher reste. */
+function moveCard(card: HTMLElement, top: number): void {
+  card.style.maxHeight = `${812 - 82 - top}px`;
+  stubBox(card, { left: 48, top, width: 512, height: 80 });
+}
+
+/** Bande attendue sous une carte de `height` px posée à `top` px, au-dessus de la réserve du dock (812 − 82 px). */
+const bandUnder = (height = 80, top = 64) => freeBand(812, top + height, 812 - 82);
 
 /** Règle à droite du grand écran (masquée : largeur nulle). */
 function railAt(left: number, width = 40): HTMLElement {
@@ -51,7 +63,7 @@ function railAt(left: number, width = 40): HTMLElement {
 }
 
 function elements(over: Partial<ScreenLayoutElements<string>> = {}): ScreenLayoutElements<string> {
-  return { bar: fixedBar(), rail: null, note: null, plates: new Map([["sun", stickyPlate()]]), ...over };
+  return { bar: fixedBar(), rail: null, note: null, plates: new Map([["sun", fixedCard()]]), ...over };
 }
 
 beforeEach(() => {
@@ -66,33 +78,44 @@ afterEach(() => {
 });
 
 describe("createScreenLayout en mise en page compacte", () => {
-  it("devrait cadrer chaque escale dans la bande libre entre la barre fixe et sa plaque collée en bas", () => {
+  it("devrait cadrer chaque escale dans la bande libre entre sa carte fixée en haut et la réserve du dock", () => {
     const layout = createScreenLayout(elements());
     layout.measure(PHONE);
     expect(layout.band("sun")).toBeNull();
     expect(layout.settle(1 / 60, false)).toBe(true);
-    expect(layout.band("sun")).toEqual(freeBand(812, 64, { height: 200, bottom: 82 }));
+    expect(layout.band("sun")).toEqual(bandUnder());
     expect(layout.band("sirius-a")).toBeNull();
     expect(layout.zone()).toBeNull();
   });
 
+  it("devrait mesurer chaque carte à sa hauteur repliée : un nom sur deux lignes rabaisse le haut de la bande", () => {
+    const layout = createScreenLayout(elements({ plates: new Map([["sun", fixedCard()], ["mars", fixedCard(106)]]) }));
+    layout.measure(PHONE);
+    layout.settle(1 / 60, false);
+    expect(layout.band("sun")).toEqual(bandUnder(80));
+    expect(layout.band("mars")).toEqual(bandUnder(106));
+  });
+
   /*
-   * La barre glisse hors de l'écran quand on descend (AutoHideBar) et revient quand on remonte : le cadrage la lit à
-   * sa place de repos, sans quoi l'astre bougerait à chaque glissement.
+   * La barre glisse hors de l'écran quand on descend (AutoHideBar), la carte remonte avec elle ; elles reviennent
+   * quand on remonte. Le cadrage lit la carte à sa place de repos, sans quoi l'astre bougerait à chaque glissement.
    */
-  it("devrait garder la bande sous la barre à sa place de repos quand elle glisse hors de l'écran", () => {
+  it("devrait garder la bande sous la carte à sa place de repos quand elle remonte avec la barre", () => {
     const bar = document.createElement("header");
     bar.style.position = "fixed";
     bar.style.transform = "matrix(1, 0, 0, 1, 0, -64)";
     stubBox(bar, { top: -64, width: 375, height: 64 });
-    const layout = createScreenLayout(elements({ bar }));
+    const card = fixedCard();
+    card.style.transform = "matrix(1, 0, 0, 1, 0, -64)";
+    stubBox(card, { left: 48, top: 0, width: 512, height: 80 });
+    const layout = createScreenLayout(elements({ bar, plates: new Map([["sun", card]]) }));
     layout.measure(PHONE);
     layout.settle(1 / 60, false);
-    expect(layout.band("sun")).toEqual(freeBand(812, 64, { height: 200, bottom: 82 }));
+    expect(layout.band("sun")).toEqual(bandUnder());
   });
 
-  it("devrait garder la mesure repliée d'une plaque dépliée : la caméra ne bouge pas", () => {
-    const plate = stickyPlate();
+  it("devrait garder la mesure repliée d'une carte dépliée : la caméra ne bouge pas", () => {
+    const plate = fixedCard();
     const layout = createScreenLayout(elements({ plates: new Map([["sun", plate]]) }));
     layout.measure(PHONE);
     layout.settle(1 / 60, false);
@@ -100,11 +123,23 @@ describe("createScreenLayout en mise en page compacte", () => {
     stubOffsetHeight(plate, 640);
     layout.measure(PHONE);
     expect(layout.settle(1 / 60, false)).toBe(true);
-    expect(layout.band("sun")).toEqual(freeBand(812, 64, { height: 200, bottom: 82 }));
+    expect(layout.band("sun")).toEqual(bandUnder());
   });
 
-  it("devrait oublier la mesure repliée quand la largeur change, la plaque dépliée n'ayant plus de bande", () => {
-    const plate = stickyPlate();
+  it("devrait garder la mesure repliée d'une carte dépliée par son nom, même sans section ouverte", () => {
+    const plate = fixedCard();
+    const layout = createScreenLayout(elements({ plates: new Map([["sun", plate]]) }));
+    layout.measure(PHONE);
+    layout.settle(1 / 60, false);
+    plate.setAttribute("data-unfolded", "");
+    stubOffsetHeight(plate, 136);
+    layout.measure(PHONE);
+    expect(layout.settle(1 / 60, false)).toBe(true);
+    expect(layout.band("sun")).toEqual(bandUnder());
+  });
+
+  it("devrait oublier la mesure repliée quand la largeur change, la carte dépliée n'ayant plus de bande", () => {
+    const plate = fixedCard();
     const layout = createScreenLayout(elements({ plates: new Map([["sun", plate]]) }));
     layout.measure(PHONE);
     plate.setAttribute("data-expanded", "");
@@ -113,38 +148,38 @@ describe("createScreenLayout en mise en page compacte", () => {
     expect(layout.band("sun")).toBeNull();
   });
 
-  it("devrait border la bande par le bas de la note visible repliée, et lui garder sa place dépliée ou suspendue", () => {
+  it("devrait border la bande par le haut de la note visible repliée, et lui garder sa place dépliée ou suspendue", () => {
     const note = document.createElement("div");
     note.dataset.visible = "true";
-    stubBox(note, { top: 64, width: 375, height: 56 });
+    stubBox(note, { top: 600, width: 375, height: 56 });
     const layout = createScreenLayout(elements({ note }));
-    const bandTop = () => {
+    const bandBottom = () => {
       layout.measure(PHONE);
       layout.settle(1 / 60, true);
-      return layout.band("sun")?.top;
+      return layout.band("sun")?.bottom;
     };
-    expect(bandTop()).toBeCloseTo((120 + 8) / 812, 12);
-    // Dépliée, la note s'allonge : la bande garde le bas de sa forme repliée.
+    expect(bandBottom()).toBeCloseTo((600 - 8) / 812, 12);
+    // Dépliée, la note s'allonge vers le haut : la bande garde le haut de sa forme repliée.
     note.setAttribute("data-open", "");
-    stubBox(note, { top: 64, width: 375, height: 300 });
-    expect(bandTop()).toBeCloseTo((120 + 8) / 812, 12);
+    stubBox(note, { top: 356, width: 375, height: 300 });
+    expect(bandBottom()).toBeCloseTo((600 - 8) / 812, 12);
     // Suspendue aux escales cosmiques, elle se tait sans rendre sa place.
     note.dataset.visible = "false";
     note.setAttribute("data-suspended", "");
-    expect(bandTop()).toBeCloseTo((120 + 8) / 812, 12);
+    expect(bandBottom()).toBeCloseTo((600 - 8) / 812, 12);
     note.removeAttribute("data-suspended");
-    expect(bandTop()).toBeCloseTo((64 + 8) / 812, 12);
+    expect(bandBottom()).toBeCloseTo((812 - 82 - 8) / 812, 12);
   });
 
-  it("ne devrait mesurer aucune bande sans barre fixe ni plaque collée (écran bas, texte très agrandi)", () => {
+  it("ne devrait mesurer aucune bande sans barre fixe ni carte fixe (écran bas, sans JavaScript)", () => {
     const bar = fixedBar();
     bar.style.position = "static";
     const layout = createScreenLayout(elements({ bar }));
     layout.measure(PHONE);
     layout.settle(1 / 60, false);
     expect(layout.band("sun")).toBeNull();
-    const loose = stickyPlate();
-    loose.style.position = "static";
+    const loose = fixedCard();
+    loose.style.position = "relative";
     const other = createScreenLayout(elements({ plates: new Map([["sun", loose]]) }));
     other.measure(PHONE);
     other.settle(1 / 60, false);
@@ -172,7 +207,7 @@ describe("createScreenLayout sur grand écran", () => {
   });
 
   it("devrait renoncer à une zone de moins de 20 % de la largeur (fenêtre très étroite), ou sans règle", () => {
-    const narrow = createScreenLayout(elements({ rail: railAt(1180), plates: new Map([["sun", stickyPlate(200, 1000)]]) }));
+    const narrow = createScreenLayout(elements({ rail: railAt(1180), plates: new Map([["sun", fixedCard(200, 1000)]]) }));
     narrow.measure(DESK);
     expect(narrow.zone()).toBeNull();
     const noRail = createScreenLayout(elements());
@@ -203,19 +238,18 @@ describe("createScreenLayout sur grand écran", () => {
 
 describe("ScreenLayout.settle", () => {
   it("devrait faire rejoindre en douceur une bande qui change, à 1 − e^(−6·dt) par image, puis s'y poser", () => {
-    const bar = fixedBar();
-    const layout = createScreenLayout(elements({ bar }));
+    const card = fixedCard();
+    const layout = createScreenLayout(elements({ plates: new Map([["sun", card]]) }));
     layout.measure(PHONE);
     layout.settle(1 / 60, false);
-    const before = freeBand(812, 64, { height: 200, bottom: 82 });
-    const after = freeBand(812, 100, { height: 200, bottom: 82 });
+    const before = bandUnder(80);
+    const after = bandUnder(80, 100);
     if (!before || !after) throw new Error("bandes attendues");
-    stubBox(bar, { width: 375, height: 100 });
+    moveCard(card, 100);
     layout.measure(PHONE);
     expect(layout.settle(0.1, false)).toBe(false);
     const follow = 1 - Math.exp(-0.6);
     expect(layout.band("sun")?.top).toBeCloseTo(before.top + (after.top - before.top) * follow, 12);
-    expect(layout.band("sun")?.bottom).toBe(after.bottom);
     let frames = 0;
     while (!layout.settle(0.1, false)) frames += 1;
     expect(frames).toBeLessThan(40);
@@ -223,18 +257,18 @@ describe("ScreenLayout.settle", () => {
   });
 
   it("devrait poser la bande en une image en mouvement réduit", () => {
-    const bar = fixedBar();
-    const layout = createScreenLayout(elements({ bar }));
+    const card = fixedCard();
+    const layout = createScreenLayout(elements({ plates: new Map([["sun", card]]) }));
     layout.measure(PHONE);
     layout.settle(1 / 60, true);
-    stubBox(bar, { width: 375, height: 100 });
+    moveCard(card, 100);
     layout.measure(PHONE);
     expect(layout.settle(1 / 60, true)).toBe(true);
-    expect(layout.band("sun")).toEqual(freeBand(812, 100, { height: 200, bottom: 82 }));
+    expect(layout.band("sun")).toEqual(bandUnder(80, 100));
   });
 
   it("devrait retirer aussitôt une bande qui disparaît, et rester posé sans nouvelle mesure", () => {
-    const plate = stickyPlate();
+    const plate = fixedCard();
     const layout = createScreenLayout(elements({ plates: new Map([["sun", plate]]) }));
     layout.measure(PHONE);
     layout.settle(1 / 60, false);

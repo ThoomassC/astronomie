@@ -1,9 +1,9 @@
 /*
- * Page « Tailles » : la mise en page du Voyage (plaques à gauche, règle à droite, plaque compacte collée en bas sur
- * téléphone), sans dock. Seuls les écarts propres à Tailles vivent ici ; le reste est dans globals.css.
+ * Page « Tailles » : la mise en page du Voyage (plaques à gauche, règle à droite, carte fixée en haut sur téléphone),
+ * sans dock. Seuls les écarts propres à Tailles vivent ici ; le reste est dans globals.css.
  */
 
-/* Pas de dock : la plaque compacte se colle à 16 px du bas de l'écran (zone sûre comprise). */
+/* Pas de dock : la carte fixe dépliée descend à 16 px (et 0,5 rem) du bas de l'écran, zone sûre comprise. */
 .page {
   --dock-clear: calc(16px + env(safe-area-inset-bottom, 0px));
 }
@@ -252,6 +252,24 @@
     border: 1px solid var(--filet);
     border-radius: var(--r-lg);
     background: var(--plaque-a);
+  }
+}
+
+/*
+ * Carte fixe (globals.css, ADR 0007) : le haut de l'écran, sous la barre, est à la carte de l'astre ; l'échelle
+ * graphique passe en bas à droite, au-dessus de la zone sûre. Les étiquettes l'évitent toujours (boîte mesurée).
+ * Placé après les règles de la mise en page compacte, qu'il précise.
+ */
+@media (max-width: 640px) and (min-height: 30.0625rem) and (scripting: enabled),
+  (max-width: 1100px) and (orientation: portrait) and (min-height: 30.0625rem) and (scripting: enabled) {
+  .scaleBar {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  /* Le nom de la carte suit celui du Voyage, pas la grande taille des plaques de Tailles (plus haut). */
+  .page :global(.plate .plate-title > h2) {
+    font-size: var(--card-name-size);
   }
 }
 

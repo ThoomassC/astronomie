@@ -1,6 +1,6 @@
 import { anchoredBox, placeMarkedLabel, pointBox, type LabelBox, type MarkerLayout } from "@/components/scene/labels";
 import type { Vec3 } from "@/lib/astro/constants";
-import type { ScreenBand, ScreenZone } from "@/lib/journey/screen";
+import { BAND_MARGIN_PX, type ScreenBand, type ScreenZone } from "@/lib/journey/screen";
 import { pixelsPerSolarRadius } from "@/lib/sizes/scaleBar";
 import { screenPoint, viewDepth, type ScreenDisc, type SizesCam, type SizesFrameContext } from "@/lib/sizes/sizesCamera";
 
@@ -296,8 +296,9 @@ export interface SizeLabelsLayout {
 
 /**
  * Boîtes réservées d'avance aux étiquettes, en px de la vue : ce que mesure la page (barre, règle), l'échelle
- * graphique, et la place des plaques (à gauche de la zone libre sur grand écran, sous la bande libre en mise en page
- * compacte).
+ * graphique, et la place des plaques : à gauche de la zone libre sur grand écran ; en mise en page compacte, la carte
+ * fixée en haut (ou le squelette du passage), jusqu'à son bas (8 px au-dessus de la bande), et le bas de l'écran sous la
+ * bande. Aucune étiquette, celle posée au-dessus d'un astre comprise, ne passe sous la carte.
  */
 export function frameBoxes(
   view: { width: number; height: number },
@@ -309,7 +310,12 @@ export function frameBoxes(
   const boxes = [...measured];
   if (scaleBox) boxes.push(scaleBox);
   if (zone) boxes.push([0, 0, zone.left * view.width, view.height]);
-  if (band) boxes.push([0, band.bottom * view.height, view.width, view.height]);
+  if (band) {
+    boxes.push(
+      [0, 0, view.width, band.top * view.height - BAND_MARGIN_PX],
+      [0, band.bottom * view.height, view.width, view.height],
+    );
+  }
   return boxes;
 }
 

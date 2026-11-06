@@ -47,6 +47,7 @@ export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlac
     <section className="stop" id={id} data-stop={hole.key} tabIndex={-1} aria-labelledby={titleId}>
       <Plate
         id={id}
+        stop={hole.key}
         name={name}
         color={hole.color}
         header={
@@ -57,7 +58,7 @@ export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlac
             {rank.total} · {text.kind}
           </p>
         }
-        title={<h2 id={titleId}>{name}</h2>}
+        titleId={titleId}
         hook={text.hook}
         sections={[
           {

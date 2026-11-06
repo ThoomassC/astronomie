@@ -4,6 +4,7 @@ import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from "rea
 import { useLocale } from "@/i18n/LocaleProvider";
 import { clampToRest, restRange } from "@/lib/journey/sections";
 import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
+import { useFixedCard, useIsCurrentCard } from "./CardTrack";
 import { cssVars } from "./cssVars";
 import { JOURNEY_STRINGS } from "./journey.strings";
 import { measureSections, scrollInstantly, shownElements } from "./navigation";
@@ -26,14 +27,22 @@ export interface PlateSection {
 interface PlateProps {
   /** Identifiant de l'escale, préfixe des zones dépliables. */
   id: string;
-  /** Nom de l'astre, lu après « Replier » pour distinguer les plaques entre elles. */
+  /**
+   * Clé de l'escale (`data-stop`) dans son parcours (CardTrack) : sur téléphone, seule la plaque de l'escale courante se
+   * voit, fixée en haut de l'écran (`data-current`).
+   */
+  stop?: string;
+  /**
+   * Nom de l'astre, titre de l'escale (`h2`), toujours visible ; sur la carte fixe du téléphone, le bouton qui la déplie.
+   * Lu aussi après « Replier », pour distinguer les plaques entre elles.
+   */
   name: string;
+  /** Identifiant du titre, qui nomme la section de l'escale (`aria-labelledby`). */
+  titleId: string;
   /** Couleur de l'astre : filet du haut et puce du rang. */
   color: string;
   /** Avant le nom, toujours visible : avertissement d'hypothèse (multivers), rang. */
   header?: ReactNode;
-  /** Nom de l'astre, titre de l'escale (`h2`) : toujours visible. */
-  title: ReactNode;
   /** Accroche, sous le nom ; masquée à l'œil dans la plaque compacte, où elle reste lue juste après lui. */
   hook?: string;
   sections: readonly PlateSection[];
@@ -108,9 +117,12 @@ function ButtonLabel({ label, context }: { label: string; context?: string }) {
 /** Infobulle d'un titre-bouton : son nom accessible entier, pour qu'elle ne s'y ajoute pas en description. */
 const tooltip = (label: string, context?: string) => (context ? `${label}, ${context}` : label);
 
-function Chevron() {
+/** Aucune section ouverte. */
+const NO_SECTION: ReadonlySet<string> = new Set();
+
+function Chevron({ className = "more-chevron" }: { className?: string }) {
   return (
-    <svg className="more-chevron" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+    <svg className={className} width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
       <path
         d="M2.5 4.5 6 8l3.5-3.5"
         fill="none"
@@ -124,23 +136,59 @@ function Chevron() {
 }
 
 /**
- * Plaque de lecture d'une escale. Sur téléphone, elle reste compacte et collée en bas de l'écran
- * pour laisser voir l'astre : chaque titre-bouton déplie sa section juste en dessous de lui (motif
- * accordéon), « Replier » referme tout. Dans la plaque compacte, où la zone ouverte passe sous la
- * rangée des pictogrammes, une seule section s'ouvre à la fois (comme des onglets) : le DOM ne change
- * pas, chaque zone suit son bouton. Un dépliage amène le bouton touché (plaque compacte : sa zone)
- * sous la barre sans quitter la plage de repos de l'escale ; un repli ne déplace jamais la caméra. Les boutons sont rendus dès
- * le serveur, pour que la page ne change pas de hauteur à l'hydratation. Sur grand écran, ou sans
- * JavaScript, tout est visible et les boutons sont masqués (globals.css). « Replier » est dans la
- * langue de la page ; les libellés des sections viennent de qui rend la plaque.
+ * Nom de l'astre dans son bouton, suivi du chevron décoratif : le dernier mot et le chevron ne se séparent pas, un nom
+ * long passe à la ligne entre ses mots sans laisser le chevron seul.
  */
-export function Plate({ id, name, color, header, title, hook, sections, steps, footer }: PlateProps) {
+function NameLabel({ name }: { name: string }) {
+  const cut = name.lastIndexOf(" ") + 1;
+  return (
+    <span>
+      {name.slice(0, cut)}
+      <span className="plate-name-end">
+        {name.slice(cut)}
+        <Chevron className="plate-name-chevron" />
+      </span>
+    </span>
+  );
+}
+
+/**
+ * Plaque de lecture d'une escale. Sur téléphone (carte fixe, ADR 0007), seule celle de l'escale courante se voit,
+ * fixée en haut de l'écran, repliée au rang et au nom : le nom est le bouton qui la déplie (motif accordéon,
+ * `h2 > button[aria-expanded][aria-controls]`). Dépliée, la rangée des pictogrammes paraît, la première section
+ * ouverte ; une seule section s'ouvre à la fois (comme des onglets), son contenu défile dans la carte, la page ne
+ * bouge pas. « Replier » ou un second toucher sur le nom replient tout, le focus revient au nom ; la carte d'une escale
+ * qu'on quitte se replie. Ailleurs, dans la plaque compacte qui suit la page (paysage bas), chaque titre-bouton déplie
+ * sa section juste en dessous de lui, « Replier » referme tout ; un dépliage amène le bouton touché (plaque compacte :
+ * sa zone) sous la barre sans quitter la plage de repos de l'escale ; un repli ne déplace jamais la caméra. Les
+ * titres-boutons sont rendus dès le serveur, pour que la page ne change pas de hauteur à l'hydratation ; le nom n'y
+ * devient un bouton qu'après, en carte fixe, où la plaque est hors du flux. Sur grand écran, ou sans JavaScript, tout
+ * est visible, le nom est un simple titre et les boutons sont masqués (globals.css). « Replier » est dans la langue de
+ * la page ; les libellés des sections viennent de qui rend la plaque.
+ */
+export function Plate({ id, stop, name, titleId, color, header, hook, sections, steps, footer }: PlateProps) {
   const t = JOURNEY_STRINGS[useLocale()];
-  const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
+  const current = useIsCurrentCard(stop);
+  const fixed = useFixedCard();
+  const [open, setOpen] = useState<ReadonlySet<string>>(NO_SECTION);
+  /** Carte fixe dépliée : rangée des pictogrammes et pied affichés. */
+  const [unfolded, setUnfolded] = useState(false);
+  const [wasCurrent, setWasCurrent] = useState(current);
   const articleRef = useRef<HTMLElement>(null);
+  const nameRef = useRef<HTMLButtonElement>(null);
   const pending = useRef<ScrollRequest | null>(null);
   const expanded = open.size > 0;
   const zoneIdOf = (key: string) => `${id}-${key}`;
+  const sectionsId = `${id}-sections`;
+
+  // La carte fixe d'une escale qu'on quitte se replie : la suivante arrive repliée, et celle-ci aussi quand on y revient.
+  if (current !== wasCurrent) {
+    setWasCurrent(current);
+    if (!current && fixed) {
+      setUnfolded(false);
+      setOpen(NO_SECTION);
+    }
+  }
 
   useLayoutEffect(() => {
     const request = pending.current;
@@ -178,10 +226,17 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
 
   const toggle = (button: HTMLElement, key: string) => {
     const exclusive = exclusiveSections();
-    const before = open.has(key) ? beforeFold(articleRef.current) : null;
-    // Plaque compacte : la zone s'ouvre sous la rangée des boutons, c'est elle qu'on amène à l'écran.
-    const zone = exclusive ? document.getElementById(zoneIdOf(key)) : null;
-    pending.current = before ? { before, focusFirst: false } : { reveal: zone ?? button };
+    if (fixed) {
+      // Carte fixe : la page ne défile pas, le contenu de la carte repart de son haut, sous la rangée des pictogrammes.
+      pending.current = null;
+      const scroller = articleRef.current?.querySelector<HTMLElement>(".plate-sections");
+      if (scroller) scroller.scrollTop = 0;
+    } else {
+      const before = open.has(key) ? beforeFold(articleRef.current) : null;
+      // Plaque compacte : la zone s'ouvre sous la rangée des boutons, c'est elle qu'on amène à l'écran.
+      const zone = exclusive ? document.getElementById(zoneIdOf(key)) : null;
+      pending.current = before ? { before, focusFirst: false } : { reveal: zone ?? button };
+    }
     setOpen((current) => {
       if (current.has(key)) {
         const next = new Set(current);
@@ -192,14 +247,38 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
     });
   };
 
+  /** Carte fixe : tout replier, le focus au nom (le bouton touché, ou « Replier », qui disparaît). */
+  const foldCard = () => {
+    pending.current = null;
+    setUnfolded(false);
+    setOpen(NO_SECTION);
+    nameRef.current?.focus({ preventScroll: true });
+  };
+
   const foldAll = () => {
+    if (fixed) {
+      foldCard();
+      return;
+    }
     const before = beforeFold(articleRef.current);
     pending.current = before ? { before, focusFirst: true } : null;
-    setOpen(new Set());
+    setOpen(NO_SECTION);
+  };
+
+  // Carte fixe : le nom déplie la carte, sa première section ouverte ; un second toucher replie tout.
+  const toggleCard = () => {
+    if (unfolded) {
+      foldCard();
+      return;
+    }
+    pending.current = null;
+    setUnfolded(true);
+    setOpen(sections.length > 0 ? new Set([sections[0].key]) : NO_SECTION);
   };
 
   // Le focus arrive dans une zone fermée (passage du grand écran au téléphone) : elle s'ouvre, seule en plaque compacte.
   const openOnFocus = (key: string) => {
+    if (fixed) setUnfolded(true);
     if (open.has(key)) return;
     const exclusive = exclusiveSections();
     setOpen((current) => (exclusive ? new Set([key]) : new Set(current).add(key)));
@@ -211,6 +290,8 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
       className="plate"
       style={cssVars({ "--c": color })}
       data-expanded={expanded || undefined}
+      data-current={current || undefined}
+      data-unfolded={unfolded || undefined}
     >
       {header}
       {/*
@@ -218,12 +299,27 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
        * juste après lui, avant les escales voisines.
        */}
       <div className="plate-title">
-        {title}
+        <h2 id={titleId}>
+          {fixed ? (
+            <button
+              ref={nameRef}
+              type="button"
+              className="plate-name"
+              aria-expanded={unfolded}
+              aria-controls={sectionsId}
+              onClick={toggleCard}
+            >
+              <NameLabel name={name} />
+            </button>
+          ) : (
+            name
+          )}
+        </h2>
         {hook ? <p className="hook">{hook}</p> : null}
         {steps}
       </div>
       {/* Sur téléphone, les titres-boutons se rangent sur une ligne quand ils y tiennent (globals.css). */}
-      <div className="plate-sections">
+      <div id={sectionsId} className="plate-sections">
         {sections.map((section) => {
           const zoneId = zoneIdOf(section.key);
           const isOpen = open.has(section.key);
@@ -254,7 +350,7 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
             </Fragment>
           );
         })}
-        {expanded && (
+        {(expanded || unfolded) && (
           <button type="button" className="more-btn more-fold" title={tooltip(t.fold, name)} onClick={foldAll}>
             <PlateIcon name="fold" />
             <ButtonLabel label={t.fold} context={name} />

@@ -17,7 +17,7 @@ La mise en page est **celle du Voyage**, sans dock : on sait déjà la lire.
 | Largeur | Disposition |
 |---|---|
 | Grand écran | Plaques à gauche, règle des tailles à droite, scène dans la zone libre entre les deux. La caméra cadre la paire : l'étoile affichée à gauche, la précédente, plus petite, à sa droite. |
-| Mise en page compacte (≤ 640 px, ou tablette en portrait ≤ 1 100 px) | Plaque compacte collée en bas (`--dock-clear` = 16 px + zone sûre : pas de dock), paire cadrée dans la bande libre au-dessus. |
+| Mise en page compacte (≤ 640 px, ou tablette en portrait ≤ 1 100 px) | Avec JavaScript et plus de 30 rem de haut, carte fixe (MASTER, ADR 0007) : seule la carte de l'astre courant se voit, fixée en haut sous la barre, repliée au rang et au nom ; squelette pendant le passage d'un astre à l'autre ; rien à l'introduction. Paire cadrée dans la bande libre entre le bas de la carte repliée et le bas de l'écran ; dépliée, la carte descend jusqu'à 16 px + 0,5 rem du bas (`--dock-clear` = 16 px + zone sûre : pas de dock). L'échelle graphique passe en bas à droite. Sur écran bas : plaque compacte qui suit la page. |
 | ≤ 860 px avec JavaScript | La règle cède la place au menu des étoiles, dans la barre (bouton « Étoiles » à l'introduction, sinon pastille et nom de l'étoile). |
 
 - Ordre du DOM, qui est l'ordre de lecture : lien d'évitement, barre commune (étoile affichée, menu des étoiles),
@@ -35,11 +35,11 @@ La mise en page est **celle du Voyage**, sans dock : on sait déjà la lire.
 |---|---|
 | Section | `section.stop#{ancre}[data-stop]`, comme le Voyage ; `--c` = couleur de l'étoile |
 | Rang | `.rank` : pastille `--c`, « 9ᵉ sur 10 · supergéante rouge » (ordinal en exposant en français ; « 9th of 10 », « 9.ª de 10 ») |
-| Nom (h2) | barème du Voyage ; mise en page compacte : `clamp(2.25rem, 7vw, 3.25rem)` (« VY Canis Majoris » tient sur une ligne à 375 px) |
-| Accroche | la comparaison qui frappe, visible même repliée ; Soleil : « Vu de l'espace, le Soleil est presque blanc. » |
+| Nom (h2) | barème du Voyage ; carte fixe : celui du Voyage, 1,5 à 1,75 rem (1,25 à 1,5 rem sous 360 px : « Agujero negro de la Herradura Cósmica » tient sur deux lignes), bouton qui déplie la carte ; ailleurs en mise en page compacte : `clamp(2.25rem, 7vw, 3.25rem)` (« VY Canis Majoris » tient sur une ligne à 375 px) |
+| Accroche | la comparaison qui frappe ; Soleil : « Vu de l'espace, le Soleil est presque blanc. » Masquée à l'œil dans la plaque compacte avec JavaScript, lue juste après le nom (MASTER) |
 | Fiche (`.facts`, deux colonnes) | Rayon (dd en R☉ ; `small` : kilomètres à 4 chiffres significatifs, puis la fourchette publiée si le rayon est débattu) · Type (catégorie ; `small` : type spectral) · Température, **pleine largeur** (dd en K ; `small` : couleur en mots et comparaison au Soleil, puis la réglette) · Distance (en toutes lettres) · Comparaison, **pleine largeur**, en graisse de texte courant |
 | Pied | `.fact-caveat` (seulement les quatre rayons débattus) puis `.fact-source` ; dernière plaque : `.btn.ghost` « Revenir au plus petit » |
-| Astres voisins | MASTER, « Escales voisines » : dans la plaque compacte, deux flèches au bout de « Lire la fiche » ; ailleurs (paysage bas, sans JavaScript), pilules « ← Antarès A », « VY Canis Majoris → », nom court ; nom entier dans le nom accessible (« Astre suivant : Trou noir du Fer à cheval cosmique ») ; rien avant le plus petit, rien après le plus grand |
+| Astres voisins | MASTER, « Escales voisines » : dans la plaque compacte, deux flèches de part et d'autre du nom (« ‹ Bételgeuse › ») ; ailleurs (paysage bas, sans JavaScript), pilules « ← Antarès A », « VY Canis Majoris → », nom court ; nom entier dans le nom accessible (« Astre suivant : Trou noir du Fer à cheval cosmique ») ; rien avant le plus petit, rien après le plus grand |
 
 **Couleur en mots** : orangée sous 3 800 K, orange pâle jusqu'à 5 200 K, blanche jusqu'à 7 500 K, blanc bleuté
 au-delà, toujours suivie de « plus froide / plus chaude que le Soleil (5 772 K) ».

@@ -82,6 +82,7 @@ export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; loc
     <section className="stop" id={id} data-stop={star.key} tabIndex={-1} aria-labelledby={titleId}>
       <Plate
         id={id}
+        stop={star.key}
         name={name}
         color={star.color}
         header={
@@ -92,7 +93,7 @@ export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; loc
             {rank.total} · {text.kind}
           </p>
         }
-        title={<h2 id={titleId}>{name}</h2>}
+        titleId={titleId}
         hook={text.hook}
         sections={[
           {

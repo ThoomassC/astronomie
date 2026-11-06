@@ -33,6 +33,7 @@ export function BeyondPlate({ locale, sunHref }: { locale: Locale; sunHref: `#${
     <section className="stop" id={STOP_IDS.beyond} data-stop="beyond" tabIndex={-1} aria-labelledby={TITLE_ID}>
       <Plate
         id={STOP_IDS.beyond}
+        stop="beyond"
         name={beyond.name}
         color="var(--laiton)"
         header={
@@ -41,7 +42,7 @@ export function BeyondPlate({ locale, sunHref }: { locale: Locale; sunHref: `#${
             {beyond.rank}
           </p>
         }
-        title={<h2 id={TITLE_ID}>{beyond.name}</h2>}
+        titleId={TITLE_ID}
         hook={beyond.hook}
         sections={[
           {
