@@ -171,7 +171,8 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
 - **Noms des astres (scène du Voyage), mise en page compacte** : le nom d'une planète ou du Soleil dont le disque
   déborde de son repère (anneau de 10 px) se pose au-dessus de lui, centré, à 4 px de ce qui s'élève le plus haut à
   l'écran (le disque, ou les anneaux de Saturne et d'Uranus selon leur inclinaison), repère effacé (`data-above`) : il
-  ne chevauche jamais le disque. Au repos sur une escale, le nom de l'astre en vue reste entier, même vu de près (il
+  ne chevauche jamais le disque. Souvent sur un fond clair (couronne du Soleil), son texte est opaque et bordé du halo
+  de nuit serré des étiquettes à nu (ombres `--nuit` de 1, 2, 3, 6 et 10 px), sans pastille. Au repos sur une escale, le nom de l'astre en vue reste entier, même vu de près (il
   suit le repos de la caméra). Jamais hors de l'écran, sous la barre ou la note d'échelle, ni sur la plaque repliée,
   bouton entier compris (anneau masqué, rembourrage) ; quand il n'y tient pas (téléphone court, astre cadré sur toute
   la bande libre), il reprend la disposition ordinaire, et sinon il est masqué. Un astre plus petit que son repère
