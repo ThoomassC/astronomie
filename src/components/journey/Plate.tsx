@@ -7,11 +7,19 @@ import { prefersReducedMotion } from "@/lib/sim/reducedMotion";
 import { cssVars } from "./cssVars";
 import { JOURNEY_STRINGS } from "./journey.strings";
 import { measureSections, scrollInstantly, shownElements } from "./navigation";
+import { PlateIcon, type PlateIconName } from "./PlateIcon";
 
 export interface PlateSection {
   key: string;
-  /** Libellé du bouton qui déplie la section (téléphones). */
-  label: ReactNode;
+  /** Libellé du bouton qui déplie la section (téléphones) : nom accessible et infobulle, « Lire la fiche ». */
+  label: string;
+  /**
+   * Lu après le libellé quand il revient à chaque escale (« Lire la fiche, Mars ») : le nom de l'astre distingue les
+   * boutons de la page à l'oreille.
+   */
+  context?: string;
+  /** Pictogramme du bouton, seul visible dans la plaque compacte. */
+  icon: PlateIconName;
   content: ReactNode;
 }
 
@@ -72,9 +80,22 @@ function beforeFold(article: HTMLElement | null): BeforeFold | null {
   return { scrollY: window.scrollY, ...restRange(stop.box, window.innerHeight), height: stop.box.height };
 }
 
+/** Libellé d'un titre-bouton, suivi de ce qui le distingue à l'oreille : masqué à l'œil dans la plaque compacte. */
+function ButtonLabel({ label, context }: { label: string; context?: string }) {
+  return (
+    <span className="more-label">
+      {label}
+      {context ? <span className="sr">, {context}</span> : null}
+    </span>
+  );
+}
+
+/** Infobulle d'un titre-bouton : son nom accessible entier, pour qu'elle ne s'y ajoute pas en description. */
+const tooltip = (label: string, context?: string) => (context ? `${label}, ${context}` : label);
+
 function Chevron() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+    <svg className="more-chevron" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
       <path
         d="M2.5 4.5 6 8l3.5-3.5"
         fill="none"
@@ -186,9 +207,11 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
                   className="more-btn"
                   aria-expanded={isOpen}
                   aria-controls={zoneId}
+                  title={tooltip(section.label, section.context)}
                   onClick={(event) => toggle(event.currentTarget, section.key)}
                 >
-                  <span>{section.label}</span>
+                  <PlateIcon name={section.icon} />
+                  <ButtonLabel label={section.label} context={section.context} />
                   <Chevron />
                 </button>
               </h3>
@@ -204,11 +227,9 @@ export function Plate({ id, name, color, header, title, hook, sections, steps, f
           );
         })}
         {expanded && (
-          <button type="button" className="more-btn more-fold" onClick={foldAll}>
-            <span>
-              {t.fold}
-              <span className="sr">, {name}</span>
-            </span>
+          <button type="button" className="more-btn more-fold" title={tooltip(t.fold, name)} onClick={foldAll}>
+            <PlateIcon name="fold" />
+            <ButtonLabel label={t.fold} context={name} />
             <Chevron />
           </button>
         )}

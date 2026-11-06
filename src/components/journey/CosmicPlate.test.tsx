@@ -78,6 +78,15 @@ describe("CosmicStops", () => {
     }
   });
 
+  it("devrait donner un pictogramme à chaque section : fiche, étoiles de la carte, galaxies de la carte", () => {
+    renderStops("fr");
+    const icons = (key: (typeof COSMIC_STOPS)[number]) =>
+      Array.from(section(STOP_IDS[key]).querySelectorAll(".more-btn svg[data-icon]"), (svg) => svg.getAttribute("data-icon"));
+    expect(icons("stars")).toEqual(["story", "stars"]);
+    expect(icons("localGroup")).toEqual(["story", "galaxies"]);
+    expect(icons("multiverse")).toEqual(["story"]);
+  });
+
   it.each(LOCALES)("devrait proposer de revenir au Soleil depuis chaque escale (%s)", (locale) => {
     renderStops(locale);
     const { plate } = getCosmicContent(locale);

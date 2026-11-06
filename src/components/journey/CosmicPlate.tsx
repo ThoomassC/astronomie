@@ -115,12 +115,9 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
     {
       key: "fiche",
       // Le même libellé revient à chaque escale : le nom de l'escale le distingue à l'oreille.
-      label: (
-        <>
-          {content.plate.story}
-          <span className="sr">, {text.name}</span>
-        </>
-      ),
+      label: content.plate.story,
+      context: text.name,
+      icon: "story",
       content: (
         <>
           <p className="lede">{text.lede}</p>
@@ -145,6 +142,7 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
     sections.push({
       key: "etoiles",
       label: content.starTable.button,
+      icon: "stars",
       content: <StarTable table={content.starTable} locale={locale} />,
     });
   }
@@ -152,6 +150,7 @@ export function CosmicPlate({ stop, content, locale, sunHref }: CosmicPlateProps
     sections.push({
       key: "galaxies",
       label: content.galaxyTable.button,
+      icon: "galaxies",
       content: <GalaxyTable table={content.galaxyTable} locale={locale} />,
     });
   }

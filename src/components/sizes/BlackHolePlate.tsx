@@ -63,12 +63,9 @@ export function BlackHolePlate({ hole, locale, restartTo }: { hole: ComparedBlac
           {
             key: "fiche",
             // Le même libellé revient à chaque astre : son nom le distingue à l'oreille.
-            label: (
-              <>
-                {content.plate.story}
-                <span className="sr">, {name}</span>
-              </>
-            ),
+            label: content.plate.story,
+            context: name,
+            icon: "story",
             content: (
               <>
                 <p className="lede">{text.lede}</p>

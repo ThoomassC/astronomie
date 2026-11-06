@@ -1,4 +1,5 @@
 import { ExplainerModule } from "@/components/modules/ExplainerModule";
+import type { ModuleKind } from "@/components/modules/moduleKind";
 import { getVoyageContent } from "@/content/voyage/content";
 import type { BodyStopStructure } from "@/content/voyage/structure";
 import type { Ordinal } from "@/content/voyage/types";
@@ -7,7 +8,21 @@ import { bodyName } from "@/i18n/names";
 import { STOP_IDS } from "@/lib/journey/stopIds";
 import { LiveDistance } from "./LiveDistance";
 import { Plate } from "./Plate";
+import type { PlateIconName } from "./PlateIcon";
 import { JourneySteps } from "./StopSteps";
+
+/** Pictogramme du bouton de chaque module explicatif, dans la plaque compacte : ce que le module fait voir. */
+const MODULE_ICONS: Record<ModuleKind, PlateIconName> = {
+  "light-race": "light",
+  kepler: "orbit",
+  "venus-race": "day",
+  "seasons-earth": "seasons",
+  weight: "weight",
+  sizes: "sizes",
+  "saturn-rings": "rings",
+  "seasons-uranus": "seasons",
+  "neptune-year": "age",
+};
 
 /**
  * « L'étoile au centre », ou « 1ʳᵉ / 3ᵉ planète en partant du Soleil » : le rang en chiffres et sa marque ordinale
@@ -52,12 +67,9 @@ export function StopPlate({ locale, stop }: { locale: Locale; stop: BodyStopStru
           {
             key: "fiche",
             // Le même libellé revient à chaque escale : le nom de l'astre le distingue à l'oreille.
-            label: (
-              <>
-                {content.plate.story}
-                <span className="sr">, {name}</span>
-              </>
-            ),
+            label: content.plate.story,
+            context: name,
+            icon: "story",
             content: (
               <>
                 <p className="lede">{texts.lede}</p>
@@ -82,6 +94,7 @@ export function StopPlate({ locale, stop }: { locale: Locale; stop: BodyStopStru
           {
             key: "module",
             label: texts.module.button,
+            icon: MODULE_ICONS[stop.module],
             content: (
               <figure className="module">
                 <h3>{texts.module.title}</h3>

@@ -45,6 +45,29 @@ describe("StopPlate", () => {
     expect(textOf(plate, ".rank sup")).toBe("th");
   });
 
+  /* Plaque compacte : un pictogramme par type de section, celui des saisons pour la Terre et Uranus. */
+  it.each([
+    ["sun", "light"],
+    ["mercury", "orbit"],
+    ["venus", "day"],
+    ["earth", "seasons"],
+    ["mars", "weight"],
+    ["jupiter", "sizes"],
+    ["saturn", "rings"],
+    ["uranus", "seasons"],
+    ["neptune", "age"],
+  ] as const)("devrait donner un pictogramme parlant au module de %s (%s), et à sa fiche", (key, icon) => {
+    const plate = renderPlate("fr", key);
+    const zones = Array.from(plate.querySelectorAll<HTMLElement>(".more-btn"), (button) => [
+      button.getAttribute("aria-controls"),
+      button.querySelector("svg[data-icon]")?.getAttribute("data-icon"),
+    ]);
+    expect(zones).toEqual([
+      [`${STOP_IDS[key]}-fiche`, "story"],
+      [`${STOP_IDS[key]}-module`, icon],
+    ]);
+  });
+
   it("devrait distinguer à l'oreille le bouton de la fiche par le nom de l'astre, en anglais", () => {
     const plate = renderPlate("en", "saturn");
     expect(within(plate).getByRole("button", { name: "Read the fact sheet, Saturn" })).toHaveAttribute(

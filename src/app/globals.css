@@ -1172,11 +1172,14 @@ main > section > * {
 
 .more-btn svg {
   flex: none;
+}
+
+.more-btn .more-chevron {
   transition: transform 0.25s;
 }
 
-.more-btn[aria-expanded="true"] svg,
-.more-fold svg {
+.more-btn[aria-expanded="true"] .more-chevron,
+.more-fold .more-chevron {
   transform: rotate(180deg);
 }
 
@@ -1471,7 +1474,7 @@ main > section > * {
     grid-template-columns: 44px minmax(0, 1fr) 44px;
     column-gap: 0.5rem;
     align-items: center;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.5rem;
   }
 
   .plate-title > h2 {
@@ -2706,6 +2709,12 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
  * Plaque compacte, avec JavaScript (titres-boutons affichés) : rang, nom encadré des escales voisines (« Escales
  * voisines »), puis la rangée des titres-boutons. L'accroche cède sa ligne à l'astre, qui gagne autant de bande libre ;
  * masquée à l'œil seulement, elle reste lue, une fois, après le nom. Sur grand écran et sans JavaScript, elle reste.
+ *
+ * Titres-boutons : ronds de 44 px, pictogramme seul au trait de laiton (PlateIcon), sur une rangée centrée sous le nom,
+ * « Replier » au bout quand une section est ouverte. Le libellé, masqué à l'œil, reste le nom accessible et paraît en
+ * infobulle au survol. Une section ouverte passe sous la rangée, dans l'ordre des boutons. Bouton ouvert : fond
+ * `--soleil`, pictogramme sombre et anneau `--soleil` détaché de la plaque, un changement de fond et pas une teinte
+ * seule.
  */
 @media (max-width: 640px) and (scripting: enabled), (max-width: 1100px) and (orientation: portrait) and (scripting: enabled) {
   .plate .hook {
@@ -2716,6 +2725,68 @@ html[data-explore] [data-hide-on-explore]:not(.scale-note) {
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+  }
+
+  .plate-sections {
+    justify-content: center;
+  }
+
+  .more-heading {
+    flex: none;
+  }
+
+  .more-zone {
+    order: 1;
+  }
+
+  .more-btn {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    color: var(--laiton);
+  }
+
+  .more-btn .more-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .more-btn .more-chevron {
+    display: none;
+  }
+
+  .more-btn[aria-expanded="true"] {
+    border-color: var(--soleil);
+    background: var(--soleil);
+    color: var(--encre);
+    box-shadow: 0 0 0 2px var(--plaque), 0 0 0 3px var(--soleil);
+  }
+
+  /* « Replier » : au bout de la rangée, en retrait (filet --filet, pictogramme --brume). */
+  .more-fold {
+    flex-basis: auto;
+    color: var(--brume);
+  }
+}
+
+/* Couleurs forcées : le filet des titres-boutons prend la couleur du texte ; le bouton ouvert, le fond de sélection. */
+@media (forced-colors: active) {
+  .more-btn {
+    border-color: ButtonText;
+  }
+
+  .more-btn[aria-expanded="true"] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+    box-shadow: none;
   }
 }
 

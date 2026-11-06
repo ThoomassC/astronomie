@@ -8,8 +8,8 @@ import { Plate, type PlateSection } from "@/components/journey/Plate";
 import { renderIn } from "@/components/modules/testUtils";
 
 const SECTIONS: readonly PlateSection[] = [
-  { key: "fiche", label: "Lire la fiche", content: <p>Texte de la fiche</p> },
-  { key: "module", label: "Votre poids sur chaque astre", content: <button type="button">Peser</button> },
+  { key: "fiche", label: "Lire la fiche", icon: "story", content: <p>Texte de la fiche</p> },
+  { key: "module", label: "Votre poids sur chaque astre", icon: "weight", content: <button type="button">Peser</button> },
 ];
 
 /** Hauteur de la vue. L'escale commence à 2000 px dans le document. */
@@ -293,6 +293,37 @@ describe("Plate", () => {
     expect(document.querySelector(".plate-sections > .stop-steps")).toBeNull();
   });
 
+  /*
+   * Plaque compacte : chaque titre-bouton se réduit à son pictogramme (globals.css) ; son libellé entier reste son nom
+   * accessible, l'astre lu après lui, et paraît en infobulle au survol.
+   */
+  it("devrait poser sur chaque titre-bouton son pictogramme décoratif, le libellé entier en nom et en infobulle", () => {
+    render(
+      <Plate
+        id="mars"
+        name="Mars"
+        color="#DA6A43"
+        title={<h2>Mars</h2>}
+        sections={[{ ...SECTIONS[0], context: "Mars" }, SECTIONS[1]]}
+      />,
+    );
+    const fiche = screen.getByRole("button", { name: "Lire la fiche, Mars" });
+    expect(fiche).toHaveAttribute("title", "Lire la fiche, Mars");
+    expect(fiche).toHaveAttribute("aria-controls", "mars-fiche");
+    expect(fiche.querySelector('svg[data-icon="story"]')).toHaveAttribute("aria-hidden", "true");
+    const scales = screen.getByRole("button", { name: "Votre poids sur chaque astre" });
+    expect(scales).toHaveAttribute("title", "Votre poids sur chaque astre");
+    expect(scales.querySelector('svg[data-icon="weight"]')).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("devrait réduire « Replier » à son pictogramme, son nom entier en infobulle", async () => {
+    renderPlate();
+    await userEvent.click(screen.getByRole("button", { name: "Lire la fiche" }));
+    const fold = screen.getByRole("button", { name: "Replier, Mars" });
+    expect(fold).toHaveAttribute("title", "Replier, Mars");
+    expect(fold.querySelector('svg[data-icon="fold"]')).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("devrait garder le pied de plaque visible après les sections", () => {
     renderPlate();
     expect(screen.getByText("Pied de plaque")).toBeInTheDocument();
@@ -359,6 +390,42 @@ describe("feuille de style de la plaque compacte", () => {
     expect(hook).toMatch(/height: 1px;/);
     expect(hook).toMatch(/clip: rect\(0 0 0 0\);/);
     expect(hook).not.toMatch(/display: none|visibility: hidden/);
+  });
+
+  it("devrait réduire chaque titre-bouton à un rond de 44 px, son pictogramme seul, le libellé gardé aux lecteurs d'écran", () => {
+    const button = ruleIn(COMPACT_SCRIPTED, ".more-btn");
+    expect(button).toMatch(/width: 44px;/);
+    expect(button).toMatch(/height: 44px;/);
+    expect(button).toMatch(/padding: 0;/);
+    expect(button).toMatch(/border-radius: 50%;/);
+    expect(ruleIn(COMPACT_SCRIPTED, ".more-btn .more-label")).toMatch(/clip: rect\(0 0 0 0\);/);
+    expect(ruleIn(COMPACT_SCRIPTED, ".more-btn .more-chevron")).toMatch(/display: none;/);
+  });
+
+  it("devrait ranger les boutons sur une rangée centrée sous le nom, les sections ouvertes dessous", () => {
+    expect(ruleIn(COMPACT_SCRIPTED, ".plate-sections")).toMatch(/justify-content: center;/);
+    expect(ruleIn(COMPACT_SCRIPTED, ".more-heading")).toMatch(/flex: none;/);
+    expect(ruleIn(COMPACT_SCRIPTED, ".more-fold")).toMatch(/flex-basis: auto;/);
+    expect(ruleIn(COMPACT_SCRIPTED, ".more-zone")).toMatch(/order: 1;/);
+  });
+
+  it("devrait marquer le bouton ouvert d'un fond et d'un anneau --soleil, pas d'une teinte seule", () => {
+    const open = ruleIn(COMPACT_SCRIPTED, '.more-btn[aria-expanded="true"]');
+    expect(open).toMatch(/background: var\(--soleil\);/);
+    expect(open).toMatch(/color: var\(--encre\);/);
+    expect(open).toMatch(/box-shadow: 0 0 0 2px var\(--plaque\), 0 0 0 3px var\(--soleil\);/);
+  });
+
+  it("devrait garder l'état ouvert visible en couleurs forcées", () => {
+    const open = ruleIn("(forced-colors: active)", '.more-btn[aria-expanded="true"]');
+    expect(open).toMatch(/background: Highlight;/);
+    expect(open).toMatch(/color: HighlightText;/);
+    expect(open).toMatch(/forced-color-adjust: none;/);
+  });
+
+  it("devrait ne retourner que le chevron des grands boutons, jamais le pictogramme", () => {
+    expect(css).not.toMatch(/\.more-btn\[aria-expanded="true"\] svg/);
+    expect(css).toMatch(/\.more-btn\[aria-expanded="true"\] \.more-chevron,/);
   });
 
   it("devrait garder l'accroche hors de la plaque compacte (grand écran, sans JavaScript)", () => {

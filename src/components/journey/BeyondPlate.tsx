@@ -47,6 +47,7 @@ export function BeyondPlate({ locale, sunHref }: { locale: Locale; sunHref: `#${
           {
             key: "suite",
             label: plate.more,
+            icon: "story",
             content: (
               <>
                 <p className="lede">{beyond.lede}</p>

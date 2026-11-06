@@ -98,12 +98,9 @@ export function StarPlate({ star, locale, restartTo }: { star: ComparedStar; loc
           {
             key: "fiche",
             // Le même libellé revient à chaque étoile : son nom la distingue à l'oreille.
-            label: (
-              <>
-                {content.plate.story}
-                <span className="sr">, {name}</span>
-              </>
-            ),
+            label: content.plate.story,
+            context: name,
+            icon: "story",
             content: (
               <>
                 <p className="lede">{text.lede}</p>

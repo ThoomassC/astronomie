@@ -72,9 +72,17 @@ Le contour de focus suit l'arrondi de chaque commande ; ne pas lui imposer de ra
   (l'accroche y cède sa ligne à l'astre : masquée à l'œil, lue une fois après le nom ; avec JavaScript seulement, elle
   reste sur grand écran et sans JavaScript), puis un titre-bouton par
   section (`h3` > `button[aria-expanded]`, motif accordéon), « Lire la fiche » et un libellé propre
-  au module (« Votre poids sur chaque astre »), qui remplace le titre du module. Les titres-boutons
-  se rangent côte à côte quand ils tiennent. Chaque section s'ouvre sous son titre, en fondu de
-  200 ms, et « Replier » referme tout. Pendant le repos de la caméra, le filet de couleur
+  au module (« Votre poids sur chaque astre »), qui remplace le titre du module. Les titres-boutons sont des
+  pictogrammes : ronds de 44 px au filet `--filet-fort`, dessin au trait de 1,4 en laiton sur une grille de 20 px
+  (`PlateIcon`), sur une rangée centrée sous le nom ; le libellé, masqué à l'œil, reste le nom accessible et paraît en
+  infobulle (`title`, le nom accessible entier). Un dessin par type de section : fiche (page cornée), course de la
+  lumière (astre et rayon), Mercure qui accélère (orbite elliptique), jour contre année (globe mi-éclairé et sa
+  rotation), saisons de la Terre et d'Uranus (globe à l'axe incliné), poids (balance), tailles (cercles emboîtés),
+  anneaux (planète annelée), âge sur Neptune (sablier), étoiles de la carte (constellation), galaxies de la carte
+  (galaxie de biais), « Replier » (chevrons qui se rejoignent, filet `--filet`, `--brume`). Ouvert : fond `--soleil`,
+  dessin `--encre`, anneau `--soleil` détaché de la plaque (un changement de fond, pas une teinte seule) ; en couleurs
+  forcées, fond `Highlight`. Chaque section s'ouvre sous la rangée, dans l'ordre des boutons, en fondu de 200 ms, et
+  « Replier », au bout de la rangée, referme tout. Pendant le repos de la caméra, le filet de couleur
   (atténué à 50 %) s'éclaire de gauche à droite ; plein, le vol vers l'escale suivante commence
   (pas sur la dernière escale). Noms d'astres de 2,25 à 3,25 rem dans la plaque compacte. Dépliée,
   la plaque reprend sa place en haut de l'escale et s'allonge vers le bas ; le bouton touché passe
